@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 
 function Login() {
@@ -17,9 +17,12 @@ function Login() {
   }
 
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f5f5f5', fontFamily:'sans-serif' }}>
-      <div style={{ background:'#fff', padding:'2rem', borderRadius:'12px', width:'320px', border:'1px solid #e0e0e0' }}>
-        <h2 style={{ textAlign:'center', marginBottom:'1.5rem', color:'#1a1a1a' }}>Idemaq</h2>
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f0f4f8', fontFamily:'sans-serif' }}>
+      <div style={{ background:'#fff', padding:'2rem', borderRadius:'12px', width:'320px', border:'1px solid #e0e0e0', boxShadow:'0 2px 12px rgba(0,0,0,0.08)' }}>
+        <div style={{ textAlign:'center', marginBottom:'1.5rem' }}>
+          <h2 style={{ color:'#1a1a1a', marginBottom:'4px' }}>Idemaq</h2>
+          <p style={{ color:'#888', fontSize:'13px' }}>Sistema de gestão</p>
+        </div>
         <form onSubmit={entrar}>
           <div style={{ marginBottom:'1rem' }}>
             <label style={{ fontSize:'13px', color:'#666', display:'block', marginBottom:'4px' }}>E-mail</label>
@@ -44,17 +47,20 @@ function Login() {
   )
 }
 
-function Dashboard({ user, sair }) {
+function Painel({ user, sair }) {
   return (
-    <div style={{ padding:'2rem', fontFamily:'sans-serif' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'2rem' }}>
-        <h1 style={{ color:'#1a1a1a' }}>Idemaq</h1>
+    <div style={{ minHeight:'100vh', background:'#f0f4f8', fontFamily:'sans-serif' }}>
+      <div style={{ background:'#fff', borderBottom:'1px solid #e0e0e0', padding:'0 1.5rem', display:'flex', alignItems:'center', justifyContent:'space-between', height:'52px' }}>
+        <span style={{ fontWeight:'600', color:'#1a1a1a', fontSize:'16px' }}>Idemaq</span>
         <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
-          <span style={{ fontSize:'14px', color:'#666' }}>{user.email}</span>
-          <button onClick={sair} style={{ padding:'6px 14px', background:'transparent', border:'1px solid #ddd', borderRadius:'8px', cursor:'pointer', fontSize:'13px' }}>Sair</button>
+          <span style={{ fontSize:'13px', color:'#666' }}>{user.email}</span>
+          <button onClick={sair} style={{ padding:'5px 12px', background:'transparent', border:'1px solid #ddd', borderRadius:'6px', cursor:'pointer', fontSize:'12px', color:'#666' }}>Sair</button>
         </div>
       </div>
-      <p style={{ color:'#666' }}>Sistema em construção — banco de dados conectado.</p>
+      <div style={{ padding:'1.5rem' }}>
+        <h3 style={{ color:'#1a1a1a', marginBottom:'1rem' }}>Painel principal</h3>
+        <p style={{ color:'#666', fontSize:'14px' }}>Em construção — banco de dados conectado</p>
+      </div>
     </div>
   )
 }
@@ -62,14 +68,20 @@ function Dashboard({ user, sair }) {
 export default function App() {
   const [user, setUser] = useState(null)
 
-  supabase.auth.onAuthStateChange((_event, session) => {
-    setUser(session?.user ?? null)
-  })
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function sair() {
     await supabase.auth.signOut()
   }
 
   if (!user) return <Login />
-  return <Dashboard user={user} sair={sair} />
+  return <Painel user={user} sair={sair} />
 }
