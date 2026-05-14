@@ -125,6 +125,196 @@ function CountBadge({ n, red, T, dark }) {
   return <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:10, background:red?redBg:defBg, color:red?redClr:defClr }}>{n}</span>
 }
 
+// ─── Configuração dos 3 tipos de OS ───────────────────────────────────────
+const TIPOS_OS = {
+  atendimento: {
+    label: 'Atendimento',
+    icon: 'ti-tool',
+    cor: 'blue',
+    descricao: 'Máquina do cliente — fluxo completo',
+    etapas: [
+      { id:'ag_agendamento', label:'Aguardando ag.',  curto:'Ag. agenda',   cor:'neutro' },
+      { id:'agendado',       label:'Agendado',         curto:'Agendado',     cor:'neutro' },
+      { id:'recebido',       label:'Recebido',         curto:'Recebido',     cor:'neutro' },
+      { id:'diagnostico',    label:'Diagnóstico',      curto:'Diagnóstico',  cor:'yellow', prazo24h:true },
+      { id:'orcamento',      label:'Orçamento',        curto:'Orçamento',    cor:'red',    prazo24h:true },
+      { id:'oficina',        label:'Em oficina',       curto:'Em oficina',   cor:'blueLight', dual:true },
+      { id:'teste_final',    label:'Teste final',      curto:'Teste final',  cor:'blue' },
+      { id:'entrega',        label:'Entrega',          curto:'Entrega',      cor:'blue' },
+      { id:'pagamento',      label:'Pagamento',        curto:'Pagamento',    cor:'yellow' },
+      { id:'concluido',      label:'Concluído',        curto:'Concluído',    cor:'green' },
+    ],
+    lateral: { id:'recusado', label:'Recusado', curto:'Recusado', cor:'red' }
+  },
+  fabricacao: {
+    label: 'Fabricação',
+    icon: 'ti-building-factory-2',
+    cor: 'yellow',
+    descricao: 'Máquina nova para o estoque',
+    etapas: [
+      { id:'diagnostico',  label:'Diagnóstico',     curto:'Diagnóstico',  cor:'yellow', prazo24h:true },
+      { id:'oficina',      label:'Em oficina',      curto:'Em oficina',   cor:'blueLight', dual:true },
+      { id:'teste_final',  label:'Teste final',     curto:'Teste final',  cor:'blue' },
+      { id:'concluido',    label:'Concluída',       curto:'Concluída',    cor:'green' },
+    ]
+  },
+  venda: {
+    label: 'Venda',
+    icon: 'ti-shopping-cart',
+    cor: 'green',
+    descricao: 'Máquina pronta do estoque',
+    etapas: [
+      { id:'agendamento', label:'Agendamento',  curto:'Agendamento', cor:'neutro' },
+      { id:'entregue',    label:'Entregue',     curto:'Entregue',    cor:'blue' },
+      { id:'pagamento',   label:'Pagamento',    curto:'Pagamento',   cor:'yellow' },
+      { id:'concluido',   label:'Concluído',    curto:'Concluído',   cor:'green' },
+    ]
+  }
+}
+
+// Cor de etapa traduzida para hex (respeita modo dark/claro)
+function corEtapa(nome, dark) {
+  const map = {
+    blue:      dark ? P.blue       : P.blueDark,
+    yellow:    dark ? P.yellow     : P.yellowDark,
+    red:       dark ? P.red        : P.redDark,
+    blueLight: dark ? P.blueLight  : P.blueLightDark,
+    green:     dark ? P.green      : P.greenDark,
+    neutro:    dark ? '#888888'    : '#888888',
+  }
+  return map[nome] || map.neutro
+}
+function bgEtapa(nome, dark) {
+  const map = {
+    blue:      dark ? '#0d2035' : '#e6f1fb',
+    yellow:    dark ? '#2a2000' : '#fdf6dc',
+    red:       dark ? '#2a1515' : '#fde8e8',
+    blueLight: dark ? '#0d2035' : '#e6f1fb',
+    green:     dark ? '#0f2a15' : '#e8f5ec',
+    neutro:    dark ? '#2a2a2c' : '#ebebed',
+  }
+  return map[nome] || map.neutro
+}
+
+// Funcionários (mock — depois lê do Supabase auth)
+const FUNCIONARIOS = [
+  { id:'dono',  nome:'Dono',         apelido:'DN', cor:'#5B9BD5' },
+  { id:'func1', nome:'Func1 — Log.', apelido:'F1', cor:'#FFD966' },
+  { id:'func2', nome:'Func2 — Of.',  apelido:'F2', cor:'#B8CCE4' },
+]
+
+// ─── Dados mock de OS (substituir por fetch do Supabase depois) ───────────
+const OS_MOCK = [
+  // ATENDIMENTO
+  { numero:1036, tipo:'atendimento', cliente:'Ana Reis',     fone:'(67) 9 9911-1010', equipamento:'Lavadora LG 12kg',          defeito:'Não centrifuga, faz ruído alto',          etapa:'oficina',       limpeza:'concluido', manutencao:'em_andamento', responsavel:'func2', abertura:'2026-05-10', prazo:'2026-05-11', endereco:'R. das Acácias, 412 — Naviraí/MS', valor:380, desconto:0, fotos:2, observacoes:'Cliente urgente — viagem dia 15.' },
+  { numero:1037, tipo:'atendimento', cliente:'João Costa',   fone:'(67) 9 9922-2020', equipamento:'Geladeira Consul Frost Free', defeito:'Não gela na parte de baixo',              etapa:'diagnostico',   responsavel:'func2', abertura:'2026-05-12', prazo:'2026-05-14', endereco:'R. Bahia, 87 — Naviraí/MS', valor:0, desconto:0, fotos:1, horasNaEtapa:31 },
+  { numero:1039, tipo:'atendimento', cliente:'Carlos Lima',  fone:'(67) 9 9933-3030', equipamento:'Micro-ondas Electrolux 32L',  defeito:'Não esquenta, prato gira normal',         etapa:'orcamento',     responsavel:'dono',  abertura:'2026-05-11', prazo:'2026-05-13', endereco:'R. Goiás, 245 — Naviraí/MS', valor:215, desconto:0, fotos:2, horasNaEtapa:18 },
+  { numero:1041, tipo:'atendimento', cliente:'Paula Mendes', fone:'(67) 9 9944-4040', equipamento:'Ar cond. Midea 12000 BTU',    defeito:'Vazamento de água, não gela',             etapa:'agendado',      responsavel:'func1', abertura:'2026-05-13', prazo:'2026-05-15', endereco:'Av. Cuiabá, 1.020 — Naviraí/MS', valor:0, desconto:0, fotos:0 },
+  { numero:1043, tipo:'atendimento', cliente:'Roberto Dias', fone:'(67) 9 9955-5050', equipamento:'Lavadora Brastemp 11kg',      defeito:'Não enche de água',                       etapa:'ag_agendamento',responsavel:'func1', abertura:'2026-05-13', prazo:'2026-05-17', endereco:'R. Paraná, 56 — Naviraí/MS',     valor:0, desconto:0, fotos:0 },
+  { numero:1033, tipo:'atendimento', cliente:'Pedro Alves',  fone:'(67) 9 9966-6060', equipamento:'Secadora Brastemp 10kg',      defeito:'Aquece pouco, demora muito',              etapa:'oficina',       limpeza:'em_andamento', manutencao:'aguardando', responsavel:'func2', abertura:'2026-05-08', prazo:'2026-05-12', endereco:'R. Ceará, 312 — Naviraí/MS', valor:480, desconto:30, fotos:3 },
+  { numero:1045, tipo:'atendimento', cliente:'Lúcia Ramos',  fone:'(67) 9 9977-7070', equipamento:'Geladeira Electrolux',         defeito:'Faz barulho intermitente',                etapa:'teste_final',   responsavel:'func2', abertura:'2026-05-09', prazo:'2026-05-14', endereco:'R. Minas Gerais, 78 — Naviraí/MS', valor:520, desconto:0, fotos:2 },
+  { numero:1046, tipo:'atendimento', cliente:'Marcos Souza', fone:'(67) 9 9988-8080', equipamento:'Lavadora Consul 10kg',        defeito:'Centrifugação fraca',                     etapa:'entrega',       responsavel:'func1', abertura:'2026-05-07', prazo:'2026-05-14', endereco:'R. Sergipe, 145 — Naviraí/MS', valor:295, desconto:15, fotos:1 },
+  { numero:1047, tipo:'atendimento', cliente:'Beatriz Souza',fone:'(67) 9 9999-9090', equipamento:'Lava e seca Samsung',         defeito:'Display piscando, não liga',              etapa:'pagamento',     responsavel:'dono',  abertura:'2026-05-06', prazo:'2026-05-14', endereco:'R. Alagoas, 39 — Naviraí/MS', valor:640, desconto:40, fotos:2 },
+  { numero:1029, tipo:'atendimento', cliente:'Marta Lopes',  fone:'(67) 9 9810-1020', equipamento:'Lavadora LG 9kg',             defeito:'Concluída — limpeza e troca de rolamento',etapa:'concluido',     responsavel:'func2', abertura:'2026-04-30', prazo:'2026-05-08', endereco:'R. Pará, 22 — Naviraí/MS', valor:420, desconto:0, fotos:3 },
+  { numero:1028, tipo:'atendimento', cliente:'Felipe Costa', fone:'(67) 9 9811-1121', equipamento:'Micro-ondas Panasonic',       defeito:'Cliente recusou orçamento',               etapa:'recusado',      responsavel:'dono',  abertura:'2026-05-04', prazo:'2026-05-09', endereco:'R. Espírito Santo, 8 — Naviraí/MS', valor:30, desconto:0, fotos:1 },
+
+  // FABRICAÇÃO
+  { numero:2008, tipo:'fabricacao', cliente:'— Estoque',     equipamento:'Lavadora reformada — base p/ revenda', defeito:'Estrutura ok, trocar rolamento, polia, capa', etapa:'oficina',     limpeza:'concluido', manutencao:'em_andamento', responsavel:'func2', abertura:'2026-05-09', prazo:'2026-05-15', valor:150, custoFab:285, fotos:4 },
+  { numero:2009, tipo:'fabricacao', cliente:'— Estoque',     equipamento:'Lavadora reformada — base p/ revenda', defeito:'Conversão da OS #1028 recusada',              etapa:'diagnostico', responsavel:'func2', abertura:'2026-05-12', prazo:'2026-05-18', valor:150, custoFab:150, fotos:1 },
+  { numero:2007, tipo:'fabricacao', cliente:'— Estoque',     equipamento:'Lavadora reformada Brastemp 9kg',      defeito:'Pronta para vender',                          etapa:'concluido',   responsavel:'func2', abertura:'2026-05-02', prazo:'2026-05-10', valor:650, custoFab:340, fotos:5 },
+
+  // VENDA
+  { numero:3004, tipo:'venda', cliente:'Igor Vasconcelos', fone:'(67) 9 9712-3344', equipamento:'Lavadora reformada Brastemp 9kg',  defeito:'Venda — máquina #M-204', etapa:'agendamento', responsavel:'func1', abertura:'2026-05-13', prazo:'2026-05-15', endereco:'R. Maranhão, 199 — Naviraí/MS', valor:650, desconto:0, fotos:0 },
+  { numero:3003, tipo:'venda', cliente:'Sandra Pinheiro',  fone:'(67) 9 9713-4455', equipamento:'Lavadora reformada Consul 10kg',   defeito:'Venda — máquina #M-201', etapa:'pagamento',   responsavel:'dono',  abertura:'2026-05-10', prazo:'2026-05-13', endereco:'R. Bahia, 410 — Naviraí/MS', valor:650, desconto:0, fotos:0 },
+]
+
+// Itens (peças) mock — vincular pela OS no detalhe
+const OS_ITENS_MOCK = {
+  1036: [
+    { nome:'Rolamento do cesto', qtd:1, valor:95,  tipo:'item' },
+    { nome:'Limpeza completa',   qtd:1, valor:185, tipo:'servico' },
+    { nome:'Mão de obra',        qtd:1, valor:100, tipo:'servico' },
+  ],
+  1039: [
+    { nome:'Diagnóstico',        qtd:1, valor:30,  tipo:'servico' },
+    { nome:'Magnetron 220V',     qtd:1, valor:185, tipo:'item' },
+  ],
+  1033: [
+    { nome:'Resistência 220V',   qtd:1, valor:135, tipo:'item' },
+    { nome:'Limpeza combinada',  qtd:1, valor:165, tipo:'servico' },
+    { nome:'Manutenção',         qtd:1, valor:185, tipo:'servico' },
+  ],
+  1045: [
+    { nome:'Termostato',         qtd:1, valor:75,  tipo:'item' },
+    { nome:'Limpeza completa',   qtd:1, valor:185, tipo:'servico' },
+    { nome:'Mão de obra',        qtd:1, valor:260, tipo:'servico' },
+  ],
+  1046: [
+    { nome:'Capacitor partida',  qtd:1, valor:45,  tipo:'item' },
+    { nome:'Manutenção',         qtd:1, valor:185, tipo:'servico' },
+    { nome:'Limpeza combinada',  qtd:1, valor:65,  tipo:'servico' },
+  ],
+  1047: [
+    { nome:'Placa eletrônica',   qtd:1, valor:280, tipo:'item' },
+    { nome:'Manutenção',         qtd:1, valor:185, tipo:'servico' },
+    { nome:'Limpeza completa',   qtd:1, valor:175, tipo:'servico' },
+  ],
+  1029: [
+    { nome:'Rolamento do cesto', qtd:1, valor:95,  tipo:'item' },
+    { nome:'Limpeza combinada',  qtd:1, valor:165, tipo:'servico' },
+    { nome:'Manutenção',         qtd:1, valor:160, tipo:'servico' },
+  ],
+  1028: [
+    { nome:'Taxa de diagnóstico',qtd:1, valor:30,  tipo:'servico' },
+  ],
+  2008: [
+    { nome:'Rolamento do cesto', qtd:1, valor:95,  tipo:'item' },
+    { nome:'Polia do motor',     qtd:1, valor:55,  tipo:'item' },
+    { nome:'Capa universal',     qtd:1, valor:30,  tipo:'item' },
+    { nome:'Compra base',        qtd:1, valor:150, tipo:'item' },
+  ],
+}
+
+// Clientes mock (para busca no formulário Nova OS)
+const CLIENTES_MOCK = [
+  { id:1, nome:'Ana Reis',        fone:'(67) 9 9911-1010', endereco:'R. das Acácias, 412 — Naviraí/MS' },
+  { id:2, nome:'João Costa',      fone:'(67) 9 9922-2020', endereco:'R. Bahia, 87 — Naviraí/MS' },
+  { id:3, nome:'Carlos Lima',     fone:'(67) 9 9933-3030', endereco:'R. Goiás, 245 — Naviraí/MS' },
+  { id:4, nome:'Paula Mendes',    fone:'(67) 9 9944-4040', endereco:'Av. Cuiabá, 1.020 — Naviraí/MS' },
+  { id:5, nome:'Roberto Dias',    fone:'(67) 9 9955-5050', endereco:'R. Paraná, 56 — Naviraí/MS' },
+  { id:6, nome:'Maria Silva',     fone:'(67) 9 9810-1111', endereco:'R. Acre, 88 — Naviraí/MS' },
+  { id:7, nome:'Pedro Alves',     fone:'(67) 9 9966-6060', endereco:'R. Ceará, 312 — Naviraí/MS' },
+  { id:8, nome:'Igor Vasconcelos',fone:'(67) 9 9712-3344', endereco:'R. Maranhão, 199 — Naviraí/MS' },
+]
+
+// Máquinas do estoque disponíveis para venda (mock)
+const ESTOQUE_MAQUINAS_MOCK = [
+  { id:'M-201', descricao:'Lavadora reformada Consul 10kg', valor:650 },
+  { id:'M-203', descricao:'Lavadora reformada LG 11kg',     valor:650 },
+  { id:'M-204', descricao:'Lavadora reformada Brastemp 9kg',valor:650 },
+]
+
+// Status do prazo da OS
+function calcStatusPrazo(prazoIso, etapaId) {
+  if (etapaId === 'concluido' || etapaId === 'recusado') return 'ok'
+  const hoje = new Date(); hoje.setHours(0,0,0,0)
+  const prazo = new Date(prazoIso); prazo.setHours(0,0,0,0)
+  const diff = Math.round((prazo - hoje)/86400000)
+  if (diff < 0)  return 'vencido'
+  if (diff === 0) return 'hoje'
+  if (diff === 1) return 'amanha'
+  return 'ok'
+}
+function diasPrazo(prazoIso) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0)
+  const prazo = new Date(prazoIso); prazo.setHours(0,0,0,0)
+  return Math.round((prazo - hoje)/86400000)
+}
+function fmtPrazoCurto(prazoIso) {
+  const d = new Date(prazoIso)
+  return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' }).replace('.','')
+}
+
 // ─── Login ─────────────────────────────────────────────────────────────────
 function Login({ dark, T }) {
   const [email, setEmail]   = useState('')
@@ -670,60 +860,903 @@ function PainelMobile({ T, dark }) {
 
 // ─── OS Mobile ─────────────────────────────────────────────────────────────
 function OSMobile({ T, dark }) {
-  const [filtro, setFiltro] = useState('todas')
   const cor = (d, c) => dark ? d : c
-  const osList = [
-    { id:'#1036', cliente:'Ana Reis',     equip:'Lavadora LG',           etapa:'Diagnóstico', prazo:'11/mai', status:'atrasada' },
-    { id:'#1037', cliente:'João Costa',   equip:'Geladeira Consul',       etapa:'Diagnóstico', prazo:'14/mai', status:'ok' },
-    { id:'#1039', cliente:'Carlos Lima',  equip:'Micro-ondas Electrolux', etapa:'Orçamento',   prazo:'13/mai', status:'hoje' },
-    { id:'#1041', cliente:'Paula Mendes', equip:'Ar condicionado Midea',  etapa:'Pré-diag.',   prazo:'15/mai', status:'ok' },
-    { id:'#1033', cliente:'Pedro Alves',  equip:'Secadora Brastemp',      etapa:'Manutenção',  prazo:'12/mai', status:'atrasada' },
-    { id:'#1042', cliente:'Maria Silva',  equip:'Fogão Brastemp',         etapa:'Limpeza',     prazo:'16/mai', status:'ok' },
-  ]
-  const filtrados = filtro==='todas' ? osList : osList.filter(o=>o.status===filtro)
-  const etapaCor = {
-    'Diagnóstico': cor(P.yellow,P.yellowDark),
-    'Orçamento':   cor(P.red,P.redDark),
-    'Pré-diag.':   cor(P.yellow,P.yellowDark),
-    'Manutenção':  cor(P.blueLight,P.blueLightDark),
-    'Limpeza':     cor(P.blueLight,P.blueLightDark),
-    'Finalizado':  cor(P.green,P.greenDark),
-  }
-  const etapaBg = {
-    'Diagnóstico': cor('#2a2000','#fdf6dc'),
-    'Orçamento':   cor('#2a1515','#fde8e8'),
-    'Pré-diag.':   cor('#2a2000','#fdf6dc'),
-    'Manutenção':  cor('#0d2035','#e6f1fb'),
-    'Limpeza':     cor('#0d2035','#e6f1fb'),
-    'Finalizado':  cor('#0f2a15','#e8f5ec'),
-  }
+  const [tipo, setTipo]       = useState('atendimento')
+  const [filtro, setFiltro]   = useState('todas')
+  const [busca, setBusca]     = useState('')
+  const [modalNova, setModalNova] = useState(false)
+  const [detalhe, setDetalhe]     = useState(null)
+
+  const config = TIPOS_OS[tipo]
+  const tipoCor = corEtapa(config.cor, dark)
+
+  const osList = OS_MOCK
+    .filter(o => o.tipo === tipo)
+    .filter(o => {
+      const s = calcStatusPrazo(o.prazo, o.etapa)
+      if (filtro === 'todas')    return true
+      if (filtro === 'vencido')  return s === 'vencido'
+      if (filtro === 'hoje')     return s === 'hoje' || s === 'amanha'
+      if (filtro === 'ok')       return s === 'ok'
+      return true
+    })
+    .filter(o => !busca ||
+      o.cliente.toLowerCase().includes(busca.toLowerCase()) ||
+      String(o.numero).includes(busca) ||
+      o.equipamento.toLowerCase().includes(busca.toLowerCase()))
+    .sort((a,b) => new Date(a.prazo) - new Date(b.prazo))
+
   const activeClr = dark ? P.blue : P.blueDark
+  const tiposList = Object.entries(TIPOS_OS)
+
   return (
-    <div style={{ padding:'1rem', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10, paddingBottom:70 }}>
-      <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4 }}>
-        {[['todas','Todas'],['atrasada','Atrasadas'],['hoje','Vencem hoje'],['ok','Em dia']].map(([v,l]) => (
-          <button key={v} onClick={()=>setFiltro(v)} style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${filtro===v?activeClr:T.border}`, background:filtro===v?cor('#1a3a5c','#e6f1fb'):'transparent', color:filtro===v?activeClr:T.textMuted, fontSize:12, cursor:'pointer', whiteSpace:'nowrap', fontWeight:filtro===v?600:400 }}>{l}</button>
-        ))}
-      </div>
-      {filtrados.map((os,i) => (
-        <div key={i} style={{ background:T.card, borderRadius:12, padding:'14px 15px', border:`1px solid ${T.border}` }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
-            <div>
-              <div style={{ fontSize:14, fontWeight:700, color:T.textPrimary }}>{os.cliente}</div>
-              <div style={{ fontSize:12, color:T.textMuted, marginTop:2 }}>{os.equip}</div>
-            </div>
-            <span style={{ fontSize:12, fontWeight:600, color:T.textDim }}>{os.id}</span>
+    <>
+      <div style={{ padding:'.85rem 1rem 70px', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
+        {/* Seletor de tipo */}
+        <div style={{ display:'flex', gap:6, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}` }}>
+          {tiposList.map(([id, cfg]) => {
+            const ativo = id === tipo
+            const c = corEtapa(cfg.cor, dark)
+            return (
+              <button key={id} onClick={()=>setTipo(id)}
+                style={{ flex:1, padding:'8px 4px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:12, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                <i className={`ti ${cfg.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
+                {cfg.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Busca + nova */}
+        <div style={{ display:'flex', gap:8 }}>
+          <div style={{ flex:1, position:'relative' }}>
+            <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
+            <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar OS, cliente, equipamento…"
+              style={{ width:'100%', padding:'9px 10px 9px 32px', borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box' }} />
           </div>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <span style={{ fontSize:11, padding:'3px 9px', borderRadius:6, background:etapaBg[os.etapa]||(dark?'#0d2035':'#e6f1fb'), color:etapaCor[os.etapa]||(dark?P.blue:P.blueDark), fontWeight:600 }}>{os.etapa}</span>
-              <span style={{ fontSize:11, color:T.textMuted }}>· prazo {os.prazo}</span>
-            </div>
-            {os.status==='atrasada' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>Atrasada</Badge>}
-            {os.status==='hoje'     && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Hoje</Badge>}
+          <button onClick={()=>setModalNova(true)}
+            style={{ padding:'0 13px', borderRadius:9, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+            <i className="ti ti-plus" style={{ fontSize:15 }} aria-hidden="true" /> Nova
+          </button>
+        </div>
+
+        {/* Chips de filtro */}
+        <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:2 }}>
+          {[['todas',`Todas · ${osList.length}`],['vencido','Atrasadas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v,l]) => (
+            <button key={v} onClick={()=>setFiltro(v)}
+              style={{ padding:'6px 13px', borderRadius:20, border:`1px solid ${filtro===v?activeClr:T.border}`, background:filtro===v?cor('#1a3a5c','#e6f1fb'):'transparent', color:filtro===v?activeClr:T.textMuted, fontSize:12, cursor:'pointer', whiteSpace:'nowrap', fontWeight:filtro===v?600:400 }}>{l}</button>
+          ))}
+        </div>
+
+        {/* Cards */}
+        {osList.length === 0 && (
+          <div style={{ background:T.card, border:`1px dashed ${T.border}`, borderRadius:12, padding:'2rem 1rem', textAlign:'center', color:T.textMuted, fontSize:13 }}>
+            <i className="ti ti-clipboard-off" style={{ fontSize:30, display:'block', marginBottom:6, color:T.textDim }} aria-hidden="true" />
+            Nenhuma OS de {config.label.toLowerCase()} encontrada
+          </div>
+        )}
+        {osList.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} tipoCor={tipoCor} onClick={()=>setDetalhe(os)} />)}
+      </div>
+
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo} mobile />}
+      {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} onClose={()=>setDetalhe(null)} mobile />}
+    </>
+  )
+}
+
+function OSCardMobile({ os, T, dark, tipoCor, onClick }) {
+  const cor = (d, c) => dark ? d : c
+  const etapa = TIPOS_OS[os.tipo].etapas.find(e => e.id === os.etapa)
+                || TIPOS_OS[os.tipo].lateral && os.etapa === 'recusado' && TIPOS_OS[os.tipo].lateral
+  const etapaC = corEtapa(etapa?.cor || 'neutro', dark)
+  const etapaBgC = bgEtapa(etapa?.cor || 'neutro', dark)
+  const status = calcStatusPrazo(os.prazo, os.etapa)
+  const dias = diasPrazo(os.prazo)
+
+  return (
+    <div onClick={onClick}
+      style={{ background:T.card, borderRadius:12, padding:'12px 14px', border:`1px solid ${T.border}`, borderLeft:`3px solid ${tipoCor}`, cursor:'pointer' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:7, gap:8 }}>
+        <div style={{ minWidth:0, flex:1 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.cliente}</div>
+          <div style={{ fontSize:12, color:T.textMuted, marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.equipamento}</div>
+        </div>
+        <span style={{ fontSize:11, fontWeight:600, color:T.textDim, whiteSpace:'nowrap' }}>#{os.numero}</span>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+          <span style={{ fontSize:11, padding:'3px 9px', borderRadius:6, background:etapaBgC, color:etapaC, fontWeight:600, whiteSpace:'nowrap' }}>{etapa?.curto || os.etapa}</span>
+          <span style={{ fontSize:11, color:T.textMuted, whiteSpace:'nowrap' }}>· {fmtPrazoCurto(os.prazo)}</span>
+        </div>
+        {status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d atraso</Badge>}
+        {status==='hoje'    && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Hoje</Badge>}
+        {status==='amanha'  && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Amanhã</Badge>}
+        {status==='ok' && os.etapa!=='concluido' && os.etapa!=='recusado' && <span style={{ fontSize:11, color:T.textDim }}>{dias}d</span>}
+      </div>
+    </div>
+  )
+}
+
+// ─── OS — Kanban Desktop ───────────────────────────────────────────────────
+function OS({ T, dark }) {
+  const cor = (d, c) => dark ? d : c
+  const [tipo, setTipo]   = useState('atendimento')
+  const [busca, setBusca] = useState('')
+  const [funcionario, setFuncionario] = useState('todos')
+  const [statusF, setStatusF]         = useState('todos')
+  const [verRecusados, setVerRecusados] = useState(false)
+  const [modalNova, setModalNova] = useState(false)
+  const [detalhe, setDetalhe]     = useState(null)
+
+  const config = TIPOS_OS[tipo]
+  const tipoCor = corEtapa(config.cor, dark)
+  const tipoBg  = bgEtapa(config.cor, dark)
+
+  const todasDoTipo = OS_MOCK.filter(o => o.tipo === tipo)
+  const osFiltradas = todasDoTipo
+    .filter(o => verRecusados ? true : o.etapa !== 'recusado')
+    .filter(o => funcionario === 'todos' || o.responsavel === funcionario)
+    .filter(o => {
+      if (statusF === 'todos') return true
+      const s = calcStatusPrazo(o.prazo, o.etapa)
+      if (statusF === 'vencido') return s === 'vencido'
+      if (statusF === 'hoje')    return s === 'hoje' || s === 'amanha'
+      if (statusF === 'ok')      return s === 'ok'
+      return true
+    })
+    .filter(o => !busca ||
+      o.cliente.toLowerCase().includes(busca.toLowerCase()) ||
+      String(o.numero).includes(busca) ||
+      o.equipamento.toLowerCase().includes(busca.toLowerCase()))
+
+  // Estatísticas por etapa
+  const porEtapa = {}
+  config.etapas.forEach(e => porEtapa[e.id] = [])
+  const recusados = []
+  osFiltradas.forEach(os => {
+    if (os.etapa === 'recusado') recusados.push(os)
+    else if (porEtapa[os.etapa]) porEtapa[os.etapa].push(os)
+  })
+
+  const totalKanban = osFiltradas.filter(o => o.etapa !== 'recusado').length
+  const totalRecusados = todasDoTipo.filter(o => o.etapa === 'recusado').length
+
+  const tiposList = Object.entries(TIPOS_OS)
+
+  return (
+    <>
+      <div style={{ padding:'1rem 1.1rem 1.1rem', display:'flex', flexDirection:'column', gap:10, flex:1, minHeight:0, overflow:'hidden' }}>
+
+        {/* Seletor de tipo + ações */}
+        <div style={{ display:'flex', gap:10, alignItems:'stretch' }}>
+          <div style={{ display:'flex', gap:6, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, flex:1 }}>
+            {tiposList.map(([id, cfg]) => {
+              const ativo = id === tipo
+              const c = corEtapa(cfg.cor, dark)
+              const n = OS_MOCK.filter(o => o.tipo === id && o.etapa !== 'concluido' && o.etapa !== 'recusado').length
+              return (
+                <button key={id} onClick={()=>setTipo(id)}
+                  style={{ flex:1, padding:'10px 14px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:13, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'background .15s' }}>
+                  <i className={`ti ${cfg.icon}`} style={{ fontSize:16 }} aria-hidden="true" />
+                  <span>{cfg.label}</span>
+                  <span style={{ fontSize:11, fontWeight:700, padding:'1px 7px', borderRadius:10, background:ativo?c:T.cardAlt, color:ativo?(dark?'#0b1220':'#ffffff'):T.textMuted, minWidth:18, textAlign:'center' }}>{n}</span>
+                </button>
+              )
+            })}
+          </div>
+          <button onClick={()=>setModalNova(true)}
+            style={{ padding:'0 18px', borderRadius:10, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap', boxShadow:dark?'0 2px 8px rgba(91,155,213,.15)':'0 2px 6px rgba(0,0,0,.1)' }}>
+            <i className="ti ti-plus" style={{ fontSize:16 }} aria-hidden="true" />
+            Nova OS
+          </button>
+        </div>
+
+        {/* Filtros */}
+        <div style={{ background:T.card, borderRadius:10, border:`1px solid ${T.border}`, padding:'10px 12px', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          <div style={{ position:'relative', flex:1, minWidth:220, maxWidth:340 }}>
+            <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
+            <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar nº, cliente ou equipamento…"
+              style={{ width:'100%', padding:'8px 10px 8px 32px', borderRadius:7, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:12.5, outline:'none', boxSizing:'border-box' }} />
+          </div>
+          <div style={{ display:'flex', gap:5 }}>
+            <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Resp.</span>
+            {[['todos','Todos'], ...FUNCIONARIOS.map(f=>[f.id, f.apelido])].map(([v,l]) => (
+              <button key={v} onClick={()=>setFuncionario(v)}
+                style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${funcionario===v?tipoCor:T.border}`, background:funcionario===v?tipoBg:'transparent', color:funcionario===v?tipoCor:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:funcionario===v?600:500 }}>{l}</button>
+            ))}
+          </div>
+          <div style={{ display:'flex', gap:5 }}>
+            <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Prazo</span>
+            {[['todos','Todos'],['vencido','Vencidas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v,l]) => (
+              <button key={v} onClick={()=>setStatusF(v)}
+                style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${statusF===v?tipoCor:T.border}`, background:statusF===v?tipoBg:'transparent', color:statusF===v?tipoCor:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:statusF===v?600:500 }}>{l}</button>
+            ))}
+          </div>
+          {tipo === 'atendimento' && (
+            <button onClick={()=>setVerRecusados(v=>!v)}
+              style={{ marginLeft:'auto', padding:'5px 11px', borderRadius:6, border:`1px solid ${verRecusados?cor(P.red,P.redDark):T.border}`, background:verRecusados?cor('#2a1515','#fde8e8'):'transparent', color:verRecusados?cor(P.red,P.redDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+              <i className={`ti ${verRecusados?'ti-eye':'ti-eye-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
+              Recusadas ({totalRecusados})
+            </button>
+          )}
+          <span style={{ marginLeft: tipo==='atendimento' ? 0 : 'auto', fontSize:11, color:T.textDim, fontWeight:500 }}>{totalKanban} OS no kanban</span>
+        </div>
+
+        {/* Kanban */}
+        <div style={{ flex:1, minHeight:0, overflowX:'auto', overflowY:'hidden', display:'flex', gap:10, paddingBottom:6 }}>
+          {config.etapas.map(etapa => (
+            <KanbanCol key={etapa.id} etapa={etapa} osList={porEtapa[etapa.id]} T={T} dark={dark} tipoCor={tipoCor} onCardClick={setDetalhe} />
+          ))}
+        </div>
+      </div>
+
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo} />}
+      {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} onClose={()=>setDetalhe(null)} />}
+    </>
+  )
+}
+
+function KanbanCol({ etapa, osList, T, dark, tipoCor, onCardClick }) {
+  const cor = (d, c) => dark ? d : c
+  const c  = corEtapa(etapa.cor, dark)
+  const bg = bgEtapa(etapa.cor, dark)
+  return (
+    <div style={{ minWidth:268, maxWidth:268, flexShrink:0, background:T.cardAlt, borderRadius:11, border:`1px solid ${T.border}`, display:'flex', flexDirection:'column', maxHeight:'100%' }}>
+      <div style={{ padding:'10px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:c, flexShrink:0 }} />
+          <span style={{ fontSize:12, fontWeight:600, color:T.textSecondary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{etapa.label}</span>
+          {etapa.prazo24h && <i className="ti ti-clock-exclamation" style={{ fontSize:13, color:cor(P.yellow,P.yellowDark) }} aria-hidden="true" title="Prazo de 24h nesta etapa" />}
+        </div>
+        <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:10, background:osList.length>0?bg:T.bg, color:osList.length>0?c:T.textDim, minWidth:22, textAlign:'center' }}>{osList.length}</span>
+      </div>
+      <div style={{ flex:1, overflowY:'auto', padding:8, display:'flex', flexDirection:'column', gap:8 }}>
+        {osList.length === 0 && (
+          <div style={{ padding:'1.2rem .5rem', textAlign:'center', color:T.textDim, fontSize:11, fontStyle:'italic' }}>vazio</div>
+        )}
+        {osList.map(os => <KanbanCard key={os.numero} os={os} T={T} dark={dark} tipoCor={tipoCor} onClick={()=>onCardClick(os)} />)}
+      </div>
+    </div>
+  )
+}
+
+function KanbanCard({ os, T, dark, tipoCor, onClick }) {
+  const cor = (d, c) => dark ? d : c
+  const status = calcStatusPrazo(os.prazo, os.etapa)
+  const dias = diasPrazo(os.prazo)
+  const func = FUNCIONARIOS.find(f => f.id === os.responsavel)
+
+  const dual = os.etapa === 'oficina'
+
+  return (
+    <div onClick={onClick}
+      style={{ background:T.card, borderRadius:8, padding:'10px 11px', border:`1px solid ${T.border}`, borderLeft:`3px solid ${tipoCor}`, cursor:'pointer', transition:'transform .1s, border-color .15s' }}
+      onMouseEnter={e=>{ e.currentTarget.style.borderColor = dark ? '#3a3a3e' : '#c8c8cc' }}
+      onMouseLeave={e=>{ e.currentTarget.style.borderColor = T.border; e.currentTarget.style.borderLeftColor = tipoCor }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:5, gap:6 }}>
+        <span style={{ fontSize:11, fontWeight:700, color:T.textDim }}>#{os.numero}</span>
+        {status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d</Badge>}
+        {status==='hoje'    && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Hoje</Badge>}
+        {status==='amanha'  && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Amanhã</Badge>}
+        {status==='ok' && os.etapa!=='concluido' && os.etapa!=='recusado' && (
+          <Badge color={cor(P.green,P.greenDark)} bg={cor('#0f2a15','#e8f5ec')} border={cor(P.green,P.greenDark)+'33'}>{dias}d</Badge>
+        )}
+      </div>
+      <div style={{ fontSize:12.5, fontWeight:600, color:T.textPrimary, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.cliente}</div>
+      <div style={{ fontSize:11, color:T.textMuted, marginBottom:7, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.equipamento}</div>
+
+      {dual && (
+        <div style={{ display:'flex', gap:4, marginBottom:7 }}>
+          <SubStatus label="Limp." status={os.limpeza} T={T} dark={dark} />
+          <SubStatus label="Manut." status={os.manutencao} T={T} dark={dark} />
+        </div>
+      )}
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          <i className="ti ti-calendar" style={{ fontSize:11, color:T.textDim }} aria-hidden="true" />
+          <span style={{ fontSize:10.5, color:T.textMuted }}>{fmtPrazoCurto(os.prazo)}</span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          {os.valor > 0 && <span style={{ fontSize:10.5, color:T.textMuted, fontWeight:600 }}>R$ {(os.valor - (os.desconto||0)).toLocaleString('pt-BR')}</span>}
+          {func && <span style={{ width:19, height:19, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${func.cor}44` }}>{func.apelido}</span>}
+        </div>
+      </div>
+
+      {os.horasNaEtapa && os.horasNaEtapa > 24 && (
+        <div style={{ marginTop:6, padding:'4px 7px', borderRadius:5, background:cor('#2a1515','#fde8e8'), color:cor(P.red,P.redDark), fontSize:10, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize:11 }} aria-hidden="true" />
+          {os.horasNaEtapa}h nesta etapa
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SubStatus({ label, status, T, dark }) {
+  const cor = (d, c) => dark ? d : c
+  const map = {
+    concluido:    { c:cor(P.green, P.greenDark),   bg:cor('#0f2a15','#e8f5ec'), ico:'ti-check'      },
+    em_andamento: { c:cor(P.yellow, P.yellowDark), bg:cor('#2a2000','#fdf6dc'), ico:'ti-loader-2'  },
+    aguardando:   { c:T.textMuted,                 bg:T.bg,                     ico:'ti-clock'     },
+  }
+  const m = map[status] || map.aguardando
+  return (
+    <div style={{ flex:1, padding:'3px 6px', borderRadius:4, background:m.bg, color:m.c, fontSize:10, fontWeight:600, display:'flex', alignItems:'center', gap:3 }}>
+      <i className={`ti ${m.ico}`} style={{ fontSize:11 }} aria-hidden="true" />
+      {label}
+    </div>
+  )
+}
+
+// ─── Modal Nova OS ─────────────────────────────────────────────────────────
+function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
+  const cor = (d, c) => dark ? d : c
+  const [step, setStep] = useState(1)
+  const [tipo, setTipo] = useState(tipoInicial || 'atendimento')
+  const [form, setForm] = useState({
+    cliente:'', clienteId:null, fone:'', endereco:'',
+    equipamento:'', defeito:'',
+    data:'', hora:'', responsavel:'func1',
+    maquinaEstoque:'', valor:'',
+    observacoes:''
+  })
+  const [buscaCli, setBuscaCli] = useState('')
+  const [novoCli, setNovoCli] = useState(false)
+
+  const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const clientesFiltrados = buscaCli
+    ? CLIENTES_MOCK.filter(c => c.nome.toLowerCase().includes(buscaCli.toLowerCase()) || c.fone.includes(buscaCli)).slice(0, 5)
+    : []
+
+  function escolherCliente(c) {
+    update('cliente', c.nome); update('clienteId', c.id); update('fone', c.fone); update('endereco', c.endereco)
+    setBuscaCli(''); setNovoCli(false)
+  }
+
+  function salvar() {
+    // Mock: apenas fecha. Aqui depois entra o insert no Supabase.
+    alert(`OS de ${TIPOS_OS[tipo].label} criada com sucesso!\n\nCliente: ${form.cliente || '— Estoque'}\nEquipamento: ${form.equipamento}`)
+    onClose()
+  }
+
+  const corTipo = corEtapa(TIPOS_OS[tipo].cor, dark)
+  const inputStyle = { width:'100%', padding:'9px 11px', borderRadius:7, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
+  const labelStyle = { fontSize:11, color:T.textMuted, display:'block', marginBottom:5, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }
+
+  const podeAvancar = step === 1 ? true :
+    tipo === 'atendimento' ? (form.cliente && form.equipamento && form.defeito) :
+    tipo === 'fabricacao'  ? (form.equipamento) :
+    tipo === 'venda'       ? (form.cliente && form.maquinaEstoque) : false
+
+  return (
+    <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={680}>
+      <div style={{ padding:'14px 18px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:34, height:34, borderRadius:9, background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <i className="ti ti-clipboard-plus" style={{ fontSize:17, color:'#fff' }} aria-hidden="true" />
+          </div>
+          <div>
+            <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>Nova ordem de serviço</div>
+            <div style={{ fontSize:11, color:T.textMuted, marginTop:1 }}>Passo {step} de 2 — {step===1?'Escolha o tipo':TIPOS_OS[tipo].label}</div>
           </div>
         </div>
-      ))}
+        <button onClick={onClose} aria-label="Fechar"
+          style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:6, borderRadius:6, fontSize:0, lineHeight:0 }}>
+          <i className="ti ti-x" style={{ fontSize:20 }} aria-hidden="true" />
+        </button>
+      </div>
+
+      <div style={{ flex:1, overflowY:'auto', padding:'16px 18px' }}>
+
+        {step === 1 && (
+          <>
+            <div style={{ fontSize:12.5, color:T.textSecondary, marginBottom:14, lineHeight:1.4 }}>
+              Selecione qual o tipo de OS você quer abrir. Cada tipo tem um fluxo próprio e pede informações diferentes.
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(3, 1fr)', gap:10 }}>
+              {Object.entries(TIPOS_OS).map(([id, cfg]) => {
+                const ativo = id === tipo
+                const c = corEtapa(cfg.cor, dark)
+                const bg = bgEtapa(cfg.cor, dark)
+                return (
+                  <button key={id} onClick={()=>setTipo(id)}
+                    style={{ padding:'18px 14px', borderRadius:11, border:`2px solid ${ativo?c:T.border}`, background:ativo?bg:T.card, cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:6, transition:'border-color .15s, background .15s' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <div style={{ width:36, height:36, borderRadius:9, background:c+'22', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <i className={`ti ${cfg.icon}`} style={{ fontSize:19, color:c }} aria-hidden="true" />
+                      </div>
+                      {ativo && <i className="ti ti-circle-check-filled" style={{ fontSize:20, color:c }} aria-hidden="true" />}
+                    </div>
+                    <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary, marginTop:3 }}>{cfg.label}</div>
+                    <div style={{ fontSize:12, color:T.textMuted, lineHeight:1.4 }}>{cfg.descricao}</div>
+                    <div style={{ fontSize:10.5, color:T.textDim, marginTop:5, paddingTop:8, borderTop:`1px solid ${T.border}` }}>{cfg.etapas.length} etapas no fluxo</div>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+        {step === 2 && tipo === 'atendimento' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <FormSecao titulo="Cliente" icon="ti-user" T={T}>
+              {!form.cliente && !novoCli && (
+                <div style={{ position:'relative' }}>
+                  <input value={buscaCli} onChange={e=>setBuscaCli(e.target.value)} placeholder="Buscar cliente por nome ou telefone…" style={inputStyle} autoFocus />
+                  {clientesFiltrados.length > 0 && (
+                    <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:T.card, border:`1px solid ${T.border}`, borderRadius:7, maxHeight:220, overflowY:'auto', zIndex:10, boxShadow:dark?'0 8px 24px rgba(0,0,0,.4)':'0 4px 16px rgba(0,0,0,.1)' }}>
+                      {clientesFiltrados.map(c => (
+                        <div key={c.id} onClick={()=>escolherCliente(c)}
+                          style={{ padding:'8px 11px', cursor:'pointer', borderBottom:`1px solid ${T.border}`, fontSize:12.5 }}
+                          onMouseEnter={e=>e.currentTarget.style.background=T.cardAlt}
+                          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <div style={{ color:T.textPrimary, fontWeight:600 }}>{c.nome}</div>
+                          <div style={{ color:T.textMuted, fontSize:11, marginTop:2 }}>{c.fone} · {c.endereco}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ marginTop:8, fontSize:11.5, color:T.textMuted }}>
+                    Não achou? <button onClick={()=>{setNovoCli(true); setBuscaCli('')}} style={{ background:'transparent', border:'none', color:cor(P.blue,P.blueDark), cursor:'pointer', fontSize:11.5, fontWeight:600, padding:0 }}>+ Cadastrar novo cliente</button>
+                  </div>
+                </div>
+              )}
+              {(form.cliente || novoCli) && (
+                <>
+                  <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'2fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={labelStyle}>Nome completo</label>
+                      <input value={form.cliente} onChange={e=>update('cliente', e.target.value)} style={inputStyle} placeholder="Ex: Maria da Silva" />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Telefone</label>
+                      <input value={form.fone} onChange={e=>update('fone', e.target.value)} style={inputStyle} placeholder="(67) 9 9999-9999" />
+                    </div>
+                  </div>
+                  <div style={{ marginTop:10 }}>
+                    <label style={labelStyle}>Endereço (será validado pelo Google Maps)</label>
+                    <div style={{ position:'relative' }}>
+                      <i className="ti ti-map-pin" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
+                      <input value={form.endereco} onChange={e=>update('endereco', e.target.value)} style={{...inputStyle, paddingLeft:32}} placeholder="Rua, número, bairro — Naviraí/MS" />
+                    </div>
+                  </div>
+                  {form.clienteId && (
+                    <button onClick={()=>{ update('cliente',''); update('clienteId',null); update('fone',''); update('endereco',''); setNovoCli(false) }}
+                      style={{ marginTop:8, background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', fontSize:11, padding:0 }}>← Trocar cliente</button>
+                  )}
+                </>
+              )}
+            </FormSecao>
+
+            <FormSecao titulo="Equipamento e defeito relatado" icon="ti-tool" T={T}>
+              <label style={labelStyle}>Equipamento (marca + modelo)</label>
+              <input value={form.equipamento} onChange={e=>update('equipamento', e.target.value)} style={inputStyle} placeholder="Ex: Lavadora Brastemp 11kg BWK11" />
+              <label style={{...labelStyle, marginTop:10}}>Defeito relatado pelo cliente</label>
+              <textarea value={form.defeito} onChange={e=>update('defeito', e.target.value)} style={{...inputStyle, minHeight:64, resize:'vertical'}} placeholder="Descreva o que o cliente reportou…" />
+            </FormSecao>
+
+            <FormSecao titulo="Agendamento da coleta" icon="ti-calendar-event" T={T}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <label style={labelStyle}>Data</label>
+                  <input type="date" value={form.data} onChange={e=>update('data', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Hora</label>
+                  <input type="time" value={form.hora} onChange={e=>update('hora', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
+                </div>
+              </div>
+              <div style={{ marginTop:8, fontSize:11, color:T.textDim, fontStyle:'italic' }}>
+                Sem data marcada? A OS abre como <strong style={{color:T.textMuted, fontStyle:'normal'}}>Aguardando agendamento</strong>.
+              </div>
+            </FormSecao>
+
+            <FormSecao titulo="Responsável pela coleta" icon="ti-user-cog" T={T}>
+              <div style={{ display:'flex', gap:7 }}>
+                {FUNCIONARIOS.map(f => (
+                  <button key={f.id} onClick={()=>update('responsavel', f.id)}
+                    style={{ flex:1, padding:'9px 8px', borderRadius:7, border:`1px solid ${form.responsavel===f.id?f.cor:T.border}`, background:form.responsavel===f.id?(f.cor+'22'):T.bg, color:form.responsavel===f.id?(dark?f.cor:'#000'):T.textMuted, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontWeight:form.responsavel===f.id?600:500 }}>
+                    <span style={{ width:20, height:20, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>
+                    {f.nome}
+                  </button>
+                ))}
+              </div>
+            </FormSecao>
+
+            <FormSecao titulo="Observações" icon="ti-notes" T={T} opcional>
+              <textarea value={form.observacoes} onChange={e=>update('observacoes', e.target.value)} style={{...inputStyle, minHeight:56, resize:'vertical'}} placeholder="Qualquer informação extra que ajude a equipe…" />
+            </FormSecao>
+          </div>
+        )}
+
+        {step === 2 && tipo === 'fabricacao' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ background:bgEtapa('yellow', dark), border:`1px solid ${corEtapa('yellow', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
+              <i className="ti ti-info-circle" style={{ fontSize:14, color:corEtapa('yellow', dark), marginRight:6, verticalAlign:'middle' }} aria-hidden="true" />
+              <strong style={{color:T.textPrimary}}>Fabricação:</strong> máquina nova para o estoque. Os itens usados saem do estoque automaticamente ao concluir e a máquina entra como produto pronto, com o custo total calculado.
+            </div>
+
+            <FormSecao titulo="Máquina a fabricar" icon="ti-building-factory-2" T={T}>
+              <label style={labelStyle}>Descrição</label>
+              <input value={form.equipamento} onChange={e=>update('equipamento', e.target.value)} style={inputStyle} placeholder="Ex: Lavadora reformada Brastemp 11kg" />
+              <label style={{...labelStyle, marginTop:10}}>Estado inicial / itens a trocar</label>
+              <textarea value={form.defeito} onChange={e=>update('defeito', e.target.value)} style={{...inputStyle, minHeight:64, resize:'vertical'}} placeholder="Ex: Estrutura ok, trocar rolamento, polia e colocar capa nova" />
+              <label style={{...labelStyle, marginTop:10}}>Custo inicial da máquina base (R$)</label>
+              <input type="number" value={form.valor} onChange={e=>update('valor', e.target.value)} style={inputStyle} placeholder="150,00" />
+            </FormSecao>
+
+            <FormSecao titulo="Responsável pela fabricação" icon="ti-user-cog" T={T}>
+              <div style={{ display:'flex', gap:7 }}>
+                {FUNCIONARIOS.map(f => (
+                  <button key={f.id} onClick={()=>update('responsavel', f.id)}
+                    style={{ flex:1, padding:'9px 8px', borderRadius:7, border:`1px solid ${form.responsavel===f.id?f.cor:T.border}`, background:form.responsavel===f.id?(f.cor+'22'):T.bg, color:form.responsavel===f.id?(dark?f.cor:'#000'):T.textMuted, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontWeight:form.responsavel===f.id?600:500 }}>
+                    <span style={{ width:20, height:20, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>
+                    {f.nome}
+                  </button>
+                ))}
+              </div>
+            </FormSecao>
+          </div>
+        )}
+
+        {step === 2 && tipo === 'venda' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ background:bgEtapa('green', dark), border:`1px solid ${corEtapa('green', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
+              <i className="ti ti-info-circle" style={{ fontSize:14, color:corEtapa('green', dark), marginRight:6, verticalAlign:'middle' }} aria-hidden="true" />
+              <strong style={{color:T.textPrimary}}>Venda:</strong> máquina pronta do estoque. O comprador vira cliente cadastrado automaticamente.
+            </div>
+
+            <FormSecao titulo="Cliente comprador" icon="ti-user" T={T}>
+              {!form.cliente && !novoCli && (
+                <div style={{ position:'relative' }}>
+                  <input value={buscaCli} onChange={e=>setBuscaCli(e.target.value)} placeholder="Buscar cliente por nome ou telefone…" style={inputStyle} autoFocus />
+                  {clientesFiltrados.length > 0 && (
+                    <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:T.card, border:`1px solid ${T.border}`, borderRadius:7, maxHeight:220, overflowY:'auto', zIndex:10 }}>
+                      {clientesFiltrados.map(c => (
+                        <div key={c.id} onClick={()=>escolherCliente(c)} style={{ padding:'8px 11px', cursor:'pointer', borderBottom:`1px solid ${T.border}`, fontSize:12.5 }}
+                          onMouseEnter={e=>e.currentTarget.style.background=T.cardAlt}
+                          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <div style={{ color:T.textPrimary, fontWeight:600 }}>{c.nome}</div>
+                          <div style={{ color:T.textMuted, fontSize:11 }}>{c.fone}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ marginTop:8, fontSize:11.5, color:T.textMuted }}>
+                    Cliente novo? <button onClick={()=>setNovoCli(true)} style={{ background:'transparent', border:'none', color:cor(P.blue,P.blueDark), cursor:'pointer', fontSize:11.5, fontWeight:600, padding:0 }}>+ Cadastrar agora</button>
+                  </div>
+                </div>
+              )}
+              {(form.cliente || novoCli) && (
+                <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'2fr 1fr', gap:10 }}>
+                  <div>
+                    <label style={labelStyle}>Nome</label>
+                    <input value={form.cliente} onChange={e=>update('cliente', e.target.value)} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Telefone</label>
+                    <input value={form.fone} onChange={e=>update('fone', e.target.value)} style={inputStyle} />
+                  </div>
+                </div>
+              )}
+            </FormSecao>
+
+            <FormSecao titulo="Máquina do estoque" icon="ti-package" T={T}>
+              <label style={labelStyle}>Selecione a máquina</label>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {ESTOQUE_MAQUINAS_MOCK.map(m => {
+                  const sel = form.maquinaEstoque === m.id
+                  return (
+                    <button key={m.id} onClick={()=>{ update('maquinaEstoque', m.id); update('equipamento', m.descricao); update('valor', m.valor) }}
+                      style={{ padding:'10px 12px', borderRadius:7, border:`1px solid ${sel?corEtapa('green',dark):T.border}`, background:sel?bgEtapa('green',dark):T.bg, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', textAlign:'left' }}>
+                      <div>
+                        <div style={{ fontSize:12.5, fontWeight:600, color:T.textPrimary }}>{m.descricao}</div>
+                        <div style={{ fontSize:10.5, color:T.textMuted, marginTop:2 }}>#{m.id}</div>
+                      </div>
+                      <div style={{ fontSize:14, fontWeight:700, color:sel?corEtapa('green',dark):T.textSecondary }}>R$ {m.valor.toLocaleString('pt-BR')}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </FormSecao>
+
+            <FormSecao titulo="Endereço e agendamento da entrega" icon="ti-truck-delivery" T={T}>
+              <label style={labelStyle}>Endereço (Google Maps)</label>
+              <div style={{ position:'relative' }}>
+                <i className="ti ti-map-pin" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
+                <input value={form.endereco} onChange={e=>update('endereco', e.target.value)} style={{...inputStyle, paddingLeft:32}} placeholder="Endereço de entrega" />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
+                <div>
+                  <label style={labelStyle}>Data</label>
+                  <input type="date" value={form.data} onChange={e=>update('data', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Hora</label>
+                  <input type="time" value={form.hora} onChange={e=>update('hora', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
+                </div>
+              </div>
+            </FormSecao>
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding:'12px 18px', borderTop:`1px solid ${T.border}`, display:'flex', justifyContent:'space-between', gap:10, background:T.cardAlt, flexShrink:0 }}>
+        <button onClick={onClose}
+          style={{ padding:'9px 16px', borderRadius:7, border:`1px solid ${T.border}`, background:'transparent', color:T.textSecondary, fontSize:13, cursor:'pointer', fontWeight:500 }}>
+          Cancelar
+        </button>
+        <div style={{ display:'flex', gap:8 }}>
+          {step > 1 && (
+            <button onClick={()=>setStep(s => s-1)}
+              style={{ padding:'9px 16px', borderRadius:7, border:`1px solid ${T.border}`, background:T.bg, color:T.textSecondary, fontSize:13, cursor:'pointer', fontWeight:500, display:'flex', alignItems:'center', gap:5 }}>
+              <i className="ti ti-arrow-left" style={{ fontSize:14 }} aria-hidden="true" /> Voltar
+            </button>
+          )}
+          {step === 1 && (
+            <button onClick={()=>setStep(2)}
+              style={{ padding:'9px 18px', borderRadius:7, border:'none', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
+              Próximo <i className="ti ti-arrow-right" style={{ fontSize:14 }} aria-hidden="true" />
+            </button>
+          )}
+          {step === 2 && (
+            <button onClick={salvar} disabled={!podeAvancar}
+              style={{ padding:'9px 18px', borderRadius:7, border:'none', background: podeAvancar?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: podeAvancar?'#fff':T.textDim, fontSize:13, cursor: podeAvancar?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:6, opacity: podeAvancar?1:.7 }}>
+              <i className="ti ti-check" style={{ fontSize:14 }} aria-hidden="true" /> Criar OS
+            </button>
+          )}
+        </div>
+      </div>
+    </ModalBase>
+  )
+}
+
+function FormSecao({ titulo, icon, T, children, opcional }) {
+  return (
+    <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+      <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+        <i className={`ti ${icon}`} style={{ fontSize:14 }} aria-hidden="true" />
+        {titulo}
+        {opcional && <span style={{ fontSize:9.5, padding:'1px 6px', borderRadius:8, background:T.bg, color:T.textDim, fontWeight:500, textTransform:'none', letterSpacing:'normal' }}>opcional</span>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ─── Modal base reutilizável ───────────────────────────────────────────────
+function ModalBase({ T, dark, onClose, children, maxWidth=720, mobile }) {
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', handler); document.body.style.overflow = prev }
+  }, [onClose])
+
+  return (
+    <div onClick={onClose}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', backdropFilter:'blur(2px)', zIndex:200, display:'flex', alignItems: mobile?'flex-end':'center', justifyContent:'center', padding: mobile?0:'1rem' }}>
+      <div onClick={e=>e.stopPropagation()}
+        style={{ background:T.card, borderRadius: mobile?'16px 16px 0 0':14, width:'100%', maxWidth: mobile?'100%':maxWidth, maxHeight: mobile?'92vh':'90vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,.5)', border:`1px solid ${T.border}`, overflow:'hidden' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ─── OS Detalhe (somente leitura nesta etapa) ──────────────────────────────
+function OSDetalhe({ T, dark, os, onClose, mobile }) {
+  const cor = (d, c) => dark ? d : c
+  const config = TIPOS_OS[os.tipo]
+  const etapaAtual = config.etapas.findIndex(e => e.id === os.etapa)
+  const isRecusado = os.etapa === 'recusado'
+  const tipoCor = corEtapa(config.cor, dark)
+  const status = calcStatusPrazo(os.prazo, os.etapa)
+  const dias = diasPrazo(os.prazo)
+  const func = FUNCIONARIOS.find(f => f.id === os.responsavel)
+  const itens = OS_ITENS_MOCK[os.numero] || []
+  const subtotal = itens.reduce((s,i) => s + i.valor*i.qtd, 0)
+  const totalLiq = subtotal - (os.desconto || 0)
+
+  return (
+    <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={780}>
+      {/* Header */}
+      <div style={{ padding:'14px 18px 12px', borderBottom:`1px solid ${T.border}`, background:tipoCor+'08' }}>
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+          <div style={{ minWidth:0, flex:1 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:5 }}>
+              <span style={{ padding:'3px 9px', borderRadius:6, background:tipoCor+'22', color:tipoCor, fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:5, textTransform:'uppercase', letterSpacing:'.3px' }}>
+                <i className={`ti ${config.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
+                {config.label}
+              </span>
+              <span style={{ fontSize:16, fontWeight:700, color:T.textPrimary }}>OS #{os.numero}</span>
+              {isRecusado && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>Recusada</Badge>}
+              {!isRecusado && status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d atraso</Badge>}
+              {status==='hoje'   && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Vence hoje</Badge>}
+              {status==='amanha' && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Vence amanhã</Badge>}
+            </div>
+            <div style={{ fontSize:14, fontWeight:600, color:T.textPrimary, marginBottom:2 }}>{os.cliente}</div>
+            <div style={{ fontSize:12.5, color:T.textMuted }}>{os.equipamento}</div>
+          </div>
+          <button onClick={onClose} aria-label="Fechar"
+            style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:6, borderRadius:6, fontSize:0, lineHeight:0, flexShrink:0 }}>
+            <i className="ti ti-x" style={{ fontSize:22 }} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      {/* Conteúdo scrollável */}
+      <div style={{ flex:1, overflowY:'auto', padding:'14px 18px', display:'flex', flexDirection:'column', gap:12 }}>
+
+        {/* Timeline do fluxo */}
+        {!isRecusado && (
+          <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+              <i className="ti ti-route" style={{ fontSize:14 }} aria-hidden="true" />
+              Fluxo da OS — etapa atual: <strong style={{color:tipoCor}}>{config.etapas[etapaAtual]?.label}</strong>
+            </div>
+            <div style={{ display:'flex', gap:3, overflowX:'auto', paddingBottom:4 }}>
+              {config.etapas.map((e, i) => {
+                const passou = i < etapaAtual
+                const atual  = i === etapaAtual
+                const corE = atual ? corEtapa(e.cor, dark) : (passou ? cor(P.green, P.greenDark) : T.textDim)
+                const bgE  = atual ? bgEtapa(e.cor, dark) : (passou ? cor('#0f2a15','#e8f5ec') : T.bg)
+                return (
+                  <div key={e.id} style={{ flex:'1 0 auto', minWidth:80, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                    <div style={{ width:24, height:24, borderRadius:'50%', background:bgE, color:corE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, border:`1.5px solid ${atual?corE:'transparent'}` }}>
+                      {passou ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : (atual ? <div style={{width:7,height:7,borderRadius:'50%',background:corE}} /> : i+1)}
+                    </div>
+                    <span style={{ fontSize:10, color:corE, textAlign:'center', lineHeight:1.25, fontWeight:atual?700:500, maxWidth:80 }}>{e.curto}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Limpeza + Manutenção paralelos */}
+        {os.etapa === 'oficina' && (
+          <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+              <i className="ti ti-tool" style={{ fontSize:14 }} aria-hidden="true" />
+              Em oficina — limpeza e manutenção simultâneas
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'1fr 1fr', gap:10 }}>
+              <SubBox label="Limpeza" status={os.limpeza} icon="ti-droplet" T={T} dark={dark} />
+              <SubBox label="Manutenção" status={os.manutencao} icon="ti-tool" T={T} dark={dark} />
+            </div>
+            <div style={{ fontSize:11, color:T.textDim, marginTop:8, fontStyle:'italic' }}>
+              <i className="ti ti-info-circle" style={{ fontSize:12, marginRight:4, verticalAlign:'middle' }} aria-hidden="true" />
+              Próxima etapa (Teste final) só libera quando ambas estiverem concluídas.
+            </div>
+          </div>
+        )}
+
+        {/* Cliente e equipamento */}
+        <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'1fr 1fr', gap:10 }}>
+          <DetCard icon="ti-user" titulo="Cliente" T={T}>
+            <Linha label="Nome" valor={os.cliente} T={T} />
+            {os.fone && <Linha label="Telefone" valor={os.fone} T={T} />}
+            {os.endereco && <Linha label="Endereço" valor={os.endereco} T={T} />}
+            <Linha label="Responsável" valor={func ? func.nome : '—'} T={T} chipCor={func?.cor} />
+          </DetCard>
+          <DetCard icon="ti-tool" titulo="Equipamento" T={T}>
+            <Linha label="Descrição" valor={os.equipamento} T={T} />
+            <Linha label="Defeito relatado" valor={os.defeito} T={T} multi />
+            <Linha label="Fotos" valor={`${os.fotos || 0} foto(s) anexada(s)`} T={T} />
+          </DetCard>
+        </div>
+
+        {/* Itens e financeiro */}
+        {itens.length > 0 && (
+          <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+              <i className="ti ti-list-details" style={{ fontSize:14 }} aria-hidden="true" />
+              Itens da OS
+              <span style={{ fontSize:10, padding:'1px 6px', borderRadius:8, background:T.bg, color:T.textDim, fontWeight:500, textTransform:'none', letterSpacing:'normal' }}>{itens.length} {itens.length===1?'item':'itens'}</span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+              {itens.map((it, i) => (
+                <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:T.bg, borderRadius:6, fontSize:12.5 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:9, minWidth:0, flex:1 }}>
+                    <i className={`ti ${it.tipo==='servico'?'ti-tool':'ti-package'}`} style={{ fontSize:14, color:it.tipo==='servico'?cor(P.blueLight,P.blueLightDark):cor(P.blue,P.blueDark) }} aria-hidden="true" />
+                    <span style={{ color:T.textPrimary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.nome}</span>
+                    <span style={{ color:T.textDim, fontSize:11 }}>×{it.qtd}</span>
+                  </div>
+                  <span style={{ color:T.textSecondary, fontWeight:600, whiteSpace:'nowrap' }}>R$ {(it.valor*it.qtd).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${T.border}`, display:'flex', flexDirection:'column', gap:4 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:T.textMuted }}>
+                <span>Subtotal</span><span>R$ {subtotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+              </div>
+              {(os.desconto || 0) > 0 && (
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:cor(P.green,P.greenDark) }}>
+                  <span>Desconto</span><span>− R$ {os.desconto.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                </div>
+              )}
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:14, color:T.textPrimary, fontWeight:700, marginTop:2 }}>
+                <span>Total</span><span style={{ color:tipoCor }}>R$ {totalLiq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Datas */}
+        <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr 1fr':'1fr 1fr 1fr', gap:10 }}>
+          <DetMini icon="ti-calendar-plus" label="Aberta em" valor={new Date(os.abertura).toLocaleDateString('pt-BR')} T={T} />
+          <DetMini icon="ti-calendar-check" label="Prazo" valor={new Date(os.prazo).toLocaleDateString('pt-BR')} T={T} cor={status==='vencido'?cor(P.red,P.redDark):status==='hoje'||status==='amanha'?cor(P.yellow,P.yellowDark):cor(P.green,P.greenDark)} />
+          <DetMini icon="ti-clock-hour-4" label="Dias na OS" valor={Math.max(1, Math.round((Date.now() - new Date(os.abertura))/86400000)) + ' dia(s)'} T={T} />
+        </div>
+
+        {/* Observações */}
+        {os.observacoes && (
+          <DetCard icon="ti-notes" titulo="Observações" T={T}>
+            <div style={{ fontSize:12.5, color:T.textSecondary, lineHeight:1.5, whiteSpace:'pre-wrap' }}>{os.observacoes}</div>
+          </DetCard>
+        )}
+
+        {/* Aviso somente leitura */}
+        <div style={{ padding:'10px 12px', borderRadius:8, background:bgEtapa('blue', dark), border:`1px dashed ${corEtapa('blue', dark)}55`, fontSize:11.5, color:T.textSecondary, display:'flex', alignItems:'center', gap:8 }}>
+          <i className="ti ti-info-circle" style={{ fontSize:15, color:corEtapa('blue', dark), flexShrink:0 }} aria-hidden="true" />
+          <span>Visualização somente leitura. As ações de cada etapa (avançar, editar orçamento, baixar pagamento) serão liberadas na <strong style={{color:T.textPrimary}}>Entrega 2</strong>.</span>
+        </div>
+      </div>
+    </ModalBase>
+  )
+}
+
+function DetCard({ icon, titulo, children, T }) {
+  return (
+    <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+      <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+        <i className={`ti ${icon}`} style={{ fontSize:14 }} aria-hidden="true" />
+        {titulo}
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:7 }}>{children}</div>
+    </div>
+  )
+}
+function Linha({ label, valor, T, multi, chipCor }) {
+  return (
+    <div style={{ display:'flex', flexDirection: multi?'column':'row', justifyContent:'space-between', gap:multi?3:8, alignItems: multi?'flex-start':'flex-start' }}>
+      <span style={{ fontSize:11, color:T.textDim, flexShrink:0, fontWeight:500 }}>{label}</span>
+      <span style={{ fontSize:12.5, color:T.textPrimary, textAlign: multi?'left':'right', wordBreak:'break-word', lineHeight:1.4, display:'flex', alignItems:'center', gap:6 }}>
+        {chipCor && <span style={{ width:8, height:8, borderRadius:'50%', background:chipCor, flexShrink:0 }} />}
+        {valor || '—'}
+      </span>
+    </div>
+  )
+}
+function DetMini({ icon, label, valor, T, cor }) {
+  return (
+    <div style={{ background:T.cardAlt, borderRadius:9, padding:'11px 13px', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', gap:10 }}>
+      <i className={`ti ${icon}`} style={{ fontSize:18, color:cor||T.textMuted }} aria-hidden="true" />
+      <div style={{ minWidth:0 }}>
+        <div style={{ fontSize:10, color:T.textDim, marginBottom:2, fontWeight:500, textTransform:'uppercase', letterSpacing:'.3px' }}>{label}</div>
+        <div style={{ fontSize:13, fontWeight:600, color:cor||T.textPrimary }}>{valor}</div>
+      </div>
+    </div>
+  )
+}
+function SubBox({ label, status, icon, T, dark }) {
+  const cor = (d, c) => dark ? d : c
+  const map = {
+    concluido:    { c:cor(P.green, P.greenDark),   bg:cor('#0f2a15','#e8f5ec'), txt:'Concluída' },
+    em_andamento: { c:cor(P.yellow, P.yellowDark), bg:cor('#2a2000','#fdf6dc'), txt:'Em andamento' },
+    aguardando:   { c:T.textMuted,                 bg:T.bg,                     txt:'Aguardando' },
+  }
+  const m = map[status] || map.aguardando
+  return (
+    <div style={{ background:m.bg, border:`1px solid ${m.c}33`, borderRadius:8, padding:'11px 13px', display:'flex', alignItems:'center', gap:10 }}>
+      <i className={`ti ${icon}`} style={{ fontSize:20, color:m.c }} aria-hidden="true" />
+      <div>
+        <div style={{ fontSize:11, color:T.textMuted, marginBottom:1, fontWeight:500 }}>{label}</div>
+        <div style={{ fontSize:13, fontWeight:700, color:m.c }}>{m.txt}</div>
+      </div>
     </div>
   )
 }
@@ -794,7 +1827,7 @@ export default function App() {
 
   const conteudoDesktop = {
     painel:     <Painel T={T} dark={dark} />,
-    os:         <EmConstrucao nome="Ordens de Serviço" T={T} />,
+    os:         <OS T={T} dark={dark} />,
     clientes:   <EmConstrucao nome="Clientes" T={T} />,
     logistica:  <EmConstrucao nome="Logística" T={T} />,
     estoque:    <EmConstrucao nome="Estoque" T={T} />,
