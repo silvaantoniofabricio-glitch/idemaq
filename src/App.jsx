@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
-import {
-  Chart as ChartJS,
-  CategoryScale, LinearScale, BarElement, LineElement,
-  PointElement, Title, Tooltip, Legend, Filler
+import { Chart as ChartJS, registerables } from 'chart.js'
+import { Bar } from 'react-chartjs-2'
+
+ChartJS.register(...registerables)
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 
