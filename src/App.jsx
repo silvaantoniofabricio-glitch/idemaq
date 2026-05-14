@@ -4,10 +4,6 @@ import { Chart as ChartJS, registerables } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 
 ChartJS.register(...registerables)
-} from 'chart.js'
-import { Bar } from 'react-chartjs-2'
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler)
 
 const C = {
   blue:      '#5B9BD5',
