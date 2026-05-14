@@ -3,11 +3,12 @@ import { supabase } from './supabase'
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, LineElement,
+  LineController, BarController,
   PointElement, Title, Tooltip, Legend, Filler
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler)
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, LineController, BarController, PointElement, Title, Tooltip, Legend, Filler)
 
 // ─── Paleta acessível Deutan ───────────────────────────────────────────────
 const C = {
