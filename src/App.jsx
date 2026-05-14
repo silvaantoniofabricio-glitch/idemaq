@@ -633,6 +633,7 @@ function EmConstrucao({ nome }) {
 export default function App() {
   const [user, setUser]     = useState(null)
   const [pagina, setPagina] = useState('painel')
+   const [collapsed, setCollapsed] = useState(false)
   const isMobile = useIsMobile()
 
   useEffect(() => {
@@ -656,7 +657,6 @@ export default function App() {
     )
   }
 
-  const [collapsed, setCollapsed] = useState(false)
   const conteudoDesktop = { painel:<Painel/>, os:<EmConstrucao nome="Ordens de Serviço"/>, clientes:<EmConstrucao nome="Clientes"/>, logistica:<EmConstrucao nome="Logística"/>, estoque:<EmConstrucao nome="Estoque"/>, financeiro:<EmConstrucao nome="Financeiro"/>, relatorios:<EmConstrucao nome="Relatórios"/> }
 
   return (
