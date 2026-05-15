@@ -1308,24 +1308,39 @@ function OSMobile({ T, dark, user }) {
             </button>
           </div>
 
-          {/* Switch de modo + botão de Filtros */}
-          <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
-            <div style={{ display:'flex', gap:0, background:T.card, padding:3, borderRadius:9, border:`1px solid ${T.border}`, boxShadow: dark ? 'none' : T.shadow }}>
-              <button onClick={()=>setModo('painel')}
-                style={{ padding:'8px 12px', borderRadius:6, border:'none', cursor:'pointer', background: modo==='painel' ? azulBg : 'transparent', color: modo==='painel' ? azul : T.textMuted, fontSize:12, fontWeight: modo==='painel' ? 700 : 500, display:'flex', alignItems:'center', gap:5 }}>
-                <i className="ti ti-layout-grid" style={{ fontSize:14 }} aria-hidden="true" /> Painel
+          {/* Switch de modo + Zonas + Filtros (só ícone) */}
+          <div style={{ display:'flex', gap:6, alignItems:'stretch' }}>
+            {/* Modo: Painel / Lista */}
+            <div style={{ display:'flex', gap:0, background:T.card, padding:3, borderRadius:9, border:`1px solid ${T.border}`, boxShadow: dark ? 'none' : T.shadow, flexShrink:0 }}>
+              <button onClick={()=>setModo('painel')} aria-label="Modo painel" title="Painel"
+                style={{ padding:'8px 10px', borderRadius:6, border:'none', cursor:'pointer', background: modo==='painel' ? azulBg : 'transparent', color: modo==='painel' ? azul : T.textMuted, fontSize:12, fontWeight: modo==='painel' ? 700 : 500, display:'flex', alignItems:'center', gap:5 }}>
+                <i className="ti ti-layout-grid" style={{ fontSize:14 }} aria-hidden="true" />
               </button>
-              <button onClick={()=>setModo('coluna')}
-                style={{ padding:'8px 12px', borderRadius:6, border:'none', cursor:'pointer', background: modo==='coluna' ? azulBg : 'transparent', color: modo==='coluna' ? azul : T.textMuted, fontSize:12, fontWeight: modo==='coluna' ? 700 : 500, display:'flex', alignItems:'center', gap:5 }}>
-                <i className="ti ti-list-details" style={{ fontSize:14 }} aria-hidden="true" /> Lista
+              <button onClick={()=>setModo('coluna')} aria-label="Modo lista" title="Lista"
+                style={{ padding:'8px 10px', borderRadius:6, border:'none', cursor:'pointer', background: modo==='coluna' ? azulBg : 'transparent', color: modo==='coluna' ? azul : T.textMuted, fontSize:12, fontWeight: modo==='coluna' ? 700 : 500, display:'flex', alignItems:'center', gap:5 }}>
+                <i className="ti ti-list-details" style={{ fontSize:14 }} aria-hidden="true" />
               </button>
             </div>
-            <button onClick={()=>setSheet('filtros')}
-              style={{ flex:1, padding:'9px 12px', borderRadius:9, border:`1px solid ${totalFiltrosAtivos>0?azul:T.border}`, background: totalFiltrosAtivos>0?azulBg:T.card, color: totalFiltrosAtivos>0?azul:T.textSecondary, fontSize:12.5, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, position:'relative', boxShadow: !dark && totalFiltrosAtivos===0 ? T.shadow : 'none' }}>
-              <i className="ti ti-filter" style={{ fontSize:14 }} aria-hidden="true" />
-              Filtros
+
+            {/* Zonas: Todos / Externo / Interno / Financeiro (atalho direto) */}
+            <div style={{ display:'flex', gap:0, background:T.card, padding:3, borderRadius:9, border:`1px solid ${T.border}`, boxShadow: dark ? 'none' : T.shadow, flex:1, minWidth:0, overflowX:'auto' }}>
+              {[{id:'todos',label:'Todos'}, ...ZONAS.map(z=>({id:z.id, label:z.label}))].map(z => {
+                const ativo = z.id === zona
+                return (
+                  <button key={z.id} onClick={()=>{ setZona(z.id); setColIdx(0) }}
+                    style={{ flex:'1 1 0', minWidth:0, padding:'8px 6px', borderRadius:6, border:'none', cursor:'pointer', background: ativo ? azulBg : 'transparent', color: ativo ? azul : T.textMuted, fontSize:11.5, fontWeight: ativo ? 700 : 500, display:'flex', alignItems:'center', justifyContent:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {z.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Filtros (só ícone) */}
+            <button onClick={()=>setSheet('filtros')} aria-label="Mais filtros" title="Filtros"
+              style={{ padding:'9px 11px', borderRadius:9, border:`1px solid ${totalFiltrosAtivos>0?azul:T.border}`, background: totalFiltrosAtivos>0?azulBg:T.card, color: totalFiltrosAtivos>0?azul:T.textSecondary, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', boxShadow: !dark && totalFiltrosAtivos===0 ? T.shadow : 'none', flexShrink:0 }}>
+              <i className="ti ti-filter" style={{ fontSize:16 }} aria-hidden="true" />
               {totalFiltrosAtivos > 0 && (
-                <span style={{ background:azul, color:dark?'#0b1220':'#fff', fontSize:10, fontWeight:800, borderRadius:10, minWidth:18, height:18, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center' }}>{totalFiltrosAtivos}</span>
+                <span style={{ position:'absolute', top:-4, right:-4, background:azul, color:dark?'#0b1220':'#fff', fontSize:9.5, fontWeight:800, borderRadius:10, minWidth:16, height:16, padding:'0 4px', display:'flex', alignItems:'center', justifyContent:'center', border:`2px solid ${T.bg}` }}>{totalFiltrosAtivos}</span>
               )}
             </button>
           </div>
