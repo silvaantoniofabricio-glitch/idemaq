@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { Chart as ChartJS, registerables } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
@@ -126,6 +126,7 @@ function CountBadge({ n, red, T, dark }) {
 }
 
 // ─── Configuração dos 3 tipos de OS ───────────────────────────────────────
+// adminOnly:true → coluna visível apenas para o dono (Pagamento, Concluído)
 const TIPOS_OS = {
   atendimento: {
     label: 'Atendimento',
@@ -141,8 +142,9 @@ const TIPOS_OS = {
       { id:'oficina',        label:'Em oficina',       curto:'Em oficina',   cor:'blueLight', dual:true },
       { id:'teste_final',    label:'Teste final',      curto:'Teste final',  cor:'blue' },
       { id:'entrega',        label:'Entrega',          curto:'Entrega',      cor:'blue' },
-      { id:'pagamento',      label:'Pagamento',        curto:'Pagamento',    cor:'yellow' },
-      { id:'concluido',      label:'Concluído',        curto:'Concluído',    cor:'green' },
+      { id:'a_receber',      label:'A receber',        curto:'A receber',    cor:'yellow' },
+      { id:'pagamento',      label:'Pagamento',        curto:'Pagamento',    cor:'yellow', adminOnly:true },
+      { id:'concluido',      label:'Concluído',        curto:'Concluído',    cor:'green',  adminOnly:true },
     ],
     lateral: { id:'recusado', label:'Recusado', curto:'Recusado', cor:'red' }
   },
@@ -155,7 +157,7 @@ const TIPOS_OS = {
       { id:'diagnostico',  label:'Diagnóstico',     curto:'Diagnóstico',  cor:'yellow', prazo24h:true },
       { id:'oficina',      label:'Em oficina',      curto:'Em oficina',   cor:'blueLight', dual:true },
       { id:'teste_final',  label:'Teste final',     curto:'Teste final',  cor:'blue' },
-      { id:'concluido',    label:'Concluída',       curto:'Concluída',    cor:'green' },
+      { id:'concluido',    label:'Concluída',       curto:'Concluída',    cor:'green',  adminOnly:true },
     ]
   },
   venda: {
@@ -166,11 +168,28 @@ const TIPOS_OS = {
     etapas: [
       { id:'agendamento', label:'Agendamento',  curto:'Agendamento', cor:'neutro' },
       { id:'entregue',    label:'Entregue',     curto:'Entregue',    cor:'blue' },
-      { id:'pagamento',   label:'Pagamento',    curto:'Pagamento',   cor:'yellow' },
-      { id:'concluido',   label:'Concluído',    curto:'Concluído',   cor:'green' },
+      { id:'a_receber',   label:'A receber',    curto:'A receber',   cor:'yellow' },
+      { id:'pagamento',   label:'Pagamento',    curto:'Pagamento',   cor:'yellow', adminOnly:true },
+      { id:'concluido',   label:'Concluído',    curto:'Concluído',   cor:'green',  adminOnly:true },
     ]
   }
 }
+
+// ─── Visão "Todos" — agrupa etapas equivalentes dos 3 tipos ───────────────
+// Cada coluna pega OS de diferentes tipos cuja etapa esteja no `match`
+const ETAPAS_TODOS = [
+  { id:'ag_agendamento', label:'Aguardando agendamento', curto:'Ag. agenda',   cor:'neutro', match: { atendimento:'ag_agendamento' } },
+  { id:'agendamento',    label:'Agendamento',             curto:'Agendamento',  cor:'neutro', match: { atendimento:'agendado', venda:'agendamento' } },
+  { id:'recebido',       label:'Recebido',                curto:'Recebido',     cor:'neutro', match: { atendimento:'recebido' } },
+  { id:'diagnostico',    label:'Diagnóstico',             curto:'Diagnóstico',  cor:'yellow', prazo24h:true, match: { atendimento:'diagnostico', fabricacao:'diagnostico' } },
+  { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match: { atendimento:'orcamento' } },
+  { id:'oficina',        label:'Em oficina',              curto:'Em oficina',   cor:'blueLight', dual:true, match: { atendimento:'oficina', fabricacao:'oficina' } },
+  { id:'teste_final',    label:'Teste final',             curto:'Teste final',  cor:'blue',  match: { atendimento:'teste_final', fabricacao:'teste_final' } },
+  { id:'entrega',        label:'Entrega',                 curto:'Entrega',      cor:'blue',  match: { atendimento:'entrega', venda:'entregue' } },
+  { id:'a_receber',      label:'A receber',               curto:'A receber',    cor:'yellow', match: { atendimento:'a_receber', venda:'a_receber' } },
+  { id:'pagamento',      label:'Pagamento',               curto:'Pagamento',    cor:'yellow', adminOnly:true, match: { atendimento:'pagamento', venda:'pagamento' } },
+  { id:'concluido',      label:'Concluído',               curto:'Concluído',    cor:'green',  adminOnly:true, match: { atendimento:'concluido', fabricacao:'concluido', venda:'concluido' } },
+]
 
 // Cor de etapa traduzida para hex (respeita modo dark/claro)
 function corEtapa(nome, dark) {
@@ -203,29 +222,137 @@ const FUNCIONARIOS = [
   { id:'func2', nome:'Func2 — Of.',  apelido:'F2', cor:'#B8CCE4' },
 ]
 
+// Identifica o papel do usuário logado pelo email
+function getRole(user) {
+  const e = (user?.email || '').toLowerCase()
+  if (e === 'empresaidemaq@gmail.com') return 'dono'
+  if (e === 'func1@idemaq.com') return 'func1'
+  if (e === 'func2@idemaq.com') return 'func2'
+  return 'dono' // fallback durante desenvolvimento
+}
+function isAdmin(user) { return getRole(user) === 'dono' }
+
+// Responsável atual = quem fez o último check no histórico
+function responsavelAtual(os) {
+  if (os.historico && os.historico.length > 0) {
+    return os.historico[os.historico.length - 1].funcionario
+  }
+  return null
+}
+function funcPorId(id) { return FUNCIONARIOS.find(f => f.id === id) }
+
 // ─── Dados mock de OS (substituir por fetch do Supabase depois) ───────────
+// Campos: marca/modelo/serie separados; historico = [{etapa, funcionario, data}]
+// aguardando_peca: true → badge laranja no card (toggle manual em "Em oficina")
 const OS_MOCK = [
   // ATENDIMENTO
-  { numero:1036, tipo:'atendimento', cliente:'Ana Reis',     fone:'(67) 9 9911-1010', equipamento:'Lavadora LG 12kg',          defeito:'Não centrifuga, faz ruído alto',          etapa:'oficina',       limpeza:'concluido', manutencao:'em_andamento', responsavel:'func2', abertura:'2026-05-10', prazo:'2026-05-11', endereco:'R. das Acácias, 412 — Naviraí/MS', valor:380, desconto:0, fotos:2, observacoes:'Cliente urgente — viagem dia 15.' },
-  { numero:1037, tipo:'atendimento', cliente:'João Costa',   fone:'(67) 9 9922-2020', equipamento:'Geladeira Consul Frost Free', defeito:'Não gela na parte de baixo',              etapa:'diagnostico',   responsavel:'func2', abertura:'2026-05-12', prazo:'2026-05-14', endereco:'R. Bahia, 87 — Naviraí/MS', valor:0, desconto:0, fotos:1, horasNaEtapa:31 },
-  { numero:1039, tipo:'atendimento', cliente:'Carlos Lima',  fone:'(67) 9 9933-3030', equipamento:'Micro-ondas Electrolux 32L',  defeito:'Não esquenta, prato gira normal',         etapa:'orcamento',     responsavel:'dono',  abertura:'2026-05-11', prazo:'2026-05-13', endereco:'R. Goiás, 245 — Naviraí/MS', valor:215, desconto:0, fotos:2, horasNaEtapa:18 },
-  { numero:1041, tipo:'atendimento', cliente:'Paula Mendes', fone:'(67) 9 9944-4040', equipamento:'Ar cond. Midea 12000 BTU',    defeito:'Vazamento de água, não gela',             etapa:'agendado',      responsavel:'func1', abertura:'2026-05-13', prazo:'2026-05-15', endereco:'Av. Cuiabá, 1.020 — Naviraí/MS', valor:0, desconto:0, fotos:0 },
-  { numero:1043, tipo:'atendimento', cliente:'Roberto Dias', fone:'(67) 9 9955-5050', equipamento:'Lavadora Brastemp 11kg',      defeito:'Não enche de água',                       etapa:'ag_agendamento',responsavel:'func1', abertura:'2026-05-13', prazo:'2026-05-17', endereco:'R. Paraná, 56 — Naviraí/MS',     valor:0, desconto:0, fotos:0 },
-  { numero:1033, tipo:'atendimento', cliente:'Pedro Alves',  fone:'(67) 9 9966-6060', equipamento:'Secadora Brastemp 10kg',      defeito:'Aquece pouco, demora muito',              etapa:'oficina',       limpeza:'em_andamento', manutencao:'aguardando', responsavel:'func2', abertura:'2026-05-08', prazo:'2026-05-12', endereco:'R. Ceará, 312 — Naviraí/MS', valor:480, desconto:30, fotos:3 },
-  { numero:1045, tipo:'atendimento', cliente:'Lúcia Ramos',  fone:'(67) 9 9977-7070', equipamento:'Geladeira Electrolux',         defeito:'Faz barulho intermitente',                etapa:'teste_final',   responsavel:'func2', abertura:'2026-05-09', prazo:'2026-05-14', endereco:'R. Minas Gerais, 78 — Naviraí/MS', valor:520, desconto:0, fotos:2 },
-  { numero:1046, tipo:'atendimento', cliente:'Marcos Souza', fone:'(67) 9 9988-8080', equipamento:'Lavadora Consul 10kg',        defeito:'Centrifugação fraca',                     etapa:'entrega',       responsavel:'func1', abertura:'2026-05-07', prazo:'2026-05-14', endereco:'R. Sergipe, 145 — Naviraí/MS', valor:295, desconto:15, fotos:1 },
-  { numero:1047, tipo:'atendimento', cliente:'Beatriz Souza',fone:'(67) 9 9999-9090', equipamento:'Lava e seca Samsung',         defeito:'Display piscando, não liga',              etapa:'pagamento',     responsavel:'dono',  abertura:'2026-05-06', prazo:'2026-05-14', endereco:'R. Alagoas, 39 — Naviraí/MS', valor:640, desconto:40, fotos:2 },
-  { numero:1029, tipo:'atendimento', cliente:'Marta Lopes',  fone:'(67) 9 9810-1020', equipamento:'Lavadora LG 9kg',             defeito:'Concluída — limpeza e troca de rolamento',etapa:'concluido',     responsavel:'func2', abertura:'2026-04-30', prazo:'2026-05-08', endereco:'R. Pará, 22 — Naviraí/MS', valor:420, desconto:0, fotos:3 },
-  { numero:1028, tipo:'atendimento', cliente:'Felipe Costa', fone:'(67) 9 9811-1121', equipamento:'Micro-ondas Panasonic',       defeito:'Cliente recusou orçamento',               etapa:'recusado',      responsavel:'dono',  abertura:'2026-05-04', prazo:'2026-05-09', endereco:'R. Espírito Santo, 8 — Naviraí/MS', valor:30, desconto:0, fotos:1 },
+  { numero:1036, tipo:'atendimento', cliente:'Ana Reis',     fone:'(67) 9 9911-1010', equipamento:'Lavadora LG 12kg', marca:'LG', modelo:'WD1485ATS', serie:'4AB12345', defeito:'Não centrifuga, faz ruído alto',          etapa:'oficina',       limpeza:'concluido', manutencao:'em_andamento', aguardando_peca:true, abertura:'2026-05-10', prazo:'2026-05-11', endereco:'R. das Acácias, 412 — Naviraí/MS', valor:380, desconto:0, fotos:2, observacoes:'Cliente urgente — viagem dia 15. Peça em falta: rolamento do cesto.', historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-09 14:20'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-09 14:25'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-10 09:15'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-10 11:40'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-10 15:10'},
+    ] },
+  { numero:1037, tipo:'atendimento', cliente:'João Costa',   fone:'(67) 9 9922-2020', equipamento:'Geladeira Consul Frost Free', marca:'Consul', modelo:'CRM45HK', serie:'CN78901234', defeito:'Não gela na parte de baixo',              etapa:'diagnostico',   abertura:'2026-05-12', prazo:'2026-05-14', endereco:'R. Bahia, 87 — Naviraí/MS', valor:0, desconto:0, fotos:1, horasNaEtapa:31, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-11 10:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-11 10:05'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-12 08:30'},
+    ] },
+  { numero:1039, tipo:'atendimento', cliente:'Carlos Lima',  fone:'(67) 9 9933-3030', equipamento:'Micro-ondas Electrolux 32L',  marca:'Electrolux', modelo:'MEF41', serie:'EL55432109', defeito:'Não esquenta, prato gira normal',         etapa:'orcamento',     abertura:'2026-05-11', prazo:'2026-05-13', endereco:'R. Goiás, 245 — Naviraí/MS', valor:215, desconto:0, fotos:2, horasNaEtapa:18, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-10 11:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-10 11:08'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-11 09:50'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-11 14:20'},
+    ] },
+  { numero:1041, tipo:'atendimento', cliente:'Paula Mendes', fone:'(67) 9 9944-4040', equipamento:'Ar cond. Midea 12000 BTU', marca:'Midea', modelo:'MSEA12CR', serie:'MD20011223',    defeito:'Vazamento de água, não gela',             etapa:'agendado',      abertura:'2026-05-13', prazo:'2026-05-15', endereco:'Av. Cuiabá, 1.020 — Naviraí/MS', valor:0, desconto:0, fotos:0, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-13 08:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-13 08:12'},
+    ] },
+  { numero:1043, tipo:'atendimento', cliente:'Roberto Dias', fone:'(67) 9 9955-5050', equipamento:'Lavadora Brastemp 11kg', marca:'Brastemp', modelo:'BWK11AB', serie:'BR99001122',      defeito:'Não enche de água',                       etapa:'ag_agendamento',abertura:'2026-05-13', prazo:'2026-05-17', endereco:'R. Paraná, 56 — Naviraí/MS',     valor:0, desconto:0, fotos:0, historico:[] },
+  { numero:1033, tipo:'atendimento', cliente:'Pedro Alves',  fone:'(67) 9 9966-6060', equipamento:'Secadora Brastemp 10kg', marca:'Brastemp', modelo:'BSE10AB', serie:'BR11220033',      defeito:'Aquece pouco, demora muito',              etapa:'oficina',       limpeza:'em_andamento', manutencao:'aguardando', abertura:'2026-05-08', prazo:'2026-05-12', endereco:'R. Ceará, 312 — Naviraí/MS', valor:480, desconto:30, fotos:3, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-07 16:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-07 16:05'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-08 09:00'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-08 13:30'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-08 17:00'},
+    ] },
+  { numero:1045, tipo:'atendimento', cliente:'Lúcia Ramos',  fone:'(67) 9 9977-7070', equipamento:'Geladeira Electrolux', marca:'Electrolux', modelo:'IF55B', serie:'EL77665544',        defeito:'Faz barulho intermitente',                etapa:'teste_final',   abertura:'2026-05-09', prazo:'2026-05-14', endereco:'R. Minas Gerais, 78 — Naviraí/MS', valor:520, desconto:0, fotos:2, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-08 10:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-08 10:05'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-09 08:40'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-09 11:20'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-09 14:50'},
+      {etapa:'oficina',        funcionario:'func2', data:'2026-05-12 18:00'},
+    ] },
+  { numero:1046, tipo:'atendimento', cliente:'Marcos Souza', fone:'(67) 9 9988-8080', equipamento:'Lavadora Consul 10kg', marca:'Consul', modelo:'CWE10', serie:'CN44556677',           defeito:'Centrifugação fraca',                     etapa:'entrega',       abertura:'2026-05-07', prazo:'2026-05-14', endereco:'R. Sergipe, 145 — Naviraí/MS', valor:295, desconto:15, fotos:1, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-06 09:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-06 09:08'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-07 10:15'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-07 14:00'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-08 11:00'},
+      {etapa:'oficina',        funcionario:'func2', data:'2026-05-11 17:30'},
+      {etapa:'teste_final',    funcionario:'func2', data:'2026-05-12 10:00'},
+    ] },
+  { numero:1042, tipo:'atendimento', cliente:'Bianca Souza', fone:'(67) 9 9810-2030', equipamento:'Lavadora LG 14kg',  marca:'LG', modelo:'WD14W', serie:'4LG33445566',                 defeito:'Não aprovada — devolvendo após entrega',  etapa:'a_receber',     abertura:'2026-05-06', prazo:'2026-05-13', endereco:'R. Rondônia, 50 — Naviraí/MS', valor:340, desconto:0, fotos:2, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-05 10:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-05 10:05'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-06 09:00'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-06 13:00'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-07 09:00'},
+      {etapa:'oficina',        funcionario:'func2', data:'2026-05-10 17:00'},
+      {etapa:'teste_final',    funcionario:'func2', data:'2026-05-11 11:00'},
+      {etapa:'entrega',        funcionario:'func1', data:'2026-05-12 16:30'},
+    ] },
+  { numero:1047, tipo:'atendimento', cliente:'Beatriz Souza',fone:'(67) 9 9999-9090', equipamento:'Lava e seca Samsung', marca:'Samsung', modelo:'WD11M44', serie:'SM77889911',         defeito:'Display piscando, não liga',              etapa:'pagamento',     abertura:'2026-05-06', prazo:'2026-05-14', endereco:'R. Alagoas, 39 — Naviraí/MS', valor:640, desconto:40, fotos:2, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-05 14:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-05 14:08'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-06 09:30'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-06 14:00'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-07 10:00'},
+      {etapa:'oficina',        funcionario:'func2', data:'2026-05-10 18:00'},
+      {etapa:'teste_final',    funcionario:'func2', data:'2026-05-11 12:00'},
+      {etapa:'entrega',        funcionario:'func1', data:'2026-05-13 10:00'},
+      {etapa:'a_receber',      funcionario:'dono',  data:'2026-05-13 10:05'},
+    ] },
+  { numero:1029, tipo:'atendimento', cliente:'Marta Lopes',  fone:'(67) 9 9810-1020', equipamento:'Lavadora LG 9kg', marca:'LG', modelo:'WM9', serie:'4LG10203040',                    defeito:'Concluída — limpeza e troca de rolamento',etapa:'concluido',     abertura:'2026-04-30', prazo:'2026-05-08', endereco:'R. Pará, 22 — Naviraí/MS', valor:420, desconto:0, fotos:3, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-04-29 09:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-04-29 09:05'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-04-30 09:30'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-04-30 13:00'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-01 10:00'},
+      {etapa:'oficina',        funcionario:'func2', data:'2026-05-04 17:00'},
+      {etapa:'teste_final',    funcionario:'func2', data:'2026-05-05 11:00'},
+      {etapa:'entrega',        funcionario:'func1', data:'2026-05-06 14:00'},
+      {etapa:'a_receber',      funcionario:'dono',  data:'2026-05-06 14:05'},
+      {etapa:'pagamento',      funcionario:'dono',  data:'2026-05-07 16:00'},
+      {etapa:'concluido',      funcionario:'dono',  data:'2026-05-08 09:00'},
+    ] },
+  { numero:1028, tipo:'atendimento', cliente:'Felipe Costa', fone:'(67) 9 9811-1121', equipamento:'Micro-ondas Panasonic', marca:'Panasonic', modelo:'NN-ST67H', serie:'PN66554433',   defeito:'Cliente recusou orçamento',               etapa:'recusado',      abertura:'2026-05-04', prazo:'2026-05-09', endereco:'R. Espírito Santo, 8 — Naviraí/MS', valor:30, desconto:0, fotos:1, historico:[
+      {etapa:'ag_agendamento', funcionario:'func1', data:'2026-05-03 10:00'},
+      {etapa:'agendado',       funcionario:'func1', data:'2026-05-03 10:08'},
+      {etapa:'recebido',       funcionario:'func1', data:'2026-05-04 09:00'},
+      {etapa:'diagnostico',    funcionario:'func2', data:'2026-05-04 13:00'},
+      {etapa:'orcamento',      funcionario:'dono',  data:'2026-05-05 09:00'},
+    ] },
 
   // FABRICAÇÃO
-  { numero:2008, tipo:'fabricacao', cliente:'— Estoque',     equipamento:'Lavadora reformada — base p/ revenda', defeito:'Estrutura ok, trocar rolamento, polia, capa', etapa:'oficina',     limpeza:'concluido', manutencao:'em_andamento', responsavel:'func2', abertura:'2026-05-09', prazo:'2026-05-15', valor:150, custoFab:285, fotos:4 },
-  { numero:2009, tipo:'fabricacao', cliente:'— Estoque',     equipamento:'Lavadora reformada — base p/ revenda', defeito:'Conversão da OS #1028 recusada',              etapa:'diagnostico', responsavel:'func2', abertura:'2026-05-12', prazo:'2026-05-18', valor:150, custoFab:150, fotos:1 },
-  { numero:2007, tipo:'fabricacao', cliente:'— Estoque',     equipamento:'Lavadora reformada Brastemp 9kg',      defeito:'Pronta para vender',                          etapa:'concluido',   responsavel:'func2', abertura:'2026-05-02', prazo:'2026-05-10', valor:650, custoFab:340, fotos:5 },
+  { numero:2008, tipo:'fabricacao', cliente:'— Estoque', equipamento:'Lavadora reformada — base p/ revenda', marca:'Brastemp', modelo:'BWK11 (recond.)', serie:'INT-2008', defeito:'Estrutura ok, trocar rolamento, polia, capa', etapa:'oficina',     limpeza:'concluido', manutencao:'em_andamento', abertura:'2026-05-09', prazo:'2026-05-15', valor:150, custoFab:285, fotos:4, historico:[
+      {etapa:'diagnostico', funcionario:'func2', data:'2026-05-09 09:00'},
+    ] },
+  { numero:2009, tipo:'fabricacao', cliente:'— Estoque', equipamento:'Lavadora reformada — base p/ revenda', marca:'Panasonic', modelo:'NA-F140 (recond.)', serie:'INT-2009', defeito:'Conversão da OS #1028 recusada', etapa:'diagnostico', abertura:'2026-05-12', prazo:'2026-05-18', valor:150, custoFab:150, fotos:1, historico:[] },
+  { numero:2007, tipo:'fabricacao', cliente:'— Estoque', equipamento:'Lavadora reformada Brastemp 9kg', marca:'Brastemp', modelo:'BWK09 (recond.)', serie:'INT-2007', defeito:'Pronta para vender', etapa:'concluido', abertura:'2026-05-02', prazo:'2026-05-10', valor:650, custoFab:340, fotos:5, historico:[
+      {etapa:'diagnostico', funcionario:'func2', data:'2026-05-02 09:00'},
+      {etapa:'oficina',     funcionario:'func2', data:'2026-05-05 17:00'},
+      {etapa:'teste_final', funcionario:'func2', data:'2026-05-08 11:00'},
+      {etapa:'concluido',   funcionario:'dono',  data:'2026-05-10 09:00'},
+    ] },
 
   // VENDA
-  { numero:3004, tipo:'venda', cliente:'Igor Vasconcelos', fone:'(67) 9 9712-3344', equipamento:'Lavadora reformada Brastemp 9kg',  defeito:'Venda — máquina #M-204', etapa:'agendamento', responsavel:'func1', abertura:'2026-05-13', prazo:'2026-05-15', endereco:'R. Maranhão, 199 — Naviraí/MS', valor:650, desconto:0, fotos:0 },
-  { numero:3003, tipo:'venda', cliente:'Sandra Pinheiro',  fone:'(67) 9 9713-4455', equipamento:'Lavadora reformada Consul 10kg',   defeito:'Venda — máquina #M-201', etapa:'pagamento',   responsavel:'dono',  abertura:'2026-05-10', prazo:'2026-05-13', endereco:'R. Bahia, 410 — Naviraí/MS', valor:650, desconto:0, fotos:0 },
+  { numero:3004, tipo:'venda', cliente:'Igor Vasconcelos', fone:'(67) 9 9712-3344', equipamento:'Lavadora reformada Brastemp 9kg', marca:'Brastemp', modelo:'BWK09 (recond.)', serie:'M-204', defeito:'Venda — máquina #M-204', etapa:'agendamento', abertura:'2026-05-13', prazo:'2026-05-15', endereco:'R. Maranhão, 199 — Naviraí/MS', valor:650, desconto:0, fotos:0, historico:[] },
+  { numero:3003, tipo:'venda', cliente:'Sandra Pinheiro',  fone:'(67) 9 9713-4455', equipamento:'Lavadora reformada Consul 10kg', marca:'Consul', modelo:'CWE10 (recond.)', serie:'M-201',   defeito:'Venda — máquina #M-201', etapa:'a_receber',   abertura:'2026-05-10', prazo:'2026-05-13', endereco:'R. Bahia, 410 — Naviraí/MS', valor:650, desconto:0, fotos:0, historico:[
+      {etapa:'agendamento', funcionario:'func1', data:'2026-05-10 09:00'},
+      {etapa:'entregue',    funcionario:'func1', data:'2026-05-12 15:00'},
+    ] },
 ]
 
 // Itens (peças) mock — vincular pela OS no detalhe
@@ -859,19 +986,21 @@ function PainelMobile({ T, dark }) {
 }
 
 // ─── OS Mobile ─────────────────────────────────────────────────────────────
-function OSMobile({ T, dark }) {
+function OSMobile({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
-  const [tipo, setTipo]       = useState('atendimento')
+  const admin = isAdmin(user)
+  const [tipo, setTipo]       = useState('todos')
   const [filtro, setFiltro]   = useState('todas')
   const [busca, setBusca]     = useState('')
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
 
-  const config = TIPOS_OS[tipo]
-  const tipoCor = corEtapa(config.cor, dark)
+  const universo = tipo === 'todos' ? OS_MOCK : OS_MOCK.filter(o => o.tipo === tipo)
 
-  const osList = OS_MOCK
-    .filter(o => o.tipo === tipo)
+  // Esconde Pagamento/Concluído para não-admin
+  const osList = universo
+    .filter(o => o.etapa !== 'recusado')
+    .filter(o => admin || (o.etapa !== 'pagamento' && o.etapa !== 'concluido'))
     .filter(o => {
       const s = calcStatusPrazo(o.prazo, o.etapa)
       if (filtro === 'todas')    return true
@@ -883,25 +1012,31 @@ function OSMobile({ T, dark }) {
     .filter(o => !busca ||
       o.cliente.toLowerCase().includes(busca.toLowerCase()) ||
       String(o.numero).includes(busca) ||
-      o.equipamento.toLowerCase().includes(busca.toLowerCase()))
+      (o.equipamento||'').toLowerCase().includes(busca.toLowerCase()) ||
+      (o.marca||'').toLowerCase().includes(busca.toLowerCase()) ||
+      (o.modelo||'').toLowerCase().includes(busca.toLowerCase()) ||
+      (o.serie||'').toLowerCase().includes(busca.toLowerCase()))
     .sort((a,b) => new Date(a.prazo) - new Date(b.prazo))
 
   const activeClr = dark ? P.blue : P.blueDark
-  const tiposList = Object.entries(TIPOS_OS)
+  const abas = [
+    { id:'todos',       label:'Todos',       icon:'ti-layout-kanban',     cor:'blue' },
+    ...Object.entries(TIPOS_OS).map(([id, cfg]) => ({ id, label:cfg.label, icon:cfg.icon, cor:cfg.cor }))
+  ]
 
   return (
     <>
       <div style={{ padding:'.85rem 1rem 70px', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
         {/* Seletor de tipo */}
-        <div style={{ display:'flex', gap:6, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}` }}>
-          {tiposList.map(([id, cfg]) => {
-            const ativo = id === tipo
-            const c = corEtapa(cfg.cor, dark)
+        <div style={{ display:'flex', gap:4, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, overflowX:'auto' }}>
+          {abas.map(a => {
+            const ativo = a.id === tipo
+            const c = corEtapa(a.cor, dark)
             return (
-              <button key={id} onClick={()=>setTipo(id)}
-                style={{ flex:1, padding:'8px 4px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:12, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                <i className={`ti ${cfg.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
-                {cfg.label}
+              <button key={a.id} onClick={()=>setTipo(a.id)}
+                style={{ flex:'1 0 auto', minWidth:0, padding:'8px 8px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(a.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:11.5, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:4, whiteSpace:'nowrap' }}>
+                <i className={`ti ${a.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
+                {a.label}
               </button>
             )
           })}
@@ -911,7 +1046,7 @@ function OSMobile({ T, dark }) {
         <div style={{ display:'flex', gap:8 }}>
           <div style={{ flex:1, position:'relative' }}>
             <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
-            <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar OS, cliente, equipamento…"
+            <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar OS, cliente, modelo…"
               style={{ width:'100%', padding:'9px 10px 9px 32px', borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box' }} />
           </div>
           <button onClick={()=>setModalNova(true)}
@@ -932,70 +1067,112 @@ function OSMobile({ T, dark }) {
         {osList.length === 0 && (
           <div style={{ background:T.card, border:`1px dashed ${T.border}`, borderRadius:12, padding:'2rem 1rem', textAlign:'center', color:T.textMuted, fontSize:13 }}>
             <i className="ti ti-clipboard-off" style={{ fontSize:30, display:'block', marginBottom:6, color:T.textDim }} aria-hidden="true" />
-            Nenhuma OS de {config.label.toLowerCase()} encontrada
+            Nenhuma OS encontrada
           </div>
         )}
-        {osList.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} tipoCor={tipoCor} onClick={()=>setDetalhe(os)} />)}
+        {osList.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} onClick={()=>setDetalhe(os)} />)}
       </div>
 
-      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo} mobile />}
-      {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} onClose={()=>setDetalhe(null)} mobile />}
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo==='todos'?'atendimento':tipo} mobile />}
+      {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} user={user} onClose={()=>setDetalhe(null)} mobile />}
     </>
   )
 }
 
-function OSCardMobile({ os, T, dark, tipoCor, onClick }) {
+function OSCardMobile({ os, T, dark, onClick }) {
   const cor = (d, c) => dark ? d : c
-  const etapa = TIPOS_OS[os.tipo].etapas.find(e => e.id === os.etapa)
-                || TIPOS_OS[os.tipo].lateral && os.etapa === 'recusado' && TIPOS_OS[os.tipo].lateral
+  const tipoCfg = TIPOS_OS[os.tipo]
+  const tipoCor = corEtapa(tipoCfg.cor, dark)
+  const etapa = tipoCfg.etapas.find(e => e.id === os.etapa)
+                || (tipoCfg.lateral && os.etapa === 'recusado' && tipoCfg.lateral)
   const etapaC = corEtapa(etapa?.cor || 'neutro', dark)
   const etapaBgC = bgEtapa(etapa?.cor || 'neutro', dark)
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
+  const respId = responsavelAtual(os)
+  const func = funcPorId(respId)
+  const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
+  const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' · ')
 
   return (
     <div onClick={onClick}
       style={{ background:T.card, borderRadius:12, padding:'12px 14px', border:`1px solid ${T.border}`, borderLeft:`3px solid ${tipoCor}`, cursor:'pointer' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:7, gap:8 }}>
-        <div style={{ minWidth:0, flex:1 }}>
-          <div style={{ fontSize:14, fontWeight:700, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.cliente}</div>
-          <div style={{ fontSize:12, color:T.textMuted, marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.equipamento}</div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <i className={`ti ${tipoCfg.icon}`} style={{ fontSize:12, color:tipoCor }} aria-hidden="true" title={tipoCfg.label} />
+          <span style={{ fontSize:12, fontWeight:700, color:T.textDim }}>#{os.numero}</span>
         </div>
-        <span style={{ fontSize:11, fontWeight:600, color:T.textDim, whiteSpace:'nowrap' }}>#{os.numero}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          {os.aguardando_peca && <Badge color={'#ff9800'} bg={cor('#3a2200','#fff4e0')} border={'#ff980044'}>peça</Badge>}
+          {status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d</Badge>}
+          {status==='hoje'    && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Hoje</Badge>}
+          {status==='amanha'  && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Amanhã</Badge>}
+        </div>
       </div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexWrap:'wrap' }}>
+
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:6, marginBottom:3 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}>{os.cliente}</div>
+        {os.fone && <div style={{ fontSize:11, color:T.textMuted, whiteSpace:'nowrap' }}>{os.fone}</div>}
+      </div>
+
+      {endResumido && (
+        <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:11.5, color:T.textMuted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:6 }}>
+          <i className="ti ti-map-pin" style={{ fontSize:11, color:T.textDim, flexShrink:0 }} aria-hidden="true" />
+          <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{endResumido}</span>
+        </div>
+      )}
+
+      <div style={{ padding:'6px 8px', background:T.cardAlt, borderRadius:6, marginBottom:8 }}>
+        <div style={{ fontSize:11.5, color:T.textSecondary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{linhaEquip || os.equipamento}</div>
+        {os.serie && <div style={{ fontSize:10, color:T.textDim, marginTop:1, fontFamily:'ui-monospace, monospace' }}>S/N: {os.serie}</div>}
+      </div>
+
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
           <span style={{ fontSize:11, padding:'3px 9px', borderRadius:6, background:etapaBgC, color:etapaC, fontWeight:600, whiteSpace:'nowrap' }}>{etapa?.curto || os.etapa}</span>
           <span style={{ fontSize:11, color:T.textMuted, whiteSpace:'nowrap' }}>· {fmtPrazoCurto(os.prazo)}</span>
         </div>
-        {status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d atraso</Badge>}
-        {status==='hoje'    && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Hoje</Badge>}
-        {status==='amanha'  && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Amanhã</Badge>}
-        {status==='ok' && os.etapa!=='concluido' && os.etapa!=='recusado' && <span style={{ fontSize:11, color:T.textDim }}>{dias}d</span>}
+        {func && <span title={func.nome} style={{ width:20, height:20, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:9.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${func.cor}44` }}>{func.apelido}</span>}
       </div>
     </div>
   )
 }
 
 // ─── OS — Kanban Desktop ───────────────────────────────────────────────────
-function OS({ T, dark }) {
+function OS({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
-  const [tipo, setTipo]   = useState('atendimento')
+  const role = getRole(user)
+  const admin = isAdmin(user)
+  const [tipo, setTipo]   = useState('todos') // padrão = visão consolidada
   const [busca, setBusca] = useState('')
   const [funcionario, setFuncionario] = useState('todos')
   const [statusF, setStatusF]         = useState('todos')
   const [verRecusados, setVerRecusados] = useState(false)
+  const [verAgPeca, setVerAgPeca]       = useState(false)
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
 
-  const config = TIPOS_OS[tipo]
-  const tipoCor = corEtapa(config.cor, dark)
-  const tipoBg  = bgEtapa(config.cor, dark)
+  // Etapas usadas no kanban (modo Todos vs tipo específico)
+  const etapasAtivas = tipo === 'todos' ? ETAPAS_TODOS : TIPOS_OS[tipo].etapas
+  const etapasVisiveis = etapasAtivas.filter(e => admin || !e.adminOnly)
 
-  const todasDoTipo = OS_MOCK.filter(o => o.tipo === tipo)
-  const osFiltradas = todasDoTipo
+  // Cor do tipo selecionado (usado nos filtros)
+  const corPaleta = tipo === 'todos' ? 'blue' : TIPOS_OS[tipo].cor
+  const tipoCor = corEtapa(corPaleta, dark)
+  const tipoBg  = bgEtapa(corPaleta, dark)
+
+  // Universo de OS (no modo "Todos" = tudo; no modo tipo = só desse tipo)
+  const todasUniverso = tipo === 'todos' ? OS_MOCK : OS_MOCK.filter(o => o.tipo === tipo)
+
+  const osFiltradas = todasUniverso
     .filter(o => verRecusados ? true : o.etapa !== 'recusado')
-    .filter(o => funcionario === 'todos' || o.responsavel === funcionario)
+    .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
+    .filter(o => {
+      if (funcionario === 'todos') return true
+      // por etapa: cai aqui se em qualquer item do histórico ou se for o atual
+      const resp = responsavelAtual(o)
+      return resp === funcionario || (o.historico||[]).some(h => h.funcionario === funcionario)
+    })
     .filter(o => {
       if (statusF === 'todos') return true
       const s = calcStatusPrazo(o.prazo, o.etapa)
@@ -1007,38 +1184,62 @@ function OS({ T, dark }) {
     .filter(o => !busca ||
       o.cliente.toLowerCase().includes(busca.toLowerCase()) ||
       String(o.numero).includes(busca) ||
-      o.equipamento.toLowerCase().includes(busca.toLowerCase()))
+      (o.equipamento||'').toLowerCase().includes(busca.toLowerCase()) ||
+      (o.marca||'').toLowerCase().includes(busca.toLowerCase()) ||
+      (o.modelo||'').toLowerCase().includes(busca.toLowerCase()) ||
+      (o.serie||'').toLowerCase().includes(busca.toLowerCase()))
 
-  // Estatísticas por etapa
+  // Distribui as OS por coluna (lógica diferente em "Todos")
   const porEtapa = {}
-  config.etapas.forEach(e => porEtapa[e.id] = [])
-  const recusados = []
+  etapasVisiveis.forEach(e => porEtapa[e.id] = [])
   osFiltradas.forEach(os => {
-    if (os.etapa === 'recusado') recusados.push(os)
-    else if (porEtapa[os.etapa]) porEtapa[os.etapa].push(os)
+    if (os.etapa === 'recusado') return
+    if (tipo === 'todos') {
+      // procurar a etapa unificada cujo match[os.tipo] === os.etapa
+      const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
+      if (ec) porEtapa[ec.id].push(os)
+    } else {
+      if (porEtapa[os.etapa]) porEtapa[os.etapa].push(os)
+    }
   })
 
-  const totalKanban = osFiltradas.filter(o => o.etapa !== 'recusado').length
-  const totalRecusados = todasDoTipo.filter(o => o.etapa === 'recusado').length
+  const totalKanban = Object.values(porEtapa).reduce((s,arr)=>s+arr.length, 0)
+  const totalRecusados = todasUniverso.filter(o => o.etapa === 'recusado').length
+  const totalAgPeca    = todasUniverso.filter(o => !!o.aguardando_peca).length
 
-  const tiposList = Object.entries(TIPOS_OS)
+  // Abas: Todos + 3 tipos
+  const abas = [
+    { id:'todos',       label:'Todos',       icon:'ti-layout-kanban',     cor:'blue' },
+    ...Object.entries(TIPOS_OS).map(([id, cfg]) => ({ id, label:cfg.label, icon:cfg.icon, cor:cfg.cor }))
+  ]
+
+  // Scroll horizontal com mouse wheel
+  const kanbanRef = useRef(null)
+  function handleWheel(e) {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault()
+      kanbanRef.current.scrollLeft += e.deltaY
+    }
+  }
 
   return (
     <>
       <div style={{ padding:'1rem 1.1rem 1.1rem', display:'flex', flexDirection:'column', gap:10, flex:1, minHeight:0, overflow:'hidden' }}>
 
-        {/* Seletor de tipo + ações */}
+        {/* Seletor de aba + Nova OS */}
         <div style={{ display:'flex', gap:10, alignItems:'stretch' }}>
           <div style={{ display:'flex', gap:6, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, flex:1 }}>
-            {tiposList.map(([id, cfg]) => {
-              const ativo = id === tipo
-              const c = corEtapa(cfg.cor, dark)
-              const n = OS_MOCK.filter(o => o.tipo === id && o.etapa !== 'concluido' && o.etapa !== 'recusado').length
+            {abas.map(a => {
+              const ativo = a.id === tipo
+              const c = corEtapa(a.cor, dark)
+              const n = a.id === 'todos'
+                ? OS_MOCK.filter(o => o.etapa !== 'concluido' && o.etapa !== 'recusado').length
+                : OS_MOCK.filter(o => o.tipo === a.id && o.etapa !== 'concluido' && o.etapa !== 'recusado').length
               return (
-                <button key={id} onClick={()=>setTipo(id)}
-                  style={{ flex:1, padding:'10px 14px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:13, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'background .15s' }}>
-                  <i className={`ti ${cfg.icon}`} style={{ fontSize:16 }} aria-hidden="true" />
-                  <span>{cfg.label}</span>
+                <button key={a.id} onClick={()=>setTipo(a.id)}
+                  style={{ flex:1, padding:'10px 14px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(a.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:13, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'background .15s' }}>
+                  <i className={`ti ${a.icon}`} style={{ fontSize:16 }} aria-hidden="true" />
+                  <span>{a.label}</span>
                   <span style={{ fontSize:11, fontWeight:700, padding:'1px 7px', borderRadius:10, background:ativo?c:T.cardAlt, color:ativo?(dark?'#0b1220':'#ffffff'):T.textMuted, minWidth:18, textAlign:'center' }}>{n}</span>
                 </button>
               )
@@ -1055,7 +1256,7 @@ function OS({ T, dark }) {
         <div style={{ background:T.card, borderRadius:10, border:`1px solid ${T.border}`, padding:'10px 12px', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:220, maxWidth:340 }}>
             <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
-            <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar nº, cliente ou equipamento…"
+            <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar nº, cliente, marca, modelo ou nº série…"
               style={{ width:'100%', padding:'8px 10px 8px 32px', borderRadius:7, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:12.5, outline:'none', boxSizing:'border-box' }} />
           </div>
           <div style={{ display:'flex', gap:5 }}>
@@ -1072,41 +1273,48 @@ function OS({ T, dark }) {
                 style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${statusF===v?tipoCor:T.border}`, background:statusF===v?tipoBg:'transparent', color:statusF===v?tipoCor:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:statusF===v?600:500 }}>{l}</button>
             ))}
           </div>
-          {tipo === 'atendimento' && (
+          <button onClick={()=>setVerAgPeca(v=>!v)}
+            style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verAgPeca?'#ff9800':T.border}`, background:verAgPeca?(dark?'#3a2200':'#fff4e0'):'transparent', color:verAgPeca?'#ff9800':T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+            <i className={`ti ${verAgPeca?'ti-package':'ti-package-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
+            Aguard. peça ({totalAgPeca})
+          </button>
+          {(tipo === 'todos' || tipo === 'atendimento') && (
             <button onClick={()=>setVerRecusados(v=>!v)}
-              style={{ marginLeft:'auto', padding:'5px 11px', borderRadius:6, border:`1px solid ${verRecusados?cor(P.red,P.redDark):T.border}`, background:verRecusados?cor('#2a1515','#fde8e8'):'transparent', color:verRecusados?cor(P.red,P.redDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+              style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verRecusados?cor(P.red,P.redDark):T.border}`, background:verRecusados?cor('#2a1515','#fde8e8'):'transparent', color:verRecusados?cor(P.red,P.redDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
               <i className={`ti ${verRecusados?'ti-eye':'ti-eye-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
               Recusadas ({totalRecusados})
             </button>
           )}
-          <span style={{ marginLeft: tipo==='atendimento' ? 0 : 'auto', fontSize:11, color:T.textDim, fontWeight:500 }}>{totalKanban} OS no kanban</span>
+          <span style={{ marginLeft:'auto', fontSize:11, color:T.textDim, fontWeight:500 }}>{totalKanban} OS no kanban {!admin && '· você não vê Pagamento e Concluído'}</span>
         </div>
 
-        {/* Kanban */}
-        <div style={{ flex:1, minHeight:0, overflowX:'auto', overflowY:'hidden', display:'flex', gap:10, paddingBottom:6 }}>
-          {config.etapas.map(etapa => (
-            <KanbanCol key={etapa.id} etapa={etapa} osList={porEtapa[etapa.id]} T={T} dark={dark} tipoCor={tipoCor} onCardClick={setDetalhe} />
+        {/* Kanban com scroll horizontal pelo wheel */}
+        <div ref={kanbanRef} onWheel={handleWheel}
+          style={{ flex:1, minHeight:0, overflowX:'auto', overflowY:'hidden', display:'flex', gap:10, paddingBottom:6, scrollBehavior:'auto' }}>
+          {etapasVisiveis.map(etapa => (
+            <KanbanCol key={etapa.id} etapa={etapa} osList={porEtapa[etapa.id]||[]} T={T} dark={dark} tipoCor={tipoCor} modoTodos={tipo==='todos'} onCardClick={setDetalhe} />
           ))}
         </div>
       </div>
 
-      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo} />}
-      {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} onClose={()=>setDetalhe(null)} />}
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo==='todos'?'atendimento':tipo} />}
+      {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} user={user} onClose={()=>setDetalhe(null)} />}
     </>
   )
 }
 
-function KanbanCol({ etapa, osList, T, dark, tipoCor, onCardClick }) {
+function KanbanCol({ etapa, osList, T, dark, tipoCor, modoTodos, onCardClick }) {
   const cor = (d, c) => dark ? d : c
   const c  = corEtapa(etapa.cor, dark)
   const bg = bgEtapa(etapa.cor, dark)
   return (
-    <div style={{ minWidth:268, maxWidth:268, flexShrink:0, background:T.cardAlt, borderRadius:11, border:`1px solid ${T.border}`, display:'flex', flexDirection:'column', maxHeight:'100%' }}>
+    <div style={{ minWidth:284, maxWidth:284, flexShrink:0, background:T.cardAlt, borderRadius:11, border:`1px solid ${T.border}`, display:'flex', flexDirection:'column', maxHeight:'100%' }}>
       <div style={{ padding:'10px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, flexShrink:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
           <div style={{ width:8, height:8, borderRadius:'50%', background:c, flexShrink:0 }} />
           <span style={{ fontSize:12, fontWeight:600, color:T.textSecondary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{etapa.label}</span>
           {etapa.prazo24h && <i className="ti ti-clock-exclamation" style={{ fontSize:13, color:cor(P.yellow,P.yellowDark) }} aria-hidden="true" title="Prazo de 24h nesta etapa" />}
+          {etapa.adminOnly && <i className="ti ti-lock" style={{ fontSize:11, color:T.textDim }} aria-hidden="true" title="Apenas o dono vê esta coluna" />}
         </div>
         <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:10, background:osList.length>0?bg:T.bg, color:osList.length>0?c:T.textDim, minWidth:22, textAlign:'center' }}>{osList.length}</span>
       </div>
@@ -1114,37 +1322,83 @@ function KanbanCol({ etapa, osList, T, dark, tipoCor, onCardClick }) {
         {osList.length === 0 && (
           <div style={{ padding:'1.2rem .5rem', textAlign:'center', color:T.textDim, fontSize:11, fontStyle:'italic' }}>vazio</div>
         )}
-        {osList.map(os => <KanbanCard key={os.numero} os={os} T={T} dark={dark} tipoCor={tipoCor} onClick={()=>onCardClick(os)} />)}
+        {osList.map(os => <KanbanCard key={os.numero} os={os} T={T} dark={dark} tipoCor={tipoCor} modoTodos={modoTodos} onClick={()=>onCardClick(os)} />)}
       </div>
     </div>
   )
 }
 
-function KanbanCard({ os, T, dark, tipoCor, onClick }) {
+function KanbanCard({ os, T, dark, tipoCor, modoTodos, onClick }) {
   const cor = (d, c) => dark ? d : c
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
-  const func = FUNCIONARIOS.find(f => f.id === os.responsavel)
-
+  const respId = responsavelAtual(os)
+  const func = funcPorId(respId)
+  const tipoCfg = TIPOS_OS[os.tipo]
+  const corLinha = modoTodos ? corEtapa(tipoCfg.cor, dark) : tipoCor
   const dual = os.etapa === 'oficina'
+
+  // Endereço resumido (rua + nº)
+  const endResumido = os.endereco
+    ? os.endereco.split('—')[0].trim()
+    : null
+
+  // Linha do equipamento: marca · modelo · S/N
+  const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' · ')
 
   return (
     <div onClick={onClick}
-      style={{ background:T.card, borderRadius:8, padding:'10px 11px', border:`1px solid ${T.border}`, borderLeft:`3px solid ${tipoCor}`, cursor:'pointer', transition:'transform .1s, border-color .15s' }}
-      onMouseEnter={e=>{ e.currentTarget.style.borderColor = dark ? '#3a3a3e' : '#c8c8cc' }}
-      onMouseLeave={e=>{ e.currentTarget.style.borderColor = T.border; e.currentTarget.style.borderLeftColor = tipoCor }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:5, gap:6 }}>
-        <span style={{ fontSize:11, fontWeight:700, color:T.textDim }}>#{os.numero}</span>
-        {status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d</Badge>}
-        {status==='hoje'    && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Hoje</Badge>}
-        {status==='amanha'  && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Amanhã</Badge>}
-        {status==='ok' && os.etapa!=='concluido' && os.etapa!=='recusado' && (
-          <Badge color={cor(P.green,P.greenDark)} bg={cor('#0f2a15','#e8f5ec')} border={cor(P.green,P.greenDark)+'33'}>{dias}d</Badge>
+      style={{ background:T.card, borderRadius:8, padding:'10px 11px', border:`1px solid ${T.border}`, borderLeft:`3px solid ${corLinha}`, cursor:'pointer', transition:'border-color .15s' }}
+      onMouseEnter={e=>{ e.currentTarget.style.borderColor = dark ? '#3a3a3e' : '#c8c8cc'; e.currentTarget.style.borderLeftColor = corLinha }}
+      onMouseLeave={e=>{ e.currentTarget.style.borderColor = T.border; e.currentTarget.style.borderLeftColor = corLinha }}>
+
+      {/* Header: nº OS + tipo (no modo Todos) + status do prazo */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5, gap:6 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+          {modoTodos && <i className={`ti ${tipoCfg.icon}`} style={{ fontSize:11, color:corEtapa(tipoCfg.cor, dark) }} aria-hidden="true" title={tipoCfg.label} />}
+          <span style={{ fontSize:11, fontWeight:700, color:T.textDim }}>#{os.numero}</span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+          {os.aguardando_peca && (
+            <Badge color={'#ff9800'} bg={cor('#3a2200','#fff4e0')} border={'#ff980044'}>
+              <i className="ti ti-package" style={{ fontSize:10, marginRight:3 }} aria-hidden="true" />peça
+            </Badge>
+          )}
+          {status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d</Badge>}
+          {status==='hoje'    && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Hoje</Badge>}
+          {status==='amanha'  && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Amanhã</Badge>}
+          {status==='ok' && os.etapa!=='concluido' && os.etapa!=='recusado' && (
+            <Badge color={cor(P.green,P.greenDark)} bg={cor('#0f2a15','#e8f5ec')} border={cor(P.green,P.greenDark)+'33'}>{dias}d</Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Cliente + telefone */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:6, marginBottom:2 }}>
+        <div style={{ fontSize:12.5, fontWeight:700, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}>{os.cliente}</div>
+        {os.fone && <div style={{ fontSize:10.5, color:T.textMuted, whiteSpace:'nowrap' }}>{os.fone}</div>}
+      </div>
+
+      {/* Endereço resumido */}
+      {endResumido && (
+        <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:5, fontSize:11, color:T.textMuted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+          <i className="ti ti-map-pin" style={{ fontSize:11, color:T.textDim, flexShrink:0 }} aria-hidden="true" />
+          <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{endResumido}</span>
+        </div>
+      )}
+
+      {/* Marca · modelo · S/N */}
+      <div style={{ padding:'5px 7px', background:T.cardAlt, borderRadius:5, marginBottom:7 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:T.textSecondary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+          <i className="ti ti-device-mobile-cog" style={{ fontSize:11, color:T.textDim, flexShrink:0 }} aria-hidden="true" />
+          <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{linhaEquip || os.equipamento}</span>
+        </div>
+        {os.serie && (
+          <div style={{ fontSize:10, color:T.textDim, marginTop:2, fontFamily:'ui-monospace, SFMono-Regular, monospace' }}>S/N: {os.serie}</div>
         )}
       </div>
-      <div style={{ fontSize:12.5, fontWeight:600, color:T.textPrimary, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.cliente}</div>
-      <div style={{ fontSize:11, color:T.textMuted, marginBottom:7, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{os.equipamento}</div>
 
+      {/* Dual status (limpeza + manutenção) */}
       {dual && (
         <div style={{ display:'flex', gap:4, marginBottom:7 }}>
           <SubStatus label="Limp." status={os.limpeza} T={T} dark={dark} />
@@ -1152,6 +1406,7 @@ function KanbanCard({ os, T, dark, tipoCor, onClick }) {
         </div>
       )}
 
+      {/* Rodapé: prazo + valor + responsável atual */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:5 }}>
           <i className="ti ti-calendar" style={{ fontSize:11, color:T.textDim }} aria-hidden="true" />
@@ -1159,7 +1414,7 @@ function KanbanCard({ os, T, dark, tipoCor, onClick }) {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:5 }}>
           {os.valor > 0 && <span style={{ fontSize:10.5, color:T.textMuted, fontWeight:600 }}>R$ {(os.valor - (os.desconto||0)).toLocaleString('pt-BR')}</span>}
-          {func && <span style={{ width:19, height:19, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${func.cor}44` }}>{func.apelido}</span>}
+          {func && <span title={`Última ação: ${func.nome}`} style={{ width:19, height:19, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${func.cor}44` }}>{func.apelido}</span>}
         </div>
       </div>
 
@@ -1547,18 +1802,33 @@ function ModalBase({ T, dark, onClose, children, maxWidth=720, mobile }) {
 }
 
 // ─── OS Detalhe (somente leitura nesta etapa) ──────────────────────────────
-function OSDetalhe({ T, dark, os, onClose, mobile }) {
+function OSDetalhe({ T, dark, os: osInicial, user, onClose, mobile }) {
   const cor = (d, c) => dark ? d : c
+  // Estado local da OS — permite alternar "aguardando peça" sem refetch
+  const [os, setOs] = useState(osInicial)
+  const [aba, setAba] = useState('detalhe') // 'detalhe' | 'historico'
+  const admin = isAdmin(user)
   const config = TIPOS_OS[os.tipo]
   const etapaAtual = config.etapas.findIndex(e => e.id === os.etapa)
   const isRecusado = os.etapa === 'recusado'
   const tipoCor = corEtapa(config.cor, dark)
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
-  const func = FUNCIONARIOS.find(f => f.id === os.responsavel)
+  const respId = responsavelAtual(os)
+  const func = funcPorId(respId)
   const itens = OS_ITENS_MOCK[os.numero] || []
   const subtotal = itens.reduce((s,i) => s + i.valor*i.qtd, 0)
   const totalLiq = subtotal - (os.desconto || 0)
+
+  // Toggle "aguardando peça" — só faz sentido em oficina
+  function toggleAgPeca() {
+    setOs(o => ({ ...o, aguardando_peca: !o.aguardando_peca }))
+    // OBS: na Entrega 2 isso vira update no Supabase.
+    // Por enquanto altera só o estado local (não persiste entre aberturas).
+  }
+
+  // Histórico ordenado cronologicamente
+  const historico = (os.historico || []).slice()
 
   return (
     <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={780}>
@@ -1572,17 +1842,36 @@ function OSDetalhe({ T, dark, os, onClose, mobile }) {
                 {config.label}
               </span>
               <span style={{ fontSize:16, fontWeight:700, color:T.textPrimary }}>OS #{os.numero}</span>
+              {os.aguardando_peca && (
+                <Badge color={'#ff9800'} bg={cor('#3a2200','#fff4e0')} border={'#ff980044'}>
+                  <i className="ti ti-package" style={{ fontSize:11, marginRight:3 }} aria-hidden="true" />Aguardando peça
+                </Badge>
+              )}
               {isRecusado && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>Recusada</Badge>}
               {!isRecusado && status==='vencido' && <Badge color={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')} border={cor(P.red,P.redDark)+'33'}>{Math.abs(dias)}d atraso</Badge>}
               {status==='hoje'   && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Vence hoje</Badge>}
               {status==='amanha' && <Badge color={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')} border={cor(P.yellow,P.yellowDark)+'33'}>Vence amanhã</Badge>}
             </div>
             <div style={{ fontSize:14, fontWeight:600, color:T.textPrimary, marginBottom:2 }}>{os.cliente}</div>
-            <div style={{ fontSize:12.5, color:T.textMuted }}>{os.equipamento}</div>
+            <div style={{ fontSize:12.5, color:T.textMuted }}>{[os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento}</div>
           </div>
           <button onClick={onClose} aria-label="Fechar"
             style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:6, borderRadius:6, fontSize:0, lineHeight:0, flexShrink:0 }}>
             <i className="ti ti-x" style={{ fontSize:22 }} aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Abas Detalhe / Histórico */}
+        <div style={{ display:'flex', gap:4, marginTop:11 }}>
+          <button onClick={()=>setAba('detalhe')}
+            style={{ padding:'6px 12px', borderRadius:6, border:'none', background:aba==='detalhe'?T.card:'transparent', color:aba==='detalhe'?T.textPrimary:T.textMuted, fontSize:12, fontWeight:aba==='detalhe'?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, borderBottom:`2px solid ${aba==='detalhe'?tipoCor:'transparent'}` }}>
+            <i className="ti ti-info-circle" style={{ fontSize:13 }} aria-hidden="true" />
+            Detalhe
+          </button>
+          <button onClick={()=>setAba('historico')}
+            style={{ padding:'6px 12px', borderRadius:6, border:'none', background:aba==='historico'?T.card:'transparent', color:aba==='historico'?T.textPrimary:T.textMuted, fontSize:12, fontWeight:aba==='historico'?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, borderBottom:`2px solid ${aba==='historico'?tipoCor:'transparent'}` }}>
+            <i className="ti ti-history" style={{ fontSize:13 }} aria-hidden="true" />
+            Histórico ({historico.length})
           </button>
         </div>
       </div>
@@ -1590,120 +1879,207 @@ function OSDetalhe({ T, dark, os, onClose, mobile }) {
       {/* Conteúdo scrollável */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 18px', display:'flex', flexDirection:'column', gap:12 }}>
 
-        {/* Timeline do fluxo */}
-        {!isRecusado && (
-          <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
-            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
-              <i className="ti ti-route" style={{ fontSize:14 }} aria-hidden="true" />
-              Fluxo da OS — etapa atual: <strong style={{color:tipoCor}}>{config.etapas[etapaAtual]?.label}</strong>
-            </div>
-            <div style={{ display:'flex', gap:3, overflowX:'auto', paddingBottom:4 }}>
-              {config.etapas.map((e, i) => {
-                const passou = i < etapaAtual
-                const atual  = i === etapaAtual
-                const corE = atual ? corEtapa(e.cor, dark) : (passou ? cor(P.green, P.greenDark) : T.textDim)
-                const bgE  = atual ? bgEtapa(e.cor, dark) : (passou ? cor('#0f2a15','#e8f5ec') : T.bg)
-                return (
-                  <div key={e.id} style={{ flex:'1 0 auto', minWidth:80, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-                    <div style={{ width:24, height:24, borderRadius:'50%', background:bgE, color:corE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, border:`1.5px solid ${atual?corE:'transparent'}` }}>
-                      {passou ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : (atual ? <div style={{width:7,height:7,borderRadius:'50%',background:corE}} /> : i+1)}
-                    </div>
-                    <span style={{ fontSize:10, color:corE, textAlign:'center', lineHeight:1.25, fontWeight:atual?700:500, maxWidth:80 }}>{e.curto}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+        {aba === 'detalhe' && (
+          <>
+            {/* Timeline do fluxo */}
+            {!isRecusado && (
+              <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+                <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+                  <i className="ti ti-route" style={{ fontSize:14 }} aria-hidden="true" />
+                  Fluxo da OS — etapa atual: <strong style={{color:tipoCor}}>{config.etapas[etapaAtual]?.label}</strong>
+                </div>
+                <div style={{ display:'flex', gap:3, overflowX:'auto', paddingBottom:4 }}>
+                  {config.etapas.map((e, i) => {
+                    if (e.adminOnly && !admin) return null
+                    const passou = i < etapaAtual
+                    const atual  = i === etapaAtual
+                    const corE = atual ? corEtapa(e.cor, dark) : (passou ? cor(P.green, P.greenDark) : T.textDim)
+                    const bgE  = atual ? bgEtapa(e.cor, dark) : (passou ? cor('#0f2a15','#e8f5ec') : T.bg)
+                    const reg = historico.find(h => h.etapa === e.id)
+                    const f = reg && funcPorId(reg.funcionario)
+                    return (
+                      <div key={e.id} style={{ flex:'1 0 auto', minWidth:88, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                        <div style={{ width:24, height:24, borderRadius:'50%', background:bgE, color:corE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, border:`1.5px solid ${atual?corE:'transparent'}` }}>
+                          {passou ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : (atual ? <div style={{width:7,height:7,borderRadius:'50%',background:corE}} /> : i+1)}
+                        </div>
+                        <span style={{ fontSize:10, color:corE, textAlign:'center', lineHeight:1.25, fontWeight:atual?700:500, maxWidth:88 }}>{e.curto}</span>
+                        {f && (
+                          <span title={`Feito por ${f.nome}`} style={{ fontSize:8.5, color:f.cor, fontWeight:700, padding:'1px 5px', borderRadius:8, background:f.cor+'22', border:`1px solid ${f.cor}33` }}>
+                            {f.apelido}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
-        {/* Limpeza + Manutenção paralelos */}
-        {os.etapa === 'oficina' && (
-          <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
-            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
-              <i className="ti ti-tool" style={{ fontSize:14 }} aria-hidden="true" />
-              Em oficina — limpeza e manutenção simultâneas
-            </div>
+            {/* Limpeza + Manutenção paralelos */}
+            {os.etapa === 'oficina' && (
+              <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+                <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <i className="ti ti-tool" style={{ fontSize:14 }} aria-hidden="true" />
+                    Em oficina — limpeza e manutenção simultâneas
+                  </div>
+                  <button onClick={toggleAgPeca}
+                    style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${os.aguardando_peca?'#ff9800':T.border}`, background:os.aguardando_peca?cor('#3a2200','#fff4e0'):T.bg, color:os.aguardando_peca?'#ff9800':T.textMuted, fontSize:11, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5, textTransform:'none', letterSpacing:'normal' }}>
+                    <i className={`ti ${os.aguardando_peca?'ti-package':'ti-package-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
+                    {os.aguardando_peca ? 'Aguardando peça (clique p/ desmarcar)' : 'Marcar como aguardando peça'}
+                  </button>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'1fr 1fr', gap:10 }}>
+                  <SubBox label="Limpeza" status={os.limpeza} icon="ti-droplet" T={T} dark={dark} />
+                  <SubBox label="Manutenção" status={os.manutencao} icon="ti-tool" T={T} dark={dark} />
+                </div>
+                <div style={{ fontSize:11, color:T.textDim, marginTop:8, fontStyle:'italic' }}>
+                  <i className="ti ti-info-circle" style={{ fontSize:12, marginRight:4, verticalAlign:'middle' }} aria-hidden="true" />
+                  Próxima etapa (Teste final) só libera quando ambas estiverem concluídas.
+                </div>
+              </div>
+            )}
+
+            {/* Cliente e equipamento */}
             <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'1fr 1fr', gap:10 }}>
-              <SubBox label="Limpeza" status={os.limpeza} icon="ti-droplet" T={T} dark={dark} />
-              <SubBox label="Manutenção" status={os.manutencao} icon="ti-tool" T={T} dark={dark} />
+              <DetCard icon="ti-user" titulo="Cliente" T={T}>
+                <Linha label="Nome" valor={os.cliente} T={T} />
+                {os.fone && <Linha label="Telefone" valor={os.fone} T={T} />}
+                {os.endereco && <Linha label="Endereço" valor={os.endereco} T={T} multi />}
+              </DetCard>
+              <DetCard icon="ti-device-mobile-cog" titulo="Equipamento" T={T}>
+                {os.marca && <Linha label="Marca" valor={os.marca} T={T} />}
+                {os.modelo && <Linha label="Modelo" valor={os.modelo} T={T} />}
+                {os.serie && <Linha label="Nº de série" valor={os.serie} T={T} mono />}
+                <Linha label="Descrição" valor={os.equipamento} T={T} multi />
+                <Linha label="Defeito relatado" valor={os.defeito} T={T} multi />
+                <Linha label="Fotos" valor={`${os.fotos || 0} foto(s) anexada(s)`} T={T} />
+              </DetCard>
             </div>
-            <div style={{ fontSize:11, color:T.textDim, marginTop:8, fontStyle:'italic' }}>
-              <i className="ti ti-info-circle" style={{ fontSize:12, marginRight:4, verticalAlign:'middle' }} aria-hidden="true" />
-              Próxima etapa (Teste final) só libera quando ambas estiverem concluídas.
-            </div>
-          </div>
-        )}
 
-        {/* Cliente e equipamento */}
-        <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'1fr 1fr', gap:10 }}>
-          <DetCard icon="ti-user" titulo="Cliente" T={T}>
-            <Linha label="Nome" valor={os.cliente} T={T} />
-            {os.fone && <Linha label="Telefone" valor={os.fone} T={T} />}
-            {os.endereco && <Linha label="Endereço" valor={os.endereco} T={T} />}
-            <Linha label="Responsável" valor={func ? func.nome : '—'} T={T} chipCor={func?.cor} />
-          </DetCard>
-          <DetCard icon="ti-tool" titulo="Equipamento" T={T}>
-            <Linha label="Descrição" valor={os.equipamento} T={T} />
-            <Linha label="Defeito relatado" valor={os.defeito} T={T} multi />
-            <Linha label="Fotos" valor={`${os.fotos || 0} foto(s) anexada(s)`} T={T} />
-          </DetCard>
-        </div>
-
-        {/* Itens e financeiro */}
-        {itens.length > 0 && (
-          <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
-            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
-              <i className="ti ti-list-details" style={{ fontSize:14 }} aria-hidden="true" />
-              Itens da OS
-              <span style={{ fontSize:10, padding:'1px 6px', borderRadius:8, background:T.bg, color:T.textDim, fontWeight:500, textTransform:'none', letterSpacing:'normal' }}>{itens.length} {itens.length===1?'item':'itens'}</span>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-              {itens.map((it, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:T.bg, borderRadius:6, fontSize:12.5 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:9, minWidth:0, flex:1 }}>
-                    <i className={`ti ${it.tipo==='servico'?'ti-tool':'ti-package'}`} style={{ fontSize:14, color:it.tipo==='servico'?cor(P.blueLight,P.blueLightDark):cor(P.blue,P.blueDark) }} aria-hidden="true" />
-                    <span style={{ color:T.textPrimary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.nome}</span>
-                    <span style={{ color:T.textDim, fontSize:11 }}>×{it.qtd}</span>
+            {/* Responsabilidade atual */}
+            {func && (
+              <div style={{ background:T.cardAlt, borderRadius:9, padding:'10px 14px', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ width:34, height:34, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:12, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1.5px solid ${func.cor}55` }}>{func.apelido}</span>
+                  <div>
+                    <div style={{ fontSize:10.5, color:T.textDim, fontWeight:500, textTransform:'uppercase', letterSpacing:'.3px' }}>Última ação registrada</div>
+                    <div style={{ fontSize:13, color:T.textPrimary, fontWeight:600 }}>{func.nome}</div>
                   </div>
-                  <span style={{ color:T.textSecondary, fontWeight:600, whiteSpace:'nowrap' }}>R$ {(it.valor*it.qtd).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
                 </div>
-              ))}
-            </div>
-            <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${T.border}`, display:'flex', flexDirection:'column', gap:4 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:T.textMuted }}>
-                <span>Subtotal</span><span>R$ {subtotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-              </div>
-              {(os.desconto || 0) > 0 && (
-                <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:cor(P.green,P.greenDark) }}>
-                  <span>Desconto</span><span>− R$ {os.desconto.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                <div style={{ textAlign:'right', fontSize:11, color:T.textMuted }}>
+                  <div>na etapa</div>
+                  <div style={{ color:T.textPrimary, fontWeight:600, marginTop:1 }}>{config.etapas[etapaAtual-1]?.label || config.etapas[0]?.label}</div>
                 </div>
-              )}
-              <div style={{ display:'flex', justifyContent:'space-between', fontSize:14, color:T.textPrimary, fontWeight:700, marginTop:2 }}>
-                <span>Total</span><span style={{ color:tipoCor }}>R$ {totalLiq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
               </div>
+            )}
+
+            {/* Itens e financeiro */}
+            {itens.length > 0 && (
+              <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+                <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+                  <i className="ti ti-list-details" style={{ fontSize:14 }} aria-hidden="true" />
+                  Itens da OS
+                  <span style={{ fontSize:10, padding:'1px 6px', borderRadius:8, background:T.bg, color:T.textDim, fontWeight:500, textTransform:'none', letterSpacing:'normal' }}>{itens.length} {itens.length===1?'item':'itens'}</span>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                  {itens.map((it, i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', background:T.bg, borderRadius:6, fontSize:12.5 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:9, minWidth:0, flex:1 }}>
+                        <i className={`ti ${it.tipo==='servico'?'ti-tool':'ti-package'}`} style={{ fontSize:14, color:it.tipo==='servico'?cor(P.blueLight,P.blueLightDark):cor(P.blue,P.blueDark) }} aria-hidden="true" />
+                        <span style={{ color:T.textPrimary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.nome}</span>
+                        <span style={{ color:T.textDim, fontSize:11 }}>×{it.qtd}</span>
+                      </div>
+                      <span style={{ color:T.textSecondary, fontWeight:600, whiteSpace:'nowrap' }}>R$ {(it.valor*it.qtd).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${T.border}`, display:'flex', flexDirection:'column', gap:4 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:T.textMuted }}>
+                    <span>Subtotal</span><span>R$ {subtotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                  </div>
+                  {(os.desconto || 0) > 0 && (
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:cor(P.green,P.greenDark) }}>
+                      <span>Desconto</span><span>− R$ {os.desconto.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                    </div>
+                  )}
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:14, color:T.textPrimary, fontWeight:700, marginTop:2 }}>
+                    <span>Total</span><span style={{ color:tipoCor }}>R$ {totalLiq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Datas */}
+            <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr 1fr':'1fr 1fr 1fr', gap:10 }}>
+              <DetMini icon="ti-calendar-plus" label="Aberta em" valor={new Date(os.abertura).toLocaleDateString('pt-BR')} T={T} />
+              <DetMini icon="ti-calendar-check" label="Prazo" valor={new Date(os.prazo).toLocaleDateString('pt-BR')} T={T} cor={status==='vencido'?cor(P.red,P.redDark):status==='hoje'||status==='amanha'?cor(P.yellow,P.yellowDark):cor(P.green,P.greenDark)} />
+              <DetMini icon="ti-clock-hour-4" label="Dias na OS" valor={Math.max(1, Math.round((Date.now() - new Date(os.abertura))/86400000)) + ' dia(s)'} T={T} />
             </div>
+
+            {/* Observações */}
+            {os.observacoes && (
+              <DetCard icon="ti-notes" titulo="Observações" T={T}>
+                <div style={{ fontSize:12.5, color:T.textSecondary, lineHeight:1.5, whiteSpace:'pre-wrap' }}>{os.observacoes}</div>
+              </DetCard>
+            )}
+
+            {/* Aviso somente leitura */}
+            <div style={{ padding:'10px 12px', borderRadius:8, background:bgEtapa('blue', dark), border:`1px dashed ${corEtapa('blue', dark)}55`, fontSize:11.5, color:T.textSecondary, display:'flex', alignItems:'center', gap:8 }}>
+              <i className="ti ti-info-circle" style={{ fontSize:15, color:corEtapa('blue', dark), flexShrink:0 }} aria-hidden="true" />
+              <span>Visualização somente leitura — exceto o toggle "Aguardando peça". Demais ações (avançar etapa, dar check no diagnóstico, editar orçamento, baixar pagamento) chegam na <strong style={{color:T.textPrimary}}>Entrega 2</strong>.</span>
+            </div>
+          </>
+        )}
+
+        {aba === 'historico' && (
+          <div style={{ background:T.cardAlt, borderRadius:9, padding:'14px 16px', border:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:14, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+              <i className="ti ti-history" style={{ fontSize:14 }} aria-hidden="true" />
+              Histórico completo de movimentações
+            </div>
+            {historico.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'2rem 1rem', color:T.textDim, fontSize:13 }}>
+                <i className="ti ti-clipboard-off" style={{ fontSize:32, display:'block', marginBottom:8 }} aria-hidden="true" />
+                Nenhuma movimentação registrada ainda.
+              </div>
+            ) : (
+              <div style={{ position:'relative' }}>
+                {historico.map((h, i) => {
+                  const e = config.etapas.find(et => et.id === h.etapa) || { label: h.etapa, cor:'neutro' }
+                  const f = funcPorId(h.funcionario)
+                  const corE = corEtapa(e.cor, dark)
+                  const isLast = i === historico.length - 1
+                  return (
+                    <div key={i} style={{ display:'flex', gap:12, position:'relative', paddingBottom: isLast ? 0 : 14 }}>
+                      {/* Linha vertical conectora */}
+                      {!isLast && <div style={{ position:'absolute', left:13, top:28, bottom:0, width:2, background:T.border }} />}
+                      {/* Bola colorida da etapa */}
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:bgEtapa(e.cor, dark), color:corE, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:`1.5px solid ${corE}44`, zIndex:1 }}>
+                        <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" />
+                      </div>
+                      <div style={{ flex:1, paddingTop:2 }}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:3 }}>
+                          <span style={{ fontSize:13, fontWeight:700, color:T.textPrimary }}>{e.label}</span>
+                          {f && (
+                            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                              <span style={{ width:18, height:18, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>
+                              <span style={{ fontSize:11.5, color:T.textSecondary, fontWeight:600 }}>{f.nome}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize:11, color:T.textMuted }}>
+                          <i className="ti ti-clock" style={{ fontSize:11, marginRight:4, verticalAlign:'middle' }} aria-hidden="true" />
+                          {h.data}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
-
-        {/* Datas */}
-        <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr 1fr':'1fr 1fr 1fr', gap:10 }}>
-          <DetMini icon="ti-calendar-plus" label="Aberta em" valor={new Date(os.abertura).toLocaleDateString('pt-BR')} T={T} />
-          <DetMini icon="ti-calendar-check" label="Prazo" valor={new Date(os.prazo).toLocaleDateString('pt-BR')} T={T} cor={status==='vencido'?cor(P.red,P.redDark):status==='hoje'||status==='amanha'?cor(P.yellow,P.yellowDark):cor(P.green,P.greenDark)} />
-          <DetMini icon="ti-clock-hour-4" label="Dias na OS" valor={Math.max(1, Math.round((Date.now() - new Date(os.abertura))/86400000)) + ' dia(s)'} T={T} />
-        </div>
-
-        {/* Observações */}
-        {os.observacoes && (
-          <DetCard icon="ti-notes" titulo="Observações" T={T}>
-            <div style={{ fontSize:12.5, color:T.textSecondary, lineHeight:1.5, whiteSpace:'pre-wrap' }}>{os.observacoes}</div>
-          </DetCard>
-        )}
-
-        {/* Aviso somente leitura */}
-        <div style={{ padding:'10px 12px', borderRadius:8, background:bgEtapa('blue', dark), border:`1px dashed ${corEtapa('blue', dark)}55`, fontSize:11.5, color:T.textSecondary, display:'flex', alignItems:'center', gap:8 }}>
-          <i className="ti ti-info-circle" style={{ fontSize:15, color:corEtapa('blue', dark), flexShrink:0 }} aria-hidden="true" />
-          <span>Visualização somente leitura. As ações de cada etapa (avançar, editar orçamento, baixar pagamento) serão liberadas na <strong style={{color:T.textPrimary}}>Entrega 2</strong>.</span>
-        </div>
       </div>
     </ModalBase>
   )
@@ -1720,11 +2096,11 @@ function DetCard({ icon, titulo, children, T }) {
     </div>
   )
 }
-function Linha({ label, valor, T, multi, chipCor }) {
+function Linha({ label, valor, T, multi, chipCor, mono }) {
   return (
     <div style={{ display:'flex', flexDirection: multi?'column':'row', justifyContent:'space-between', gap:multi?3:8, alignItems: multi?'flex-start':'flex-start' }}>
       <span style={{ fontSize:11, color:T.textDim, flexShrink:0, fontWeight:500 }}>{label}</span>
-      <span style={{ fontSize:12.5, color:T.textPrimary, textAlign: multi?'left':'right', wordBreak:'break-word', lineHeight:1.4, display:'flex', alignItems:'center', gap:6 }}>
+      <span style={{ fontSize:12.5, color:T.textPrimary, textAlign: multi?'left':'right', wordBreak:'break-word', lineHeight:1.4, display:'flex', alignItems:'center', gap:6, fontFamily: mono?'ui-monospace, SFMono-Regular, monospace':'inherit' }}>
         {chipCor && <span style={{ width:8, height:8, borderRadius:'50%', background:chipCor, flexShrink:0 }} />}
         {valor || '—'}
       </span>
@@ -1812,7 +2188,7 @@ export default function App() {
   if (isMobile) {
     const conteudoMobile = {
       painel:     <PainelMobile T={T} dark={dark} />,
-      os:         <OSMobile T={T} dark={dark} />,
+      os:         <OSMobile T={T} dark={dark} user={user} />,
       estoque:    <EmConstrucao nome="Estoque" T={T} />,
       financeiro: <EmConstrucao nome="Financeiro" T={T} />,
     }
@@ -1827,7 +2203,7 @@ export default function App() {
 
   const conteudoDesktop = {
     painel:     <Painel T={T} dark={dark} />,
-    os:         <OS T={T} dark={dark} />,
+    os:         <OS T={T} dark={dark} user={user} />,
     clientes:   <EmConstrucao nome="Clientes" T={T} />,
     logistica:  <EmConstrucao nome="Logística" T={T} />,
     estoque:    <EmConstrucao nome="Estoque" T={T} />,
