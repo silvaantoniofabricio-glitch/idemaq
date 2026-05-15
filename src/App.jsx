@@ -1179,17 +1179,8 @@ function OSMobile({ T, dark, user }) {
   const [sheet, setSheet]         = useState(null)
   const [verRecusadasList, setVerRecusadasList] = useState(false)
 
-  // ── Pull-to-refresh
-  const [refreshing, setRefreshing]   = useState(false)
-  const [pullDist, setPullDist]       = useState(0)
-  const pullStartY = useRef(null)
+  // Ref pro scroll area da coluna (usado pra detectar topo do scroll)
   const scrollAreaRef = useRef(null)
-  function fazerRefresh() {
-    setRefreshing(true)
-    setPullDist(60)
-    // Em produção: re-fetch do Supabase aqui. Por ora, simula latência.
-    setTimeout(() => { setRefreshing(false); setPullDist(0) }, 700)
-  }
 
   // ── Etapas visíveis
   // No modo Lista: só as etapas da zona selecionada.
@@ -1446,45 +1437,11 @@ function OSMobile({ T, dark, user }) {
               ))}
             </div>
 
-            {/* Indicador de pull-to-refresh */}
-            {pullDist > 0 && (
-              <div style={{ height:pullDist, display:'flex', alignItems:'center', justifyContent:'center', color:azul, fontSize:11, fontWeight:600, flexShrink:0, transition: refreshing ? 'none' : 'height .2s', overflow:'hidden' }}>
-                <i className={`ti ${refreshing ? 'ti-loader-2' : (pullDist >= 60 ? 'ti-arrow-up' : 'ti-arrow-down')}`} style={{ fontSize:16, marginRight:6, animation: refreshing ? 'spin 1s linear infinite' : 'none' }} aria-hidden="true" />
-                {refreshing ? 'Atualizando…' : (pullDist >= 60 ? 'Solte para atualizar' : 'Puxe para atualizar')}
-              </div>
-            )}
-
-            {/* Lista da coluna ativa (com swipe lateral + pull-to-refresh) */}
-            <div ref={scrollAreaRef}
-              onTouchStart={(e)=>{
-                onTouchStart(e)
-                // Pull-to-refresh: só ativa se scroll está no topo
-                if (scrollAreaRef.current && scrollAreaRef.current.scrollTop <= 0) {
-                  pullStartY.current = e.touches[0].clientY
-                }
-              }}
-              onTouchMove={(e)=>{
-                onTouchMove(e)
-                if (pullStartY.current != null && !refreshing) {
-                  const dy = e.touches[0].clientY - pullStartY.current
-                  // Só conta se for um pull pra baixo e maior que movimento horizontal
-                  const dx = (touchEndX.current ?? touchStartX.current) - touchStartX.current
-                  if (dy > 0 && dy > Math.abs(dx) * 1.5 && scrollAreaRef.current.scrollTop <= 0) {
-                    setPullDist(Math.min(80, dy * 0.5))
-                  }
-                }
-              }}
-              onTouchEnd={()=>{
-                if (pullStartY.current != null) {
-                  if (pullDist >= 60 && !refreshing) {
-                    fazerRefresh()
-                  } else {
-                    setPullDist(0)
-                  }
-                  pullStartY.current = null
-                }
-                onTouchEnd()
-              }}
+            {/* Lista da coluna ativa (com swipe lateral apenas — pull-to-refresh é no nível da página) */}
+            <div ref={scrollAreaRef} data-no-pull-refresh="true"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
               style={{ flex:1, overflowY:'auto', padding:'4px 1rem 80px', display:'flex', flexDirection:'column', gap:10, WebkitOverflowScrolling:'touch' }}>
               {osDaColuna.length === 0 ? (
                 <div style={{ background:T.card, border:`1px dashed ${T.border}`, borderRadius:12, padding:'2.5rem 1rem', textAlign:'center', color:T.textMuted, fontSize:13, marginTop:30 }}>
@@ -1634,6 +1591,100 @@ function OSMobile({ T, dark, user }) {
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" mobile />}
       {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} user={user} onClose={()=>setDetalhe(null)} mobile />}
     </>
+  )
+}
+
+// ─── Pull-to-refresh reutilizável (envelopa qualquer página mobile) ────────
+// Gesto detectado na ÁREA DE HEADER da página — NÃO dentro de scrolls de cards.
+// Áreas internas que precisam ser ignoradas (listas com scroll próprio, swipe lateral, etc)
+// devem marcar o elemento com data-no-pull-refresh="true".
+function PullToRefresh({ T, dark, onRefresh, children }) {
+  const cor = (d, c) => dark ? d : c
+  const [pullDist, setPullDist]     = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const startY = useRef(null)
+  const startX = useRef(null)
+  const ativo  = useRef(false) // se este pull está ativo (gesto começou em área válida)
+  const azul = cor(P.blue, P.blueDark)
+
+  function dentroDeAreaBloqueada(target) {
+    let el = target
+    while (el && el !== document.body) {
+      if (el.dataset && el.dataset.noPullRefresh === 'true') return true
+      el = el.parentElement
+    }
+    return false
+  }
+
+  function onTouchStart(e) {
+    if (refreshing) return
+    if (dentroDeAreaBloqueada(e.target)) {
+      ativo.current = false
+      return
+    }
+    // Só inicia se a página inteira estiver scrollada pro topo
+    if (window.scrollY > 0) {
+      ativo.current = false
+      return
+    }
+    ativo.current = true
+    startY.current = e.touches[0].clientY
+    startX.current = e.touches[0].clientX
+  }
+
+  function onTouchMove(e) {
+    if (!ativo.current || refreshing || startY.current == null) return
+    const dy = e.touches[0].clientY - startY.current
+    const dx = e.touches[0].clientX - startX.current
+    // Tem que ser pull pra BAIXO e bem mais vertical que horizontal
+    if (dy <= 0 || Math.abs(dy) < Math.abs(dx) * 2) return
+    setPullDist(Math.min(90, dy * 0.55))
+  }
+
+  function onTouchEnd() {
+    if (!ativo.current) return
+    if (pullDist >= 60 && !refreshing) {
+      setRefreshing(true)
+      setPullDist(60)
+      Promise.resolve(onRefresh && onRefresh()).finally(() => {
+        // Espera no mínimo 600ms pra feedback visual decente
+        setTimeout(() => { setRefreshing(false); setPullDist(0) }, 600)
+      })
+    } else {
+      setPullDist(0)
+    }
+    ativo.current = false
+    startY.current = null
+    startX.current = null
+  }
+
+  return (
+    <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+      style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, position:'relative', overflow:'hidden' }}>
+      {/* Indicador no topo (sobreposto, não empurra conteúdo) */}
+      {pullDist > 0 && (
+        <div style={{
+          position:'absolute', top:0, left:0, right:0, zIndex:50,
+          height: pullDist,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          background: dark ? 'rgba(11,18,32,.92)' : 'rgba(236,236,239,.92)',
+          backdropFilter:'blur(4px)',
+          color: azul, fontSize:12, fontWeight:600,
+          transition: refreshing ? 'none' : 'height .2s',
+          pointerEvents:'none',
+          overflow:'hidden'
+        }}>
+          <i className={`ti ${refreshing ? 'ti-loader-2' : (pullDist >= 60 ? 'ti-arrow-up' : 'ti-arrow-down')}`}
+             style={{ fontSize:18, marginRight:7, animation: refreshing ? 'spin 1s linear infinite' : 'none' }}
+             aria-hidden="true" />
+          {refreshing ? 'Atualizando…' : (pullDist >= 60 ? 'Solte para atualizar' : 'Puxe para atualizar')}
+        </div>
+      )}
+      {/* Conteúdo da página */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0, transform: pullDist > 0 ? `translateY(${pullDist * 0.35}px)` : 'none', transition: refreshing ? 'none' : 'transform .2s' }}>
+        {children}
+      </div>
+    </div>
   )
 }
 
@@ -2991,6 +3042,8 @@ export default function App() {
   const [user, setUser]         = useState(null)
   const [pagina, setPagina]     = useState('painel')
   const [collapsed, setCollapsed] = useState(false)
+  // Refresh contextual mobile: cada página tem um contador, incrementa força re-mount
+  const [refreshTick, setRefreshTick] = useState({})
   const isMobile = useIsMobile()
 
   const [dark, setDark] = useState(() => {
@@ -3057,16 +3110,27 @@ export default function App() {
   if (!user) return <Login dark={dark} T={T} />
 
   if (isMobile) {
+    // Contador de refresh por página — incrementar força re-mount do conteúdo
+    // (até a Entrega 2 plugar Supabase real, o pull simula refresh via re-mount)
+    const refreshKey = refreshTick[pagina] || 0
+    function refreshPagina() {
+      // Em produção (Entrega 2): refaz queries do Supabase pra `pagina` atual.
+      // Por ora: força remount do componente da página corrente.
+      setRefreshTick(prev => ({ ...prev, [pagina]: (prev[pagina]||0) + 1 }))
+      return new Promise(resolve => setTimeout(resolve, 400))
+    }
     const conteudoMobile = {
-      painel:     <PainelMobile T={T} dark={dark} />,
-      os:         <OSMobile T={T} dark={dark} user={user} />,
-      estoque:    <EmConstrucao nome="Estoque" T={T} />,
-      financeiro: <EmConstrucao nome="Financeiro" T={T} />,
+      painel:     <PainelMobile key={`painel-${refreshKey}`} T={T} dark={dark} />,
+      os:         <OSMobile key={`os-${refreshKey}`} T={T} dark={dark} user={user} />,
+      estoque:    <EmConstrucao key={`est-${refreshKey}`} nome="Estoque" T={T} />,
+      financeiro: <EmConstrucao key={`fin-${refreshKey}`} nome="Financeiro" T={T} />,
     }
     return (
       <div style={{ display:'flex', flexDirection:'column', background:T.bg, width:'100%', height:'100vh', fontFamily:'system-ui,sans-serif', overflow:'hidden' }}>
         <TopbarMobile pagina={pagina} dark={dark} toggleDark={toggleDark} T={T} />
-        {conteudoMobile[pagina] || <PainelMobile T={T} dark={dark} />}
+        <PullToRefresh T={T} dark={dark} onRefresh={refreshPagina}>
+          {conteudoMobile[pagina] || <PainelMobile T={T} dark={dark} />}
+        </PullToRefresh>
         <BottomNav pagina={pagina} setPagina={setPagina} sair={sair} T={T} dark={dark} />
       </div>
     )
