@@ -22,22 +22,26 @@ const TEMAS = {
     progBg:    '#111113',
     osNeutro:  '#2a2a2c',
     osNeutroT: '#888888',
+    shadow:    'none',
+    shadowHover: 'none',
   },
   claro: {
-    bg:        '#f0f0f2',
+    bg:        '#ececef',
     card:      '#ffffff',
-    cardAlt:   '#f8f8fa',
-    border:    '#e0e0e4',
-    border2:   '#d0d0d4',
+    cardAlt:   '#f7f7f9',
+    border:    '#eaeaee',
+    border2:   '#dcdce0',
     sbBg:      '#ffffff',
     topBg:     '#ffffff',
-    textPrimary:   '#1a1a1e',
-    textSecondary: '#444444',
-    textMuted:     '#888888',
-    textDim:       '#aaaaaa',
+    textPrimary:   '#0a0a0d',
+    textSecondary: '#3a3a3e',
+    textMuted:     '#6a6a6e',
+    textDim:       '#8a8a8e',
     progBg:    '#e8e8ec',
     osNeutro:  '#ebebed',
-    osNeutroT: '#888888',
+    osNeutroT: '#6a6a6e',
+    shadow:    '0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)',
+    shadowHover: '0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.06)',
   }
 }
 
@@ -186,16 +190,6 @@ const ETAPAS_TODOS = [
   { id:'entrega',        label:'Entrega',                 curto:'Entrega',      cor:'blue',  match: { atendimento:'entrega', venda:'entregue' } },
   { id:'pagamento',      label:'Pagamento',               curto:'Pagamento',    cor:'yellow', adminOnly:true, match: { atendimento:'pagamento', venda:'pagamento' } },
   { id:'concluido',      label:'Concluído',               curto:'Concluído',    cor:'green',  adminOnly:true, match: { atendimento:'concluido', fabricacao:'concluido', venda:'concluido' } },
-]
-
-// ─── Zonas de atividade — agrupam etapas por área de trabalho ─────────────
-// Externo: tudo que envolve estar fora da oficina ou em contato com o cliente
-// Interno: trabalho dentro da oficina (desde receber até finalizar teste)
-// Financeiro: orçar, cobrar, fechar (e recusados ficam aqui também)
-const ZONAS = [
-  { id:'externo',    label:'Externo',    icon:'ti-truck-delivery', cor:'blue',   etapas:['ag_agendamento','agendamento','entrega'] },
-  { id:'interno',    label:'Interno',    icon:'ti-tool',           cor:'yellow', etapas:['recebido','diagnostico','oficina','teste_final'] },
-  { id:'financeiro', label:'Financeiro', icon:'ti-cash-banknote',  cor:'green',  etapas:['orcamento','pagamento','concluido'] },
 ]
 
 // Cor de etapa traduzida para hex (respeita modo dark/claro)
@@ -613,7 +607,7 @@ function Login({ dark, T }) {
 
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:T.bg, fontFamily:'system-ui,sans-serif', padding:'1rem' }}>
-      <div style={{ background:T.card, padding:'2rem', borderRadius:14, width:'100%', maxWidth:340, border:`1px solid ${T.border}`, boxShadow: dark?'0 8px 32px rgba(0,0,0,0.4)':'0 4px 24px rgba(0,0,0,0.08)' }}>
+      <div className="idemaq-card" style={{ background:T.card, padding:'2rem', borderRadius:14, width:'100%', maxWidth:340, border:`1px solid ${T.border}`, boxShadow: dark?'0 8px 32px rgba(0,0,0,0.4)':'0 4px 24px rgba(0,0,0,0.08)' }}>
         <div style={{ textAlign:'center', marginBottom:'1.75rem' }}>
           <div style={{ width:52, height:52, background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, borderRadius:13, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
             <i className="ti ti-tool" style={{ fontSize:24, color:'#fff' }} aria-hidden="true" />
@@ -1144,23 +1138,13 @@ function PainelMobile({ T, dark }) {
 function OSMobile({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const admin = isAdmin(user)
-  const [zona, setZona]       = useState('todos')
-  const [tiposAtivos, setTiposAtivos] = useState(new Set(['atendimento','fabricacao','venda']))
+  const [tipo, setTipo]       = useState('todos')
   const [filtro, setFiltro]   = useState('todas')
   const [busca, setBusca]     = useState('')
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
 
-  // Universo: OS dos tipos ativos. Se zona != todos, filtra também pelas etapas da zona.
-  const zonaCfg = ZONAS.find(z => z.id === zona)
-  const universo = OS_MOCK.filter(o => {
-    if (!tiposAtivos.has(o.tipo)) return false
-    if (zona === 'todos') return true
-    return zonaCfg?.etapas.some(eid => {
-      const eu = ETAPAS_TODOS.find(et => et.id === eid)
-      return eu?.match?.[o.tipo] === o.etapa
-    })
-  })
+  const universo = tipo === 'todos' ? OS_MOCK : OS_MOCK.filter(o => o.tipo === tipo)
   const buscando = busca.trim().length > 0
 
   // Esconde Pagamento/Concluído para não-admin
@@ -1188,8 +1172,8 @@ function OSMobile({ T, dark, user }) {
 
   const activeClr = dark ? P.blue : P.blueDark
   const abas = [
-    { id:'todos', label:'Todos', icon:'ti-layout-kanban', cor:'blue' },
-    ...ZONAS.map(z => ({ id:z.id, label:z.label, icon:z.icon, cor:z.cor }))
+    { id:'todos',       label:'Todos',       icon:'ti-layout-kanban',     cor:'blue' },
+    ...Object.entries(TIPOS_OS).map(([id, cfg]) => ({ id, label:cfg.label, icon:cfg.icon, cor:cfg.cor }))
   ]
 
   return (
@@ -1198,11 +1182,12 @@ function OSMobile({ T, dark, user }) {
         {/* Seletor de tipo */}
         <div style={{ display:'flex', gap:4, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, overflowX:'auto' }}>
           {abas.map(a => {
-            const ativo = a.id === zona
-            const c = corEtapa(a.cor, dark)
+            const ativo = a.id === tipo
+            const azul = cor(P.blue, P.blueDark)
+            const azulBg = cor('#0d2035', '#e6f1fb')
             return (
-              <button key={a.id} onClick={()=>setZona(a.id)}
-                style={{ flex:'1 0 auto', minWidth:0, padding:'8px 8px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(a.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:11.5, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:4, whiteSpace:'nowrap' }}>
+              <button key={a.id} onClick={()=>setTipo(a.id)}
+                style={{ flex:'1 0 auto', minWidth:0, padding:'8px 8px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:4, whiteSpace:'nowrap' }}>
                 <i className={`ti ${a.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
                 {a.label}
               </button>
@@ -1223,29 +1208,7 @@ function OSMobile({ T, dark, user }) {
           </button>
         </div>
 
-        {/* Chips de tipo de OS (toggle múltiplo) */}
-        <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:2 }}>
-          {Object.entries(TIPOS_OS).map(([id, cfg]) => {
-            const ativo = tiposAtivos.has(id)
-            const c = corEtapa(cfg.cor, dark)
-            return (
-              <button key={id} onClick={()=>{
-                setTiposAtivos(s => {
-                  const n = new Set(s)
-                  if (n.has(id)) n.delete(id); else n.add(id)
-                  if (n.size === 0) return s
-                  return n
-                })
-              }}
-                style={{ padding:'6px 13px', borderRadius:20, border:`1px solid ${ativo?c:T.border}`, background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:12, cursor:'pointer', whiteSpace:'nowrap', fontWeight:ativo?600:400, display:'inline-flex', alignItems:'center', gap:4 }}>
-                <i className={`ti ${cfg.icon}`} style={{ fontSize:12 }} aria-hidden="true" />
-                {cfg.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Chips de filtro de status */}
+        {/* Chips de filtro */}
         <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:2 }}>
           {[['todas',`Todas · ${osList.length}`],['vencido','Atrasadas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v,l]) => (
             <button key={v} onClick={()=>setFiltro(v)}
@@ -1263,7 +1226,7 @@ function OSMobile({ T, dark, user }) {
         {osList.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} onClick={()=>setDetalhe(os)} />)}
       </div>
 
-      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" mobile />}
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo==='todos'?'atendimento':tipo} mobile />}
       {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} user={user} onClose={()=>setDetalhe(null)} mobile />}
     </>
   )
@@ -1279,20 +1242,22 @@ function OSCardMobile({ os, T, dark, onClick }) {
   const etapaBgC = bgEtapa(etapa?.cor || 'neutro', dark)
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
-  const respId = responsavelAtual(os)
-  const func = funcPorId(respId)
   const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
   const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' · ')
   const pagoTotal = estaPagaTotal(os)
   const pagoParcial = !pagoTotal && estaPagaParcial(os)
 
+  const baseStyle = dark
+    ? { background:T.card, border:`1px solid ${T.border}`, borderLeft:`3px solid ${tipoCor}` }
+    : { background:T.card, border:'none', borderLeft:`3px solid ${tipoCor}`, boxShadow:T.shadow }
+
   return (
     <div onClick={onClick}
-      style={{ background:T.card, borderRadius:12, padding:'12px 14px', border:`1px solid ${T.border}`, borderLeft:`3px solid ${tipoCor}`, cursor:'pointer' }}>
+      style={{ ...baseStyle, borderRadius:12, padding:'12px 14px', cursor:'pointer' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <i className={`ti ${tipoCfg.icon}`} style={{ fontSize:12, color:tipoCor }} aria-hidden="true" title={tipoCfg.label} />
-          <span style={{ fontSize:12, fontWeight:700, color:T.textDim }}>#{os.numero}</span>
+          <span style={{ fontSize:12, fontWeight:700, color:T.textMuted }}>#{os.numero}</span>
           {os.garantia && (
             <span style={{ padding:'1px 6px', borderRadius:8, background:cor('#0d2035','#e6f1fb'), color:cor(P.blue,P.blueDark), fontSize:9, fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
               <i className="ti ti-shield-check" style={{ fontSize:10 }} aria-hidden="true" />Garantia
@@ -1322,7 +1287,7 @@ function OSCardMobile({ os, T, dark, onClick }) {
       )}
 
       <div style={{ padding:'6px 8px', background:T.cardAlt, borderRadius:6, marginBottom:8 }}>
-        <div style={{ fontSize:11.5, color:T.textSecondary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{linhaEquip || os.equipamento}</div>
+        <div style={{ fontSize:11.5, color:T.textPrimary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{linhaEquip || os.equipamento}</div>
         {os.serie && <div style={{ fontSize:10, color:T.textDim, marginTop:1, fontFamily:'ui-monospace, monospace' }}>S/N: {os.serie}</div>}
       </div>
 
@@ -1331,7 +1296,7 @@ function OSCardMobile({ os, T, dark, onClick }) {
           <span style={{ fontSize:11, padding:'3px 9px', borderRadius:6, background:etapaBgC, color:etapaC, fontWeight:600, whiteSpace:'nowrap' }}>{etapa?.curto || os.etapa}</span>
           <span style={{ fontSize:11, color:T.textMuted, whiteSpace:'nowrap' }}>· {fmtPrazoCurto(os.prazo)}</span>
         </div>
-        {func && <span title={func.nome} style={{ width:20, height:20, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:9.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${func.cor}44` }}>{func.apelido}</span>}
+        {os.valor > 0 && <span style={{ fontSize:11.5, color:T.textPrimary, fontWeight:700 }}>R$ {(os.valor - (os.desconto||0)).toLocaleString('pt-BR')}</span>}
       </div>
     </div>
   )
@@ -1342,8 +1307,7 @@ function OS({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const role = getRole(user)
   const admin = isAdmin(user)
-  const [zona, setZona]   = useState('todos') // 'todos' | 'externo' | 'interno' | 'financeiro'
-  const [tiposAtivos, setTiposAtivos] = useState(new Set(['atendimento','fabricacao','venda']))
+  const [tipo, setTipo]   = useState('todos')
   const [busca, setBusca] = useState('')
   const [funcionario, setFuncionario] = useState('todos')
   const [statusF, setStatusF]         = useState('todos')
@@ -1368,12 +1332,15 @@ function OS({ T, dark, user }) {
   function moverOS(numero, etapaAlvo) {
     const os = osList.find(o => o.numero === numero)
     if (!os) return
-    // etapaAlvo é sempre um ID unificado (ETAPAS_TODOS) — traduz pra etapa real do tipo da OS
-    const etapaUnif = ETAPAS_TODOS.find(e => e.id === etapaAlvo)
-    const alvoReal = etapaUnif?.match?.[os.tipo]
-    if (!alvoReal) {
-      notify('erro', `Esta coluna não aceita OS de ${TIPOS_OS[os.tipo].label}`)
-      return
+    // No modo "Todos", etapaAlvo é um ID unificado — traduz pra etapa do tipo da OS
+    let alvoReal = etapaAlvo
+    if (tipo === 'todos') {
+      const etapaUnif = ETAPAS_TODOS.find(e => e.id === etapaAlvo)
+      alvoReal = etapaUnif?.match?.[os.tipo]
+      if (!alvoReal) {
+        notify('erro', `Esta coluna não aceita OS de ${TIPOS_OS[os.tipo].label}`)
+        return
+      }
     }
     const r = podeMoverOS(os, alvoReal)
     if (!r.ok) { notify('erro', r.motivo); return }
@@ -1396,17 +1363,14 @@ function OS({ T, dark, user }) {
     setOsList(prev => prev.map(o => o.numero === numero ? {...o, aguardando_peca: !o.aguardando_peca} : o))
   }
 
-  // Etapas exibidas: ETAPAS_TODOS filtradas pela zona escolhida (e role do usuário)
-  const zonaCfg = ZONAS.find(z => z.id === zona)
-  const etapasZona = zona === 'todos' ? ETAPAS_TODOS : ETAPAS_TODOS.filter(e => zonaCfg?.etapas.includes(e.id))
-  const etapasVisiveis = etapasZona.filter(e => admin || !e.adminOnly)
+  const etapasAtivas = tipo === 'todos' ? ETAPAS_TODOS : TIPOS_OS[tipo].etapas
+  const etapasVisiveis = etapasAtivas.filter(e => admin || !e.adminOnly)
 
-  const corPaleta = zonaCfg?.cor || 'blue'
+  const corPaleta = tipo === 'todos' ? 'blue' : TIPOS_OS[tipo].cor
   const tipoCor = corEtapa(corPaleta, dark)
   const tipoBg  = bgEtapa(corPaleta, dark)
 
-  // Universo de OS: filtra pelos tipos ativos (toggle múltiplo)
-  const todasUniverso = osList.filter(o => tiposAtivos.has(o.tipo))
+  const todasUniverso = tipo === 'todos' ? osList : osList.filter(o => o.tipo === tipo)
   const buscando = busca.trim().length > 0
 
   const osFiltradas = todasUniverso
@@ -1435,13 +1399,17 @@ function OS({ T, dark, user }) {
       (o.modelo||'').toLowerCase().includes(busca.toLowerCase()) ||
       (o.serie||'').toLowerCase().includes(busca.toLowerCase()))
 
-  // Distribuir por coluna — sempre via match (visão unificada)
+  // Distribuir por coluna
   const porEtapa = {}
   etapasVisiveis.forEach(e => porEtapa[e.id] = [])
   osFiltradas.forEach(os => {
     if (os.etapa === 'recusado') return
-    const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
-    if (ec) porEtapa[ec.id].push(os)
+    if (tipo === 'todos') {
+      const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
+      if (ec) porEtapa[ec.id].push(os)
+    } else {
+      if (porEtapa[os.etapa]) porEtapa[os.etapa].push(os)
+    }
   })
   // Aplicar ordenação por coluna
   Object.keys(porEtapa).forEach(k => { porEtapa[k] = ordenarColuna(k, porEtapa[k]) })
@@ -1451,8 +1419,8 @@ function OS({ T, dark, user }) {
   const totalAgPeca    = todasUniverso.filter(o => !!o.aguardando_peca).length
 
   const abas = [
-    { id:'todos', label:'Todos', icon:'ti-layout-kanban', cor:'blue' },
-    ...ZONAS.map(z => ({ id:z.id, label:z.label, icon:z.icon, cor:z.cor }))
+    { id:'todos',       label:'Todos',       icon:'ti-layout-kanban',     cor:'blue' },
+    ...Object.entries(TIPOS_OS).map(([id, cfg]) => ({ id, label:cfg.label, icon:cfg.icon, cor:cfg.cor }))
   ]
 
   // Scroll horizontal com wheel
@@ -1471,30 +1439,25 @@ function OS({ T, dark, user }) {
     <>
       <div style={{ padding:'1rem 1.1rem 1.1rem', display:'flex', flexDirection:'column', gap:10, flex:1, minHeight:0, overflow:'hidden', position:'relative' }}>
 
+        {/* Cor padrão dos filtros ativos — sempre azul */}
+        {(() => null)()}
+
         {/* Seletor de aba + Nova OS */}
         <div style={{ display:'flex', gap:10, alignItems:'stretch' }}>
           <div style={{ display:'flex', gap:6, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, flex:1 }}>
             {abas.map(a => {
-              const ativo = a.id === zona
-              const c = corEtapa(a.cor, dark)
-              // Contador: OS dos tipos ativos, ativas (não concluido/recusado),
-              // e que caiam nas etapas dessa zona (ou todas, se a aba for Todos)
-              const n = osList.filter(o => {
-                if (o.etapa === 'concluido' || o.etapa === 'recusado') return false
-                if (!tiposAtivos.has(o.tipo)) return false
-                if (a.id === 'todos') return true
-                const z = ZONAS.find(z => z.id === a.id)
-                return z?.etapas.some(eid => {
-                  const eu = ETAPAS_TODOS.find(et => et.id === eid)
-                  return eu?.match?.[o.tipo] === o.etapa
-                })
-              }).length
+              const ativo = a.id === tipo
+              const azul = cor(P.blue, P.blueDark)
+              const azulBg = cor('#0d2035', '#e6f1fb')
+              const n = a.id === 'todos'
+                ? osList.filter(o => o.etapa !== 'concluido' && o.etapa !== 'recusado').length
+                : osList.filter(o => o.tipo === a.id && o.etapa !== 'concluido' && o.etapa !== 'recusado').length
               return (
-                <button key={a.id} onClick={()=>setZona(a.id)}
-                  style={{ flex:1, padding:'10px 14px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(a.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:13, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'background .15s' }}>
+                <button key={a.id} onClick={()=>setTipo(a.id)}
+                  style={{ flex:1, padding:'10px 14px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:13, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'background .15s' }}>
                   <i className={`ti ${a.icon}`} style={{ fontSize:16 }} aria-hidden="true" />
                   <span>{a.label}</span>
-                  <span style={{ fontSize:11, fontWeight:700, padding:'1px 7px', borderRadius:10, background:ativo?c:T.cardAlt, color:ativo?(dark?'#0b1220':'#ffffff'):T.textMuted, minWidth:18, textAlign:'center' }}>{n}</span>
+                  <span style={{ fontSize:11, fontWeight:700, padding:'1px 7px', borderRadius:10, background:ativo?azul:T.cardAlt, color:ativo?(dark?'#0b1220':'#ffffff'):T.textMuted, minWidth:18, textAlign:'center' }}>{n}</span>
                 </button>
               )
             })}
@@ -1515,48 +1478,36 @@ function OS({ T, dark, user }) {
           </div>
           <div style={{ display:'flex', gap:5 }}>
             <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Resp.</span>
-            {[['todos','Todos'], ...FUNCIONARIOS.map(f=>[f.id, f.apelido])].map(([v,l]) => (
-              <button key={v} onClick={()=>setFuncionario(v)}
-                style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${funcionario===v?tipoCor:T.border}`, background:funcionario===v?tipoBg:'transparent', color:funcionario===v?tipoCor:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:funcionario===v?600:500 }}>{l}</button>
-            ))}
+            {[['todos','Todos'], ...FUNCIONARIOS.map(f=>[f.id, f.apelido])].map(([v,l]) => {
+              const ativo = funcionario === v
+              const azul = cor(P.blue, P.blueDark)
+              const azulBg = cor('#0d2035', '#e6f1fb')
+              return (
+                <button key={v} onClick={()=>setFuncionario(v)}
+                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500 }}>{l}</button>
+              )
+            })}
           </div>
           <div style={{ display:'flex', gap:5 }}>
             <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Prazo</span>
-            {[['todos','Todos'],['vencido','Vencidas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v,l]) => (
-              <button key={v} onClick={()=>setStatusF(v)}
-                style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${statusF===v?tipoCor:T.border}`, background:statusF===v?tipoBg:'transparent', color:statusF===v?tipoCor:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:statusF===v?600:500 }}>{l}</button>
-            ))}
-          </div>
-          <div style={{ display:'flex', gap:5 }}>
-            <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Tipo</span>
-            {Object.entries(TIPOS_OS).map(([id, cfg]) => {
-              const ativo = tiposAtivos.has(id)
-              const c = corEtapa(cfg.cor, dark)
+            {[['todos','Todos'],['vencido','Vencidas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v,l]) => {
+              const ativo = statusF === v
+              const azul = cor(P.blue, P.blueDark)
+              const azulBg = cor('#0d2035', '#e6f1fb')
               return (
-                <button key={id} onClick={()=>{
-                  setTiposAtivos(s => {
-                    const n = new Set(s)
-                    if (n.has(id)) n.delete(id); else n.add(id)
-                    if (n.size === 0) return s // não deixa zerar — pelo menos 1 tipo ativo
-                    return n
-                  })
-                }}
-                  title={ativo?`Ocultar ${cfg.label}`:`Mostrar ${cfg.label}`}
-                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?c:T.border}`, background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500, display:'flex', alignItems:'center', gap:4 }}>
-                  <i className={`ti ${cfg.icon}`} style={{ fontSize:12 }} aria-hidden="true" />
-                  {cfg.label}
-                </button>
+                <button key={v} onClick={()=>setStatusF(v)}
+                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500 }}>{l}</button>
               )
             })}
           </div>
           <button onClick={()=>setVerAgPeca(v=>!v)}
-            style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verAgPeca?'#ff9800':T.border}`, background:verAgPeca?(dark?'#3a2200':'#fff4e0'):'transparent', color:verAgPeca?'#ff9800':T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+            style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verAgPeca?cor(P.blue,P.blueDark):T.border}`, background:verAgPeca?cor('#0d2035','#e6f1fb'):'transparent', color:verAgPeca?cor(P.blue,P.blueDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
             <i className={`ti ${verAgPeca?'ti-package':'ti-package-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
             Aguard. peça ({totalAgPeca})
           </button>
-          {(zona === 'todos' || zona === 'financeiro') && (
+          {(tipo === 'todos' || tipo === 'atendimento') && (
             <button onClick={()=>setVerRecusados(v=>!v)}
-              style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verRecusados?cor(P.red,P.redDark):T.border}`, background:verRecusados?cor('#2a1515','#fde8e8'):'transparent', color:verRecusados?cor(P.red,P.redDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
+              style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verRecusados?cor(P.blue,P.blueDark):T.border}`, background:verRecusados?cor('#0d2035','#e6f1fb'):'transparent', color:verRecusados?cor(P.blue,P.blueDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
               <i className={`ti ${verRecusados?'ti-eye':'ti-eye-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
               Recusadas ({totalRecusados})
             </button>
@@ -1572,7 +1523,7 @@ function OS({ T, dark, user }) {
           style={{ flex:1, minHeight:0, overflowX:'auto', overflowY:'hidden', display:'flex', gap:10, paddingBottom:6 }}>
           {etapasVisiveis.map(etapa => (
             <KanbanCol key={etapa.id} etapa={etapa} osList={porEtapa[etapa.id]||[]} T={T} dark={dark} tipoCor={tipoCor}
-              modoTodos={true} onCardClick={setDetalhe}
+              modoTodos={tipo==='todos'} onCardClick={setDetalhe}
               arrastando={arrastando} colunaHover={colunaHover}
               onDragStart={(numero, etapaOrigem)=>setArrastando({numero, etapa:etapaOrigem})}
               onDragEnd={()=>{ setArrastando(null); setColunaHover(null) }}
@@ -1592,7 +1543,7 @@ function OS({ T, dark, user }) {
         )}
       </div>
 
-      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" />}
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo==='todos'?'atendimento':tipo} />}
       {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList}
         onClose={()=>setDetalhe(null)}
         onToggleAgPeca={()=>toggleAgPecaOS(osDetalheAtual.numero)}
@@ -1641,8 +1592,6 @@ function KanbanCard({ os, T, dark, tipoCor, modoTodos, onClick, onDragStart, onD
   const cor = (d, c) => dark ? d : c
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
-  const respId = responsavelAtual(os)
-  const func = funcPorId(respId)
   const tipoCfg = TIPOS_OS[os.tipo]
   const corLinha = modoTodos ? corEtapa(tipoCfg.cor, dark) : tipoCor
   const dual = os.etapa === 'oficina'
@@ -1658,24 +1607,35 @@ function KanbanCard({ os, T, dark, tipoCor, modoTodos, onClick, onDragStart, onD
     onDragStart?.()
   }
 
+  // Estilo: dark usa borda, light usa sombra (estilo Conta Azul)
+  const baseStyle = dark
+    ? { background:T.card, border:`1px solid ${T.border}`, borderLeft:`3px solid ${corLinha}` }
+    : { background:T.card, border:'none', borderLeft:`3px solid ${corLinha}`, boxShadow:T.shadow }
+
   return (
     <div onClick={onClick}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
-      style={{ background:T.card, borderRadius:8, padding:'10px 11px', border:`1px solid ${T.border}`, borderLeft:`3px solid ${corLinha}`, cursor:'grab', transition:'border-color .15s, transform .1s' }}
-      onMouseEnter={e=>{ e.currentTarget.style.borderColor = dark ? '#3a3a3e' : '#c8c8cc'; e.currentTarget.style.borderLeftColor = corLinha }}
-      onMouseLeave={e=>{ e.currentTarget.style.borderColor = T.border; e.currentTarget.style.borderLeftColor = corLinha }}
+      style={{ ...baseStyle, borderRadius:9, padding:'11px 12px', cursor:'grab', transition:'box-shadow .15s, border-color .15s, transform .15s' }}
+      onMouseEnter={e=>{
+        if (dark) { e.currentTarget.style.borderColor = '#3a3a3e'; e.currentTarget.style.borderLeftColor = corLinha }
+        else { e.currentTarget.style.boxShadow = T.shadowHover; e.currentTarget.style.transform = 'translateY(-1px)' }
+      }}
+      onMouseLeave={e=>{
+        if (dark) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.borderLeftColor = corLinha }
+        else { e.currentTarget.style.boxShadow = T.shadow; e.currentTarget.style.transform = 'translateY(0)' }
+      }}
       onMouseDown={e=>{ e.currentTarget.style.cursor = 'grabbing' }}
       onMouseUp={e=>{ e.currentTarget.style.cursor = 'grab' }}>
 
       {/* Header: nº OS + tipo + status do prazo */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5, gap:6 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6, gap:6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-          {modoTodos && <i className={`ti ${tipoCfg.icon}`} style={{ fontSize:11, color:corEtapa(tipoCfg.cor, dark) }} aria-hidden="true" title={tipoCfg.label} />}
-          <span style={{ fontSize:11, fontWeight:700, color:T.textDim }}>#{os.numero}</span>
+          {modoTodos && <i className={`ti ${tipoCfg.icon}`} style={{ fontSize:12, color:corEtapa(tipoCfg.cor, dark) }} aria-hidden="true" title={tipoCfg.label} />}
+          <span style={{ fontSize:11.5, fontWeight:700, color:T.textMuted }}>#{os.numero}</span>
           {os.garantia && (
-            <span title={`Garantia da OS #${os.os_origem_id}`} style={{ padding:'1px 6px', borderRadius:8, background:cor('#0d2035','#e6f1fb'), color:cor(P.blue,P.blueDark), fontSize:9, fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
+            <span title={`Garantia da OS #${os.os_origem_id}`} style={{ padding:'1px 6px', borderRadius:8, background:cor('#0d2035','#e6f1fb'), color:cor(P.blue,P.blueDark), fontSize:9.5, fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
               <i className="ti ti-shield-check" style={{ fontSize:10 }} aria-hidden="true" />Garantia
             </span>
           )}
@@ -1706,52 +1666,49 @@ function KanbanCard({ os, T, dark, tipoCor, modoTodos, onClick, onDragStart, onD
       </div>
 
       {/* Cliente + telefone */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:6, marginBottom:2 }}>
-        <div style={{ fontSize:12.5, fontWeight:700, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}>{os.cliente}</div>
-        {os.fone && <div style={{ fontSize:10.5, color:T.textMuted, whiteSpace:'nowrap' }}>{os.fone}</div>}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:6, marginBottom:3 }}>
+        <div style={{ fontSize:13, fontWeight:700, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}>{os.cliente}</div>
+        {os.fone && <div style={{ fontSize:11, color:T.textMuted, whiteSpace:'nowrap' }}>{os.fone}</div>}
       </div>
 
       {/* Endereço resumido */}
       {endResumido && (
-        <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:5, fontSize:11, color:T.textMuted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:7, fontSize:11.5, color:T.textMuted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
           <i className="ti ti-map-pin" style={{ fontSize:11, color:T.textDim, flexShrink:0 }} aria-hidden="true" />
           <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{endResumido}</span>
         </div>
       )}
 
       {/* Marca · modelo · S/N */}
-      <div style={{ padding:'5px 7px', background:T.cardAlt, borderRadius:5, marginBottom:7 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:T.textSecondary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+      <div style={{ padding:'6px 8px', background:T.cardAlt, borderRadius:6, marginBottom:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11.5, color:T.textPrimary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
           <i className="ti ti-device-mobile-cog" style={{ fontSize:11, color:T.textDim, flexShrink:0 }} aria-hidden="true" />
           <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{linhaEquip || os.equipamento}</span>
         </div>
         {os.serie && (
-          <div style={{ fontSize:10, color:T.textDim, marginTop:2, fontFamily:'ui-monospace, SFMono-Regular, monospace' }}>S/N: {os.serie}</div>
+          <div style={{ fontSize:10.5, color:T.textDim, marginTop:2, fontFamily:'ui-monospace, SFMono-Regular, monospace' }}>S/N: {os.serie}</div>
         )}
       </div>
 
       {/* Dual status */}
       {dual && (
-        <div style={{ display:'flex', gap:4, marginBottom:7 }}>
+        <div style={{ display:'flex', gap:4, marginBottom:8 }}>
           <SubStatus label="Limp." status={os.limpeza} T={T} dark={dark} />
           <SubStatus label="Manut." status={os.manutencao} T={T} dark={dark} />
         </div>
       )}
 
-      {/* Rodapé */}
+      {/* Rodapé (sem avatar — info de responsável fica só no histórico) */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
         <div style={{ display:'flex', alignItems:'center', gap:5 }}>
           <i className="ti ti-calendar" style={{ fontSize:11, color:T.textDim }} aria-hidden="true" />
-          <span style={{ fontSize:10.5, color:T.textMuted }}>{fmtPrazoCurto(os.prazo)}</span>
+          <span style={{ fontSize:11, color:T.textMuted }}>{fmtPrazoCurto(os.prazo)}</span>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-          {os.valor > 0 && <span style={{ fontSize:10.5, color:T.textMuted, fontWeight:600 }}>R$ {(os.valor - (os.desconto||0)).toLocaleString('pt-BR')}</span>}
-          {func && <span title={`Última ação: ${func.nome}`} style={{ width:19, height:19, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid ${func.cor}44` }}>{func.apelido}</span>}
-        </div>
+        {os.valor > 0 && <span style={{ fontSize:11.5, color:T.textPrimary, fontWeight:700 }}>R$ {(os.valor - (os.desconto||0)).toLocaleString('pt-BR')}</span>}
       </div>
 
       {os.horasNaEtapa && os.horasNaEtapa > 24 && (
-        <div style={{ marginTop:6, padding:'4px 7px', borderRadius:5, background:cor('#2a1515','#fde8e8'), color:cor(P.red,P.redDark), fontSize:10, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+        <div style={{ marginTop:7, padding:'4px 7px', borderRadius:5, background:cor('#2a1515','#fde8e8'), color:cor(P.red,P.redDark), fontSize:10, fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
           <i className="ti ti-alert-triangle" style={{ fontSize:11 }} aria-hidden="true" />
           {os.horasNaEtapa}h nesta etapa
         </div>
@@ -2101,7 +2058,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
 
 function FormSecao({ titulo, icon, T, children, opcional }) {
   return (
-    <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+    <div className="idemaq-card" style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
       <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
         <i className={`ti ${icon}`} style={{ fontSize:14 }} aria-hidden="true" />
         {titulo}
@@ -2267,7 +2224,7 @@ function OSDetalhe({ T, dark, os: osInicial, user, osBase, onClose, onToggleAgPe
               </div>
             )}            {/* Timeline do fluxo */}
             {!isRecusado && (
-              <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+              <div className="idemaq-card" style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
                 <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
                   <i className="ti ti-route" style={{ fontSize:14 }} aria-hidden="true" />
                   Fluxo da OS — etapa atual: <strong style={{color:tipoCor}}>{config.etapas[etapaAtual]?.label}</strong>
@@ -2301,7 +2258,7 @@ function OSDetalhe({ T, dark, os: osInicial, user, osBase, onClose, onToggleAgPe
 
             {/* Limpeza + Manutenção paralelos */}
             {os.etapa === 'oficina' && (
-              <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+              <div className="idemaq-card" style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
                 <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <i className="ti ti-tool" style={{ fontSize:14 }} aria-hidden="true" />
@@ -2343,7 +2300,7 @@ function OSDetalhe({ T, dark, os: osInicial, user, osBase, onClose, onToggleAgPe
 
             {/* Responsabilidade atual */}
             {func && (
-              <div style={{ background:T.cardAlt, borderRadius:9, padding:'10px 14px', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+              <div className="idemaq-card" style={{ background:T.cardAlt, borderRadius:9, padding:'10px 14px', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <span style={{ width:34, height:34, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:12, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1.5px solid ${func.cor}55` }}>{func.apelido}</span>
                   <div>
@@ -2360,7 +2317,7 @@ function OSDetalhe({ T, dark, os: osInicial, user, osBase, onClose, onToggleAgPe
 
             {/* Itens e financeiro */}
             {itens.length > 0 && (
-              <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+              <div className="idemaq-card" style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
                 <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
                   <i className="ti ti-list-details" style={{ fontSize:14 }} aria-hidden="true" />
                   Itens da OS
@@ -2485,7 +2442,7 @@ function OSDetalhe({ T, dark, os: osInicial, user, osBase, onClose, onToggleAgPe
 
 function DetCard({ icon, titulo, children, T }) {
   return (
-    <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+    <div className="idemaq-card" style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
       <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
         <i className={`ti ${icon}`} style={{ fontSize:14 }} aria-hidden="true" />
         {titulo}
@@ -2507,7 +2464,7 @@ function Linha({ label, valor, T, multi, chipCor, mono }) {
 }
 function DetMini({ icon, label, valor, T, cor }) {
   return (
-    <div style={{ background:T.cardAlt, borderRadius:9, padding:'11px 13px', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', gap:10 }}>
+    <div className="idemaq-card" style={{ background:T.cardAlt, borderRadius:9, padding:'11px 13px', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', gap:10 }}>
       <i className={`ti ${icon}`} style={{ fontSize:18, color:cor||T.textMuted }} aria-hidden="true" />
       <div style={{ minWidth:0 }}>
         <div style={{ fontSize:10, color:T.textDim, marginBottom:2, fontWeight:500, textTransform:'uppercase', letterSpacing:'.3px' }}>{label}</div>
@@ -2571,6 +2528,38 @@ export default function App() {
 
   useEffect(() => {
     document.body.style.background = T.bg
+  }, [dark])
+
+  // CSS global do estilo Conta Azul no light mode
+  useEffect(() => {
+    const styleId = 'idemaq-card-shadow'
+    let el = document.getElementById(styleId)
+    if (!el) {
+      el = document.createElement('style')
+      el.id = styleId
+      document.head.appendChild(el)
+    }
+    if (dark) {
+      el.textContent = '' // no dark mode usamos borders normais
+    } else {
+      el.textContent = `
+        /* Estilo "Conta Azul" no light mode: cards com sombra suave em vez de bordas */
+        .idemaq-card {
+          border-top: none !important;
+          border-right: none !important;
+          border-bottom: none !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+          transition: box-shadow .15s, transform .15s, border-color .15s;
+        }
+        .idemaq-card:not([data-no-left-border]) {
+          border-left: none !important;
+        }
+        .idemaq-card.idemaq-card-hover:hover {
+          box-shadow: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.06);
+          transform: translateY(-1px);
+        }
+      `
+    }
   }, [dark])
 
   useEffect(() => {
