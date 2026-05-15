@@ -1153,7 +1153,7 @@ function OSMobile({ T, dark, user }) {
   const [colIdx, setColIdx] = useState(0)
 
   // ── Filtros
-  const [zona, setZona] = useState('todos')
+  const [zona, setZona] = useState('externo')
   const [tiposAtivos, setTiposAtivos] = useState(() => new Set(Object.keys(TIPOS_OS)))
   function toggleTipo(id) {
     setTiposAtivos(prev => {
@@ -1179,12 +1179,32 @@ function OSMobile({ T, dark, user }) {
   const [sheet, setSheet]         = useState(null)
   const [verRecusadasList, setVerRecusadasList] = useState(false)
 
-  // ── Etapas visíveis (filtra por zona + permissão admin)
+  // ── Pull-to-refresh
+  const [refreshing, setRefreshing]   = useState(false)
+  const [pullDist, setPullDist]       = useState(0)
+  const pullStartY = useRef(null)
+  const scrollAreaRef = useRef(null)
+  function fazerRefresh() {
+    setRefreshing(true)
+    setPullDist(60)
+    // Em produção: re-fetch do Supabase aqui. Por ora, simula latência.
+    setTimeout(() => { setRefreshing(false); setPullDist(0) }, 700)
+  }
+
+  // ── Etapas visíveis
+  // No modo Lista: só as etapas da zona selecionada.
+  // No modo Painel: TODAS as etapas (independente da zona).
   const zonaCfg = ZONAS.find(z => z.id === zona)
-  const etapasZona = zona === 'todos'
-    ? ETAPAS_TODOS
-    : ETAPAS_TODOS.filter(e => zonaCfg.etapas.includes(e.id))
-  const etapasVisiveis = etapasZona.filter(e => admin || !e.adminOnly)
+  const etapasZonaLista = ETAPAS_TODOS.filter(e => zonaCfg.etapas.includes(e.id))
+  const etapasListaVisiveis  = etapasZonaLista.filter(e => admin || !e.adminOnly)
+  const etapasPainelVisiveis = ETAPAS_TODOS.filter(e => admin || !e.adminOnly)
+  // Compat (algumas partes do código antigo ainda usam etapasVisiveis)
+  const etapasVisiveis = modo === 'painel' ? etapasPainelVisiveis : etapasListaVisiveis
+
+  // Encontra a zona de uma etapa (pra navegação cruzada do Painel)
+  function zonaDaEtapa(etapaId) {
+    return (ZONAS.find(z => z.etapas.includes(etapaId)) || ZONAS[0]).id
+  }
 
   // ── Universo base (sem filtrar por etapa)
   const buscando = busca.trim().length > 0
@@ -1214,11 +1234,13 @@ function OSMobile({ T, dark, user }) {
       (o.serie||'').toLowerCase().includes(busca.toLowerCase()))
 
   // ── Distribuir por etapa (visão unificada via match)
+  // Sempre distribui em TODAS as etapas — o modo Lista filtra na renderização.
+  // Isso permite o Painel mostrar contagem correta mesmo trocando de zona.
   const porEtapa = {}
-  etapasVisiveis.forEach(e => porEtapa[e.id] = [])
+  etapasPainelVisiveis.forEach(e => porEtapa[e.id] = [])
   universoBase.forEach(o => {
     if (o.etapa === 'recusado') return
-    const ec = etapasVisiveis.find(e => e.match && e.match[o.tipo] === o.etapa)
+    const ec = etapasPainelVisiveis.find(e => e.match && e.match[o.tipo] === o.etapa)
     if (ec) porEtapa[ec.id].push(o)
   })
   // Concluído: só mês corrente (busca escapa)
@@ -1230,16 +1252,16 @@ function OSMobile({ T, dark, user }) {
     porEtapa[k].sort((a,b) => new Date(a.prazo) - new Date(b.prazo))
   })
 
-  // ── Recusadas (separadas)
-  const recusadasList = (verRecusados && (zona === 'todos' || zona === 'financeiro'))
+  // ── Recusadas (separadas) — só na zona financeiro
+  const recusadasList = (verRecusados && zona === 'financeiro')
     ? universoBase.filter(o => o.etapa === 'recusado')
     : []
 
-  // ── Etapa atual no modo coluna (clampada)
-  const totalCols = etapasVisiveis.length + (recusadasList.length > 0 ? 1 : 0)
+  // ── Etapa atual no modo Lista (clampada)
+  const totalCols = etapasListaVisiveis.length + (recusadasList.length > 0 ? 1 : 0)
   const colIdxClamp = Math.max(0, Math.min(colIdx, totalCols - 1))
-  const olharRecusadas = recusadasList.length > 0 && colIdxClamp === etapasVisiveis.length
-  const etapaAtual = olharRecusadas ? null : etapasVisiveis[colIdxClamp]
+  const olharRecusadas = recusadasList.length > 0 && colIdxClamp === etapasListaVisiveis.length
+  const etapaAtual = olharRecusadas ? null : etapasListaVisiveis[colIdxClamp]
   const osDaColuna = olharRecusadas
     ? recusadasList
     : (etapaAtual ? (porEtapa[etapaAtual.id] || []) : [])
@@ -1278,12 +1300,11 @@ function OSMobile({ T, dark, user }) {
   const azul = cor(P.blue, P.blueDark)
   const azulBg = cor('#0d2035', '#e6f1fb')
 
-  // ── Estados de filtros para badges
-  const zonaAtiva   = zona !== 'todos'
+  // ── Estados de filtros para badges (zona NÃO conta — virou navegação primária na barra do topo)
   const tiposAtivo  = tiposAtivos.size !== Object.keys(TIPOS_OS).length
   const prazoAtivo  = filtro !== 'todas'
   const respAtivo   = funcionario !== 'todos'
-  const totalFiltrosAtivos = (zonaAtiva?1:0) + (tiposAtivo?1:0) + (prazoAtivo?1:0) + (respAtivo?1:0) + (verAgPeca?1:0) + (verRecusados?1:0)
+  const totalFiltrosAtivos = (tiposAtivo?1:0) + (prazoAtivo?1:0) + (respAtivo?1:0) + (verAgPeca?1:0) + (verRecusados?1:0)
 
   // ── Cor da etapa atual (modo coluna)
   const corEtapaAtual = olharRecusadas
@@ -1322,18 +1343,22 @@ function OSMobile({ T, dark, user }) {
               </button>
             </div>
 
-            {/* Zonas: Todos / Externo / Interno / Financeiro (atalho direto) */}
-            <div style={{ display:'flex', gap:0, background:T.card, padding:3, borderRadius:9, border:`1px solid ${T.border}`, boxShadow: dark ? 'none' : T.shadow, flex:1, minWidth:0, overflowX:'auto' }}>
-              {[{id:'todos',label:'Todos'}, ...ZONAS.map(z=>({id:z.id, label:z.label}))].map(z => {
-                const ativo = z.id === zona
-                return (
-                  <button key={z.id} onClick={()=>{ setZona(z.id); setColIdx(0) }}
-                    style={{ flex:'1 1 0', minWidth:0, padding:'8px 6px', borderRadius:6, border:'none', cursor:'pointer', background: ativo ? azulBg : 'transparent', color: ativo ? azul : T.textMuted, fontSize:11.5, fontWeight: ativo ? 700 : 500, display:'flex', alignItems:'center', justifyContent:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {z.label}
-                  </button>
-                )
-              })}
-            </div>
+            {/* Zonas: Externo / Interno / Financeiro (atalho direto) — só no modo Lista */}
+            {modo === 'coluna' && (
+              <div style={{ display:'flex', gap:0, background:T.card, padding:3, borderRadius:9, border:`1px solid ${T.border}`, boxShadow: dark ? 'none' : T.shadow, flex:1, minWidth:0, overflowX:'auto' }}>
+                {ZONAS.map(z => {
+                  const ativo = z.id === zona
+                  return (
+                    <button key={z.id} onClick={()=>{ setZona(z.id); setColIdx(0) }}
+                      style={{ flex:'1 1 0', minWidth:0, padding:'8px 6px', borderRadius:6, border:'none', cursor:'pointer', background: ativo ? azulBg : 'transparent', color: ativo ? azul : T.textMuted, fontSize:11.5, fontWeight: ativo ? 700 : 500, display:'flex', alignItems:'center', justifyContent:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {z.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {/* Espaço flexível quando estiver no Painel (mantém alinhamento) */}
+            {modo === 'painel' && <div style={{ flex:1 }} />}
 
             {/* Filtros (só ícone) */}
             <button onClick={()=>setSheet('filtros')} aria-label="Mais filtros" title="Filtros"
@@ -1353,31 +1378,32 @@ function OSMobile({ T, dark, user }) {
               Toque numa etapa para ver as OS
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              {etapasVisiveis.map((e, i) => {
+              {etapasPainelVisiveis.map(e => {
                 const list = porEtapa[e.id] || []
+                // Filtra concluído por mês corrente (busca escapa)
+                const listFiltrada = (e.id === 'concluido' && !buscando) ? list.filter(dentroMesCorrente) : list
                 const etapaC = corEtapa(e.cor, dark)
                 const etapaBgC = bgEtapa(e.cor, dark)
+                // Ao tocar: vai pra Lista na zona correta, na coluna certa
+                function abrirEtapa() {
+                  const zAlvo = zonaDaEtapa(e.id)
+                  const etapasAlvo = ETAPAS_TODOS.filter(et => ZONAS.find(z=>z.id===zAlvo).etapas.includes(et.id)).filter(et => admin || !et.adminOnly)
+                  const idx = etapasAlvo.findIndex(et => et.id === e.id)
+                  setZona(zAlvo)
+                  setColIdx(Math.max(0, idx))
+                  setModo('coluna')
+                }
                 return (
-                  <button key={e.id} onClick={()=>{ setColIdx(i); setModo('coluna') }}
+                  <button key={e.id} onClick={abrirEtapa}
                     style={{ background:T.card, border:`1px solid ${T.border}`, borderTop:`4px solid ${etapaC}`, borderRadius:12, padding:'14px 12px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:4, minHeight:104, boxShadow: dark ? 'none' : T.shadow }}>
                     <div style={{ fontSize:11.5, color:T.textMuted, fontWeight:600, lineHeight:1.2, minHeight:28 }}>{e.label}</div>
-                    <div style={{ fontSize:32, fontWeight:800, color: list.length > 0 ? T.textPrimary : T.textDim, lineHeight:1, marginTop:4 }}>{list.length}</div>
-                    <div style={{ fontSize:10.5, color: list.length > 0 ? etapaC : T.textDim, fontWeight:600, marginTop:4, padding:'2px 7px', background: list.length > 0 ? etapaBgC : 'transparent', borderRadius:4, alignSelf:'flex-start' }}>
-                      {list.length === 0 ? 'Vazio' : list.length === 1 ? '1 OS' : `${list.length} OSs`}
+                    <div style={{ fontSize:32, fontWeight:800, color: listFiltrada.length > 0 ? T.textPrimary : T.textDim, lineHeight:1, marginTop:4 }}>{listFiltrada.length}</div>
+                    <div style={{ fontSize:10.5, color: listFiltrada.length > 0 ? etapaC : T.textDim, fontWeight:600, marginTop:4, padding:'2px 7px', background: listFiltrada.length > 0 ? etapaBgC : 'transparent', borderRadius:4, alignSelf:'flex-start' }}>
+                      {listFiltrada.length === 0 ? 'Vazio' : listFiltrada.length === 1 ? '1 OS' : `${listFiltrada.length} OSs`}
                     </div>
                   </button>
                 )
               })}
-              {recusadasList.length > 0 && (
-                <button onClick={()=>{ setColIdx(etapasVisiveis.length); setModo('coluna') }}
-                  style={{ background:T.card, border:`1px solid ${T.border}`, borderTop:`4px solid ${cor(P.red,P.redDark)}`, borderRadius:12, padding:'14px 12px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:4, minHeight:104, boxShadow: dark ? 'none' : T.shadow }}>
-                  <div style={{ fontSize:11.5, color:T.textMuted, fontWeight:600, minHeight:28 }}>Recusadas</div>
-                  <div style={{ fontSize:32, fontWeight:800, color:T.textPrimary, lineHeight:1, marginTop:4 }}>{recusadasList.length}</div>
-                  <div style={{ fontSize:10.5, color:cor(P.red,P.redDark), fontWeight:600, marginTop:4, padding:'2px 7px', background:cor('#2a1515','#fde8e8'), borderRadius:4, alignSelf:'flex-start' }}>
-                    {recusadasList.length === 1 ? '1 OS' : `${recusadasList.length} OSs`}
-                  </div>
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -1392,17 +1418,19 @@ function OSMobile({ T, dark, user }) {
                 <i className="ti ti-chevron-left" style={{ fontSize:18 }} aria-hidden="true" />
               </button>
 
-              <div style={{ flex:1, textAlign:'center', minWidth:0 }}>
-                <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'3px 10px', borderRadius:14, background: olharRecusadas ? cor('#2a1515','#fde8e8') : (etapaAtual ? bgEtapa(etapaAtual.cor, dark) : T.cardAlt) }}>
+              <button onClick={()=>setSheet('colunas')} aria-label="Trocar coluna" title="Tocar para selecionar coluna"
+                style={{ flex:1, minWidth:0, padding:'4px 8px', borderRadius:10, border:'none', background:'transparent', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:1 }}>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'4px 12px', borderRadius:14, background: olharRecusadas ? cor('#2a1515','#fde8e8') : (etapaAtual ? bgEtapa(etapaAtual.cor, dark) : T.cardAlt), maxWidth:'100%' }}>
                   <span style={{ width:8, height:8, borderRadius:'50%', background:corEtapaAtual, flexShrink:0 }} />
                   <span style={{ fontSize:14, fontWeight:700, color: corEtapaAtual, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                     {olharRecusadas ? 'Recusadas' : etapaAtual.label}
                   </span>
+                  <i className="ti ti-chevron-down" style={{ fontSize:14, color:corEtapaAtual, opacity:.75, flexShrink:0 }} aria-hidden="true" />
                 </div>
                 <div style={{ fontSize:11, color:T.textMuted, marginTop:3 }}>
                   {osDaColuna.length} {osDaColuna.length===1?'OS':'OSs'} · {colIdxClamp+1} de {totalCols}
                 </div>
-              </div>
+              </button>
 
               <button onClick={()=>setColIdx(Math.min(totalCols-1, colIdxClamp + 1))} disabled={colIdxClamp===totalCols-1} aria-label="Próxima coluna"
                 style={{ width:38, height:38, borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color: colIdxClamp===totalCols-1 ? T.textDim : T.textPrimary, cursor: colIdxClamp===totalCols-1?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: colIdxClamp===totalCols-1 ? .35 : 1, flexShrink:0, boxShadow: dark ? 'none' : T.shadow }}>
@@ -1418,9 +1446,46 @@ function OSMobile({ T, dark, user }) {
               ))}
             </div>
 
-            {/* Lista da coluna ativa (com swipe) */}
-            <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-              style={{ flex:1, overflowY:'auto', padding:'4px 1rem 80px', display:'flex', flexDirection:'column', gap:10 }}>
+            {/* Indicador de pull-to-refresh */}
+            {pullDist > 0 && (
+              <div style={{ height:pullDist, display:'flex', alignItems:'center', justifyContent:'center', color:azul, fontSize:11, fontWeight:600, flexShrink:0, transition: refreshing ? 'none' : 'height .2s', overflow:'hidden' }}>
+                <i className={`ti ${refreshing ? 'ti-loader-2' : (pullDist >= 60 ? 'ti-arrow-up' : 'ti-arrow-down')}`} style={{ fontSize:16, marginRight:6, animation: refreshing ? 'spin 1s linear infinite' : 'none' }} aria-hidden="true" />
+                {refreshing ? 'Atualizando…' : (pullDist >= 60 ? 'Solte para atualizar' : 'Puxe para atualizar')}
+              </div>
+            )}
+
+            {/* Lista da coluna ativa (com swipe lateral + pull-to-refresh) */}
+            <div ref={scrollAreaRef}
+              onTouchStart={(e)=>{
+                onTouchStart(e)
+                // Pull-to-refresh: só ativa se scroll está no topo
+                if (scrollAreaRef.current && scrollAreaRef.current.scrollTop <= 0) {
+                  pullStartY.current = e.touches[0].clientY
+                }
+              }}
+              onTouchMove={(e)=>{
+                onTouchMove(e)
+                if (pullStartY.current != null && !refreshing) {
+                  const dy = e.touches[0].clientY - pullStartY.current
+                  // Só conta se for um pull pra baixo e maior que movimento horizontal
+                  const dx = (touchEndX.current ?? touchStartX.current) - touchStartX.current
+                  if (dy > 0 && dy > Math.abs(dx) * 1.5 && scrollAreaRef.current.scrollTop <= 0) {
+                    setPullDist(Math.min(80, dy * 0.5))
+                  }
+                }
+              }}
+              onTouchEnd={()=>{
+                if (pullStartY.current != null) {
+                  if (pullDist >= 60 && !refreshing) {
+                    fazerRefresh()
+                  } else {
+                    setPullDist(0)
+                  }
+                  pullStartY.current = null
+                }
+                onTouchEnd()
+              }}
+              style={{ flex:1, overflowY:'auto', padding:'4px 1rem 80px', display:'flex', flexDirection:'column', gap:10, WebkitOverflowScrolling:'touch' }}>
               {osDaColuna.length === 0 ? (
                 <div style={{ background:T.card, border:`1px dashed ${T.border}`, borderRadius:12, padding:'2.5rem 1rem', textAlign:'center', color:T.textMuted, fontSize:13, marginTop:30 }}>
                   <i className="ti ti-clipboard-off" style={{ fontSize:38, display:'block', marginBottom:10, color:T.textDim }} aria-hidden="true" />
@@ -1449,29 +1514,45 @@ function OSMobile({ T, dark, user }) {
 
       </div>
 
+      {/* ─── BOTTOM SHEET de seleção de coluna ─── */}
+      {sheet === 'colunas' && (
+        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo={`Colunas de ${zonaCfg.label}`} icon={zonaCfg.icon}
+          subtitulo="Toque para ir direto à coluna">
+          {etapasListaVisiveis.map((e, i) => {
+            const ativo = i === colIdxClamp && !olharRecusadas
+            const etapaC = corEtapa(e.cor, dark)
+            const etapaBgC = bgEtapa(e.cor, dark)
+            const list = porEtapa[e.id] || []
+            const count = (e.id === 'concluido' && !buscando) ? list.filter(dentroMesCorrente).length : list.length
+            return (
+              <button key={e.id} onClick={()=>{ setColIdx(i); setSheet(null) }}
+                style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
+                <span style={{ width:10, height:10, borderRadius:'50%', background:etapaC, flexShrink:0 }} />
+                <span style={{ flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{e.label}</span>
+                <span style={{ fontSize:11.5, fontWeight:700, padding:'3px 9px', borderRadius:11, background:etapaBgC, color:etapaC, minWidth:24, textAlign:'center' }}>{count}</span>
+                {ativo && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
+              </button>
+            )
+          })}
+          {recusadasList.length > 0 && (
+            <button onClick={()=>{ setColIdx(etapasListaVisiveis.length); setSheet(null) }}
+              style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${olharRecusadas?azul:T.border}`, background:olharRecusadas?azulBg:T.cardAlt, color:olharRecusadas?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:olharRecusadas?700:500 }}>
+              <span style={{ width:10, height:10, borderRadius:'50%', background:cor(P.red,P.redDark), flexShrink:0 }} />
+              <span style={{ flex:1 }}>Recusadas</span>
+              <span style={{ fontSize:11.5, fontWeight:700, padding:'3px 9px', borderRadius:11, background:cor('#2a1515','#fde8e8'), color:cor(P.red,P.redDark), minWidth:24, textAlign:'center' }}>{recusadasList.length}</span>
+              {olharRecusadas && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
+            </button>
+          )}
+        </BottomSheet>
+      )}
+
       {/* ─── BOTTOM SHEET de filtros (todos em um) ─── */}
       {sheet === 'filtros' && (
         <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Filtros" icon="ti-filter"
           subtitulo="Configure como ver suas OS">
 
-          {/* ZONA */}
-          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginBottom:4 }}>Zona</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {[{id:'todos',label:'Todos',icon:'ti-layout-kanban'}, ...ZONAS.map(z=>({id:z.id,label:z.label,icon:z.icon}))].map(opt => {
-              const ativo = opt.id === zona
-              return (
-                <button key={opt.id} onClick={()=>{ setZona(opt.id); setColIdx(0) }}
-                  style={{ flex:'1 1 calc(50% - 3px)', padding:'11px 12px', borderRadius:9, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:7, textAlign:'left', fontSize:13, fontWeight:ativo?700:500 }}>
-                  <i className={`ti ${opt.icon}`} style={{ fontSize:15 }} aria-hidden="true" />
-                  <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{opt.label}</span>
-                  {ativo && <i className="ti ti-check" style={{ fontSize:14, marginLeft:'auto' }} aria-hidden="true" />}
-                </button>
-              )
-            })}
-          </div>
-
           {/* TIPOS */}
-          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:12, marginBottom:4 }}>Tipos de OS</div>
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginBottom:4 }}>Tipos de OS</div>
           {Object.entries(TIPOS_OS).map(([id, cfg]) => {
             const ativo = tiposAtivos.has(id)
             return (
@@ -1528,7 +1609,7 @@ function OSMobile({ T, dark, user }) {
               <div style={{ position:'absolute', top:2, left:verAgPeca?16:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.3)', transition:'left .15s' }} />
             </div>
           </button>
-          {(zona === 'todos' || zona === 'financeiro') && (
+          {zona === 'financeiro' && (
             <button onClick={()=>setVerRecusados(v=>!v)}
               style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:`1px solid ${verRecusados?azul:T.border}`, background:verRecusados?azulBg:T.cardAlt, color:verRecusados?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, fontSize:13.5, fontWeight:verRecusados?700:500 }}>
               <i className="ti ti-eye" style={{ fontSize:18 }} aria-hidden="true" />
@@ -1541,7 +1622,7 @@ function OSMobile({ T, dark, user }) {
 
           {/* LIMPAR */}
           {totalFiltrosAtivos > 0 && (
-            <button onClick={()=>{ setZona('todos'); setTiposAtivos(new Set(Object.keys(TIPOS_OS))); setFiltro('todas'); setFuncionario('todos'); setVerAgPeca(false); setVerRecusados(false); setColIdx(0) }}
+            <button onClick={()=>{ setTiposAtivos(new Set(Object.keys(TIPOS_OS))); setFiltro('todas'); setFuncionario('todos'); setVerAgPeca(false); setVerRecusados(false) }}
               style={{ width:'100%', padding:'12px', marginTop:12, borderRadius:10, border:`1px solid ${T.border}`, background:T.cardAlt, color:T.textPrimary, cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
               <i className="ti ti-x" style={{ fontSize:14 }} aria-hidden="true" />
               Limpar todos os filtros
@@ -2940,9 +3021,12 @@ export default function App() {
       document.head.appendChild(el)
     }
     if (dark) {
-      el.textContent = '' // no dark mode usamos borders normais
+      el.textContent = `
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `
     } else {
       el.textContent = `
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         /* Estilo "Conta Azul" no light mode: cards com sombra suave em vez de bordas */
         .idemaq-card {
           border-top: none !important;
