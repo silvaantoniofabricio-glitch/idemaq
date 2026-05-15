@@ -766,7 +766,7 @@ function BottomNav({ pagina, setPagina, sair, T, dark }) {
   const items = MENUS.filter(m=>MENUS_MOBILE.includes(m.id))
   const activeClr = dark ? P.blue : P.blueDark
   return (
-    <div style={{ position:'fixed', bottom:0, left:0, right:0, background:T.card, borderTop:`1px solid ${T.border}`, display:'flex', zIndex:100, height:60 }}>
+    <div style={{ background:T.card, borderTop:`1px solid ${T.border}`, display:'flex', zIndex:100, height:60, flexShrink:0, paddingBottom:'env(safe-area-inset-bottom, 0px)' }}>
       {items.map(m=>(
         <button key={m.id} onClick={()=>setPagina(m.id)}
           style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, background:'transparent', border:'none', cursor:'pointer', color:pagina===m.id?activeClr:T.textMuted, position:'relative' }}>
@@ -1085,7 +1085,7 @@ function PainelMobile({ T, dark }) {
   const card = { background:T.card, borderRadius:12, padding:'14px 15px', border:`1px solid ${T.border}` }
 
   return (
-    <div style={{ padding:'1rem', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10, paddingBottom:70 }}>
+    <div style={{ padding:'1rem', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10, paddingBottom:16 }}>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
         {kpis.map((k,i) => (
           <div key={i} style={{ background:T.card, borderRadius:12, border:`1px solid ${T.border}`, overflow:'hidden' }}>
@@ -1364,7 +1364,7 @@ function OSMobile({ T, dark, user }) {
 
         {/* ─── MODO PAINEL: grid 2 colunas com cards-resumo ─── */}
         {modo === 'painel' && (
-          <div style={{ flex:1, overflowY:'auto', padding:'12px 1rem 80px' }}>
+          <div style={{ flex:1, overflowY:'auto', padding:'12px 1rem 16px' }}>
             <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginBottom:10, paddingLeft:2 }}>
               Toque numa etapa para ver as OS
             </div>
@@ -1442,7 +1442,7 @@ function OSMobile({ T, dark, user }) {
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              style={{ flex:1, overflowY:'auto', padding:'4px 1rem 80px', display:'flex', flexDirection:'column', gap:10, WebkitOverflowScrolling:'touch' }}>
+              style={{ flex:1, overflowY:'auto', padding:'4px 1rem 16px', display:'flex', flexDirection:'column', gap:10, WebkitOverflowScrolling:'touch' }}>
               {osDaColuna.length === 0 ? (
                 <div style={{ background:T.card, border:`1px dashed ${T.border}`, borderRadius:12, padding:'2.5rem 1rem', textAlign:'center', color:T.textMuted, fontSize:13, marginTop:30 }}>
                   <i className="ti ti-clipboard-off" style={{ fontSize:38, display:'block', marginBottom:10, color:T.textDim }} aria-hidden="true" />
