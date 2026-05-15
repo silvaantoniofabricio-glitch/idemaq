@@ -1528,24 +1528,6 @@ function OS({ T, dark, user }) {
           </button>
         </div>
 
-        {/* Toggle de tipos — quais fluxos aparecem (multi-seleção, mínimo 1) */}
-        <div style={{ background:T.card, borderRadius:10, border:`1px solid ${T.border}`, padding:'8px 12px', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
-          <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Tipos</span>
-          {Object.entries(TIPOS_OS).map(([id, cfg]) => {
-            const ativo = tiposAtivos.has(id)
-            const azul = cor(P.blue, P.blueDark)
-            const azulBg = cor('#0d2035', '#e6f1fb')
-            return (
-              <button key={id} onClick={()=>toggleTipo(id)}
-                style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500, display:'flex', alignItems:'center', gap:5 }}>
-                <i className={`ti ${cfg.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
-                {cfg.label}
-              </button>
-            )
-          })}
-          <span style={{ marginLeft:6, fontSize:10.5, color:T.textDim, fontStyle:'italic' }}>clique para mostrar/ocultar</span>
-        </div>
-
         {/* Filtros */}
         <div style={{ background:T.card, borderRadius:10, border:`1px solid ${T.border}`, padding:'10px 12px', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:220, maxWidth:340 }}>
@@ -1589,6 +1571,22 @@ function OS({ T, dark, user }) {
               Recusadas ({totalRecusados})
             </button>
           )}
+          <div style={{ display:'flex', gap:5, alignItems:'center' }}>
+            <span style={{ fontSize:11, color:T.textMuted, marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Tipos</span>
+            {Object.entries(TIPOS_OS).map(([id, cfg]) => {
+              const ativo = tiposAtivos.has(id)
+              const azul = cor(P.blue, P.blueDark)
+              const azulBg = cor('#0d2035', '#e6f1fb')
+              return (
+                <button key={id} onClick={()=>toggleTipo(id)}
+                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500, display:'flex', alignItems:'center', gap:5 }}
+                  title={ativo ? `Ocultar ${cfg.label}` : `Mostrar ${cfg.label}`}>
+                  <i className={`ti ${cfg.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
+                  {cfg.label}
+                </button>
+              )
+            })}
+          </div>
           <span style={{ marginLeft:'auto', fontSize:11, color:T.textDim, fontWeight:500, display:'flex', alignItems:'center', gap:6 }}>
             {buscando && <span style={{ padding:'1px 7px', borderRadius:8, background:cor('#0d2035','#e6f1fb'), color:cor(P.blue,P.blueDark), fontSize:10, fontWeight:700 }}>Busca ativa — vendo histórico completo</span>}
             {totalKanban} OS {!admin && '· você não vê Pagamento e Concluído'}
