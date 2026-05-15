@@ -1142,10 +1142,18 @@ function PainelMobile({ T, dark }) {
 }
 
 // ─── OS Mobile ─────────────────────────────────────────────────────────────
+// Reescrito do zero com referência Trello: 2 modos (Painel + Coluna) + swipe lateral.
+// Totalmente isolado do OS desktop. Compartilha apenas mocks/helpers/configs.
 function OSMobile({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const admin = isAdmin(user)
-  const [zona, setZona]       = useState('todos')
+
+  // ── Modo de visualização: 'coluna' (1 etapa por vez + swipe) ou 'painel' (visão geral)
+  const [modo, setModo] = useState('coluna')
+  const [colIdx, setColIdx] = useState(0)
+
+  // ── Filtros
+  const [zona, setZona] = useState('todos')
   const [tiposAtivos, setTiposAtivos] = useState(() => new Set(Object.keys(TIPOS_OS)))
   function toggleTipo(id) {
     setTiposAtivos(prev => {
@@ -1159,39 +1167,36 @@ function OSMobile({ T, dark, user }) {
       return next
     })
   }
-  const [filtro, setFiltro]   = useState('todas')
-  const [busca, setBusca]     = useState('')
+  const [filtro, setFiltro]             = useState('todas')
   const [funcionario, setFuncionario]   = useState('todos')
   const [verAgPeca, setVerAgPeca]       = useState(false)
   const [verRecusados, setVerRecusados] = useState(false)
+  const [busca, setBusca]               = useState('')
+
+  // ── Modais e sheets
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
-  // Bottom sheet aberto — null, 'zona', 'tipos', 'prazo', 'mais'
-  const [sheet, setSheet] = useState(null)
+  const [sheet, setSheet]         = useState(null)
+  const [verRecusadasList, setVerRecusadasList] = useState(false)
 
-  // Universo: filtra pelos tipos ativos, depois pela zona selecionada via match
+  // ── Etapas visíveis (filtra por zona + permissão admin)
   const zonaCfg = ZONAS.find(z => z.id === zona)
-  const etapasDaZona = zona === 'todos' ? ETAPAS_TODOS : ETAPAS_TODOS.filter(e => zonaCfg.etapas.includes(e.id))
-  const universo = OS_MOCK
-    .filter(o => tiposAtivos.has(o.tipo))
-    .filter(o => o.etapa === 'recusado'
-      ? (verRecusados && (zona==='todos' || zona==='financeiro'))
-      : etapasDaZona.some(e => e.match && e.match[o.tipo] === o.etapa))
-  const buscando = busca.trim().length > 0
+  const etapasZona = zona === 'todos'
+    ? ETAPAS_TODOS
+    : ETAPAS_TODOS.filter(e => zonaCfg.etapas.includes(e.id))
+  const etapasVisiveis = etapasZona.filter(e => admin || !e.adminOnly)
 
-  // Esconde Pagamento/Concluído para não-admin
-  const osList = universo
+  // ── Universo base (sem filtrar por etapa)
+  const buscando = busca.trim().length > 0
+  const universoBase = OS_MOCK
+    .filter(o => tiposAtivos.has(o.tipo))
     .filter(o => admin || (o.etapa !== 'pagamento' && o.etapa !== 'concluido'))
-    // Aguard. peça
     .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
-    // Responsável (passou por essa OS)
     .filter(o => {
       if (funcionario === 'todos') return true
       const resp = responsavelAtual(o)
       return resp === funcionario || (o.historico||[]).some(h => h.funcionario === funcionario)
     })
-    // Concluídas: só mês corrente, exceto durante busca
-    .filter(o => buscando ? true : dentroMesCorrente(o))
     .filter(o => {
       const s = calcStatusPrazo(o.prazo, o.etapa)
       if (filtro === 'todas')    return true
@@ -1207,201 +1212,324 @@ function OSMobile({ T, dark, user }) {
       (o.marca||'').toLowerCase().includes(busca.toLowerCase()) ||
       (o.modelo||'').toLowerCase().includes(busca.toLowerCase()) ||
       (o.serie||'').toLowerCase().includes(busca.toLowerCase()))
-    .sort((a,b) => new Date(a.prazo) - new Date(b.prazo))
 
-  // Labels dos botões de filtro (mostram o estado atual)
-  const labelZona = zona === 'todos' ? 'Todos' : (zonaCfg?.label || 'Todos')
-  const iconZona  = zona === 'todos' ? 'ti-layout-kanban' : (zonaCfg?.icon || 'ti-layout-kanban')
-  const labelTipos = tiposAtivos.size === Object.keys(TIPOS_OS).length
-    ? `Tipos · todos`
-    : `Tipos · ${tiposAtivos.size}/${Object.keys(TIPOS_OS).length}`
-  const labelPrazo = filtro === 'todas' ? 'Prazo · todos'
-    : filtro === 'vencido' ? 'Atrasadas'
-    : filtro === 'hoje'    ? 'Hoje/amanhã'
-    : 'Em dia'
-  // Quantidade de filtros avançados ativos (resp + agPeca + recusados)
-  const maisAtivos = (funcionario !== 'todos' ? 1 : 0) + (verAgPeca ? 1 : 0) + (verRecusados ? 1 : 0)
-  // Algum filtro ativo?
-  const zonaAtiva  = zona !== 'todos'
-  const tiposAtivo = tiposAtivos.size !== Object.keys(TIPOS_OS).length
-  const prazoAtivo = filtro !== 'todas'
+  // ── Distribuir por etapa (visão unificada via match)
+  const porEtapa = {}
+  etapasVisiveis.forEach(e => porEtapa[e.id] = [])
+  universoBase.forEach(o => {
+    if (o.etapa === 'recusado') return
+    const ec = etapasVisiveis.find(e => e.match && e.match[o.tipo] === o.etapa)
+    if (ec) porEtapa[ec.id].push(o)
+  })
+  // Concluído: só mês corrente (busca escapa)
+  if (porEtapa['concluido'] && !buscando) {
+    porEtapa['concluido'] = porEtapa['concluido'].filter(dentroMesCorrente)
+  }
+  // Sort por prazo dentro de cada coluna
+  Object.keys(porEtapa).forEach(k => {
+    porEtapa[k].sort((a,b) => new Date(a.prazo) - new Date(b.prazo))
+  })
 
+  // ── Recusadas (separadas)
+  const recusadasList = (verRecusados && (zona === 'todos' || zona === 'financeiro'))
+    ? universoBase.filter(o => o.etapa === 'recusado')
+    : []
+
+  // ── Etapa atual no modo coluna (clampada)
+  const totalCols = etapasVisiveis.length + (recusadasList.length > 0 ? 1 : 0)
+  const colIdxClamp = Math.max(0, Math.min(colIdx, totalCols - 1))
+  const olharRecusadas = recusadasList.length > 0 && colIdxClamp === etapasVisiveis.length
+  const etapaAtual = olharRecusadas ? null : etapasVisiveis[colIdxClamp]
+  const osDaColuna = olharRecusadas
+    ? recusadasList
+    : (etapaAtual ? (porEtapa[etapaAtual.id] || []) : [])
+
+  // ── Swipe lateral
+  const touchStartX = useRef(null)
+  const touchStartY = useRef(null)
+  const touchEndX   = useRef(null)
+  const touchEndY   = useRef(null)
+  function onTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    touchEndX.current = null
+    touchEndY.current = null
+  }
+  function onTouchMove(e) {
+    touchEndX.current = e.touches[0].clientX
+    touchEndY.current = e.touches[0].clientY
+  }
+  function onTouchEnd() {
+    if (touchStartX.current == null || touchEndX.current == null) return
+    const dx = touchEndX.current - touchStartX.current
+    const dy = touchEndY.current - touchStartY.current
+    // Só conta swipe horizontal: dx > 60px e maior que dy (não confundir com scroll vertical)
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) {
+      touchStartX.current = null; touchEndX.current = null
+      return
+    }
+    if (dx > 0 && colIdxClamp > 0) setColIdx(colIdxClamp - 1)
+    if (dx < 0 && colIdxClamp < totalCols - 1) setColIdx(colIdxClamp + 1)
+    touchStartX.current = null
+    touchEndX.current = null
+  }
+
+  // ── Helpers visuais
   const azul = cor(P.blue, P.blueDark)
   const azulBg = cor('#0d2035', '#e6f1fb')
 
-  // Estilo de botão de filtro do topo
-  const btnFiltro = (ativo) => ({
-    flex:'1 1 0', minWidth:0,
-    padding:'10px 8px', borderRadius:9,
-    border:`1px solid ${ativo?azul:T.border}`,
-    background: ativo ? azulBg : T.card,
-    color: ativo ? azul : T.textSecondary,
-    fontSize:12, fontWeight:600,
-    cursor:'pointer',
-    display:'flex', alignItems:'center', justifyContent:'center', gap:5,
-    whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-    boxShadow: !dark && !ativo ? T.shadow : 'none'
-  })
+  // ── Estados de filtros para badges
+  const zonaAtiva   = zona !== 'todos'
+  const tiposAtivo  = tiposAtivos.size !== Object.keys(TIPOS_OS).length
+  const prazoAtivo  = filtro !== 'todas'
+  const respAtivo   = funcionario !== 'todos'
+  const totalFiltrosAtivos = (zonaAtiva?1:0) + (tiposAtivo?1:0) + (prazoAtivo?1:0) + (respAtivo?1:0) + (verAgPeca?1:0) + (verRecusados?1:0)
+
+  // ── Cor da etapa atual (modo coluna)
+  const corEtapaAtual = olharRecusadas
+    ? cor(P.red, P.redDark)
+    : (etapaAtual ? corEtapa(etapaAtual.cor, dark) : T.textMuted)
 
   return (
     <>
-      <div style={{ padding:'.85rem 1rem 70px', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:T.bg }}>
 
-        {/* Busca + Nova */}
-        <div style={{ display:'flex', gap:8 }}>
-          <div style={{ flex:1, position:'relative' }}>
-            <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
-            <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar OS, cliente, modelo…"
-              style={{ width:'100%', padding:'10px 10px 10px 32px', borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box', boxShadow: dark ? 'none' : T.shadow }} />
-          </div>
-          <button onClick={()=>setModalNova(true)}
-            style={{ padding:'0 14px', borderRadius:9, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
-            <i className="ti ti-plus" style={{ fontSize:15 }} aria-hidden="true" /> Nova
-          </button>
-        </div>
-
-        {/* Linha de filtros: 3 botões abrem bottom sheet + botão Mais */}
-        <div style={{ display:'flex', gap:6 }}>
-          <button onClick={()=>setSheet('zona')} style={btnFiltro(zonaAtiva)}>
-            <i className={`ti ${iconZona}`} style={{ fontSize:14 }} aria-hidden="true" />
-            <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{labelZona}</span>
-            <i className="ti ti-chevron-down" style={{ fontSize:13, opacity:.7, flexShrink:0 }} aria-hidden="true" />
-          </button>
-          <button onClick={()=>setSheet('tipos')} style={btnFiltro(tiposAtivo)}>
-            <i className="ti ti-tool" style={{ fontSize:14 }} aria-hidden="true" />
-            <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{labelTipos}</span>
-            <i className="ti ti-chevron-down" style={{ fontSize:13, opacity:.7, flexShrink:0 }} aria-hidden="true" />
-          </button>
-          <button onClick={()=>setSheet('prazo')} style={btnFiltro(prazoAtivo)}>
-            <i className="ti ti-clock" style={{ fontSize:14 }} aria-hidden="true" />
-            <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{labelPrazo}</span>
-            <i className="ti ti-chevron-down" style={{ fontSize:13, opacity:.7, flexShrink:0 }} aria-hidden="true" />
-          </button>
-          <button onClick={()=>setSheet('mais')}
-            style={{ padding:'10px 12px', borderRadius:9, border:`1px solid ${maisAtivos>0?azul:T.border}`, background: maisAtivos>0?azulBg:T.card, color: maisAtivos>0?azul:T.textSecondary, fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, position:'relative', boxShadow: !dark && maisAtivos===0 ? T.shadow : 'none' }}
-            aria-label="Mais filtros" title="Mais filtros">
-            <i className="ti ti-adjustments-horizontal" style={{ fontSize:15 }} aria-hidden="true" />
-            {maisAtivos > 0 && (
-              <span style={{ position:'absolute', top:-4, right:-4, background:azul, color:dark?'#0b1220':'#fff', fontSize:9.5, fontWeight:800, borderRadius:10, minWidth:16, height:16, padding:'0 4px', display:'flex', alignItems:'center', justifyContent:'center' }}>{maisAtivos}</span>
-            )}
-          </button>
-        </div>
-
-        {/* Resumo de quantas OS aparecem */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', fontSize:11, color:T.textDim, padding:'0 2px' }}>
-          <span>{osList.length} {osList.length===1?'OS':'OS'} {buscando && '· busca ativa'}</span>
-          {(zonaAtiva || tiposAtivo || prazoAtivo || maisAtivos>0) && (
-            <button onClick={()=>{ setZona('todos'); setTiposAtivos(new Set(Object.keys(TIPOS_OS))); setFiltro('todas'); setFuncionario('todos'); setVerAgPeca(false); setVerRecusados(false) }}
-              style={{ background:'transparent', border:'none', color:azul, fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:3, padding:0 }}>
-              <i className="ti ti-x" style={{ fontSize:12 }} aria-hidden="true" /> Limpar filtros
+        {/* ─── TOPO FIXO: busca + nova ─── */}
+        <div style={{ padding:'.85rem 1rem 0', display:'flex', flexDirection:'column', gap:8, flexShrink:0 }}>
+          <div style={{ display:'flex', gap:8 }}>
+            <div style={{ flex:1, position:'relative' }}>
+              <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
+              <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar OS, cliente, modelo…"
+                style={{ width:'100%', padding:'10px 10px 10px 32px', borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box', boxShadow: dark ? 'none' : T.shadow }} />
+            </div>
+            <button onClick={()=>setModalNova(true)}
+              style={{ padding:'0 14px', borderRadius:9, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+              <i className="ti ti-plus" style={{ fontSize:15 }} aria-hidden="true" /> Nova
             </button>
-          )}
+          </div>
+
+          {/* Switch de modo + botão de Filtros */}
+          <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
+            <div style={{ display:'flex', gap:0, background:T.card, padding:3, borderRadius:9, border:`1px solid ${T.border}`, boxShadow: dark ? 'none' : T.shadow }}>
+              <button onClick={()=>setModo('painel')}
+                style={{ padding:'8px 12px', borderRadius:6, border:'none', cursor:'pointer', background: modo==='painel' ? azulBg : 'transparent', color: modo==='painel' ? azul : T.textMuted, fontSize:12, fontWeight: modo==='painel' ? 700 : 500, display:'flex', alignItems:'center', gap:5 }}>
+                <i className="ti ti-layout-grid" style={{ fontSize:14 }} aria-hidden="true" /> Painel
+              </button>
+              <button onClick={()=>setModo('coluna')}
+                style={{ padding:'8px 12px', borderRadius:6, border:'none', cursor:'pointer', background: modo==='coluna' ? azulBg : 'transparent', color: modo==='coluna' ? azul : T.textMuted, fontSize:12, fontWeight: modo==='coluna' ? 700 : 500, display:'flex', alignItems:'center', gap:5 }}>
+                <i className="ti ti-list-details" style={{ fontSize:14 }} aria-hidden="true" /> Lista
+              </button>
+            </div>
+            <button onClick={()=>setSheet('filtros')}
+              style={{ flex:1, padding:'9px 12px', borderRadius:9, border:`1px solid ${totalFiltrosAtivos>0?azul:T.border}`, background: totalFiltrosAtivos>0?azulBg:T.card, color: totalFiltrosAtivos>0?azul:T.textSecondary, fontSize:12.5, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, position:'relative', boxShadow: !dark && totalFiltrosAtivos===0 ? T.shadow : 'none' }}>
+              <i className="ti ti-filter" style={{ fontSize:14 }} aria-hidden="true" />
+              Filtros
+              {totalFiltrosAtivos > 0 && (
+                <span style={{ background:azul, color:dark?'#0b1220':'#fff', fontSize:10, fontWeight:800, borderRadius:10, minWidth:18, height:18, padding:'0 5px', display:'flex', alignItems:'center', justifyContent:'center' }}>{totalFiltrosAtivos}</span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Cards */}
-        {osList.length === 0 && (
-          <div style={{ background:T.card, border:`1px dashed ${T.border}`, borderRadius:12, padding:'2rem 1rem', textAlign:'center', color:T.textMuted, fontSize:13 }}>
-            <i className="ti ti-clipboard-off" style={{ fontSize:30, display:'block', marginBottom:6, color:T.textDim }} aria-hidden="true" />
-            Nenhuma OS encontrada
+        {/* ─── MODO PAINEL: grid 2 colunas com cards-resumo ─── */}
+        {modo === 'painel' && (
+          <div style={{ flex:1, overflowY:'auto', padding:'12px 1rem 80px' }}>
+            <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginBottom:10, paddingLeft:2 }}>
+              Toque numa etapa para ver as OS
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              {etapasVisiveis.map((e, i) => {
+                const list = porEtapa[e.id] || []
+                const etapaC = corEtapa(e.cor, dark)
+                const etapaBgC = bgEtapa(e.cor, dark)
+                return (
+                  <button key={e.id} onClick={()=>{ setColIdx(i); setModo('coluna') }}
+                    style={{ background:T.card, border:`1px solid ${T.border}`, borderTop:`4px solid ${etapaC}`, borderRadius:12, padding:'14px 12px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:4, minHeight:104, boxShadow: dark ? 'none' : T.shadow }}>
+                    <div style={{ fontSize:11.5, color:T.textMuted, fontWeight:600, lineHeight:1.2, minHeight:28 }}>{e.label}</div>
+                    <div style={{ fontSize:32, fontWeight:800, color: list.length > 0 ? T.textPrimary : T.textDim, lineHeight:1, marginTop:4 }}>{list.length}</div>
+                    <div style={{ fontSize:10.5, color: list.length > 0 ? etapaC : T.textDim, fontWeight:600, marginTop:4, padding:'2px 7px', background: list.length > 0 ? etapaBgC : 'transparent', borderRadius:4, alignSelf:'flex-start' }}>
+                      {list.length === 0 ? 'Vazio' : list.length === 1 ? '1 OS' : `${list.length} OSs`}
+                    </div>
+                  </button>
+                )
+              })}
+              {recusadasList.length > 0 && (
+                <button onClick={()=>{ setColIdx(etapasVisiveis.length); setModo('coluna') }}
+                  style={{ background:T.card, border:`1px solid ${T.border}`, borderTop:`4px solid ${cor(P.red,P.redDark)}`, borderRadius:12, padding:'14px 12px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:4, minHeight:104, boxShadow: dark ? 'none' : T.shadow }}>
+                  <div style={{ fontSize:11.5, color:T.textMuted, fontWeight:600, minHeight:28 }}>Recusadas</div>
+                  <div style={{ fontSize:32, fontWeight:800, color:T.textPrimary, lineHeight:1, marginTop:4 }}>{recusadasList.length}</div>
+                  <div style={{ fontSize:10.5, color:cor(P.red,P.redDark), fontWeight:600, marginTop:4, padding:'2px 7px', background:cor('#2a1515','#fde8e8'), borderRadius:4, alignSelf:'flex-start' }}>
+                    {recusadasList.length === 1 ? '1 OS' : `${recusadasList.length} OSs`}
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
         )}
-        {osList.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} onClick={()=>setDetalhe(os)} />)}
+
+        {/* ─── MODO COLUNA: 1 etapa por vez + swipe lateral ─── */}
+        {modo === 'coluna' && totalCols > 0 && (
+          <>
+            {/* Header da coluna ativa */}
+            <div style={{ padding:'12px 1rem 6px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexShrink:0 }}>
+              <button onClick={()=>setColIdx(Math.max(0, colIdxClamp - 1))} disabled={colIdxClamp===0} aria-label="Coluna anterior"
+                style={{ width:38, height:38, borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color: colIdxClamp===0 ? T.textDim : T.textPrimary, cursor: colIdxClamp===0?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: colIdxClamp===0 ? .35 : 1, flexShrink:0, boxShadow: dark ? 'none' : T.shadow }}>
+                <i className="ti ti-chevron-left" style={{ fontSize:18 }} aria-hidden="true" />
+              </button>
+
+              <div style={{ flex:1, textAlign:'center', minWidth:0 }}>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'3px 10px', borderRadius:14, background: olharRecusadas ? cor('#2a1515','#fde8e8') : (etapaAtual ? bgEtapa(etapaAtual.cor, dark) : T.cardAlt) }}>
+                  <span style={{ width:8, height:8, borderRadius:'50%', background:corEtapaAtual, flexShrink:0 }} />
+                  <span style={{ fontSize:14, fontWeight:700, color: corEtapaAtual, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {olharRecusadas ? 'Recusadas' : etapaAtual.label}
+                  </span>
+                </div>
+                <div style={{ fontSize:11, color:T.textMuted, marginTop:3 }}>
+                  {osDaColuna.length} {osDaColuna.length===1?'OS':'OSs'} · {colIdxClamp+1} de {totalCols}
+                </div>
+              </div>
+
+              <button onClick={()=>setColIdx(Math.min(totalCols-1, colIdxClamp + 1))} disabled={colIdxClamp===totalCols-1} aria-label="Próxima coluna"
+                style={{ width:38, height:38, borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color: colIdxClamp===totalCols-1 ? T.textDim : T.textPrimary, cursor: colIdxClamp===totalCols-1?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity: colIdxClamp===totalCols-1 ? .35 : 1, flexShrink:0, boxShadow: dark ? 'none' : T.shadow }}>
+                <i className="ti ti-chevron-right" style={{ fontSize:18 }} aria-hidden="true" />
+              </button>
+            </div>
+
+            {/* Pontos indicadores */}
+            <div style={{ display:'flex', gap:4, justifyContent:'center', alignItems:'center', padding:'0 1rem 8px', flexWrap:'wrap', flexShrink:0 }}>
+              {Array.from({ length: totalCols }).map((_, i) => (
+                <button key={i} onClick={()=>setColIdx(i)} aria-label={`Ir para coluna ${i+1}`}
+                  style={{ width: i===colIdxClamp?22:6, height:6, borderRadius:3, border:'none', cursor:'pointer', padding:0, background: i===colIdxClamp ? azul : T.border, transition:'width .25s, background .25s' }} />
+              ))}
+            </div>
+
+            {/* Lista da coluna ativa (com swipe) */}
+            <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+              style={{ flex:1, overflowY:'auto', padding:'4px 1rem 80px', display:'flex', flexDirection:'column', gap:10 }}>
+              {osDaColuna.length === 0 ? (
+                <div style={{ background:T.card, border:`1px dashed ${T.border}`, borderRadius:12, padding:'2.5rem 1rem', textAlign:'center', color:T.textMuted, fontSize:13, marginTop:30 }}>
+                  <i className="ti ti-clipboard-off" style={{ fontSize:38, display:'block', marginBottom:10, color:T.textDim }} aria-hidden="true" />
+                  Nenhuma OS em<br/>
+                  <strong style={{ color:T.textSecondary }}>{olharRecusadas ? 'Recusadas' : etapaAtual.label}</strong>
+                  <div style={{ marginTop:14, fontSize:11, color:T.textDim }}>
+                    <i className="ti ti-hand-finger" style={{ fontSize:14, marginRight:4 }} aria-hidden="true" />
+                    Arraste para o lado para trocar de coluna
+                  </div>
+                </div>
+              ) : (
+                osDaColuna.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} onClick={()=>setDetalhe(os)} />)
+              )}
+            </div>
+          </>
+        )}
+
+        {modo === 'coluna' && totalCols === 0 && (
+          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', color:T.textMuted, fontSize:13, textAlign:'center' }}>
+            <div>
+              <i className="ti ti-filter-off" style={{ fontSize:38, display:'block', marginBottom:10, color:T.textDim }} aria-hidden="true" />
+              Nenhuma coluna disponível com os filtros atuais
+            </div>
+          </div>
+        )}
+
       </div>
 
-      {/* Bottom sheets */}
-      {sheet === 'zona' && (
-        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Zona de atividade" icon="ti-layout-kanban">
-          {[{id:'todos',label:'Todos',icon:'ti-layout-kanban',descricao:'Mostra OS de qualquer etapa'}, ...ZONAS.map(z=>({id:z.id,label:z.label,icon:z.icon,descricao:z.etapas.length+' etapas'}))].map(opt => {
-            const ativo = opt.id === zona
-            return (
-              <button key={opt.id} onClick={()=>{ setZona(opt.id); setSheet(null) }}
-                style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
-                <i className={`ti ${opt.icon}`} style={{ fontSize:20 }} aria-hidden="true" />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div>{opt.label}</div>
-                  <div style={{ fontSize:11, color:T.textMuted, fontWeight:400, marginTop:1 }}>{opt.descricao}</div>
-                </div>
-                {ativo && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
-              </button>
-            )
-          })}
-        </BottomSheet>
-      )}
+      {/* ─── BOTTOM SHEET de filtros (todos em um) ─── */}
+      {sheet === 'filtros' && (
+        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Filtros" icon="ti-filter"
+          subtitulo="Configure como ver suas OS">
 
-      {sheet === 'tipos' && (
-        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Tipos de OS" icon="ti-tool"
-          subtitulo="Selecione quais tipos quer ver. Pelo menos 1 sempre ativo.">
+          {/* ZONA */}
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginBottom:4 }}>Zona</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            {[{id:'todos',label:'Todos',icon:'ti-layout-kanban'}, ...ZONAS.map(z=>({id:z.id,label:z.label,icon:z.icon}))].map(opt => {
+              const ativo = opt.id === zona
+              return (
+                <button key={opt.id} onClick={()=>{ setZona(opt.id); setColIdx(0) }}
+                  style={{ flex:'1 1 calc(50% - 3px)', padding:'11px 12px', borderRadius:9, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:7, textAlign:'left', fontSize:13, fontWeight:ativo?700:500 }}>
+                  <i className={`ti ${opt.icon}`} style={{ fontSize:15 }} aria-hidden="true" />
+                  <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{opt.label}</span>
+                  {ativo && <i className="ti ti-check" style={{ fontSize:14, marginLeft:'auto' }} aria-hidden="true" />}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* TIPOS */}
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:12, marginBottom:4 }}>Tipos de OS</div>
           {Object.entries(TIPOS_OS).map(([id, cfg]) => {
             const ativo = tiposAtivos.has(id)
             return (
               <button key={id} onClick={()=>toggleTipo(id)}
-                style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
-                <i className={`ti ${cfg.icon}`} style={{ fontSize:20 }} aria-hidden="true" />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div>{cfg.label}</div>
-                  <div style={{ fontSize:11, color:T.textMuted, fontWeight:400, marginTop:1 }}>{cfg.descricao || ''}</div>
-                </div>
+                style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:13.5, fontWeight:ativo?700:500 }}>
+                <i className={`ti ${cfg.icon}`} style={{ fontSize:18 }} aria-hidden="true" />
+                <span style={{ flex:1 }}>{cfg.label}</span>
                 <div style={{ width:36, height:22, borderRadius:11, background:ativo?azul:T.border, position:'relative', flexShrink:0, transition:'background .15s' }}>
                   <div style={{ position:'absolute', top:2, left:ativo?16:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.3)', transition:'left .15s' }} />
                 </div>
               </button>
             )
           })}
-        </BottomSheet>
-      )}
 
-      {sheet === 'prazo' && (
-        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Filtrar por prazo" icon="ti-clock">
-          {[['todas','Todos os prazos','ti-list'],['vencido','Atrasadas','ti-alert-triangle'],['hoje','Hoje e amanhã','ti-calendar-event'],['ok','Em dia','ti-circle-check']].map(([v,l,ico]) => {
-            const ativo = filtro === v
-            return (
-              <button key={v} onClick={()=>{ setFiltro(v); setSheet(null) }}
-                style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
-                <i className={`ti ${ico}`} style={{ fontSize:20 }} aria-hidden="true" />
-                <span style={{ flex:1 }}>{l}</span>
-                {ativo && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
-              </button>
-            )
-          })}
-        </BottomSheet>
-      )}
+          {/* PRAZO */}
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:12, marginBottom:4 }}>Prazo</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            {[['todas','Todos','ti-list'],['vencido','Atrasadas','ti-alert-triangle'],['hoje','Hoje/amanhã','ti-calendar-event'],['ok','Em dia','ti-circle-check']].map(([v,l,ico]) => {
+              const ativo = filtro === v
+              return (
+                <button key={v} onClick={()=>setFiltro(v)}
+                  style={{ flex:'1 1 calc(50% - 3px)', padding:'11px 12px', borderRadius:9, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:7, textAlign:'left', fontSize:13, fontWeight:ativo?700:500 }}>
+                  <i className={`ti ${ico}`} style={{ fontSize:15 }} aria-hidden="true" />
+                  <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{l}</span>
+                </button>
+              )
+            })}
+          </div>
 
-      {sheet === 'mais' && (
-        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Mais filtros" icon="ti-adjustments-horizontal">
-          {/* Responsável */}
-          <div style={{ fontSize:12, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginBottom:4 }}>Responsável</div>
-          {[{id:'todos',nome:'Todos os responsáveis'}, ...FUNCIONARIOS].map(f => {
-            const ativo = funcionario === f.id
-            return (
-              <button key={f.id} onClick={()=>setFuncionario(f.id)}
-                style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
-                {f.id !== 'todos' && f.cor && <span style={{ width:22, height:22, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:10, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>}
-                {f.id === 'todos' && <i className="ti ti-users" style={{ fontSize:20 }} aria-hidden="true" />}
-                <span style={{ flex:1 }}>{f.nome}</span>
-                {ativo && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
-              </button>
-            )
-          })}
+          {/* RESPONSÁVEL */}
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:12, marginBottom:4 }}>Responsável</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+            {[{id:'todos',nome:'Todos'}, ...FUNCIONARIOS].map(f => {
+              const ativo = funcionario === f.id
+              return (
+                <button key={f.id} onClick={()=>setFuncionario(f.id)}
+                  style={{ flex:'1 1 calc(50% - 3px)', padding:'11px 12px', borderRadius:9, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:7, fontSize:13, fontWeight:ativo?700:500 }}>
+                  {f.id !== 'todos' && f.cor
+                    ? <span style={{ width:20, height:20, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{f.apelido}</span>
+                    : <i className="ti ti-users" style={{ fontSize:15 }} aria-hidden="true" />}
+                  <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{f.id==='todos' ? 'Todos' : (f.nome.split(' ')[0])}</span>
+                </button>
+              )
+            })}
+          </div>
 
-          <div style={{ fontSize:12, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:14, marginBottom:4 }}>Outros</div>
-          {/* Aguardando peça */}
+          {/* OUTROS */}
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:12, marginBottom:4 }}>Outros</div>
           <button onClick={()=>setVerAgPeca(v=>!v)}
-            style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${verAgPeca?azul:T.border}`, background:verAgPeca?azulBg:T.cardAlt, color:verAgPeca?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:verAgPeca?700:500 }}>
-            <i className="ti ti-package" style={{ fontSize:20 }} aria-hidden="true" />
-            <span style={{ flex:1 }}>Aguardando peça</span>
+            style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:`1px solid ${verAgPeca?azul:T.border}`, background:verAgPeca?azulBg:T.cardAlt, color:verAgPeca?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, fontSize:13.5, fontWeight:verAgPeca?700:500 }}>
+            <i className="ti ti-package" style={{ fontSize:18 }} aria-hidden="true" />
+            <span style={{ flex:1, textAlign:'left' }}>Aguardando peça</span>
             <div style={{ width:36, height:22, borderRadius:11, background:verAgPeca?azul:T.border, position:'relative', flexShrink:0, transition:'background .15s' }}>
               <div style={{ position:'absolute', top:2, left:verAgPeca?16:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.3)', transition:'left .15s' }} />
             </div>
           </button>
-          {/* Recusadas */}
           {(zona === 'todos' || zona === 'financeiro') && (
             <button onClick={()=>setVerRecusados(v=>!v)}
-              style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${verRecusados?azul:T.border}`, background:verRecusados?azulBg:T.cardAlt, color:verRecusados?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:verRecusados?700:500 }}>
-              <i className="ti ti-eye" style={{ fontSize:20 }} aria-hidden="true" />
-              <span style={{ flex:1 }}>Mostrar recusadas</span>
+              style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:`1px solid ${verRecusados?azul:T.border}`, background:verRecusados?azulBg:T.cardAlt, color:verRecusados?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, fontSize:13.5, fontWeight:verRecusados?700:500 }}>
+              <i className="ti ti-eye" style={{ fontSize:18 }} aria-hidden="true" />
+              <span style={{ flex:1, textAlign:'left' }}>Mostrar recusadas</span>
               <div style={{ width:36, height:22, borderRadius:11, background:verRecusados?azul:T.border, position:'relative', flexShrink:0, transition:'background .15s' }}>
                 <div style={{ position:'absolute', top:2, left:verRecusados?16:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.3)', transition:'left .15s' }} />
               </div>
+            </button>
+          )}
+
+          {/* LIMPAR */}
+          {totalFiltrosAtivos > 0 && (
+            <button onClick={()=>{ setZona('todos'); setTiposAtivos(new Set(Object.keys(TIPOS_OS))); setFiltro('todas'); setFuncionario('todos'); setVerAgPeca(false); setVerRecusados(false); setColIdx(0) }}
+              style={{ width:'100%', padding:'12px', marginTop:12, borderRadius:10, border:`1px solid ${T.border}`, background:T.cardAlt, color:T.textPrimary, cursor:'pointer', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+              <i className="ti ti-x" style={{ fontSize:14 }} aria-hidden="true" />
+              Limpar todos os filtros
             </button>
           )}
         </BottomSheet>
