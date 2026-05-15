@@ -1384,13 +1384,36 @@ function OSMobile({ T, dark, user }) {
                   setColIdx(Math.max(0, idx))
                   setModo('coluna')
                 }
+                // ── Estatísticas de urgência (vencidas, paradas +24h, hoje/amanhã, ag. peça)
+                const nVencidas = listFiltrada.filter(o => calcStatusPrazo(o.prazo, o.etapa) === 'vencido').length
+                const nHoje     = listFiltrada.filter(o => { const s = calcStatusPrazo(o.prazo, o.etapa); return s === 'hoje' || s === 'amanha' }).length
+                const nParadas  = listFiltrada.filter(o => (o.horasNaEtapa || 0) > 24).length
+                const nAgPeca   = listFiltrada.filter(o => !!o.aguardando_peca).length
+                const chips = []
+                if (nVencidas > 0) chips.push({ icon:'ti-alert-triangle',     n:nVencidas, c:cor(P.red,P.redDark),         bg:cor('#2a1515','#fde8e8'), title:`${nVencidas} OS vencida(s)` })
+                if (nParadas  > 0) chips.push({ icon:'ti-clock-exclamation',  n:nParadas,  c:cor('#f59e0b','#b45309'),     bg:cor('#2a1c00','#fdf0d8'), title:`${nParadas} parada(s) há +24h` })
+                if (nHoje     > 0) chips.push({ icon:'ti-calendar-event',     n:nHoje,     c:cor(P.yellow,P.yellowDark),   bg:cor('#2a2000','#fdf6dc'), title:`${nHoje} para hoje/amanhã` })
+                if (nAgPeca   > 0) chips.push({ icon:'ti-package',            n:nAgPeca,   c:cor('#ff9800','#b45309'),     bg:cor('#3a2200','#fff4e0'), title:`${nAgPeca} aguardando peça` })
+                const temUrgencia = nVencidas > 0 || nParadas > 0
                 return (
                   <button key={e.id} onClick={abrirEtapa}
-                    style={{ background:T.card, border:`1px solid ${T.border}`, borderTop:`4px solid ${etapaC}`, borderRadius:12, padding:'14px 12px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:4, minHeight:104, boxShadow: dark ? 'none' : T.shadow }}>
-                    <div style={{ fontSize:11.5, color:T.textMuted, fontWeight:600, lineHeight:1.2, minHeight:28 }}>{e.label}</div>
+                    style={{ background:T.card, borderStyle:'solid', borderWidth:'1px 1px 1px 1px', borderTopWidth:'4px', borderColor:temUrgencia ? cor(P.red,P.redDark)+'55' : T.border, borderTopColor:etapaC, borderRadius:12, padding:'14px 12px', cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:4, minHeight:124, boxShadow: dark ? 'none' : T.shadow }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:6, minHeight:28 }}>
+                      <div style={{ fontSize:11.5, color:T.textMuted, fontWeight:600, lineHeight:1.2, flex:1 }}>{e.label}</div>
+                      {temUrgencia && <i className="ti ti-alert-circle-filled" style={{ fontSize:13, color:cor(P.red,P.redDark), flexShrink:0, marginTop:1 }} aria-hidden="true" title="Há OS urgentes nesta etapa" />}
+                    </div>
                     <div style={{ fontSize:32, fontWeight:800, color: listFiltrada.length > 0 ? T.textPrimary : T.textDim, lineHeight:1, marginTop:4 }}>{listFiltrada.length}</div>
-                    <div style={{ fontSize:10.5, color: listFiltrada.length > 0 ? etapaC : T.textDim, fontWeight:600, marginTop:4, padding:'2px 7px', background: listFiltrada.length > 0 ? etapaBgC : 'transparent', borderRadius:4, alignSelf:'flex-start' }}>
-                      {listFiltrada.length === 0 ? 'Vazio' : listFiltrada.length === 1 ? '1 OS' : `${listFiltrada.length} OSs`}
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', marginTop:4 }}>
+                      <div style={{ fontSize:10.5, color: listFiltrada.length > 0 ? etapaC : T.textDim, fontWeight:600, padding:'2px 7px', background: listFiltrada.length > 0 ? etapaBgC : 'transparent', borderRadius:4 }}>
+                        {listFiltrada.length === 0 ? 'Vazio' : listFiltrada.length === 1 ? '1 OS' : `${listFiltrada.length} OSs`}
+                      </div>
+                      {chips.map((ch, k) => (
+                        <span key={k} title={ch.title}
+                          style={{ display:'inline-flex', alignItems:'center', gap:2, fontSize:10, fontWeight:700, color:ch.c, background:ch.bg, padding:'2px 5px', borderRadius:4, border:`1px solid ${ch.c}22` }}>
+                          <i className={`ti ${ch.icon}`} style={{ fontSize:11 }} aria-hidden="true" />
+                          {ch.n}
+                        </span>
+                      ))}
                     </div>
                   </button>
                 )
@@ -3126,7 +3149,7 @@ export default function App() {
       financeiro: <EmConstrucao key={`fin-${refreshKey}`} nome="Financeiro" T={T} />,
     }
     return (
-      <div style={{ display:'flex', flexDirection:'column', background:T.bg, width:'100%', height:'100vh', fontFamily:'system-ui,sans-serif', overflow:'hidden' }}>
+      <div className="app-mobile-root" style={{ display:'flex', flexDirection:'column', background:T.bg, width:'100%', fontFamily:'system-ui,sans-serif', overflow:'hidden' }}>
         <TopbarMobile pagina={pagina} dark={dark} toggleDark={toggleDark} T={T} />
         <PullToRefresh T={T} dark={dark} onRefresh={refreshPagina}>
           {conteudoMobile[pagina] || <PainelMobile T={T} dark={dark} />}

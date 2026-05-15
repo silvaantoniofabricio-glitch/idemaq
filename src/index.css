@@ -22,6 +22,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -31,6 +32,7 @@ body {
 #root {
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -53,6 +55,13 @@ button {
 input, textarea, select {
   font-family: inherit;
   font-size: inherit;
+}
+
+/* Wrapper mobile — usa 100dvh para acompanhar a barra de URL do navegador
+   no celular, com fallback para 100vh em browsers antigos. */
+.app-mobile-root {
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* Scrollbar customizada */
