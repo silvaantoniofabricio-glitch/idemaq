@@ -1161,21 +1161,35 @@ function OSMobile({ T, dark, user }) {
   }
   const [filtro, setFiltro]   = useState('todas')
   const [busca, setBusca]     = useState('')
+  const [funcionario, setFuncionario]   = useState('todos')
+  const [verAgPeca, setVerAgPeca]       = useState(false)
+  const [verRecusados, setVerRecusados] = useState(false)
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
+  // Bottom sheet aberto — null, 'zona', 'tipos', 'prazo', 'mais'
+  const [sheet, setSheet] = useState(null)
 
   // Universo: filtra pelos tipos ativos, depois pela zona selecionada via match
   const zonaCfg = ZONAS.find(z => z.id === zona)
   const etapasDaZona = zona === 'todos' ? ETAPAS_TODOS : ETAPAS_TODOS.filter(e => zonaCfg.etapas.includes(e.id))
   const universo = OS_MOCK
     .filter(o => tiposAtivos.has(o.tipo))
-    .filter(o => o.etapa === 'recusado' ? (zona==='todos' || zona==='financeiro') : etapasDaZona.some(e => e.match && e.match[o.tipo] === o.etapa))
+    .filter(o => o.etapa === 'recusado'
+      ? (verRecusados && (zona==='todos' || zona==='financeiro'))
+      : etapasDaZona.some(e => e.match && e.match[o.tipo] === o.etapa))
   const buscando = busca.trim().length > 0
 
   // Esconde Pagamento/Concluído para não-admin
   const osList = universo
-    .filter(o => o.etapa !== 'recusado')
     .filter(o => admin || (o.etapa !== 'pagamento' && o.etapa !== 'concluido'))
+    // Aguard. peça
+    .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
+    // Responsável (passou por essa OS)
+    .filter(o => {
+      if (funcionario === 'todos') return true
+      const resp = responsavelAtual(o)
+      return resp === funcionario || (o.historico||[]).some(h => h.funcionario === funcionario)
+    })
     // Concluídas: só mês corrente, exceto durante busca
     .filter(o => buscando ? true : dentroMesCorrente(o))
     .filter(o => {
@@ -1195,66 +1209,93 @@ function OSMobile({ T, dark, user }) {
       (o.serie||'').toLowerCase().includes(busca.toLowerCase()))
     .sort((a,b) => new Date(a.prazo) - new Date(b.prazo))
 
-  const activeClr = dark ? P.blue : P.blueDark
-  const abas = [
-    { id:'todos', label:'Todos', icon:'ti-layout-kanban', cor:'blue' },
-    ...ZONAS.map(z => ({ id:z.id, label:z.label, icon:z.icon, cor:z.cor }))
-  ]
+  // Labels dos botões de filtro (mostram o estado atual)
+  const labelZona = zona === 'todos' ? 'Todos' : (zonaCfg?.label || 'Todos')
+  const iconZona  = zona === 'todos' ? 'ti-layout-kanban' : (zonaCfg?.icon || 'ti-layout-kanban')
+  const labelTipos = tiposAtivos.size === Object.keys(TIPOS_OS).length
+    ? `Tipos · todos`
+    : `Tipos · ${tiposAtivos.size}/${Object.keys(TIPOS_OS).length}`
+  const labelPrazo = filtro === 'todas' ? 'Prazo · todos'
+    : filtro === 'vencido' ? 'Atrasadas'
+    : filtro === 'hoje'    ? 'Hoje/amanhã'
+    : 'Em dia'
+  // Quantidade de filtros avançados ativos (resp + agPeca + recusados)
+  const maisAtivos = (funcionario !== 'todos' ? 1 : 0) + (verAgPeca ? 1 : 0) + (verRecusados ? 1 : 0)
+  // Algum filtro ativo?
+  const zonaAtiva  = zona !== 'todos'
+  const tiposAtivo = tiposAtivos.size !== Object.keys(TIPOS_OS).length
+  const prazoAtivo = filtro !== 'todas'
+
+  const azul = cor(P.blue, P.blueDark)
+  const azulBg = cor('#0d2035', '#e6f1fb')
+
+  // Estilo de botão de filtro do topo
+  const btnFiltro = (ativo) => ({
+    flex:'1 1 0', minWidth:0,
+    padding:'10px 8px', borderRadius:9,
+    border:`1px solid ${ativo?azul:T.border}`,
+    background: ativo ? azulBg : T.card,
+    color: ativo ? azul : T.textSecondary,
+    fontSize:12, fontWeight:600,
+    cursor:'pointer',
+    display:'flex', alignItems:'center', justifyContent:'center', gap:5,
+    whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+    boxShadow: !dark && !ativo ? T.shadow : 'none'
+  })
 
   return (
     <>
       <div style={{ padding:'.85rem 1rem 70px', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10 }}>
-        {/* Seletor de zona */}
-        <div style={{ display:'flex', gap:4, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, overflowX:'auto' }}>
-          {abas.map(a => {
-            const ativo = a.id === zona
-            const azul = cor(P.blue, P.blueDark)
-            const azulBg = cor('#0d2035', '#e6f1fb')
-            return (
-              <button key={a.id} onClick={()=>setZona(a.id)}
-                style={{ flex:'1 0 auto', minWidth:0, padding:'8px 8px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:4, whiteSpace:'nowrap' }}>
-                <i className={`ti ${a.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
-                {a.label}
-              </button>
-            )
-          })}
-        </div>
 
-        {/* Toggle de tipos (multi-seleção, mínimo 1) */}
-        <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:2 }}>
-          {Object.entries(TIPOS_OS).map(([id, cfg]) => {
-            const ativo = tiposAtivos.has(id)
-            const azul = cor(P.blue, P.blueDark)
-            const azulBg = cor('#0d2035', '#e6f1fb')
-            return (
-              <button key={id} onClick={()=>toggleTipo(id)}
-                style={{ padding:'5px 11px', borderRadius:14, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11, cursor:'pointer', fontWeight:ativo?600:500, display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap' }}>
-                <i className={`ti ${cfg.icon}`} style={{ fontSize:12 }} aria-hidden="true" />
-                {cfg.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Busca + nova */}
+        {/* Busca + Nova */}
         <div style={{ display:'flex', gap:8 }}>
           <div style={{ flex:1, position:'relative' }}>
             <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
             <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar OS, cliente, modelo…"
-              style={{ width:'100%', padding:'9px 10px 9px 32px', borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box' }} />
+              style={{ width:'100%', padding:'10px 10px 10px 32px', borderRadius:9, border:`1px solid ${T.border}`, background:T.card, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box', boxShadow: dark ? 'none' : T.shadow }} />
           </div>
           <button onClick={()=>setModalNova(true)}
-            style={{ padding:'0 13px', borderRadius:9, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+            style={{ padding:'0 14px', borderRadius:9, border:'none', cursor:'pointer', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
             <i className="ti ti-plus" style={{ fontSize:15 }} aria-hidden="true" /> Nova
           </button>
         </div>
 
-        {/* Chips de filtro */}
-        <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:2 }}>
-          {[['todas',`Todas · ${osList.length}`],['vencido','Atrasadas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v,l]) => (
-            <button key={v} onClick={()=>setFiltro(v)}
-              style={{ padding:'6px 13px', borderRadius:20, border:`1px solid ${filtro===v?activeClr:T.border}`, background:filtro===v?cor('#1a3a5c','#e6f1fb'):'transparent', color:filtro===v?activeClr:T.textMuted, fontSize:12, cursor:'pointer', whiteSpace:'nowrap', fontWeight:filtro===v?600:400 }}>{l}</button>
-          ))}
+        {/* Linha de filtros: 3 botões abrem bottom sheet + botão Mais */}
+        <div style={{ display:'flex', gap:6 }}>
+          <button onClick={()=>setSheet('zona')} style={btnFiltro(zonaAtiva)}>
+            <i className={`ti ${iconZona}`} style={{ fontSize:14 }} aria-hidden="true" />
+            <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{labelZona}</span>
+            <i className="ti ti-chevron-down" style={{ fontSize:13, opacity:.7, flexShrink:0 }} aria-hidden="true" />
+          </button>
+          <button onClick={()=>setSheet('tipos')} style={btnFiltro(tiposAtivo)}>
+            <i className="ti ti-tool" style={{ fontSize:14 }} aria-hidden="true" />
+            <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{labelTipos}</span>
+            <i className="ti ti-chevron-down" style={{ fontSize:13, opacity:.7, flexShrink:0 }} aria-hidden="true" />
+          </button>
+          <button onClick={()=>setSheet('prazo')} style={btnFiltro(prazoAtivo)}>
+            <i className="ti ti-clock" style={{ fontSize:14 }} aria-hidden="true" />
+            <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{labelPrazo}</span>
+            <i className="ti ti-chevron-down" style={{ fontSize:13, opacity:.7, flexShrink:0 }} aria-hidden="true" />
+          </button>
+          <button onClick={()=>setSheet('mais')}
+            style={{ padding:'10px 12px', borderRadius:9, border:`1px solid ${maisAtivos>0?azul:T.border}`, background: maisAtivos>0?azulBg:T.card, color: maisAtivos>0?azul:T.textSecondary, fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, position:'relative', boxShadow: !dark && maisAtivos===0 ? T.shadow : 'none' }}
+            aria-label="Mais filtros" title="Mais filtros">
+            <i className="ti ti-adjustments-horizontal" style={{ fontSize:15 }} aria-hidden="true" />
+            {maisAtivos > 0 && (
+              <span style={{ position:'absolute', top:-4, right:-4, background:azul, color:dark?'#0b1220':'#fff', fontSize:9.5, fontWeight:800, borderRadius:10, minWidth:16, height:16, padding:'0 4px', display:'flex', alignItems:'center', justifyContent:'center' }}>{maisAtivos}</span>
+            )}
+          </button>
+        </div>
+
+        {/* Resumo de quantas OS aparecem */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', fontSize:11, color:T.textDim, padding:'0 2px' }}>
+          <span>{osList.length} {osList.length===1?'OS':'OS'} {buscando && '· busca ativa'}</span>
+          {(zonaAtiva || tiposAtivo || prazoAtivo || maisAtivos>0) && (
+            <button onClick={()=>{ setZona('todos'); setTiposAtivos(new Set(Object.keys(TIPOS_OS))); setFiltro('todas'); setFuncionario('todos'); setVerAgPeca(false); setVerRecusados(false) }}
+              style={{ background:'transparent', border:'none', color:azul, fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:3, padding:0 }}>
+              <i className="ti ti-x" style={{ fontSize:12 }} aria-hidden="true" /> Limpar filtros
+            </button>
+          )}
         </div>
 
         {/* Cards */}
@@ -1267,9 +1308,150 @@ function OSMobile({ T, dark, user }) {
         {osList.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} onClick={()=>setDetalhe(os)} />)}
       </div>
 
+      {/* Bottom sheets */}
+      {sheet === 'zona' && (
+        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Zona de atividade" icon="ti-layout-kanban">
+          {[{id:'todos',label:'Todos',icon:'ti-layout-kanban',descricao:'Mostra OS de qualquer etapa'}, ...ZONAS.map(z=>({id:z.id,label:z.label,icon:z.icon,descricao:z.etapas.length+' etapas'}))].map(opt => {
+            const ativo = opt.id === zona
+            return (
+              <button key={opt.id} onClick={()=>{ setZona(opt.id); setSheet(null) }}
+                style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
+                <i className={`ti ${opt.icon}`} style={{ fontSize:20 }} aria-hidden="true" />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div>{opt.label}</div>
+                  <div style={{ fontSize:11, color:T.textMuted, fontWeight:400, marginTop:1 }}>{opt.descricao}</div>
+                </div>
+                {ativo && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
+              </button>
+            )
+          })}
+        </BottomSheet>
+      )}
+
+      {sheet === 'tipos' && (
+        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Tipos de OS" icon="ti-tool"
+          subtitulo="Selecione quais tipos quer ver. Pelo menos 1 sempre ativo.">
+          {Object.entries(TIPOS_OS).map(([id, cfg]) => {
+            const ativo = tiposAtivos.has(id)
+            return (
+              <button key={id} onClick={()=>toggleTipo(id)}
+                style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
+                <i className={`ti ${cfg.icon}`} style={{ fontSize:20 }} aria-hidden="true" />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div>{cfg.label}</div>
+                  <div style={{ fontSize:11, color:T.textMuted, fontWeight:400, marginTop:1 }}>{cfg.descricao || ''}</div>
+                </div>
+                <div style={{ width:36, height:22, borderRadius:11, background:ativo?azul:T.border, position:'relative', flexShrink:0, transition:'background .15s' }}>
+                  <div style={{ position:'absolute', top:2, left:ativo?16:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.3)', transition:'left .15s' }} />
+                </div>
+              </button>
+            )
+          })}
+        </BottomSheet>
+      )}
+
+      {sheet === 'prazo' && (
+        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Filtrar por prazo" icon="ti-clock">
+          {[['todas','Todos os prazos','ti-list'],['vencido','Atrasadas','ti-alert-triangle'],['hoje','Hoje e amanhã','ti-calendar-event'],['ok','Em dia','ti-circle-check']].map(([v,l,ico]) => {
+            const ativo = filtro === v
+            return (
+              <button key={v} onClick={()=>{ setFiltro(v); setSheet(null) }}
+                style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
+                <i className={`ti ${ico}`} style={{ fontSize:20 }} aria-hidden="true" />
+                <span style={{ flex:1 }}>{l}</span>
+                {ativo && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
+              </button>
+            )
+          })}
+        </BottomSheet>
+      )}
+
+      {sheet === 'mais' && (
+        <BottomSheet T={T} dark={dark} onClose={()=>setSheet(null)} titulo="Mais filtros" icon="ti-adjustments-horizontal">
+          {/* Responsável */}
+          <div style={{ fontSize:12, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginBottom:4 }}>Responsável</div>
+          {[{id:'todos',nome:'Todos os responsáveis'}, ...FUNCIONARIOS].map(f => {
+            const ativo = funcionario === f.id
+            return (
+              <button key={f.id} onClick={()=>setFuncionario(f.id)}
+                style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:ativo?700:500 }}>
+                {f.id !== 'todos' && f.cor && <span style={{ width:22, height:22, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:10, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>}
+                {f.id === 'todos' && <i className="ti ti-users" style={{ fontSize:20 }} aria-hidden="true" />}
+                <span style={{ flex:1 }}>{f.nome}</span>
+                {ativo && <i className="ti ti-check" style={{ fontSize:18, color:azul }} aria-hidden="true" />}
+              </button>
+            )
+          })}
+
+          <div style={{ fontSize:12, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:14, marginBottom:4 }}>Outros</div>
+          {/* Aguardando peça */}
+          <button onClick={()=>setVerAgPeca(v=>!v)}
+            style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${verAgPeca?azul:T.border}`, background:verAgPeca?azulBg:T.cardAlt, color:verAgPeca?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:verAgPeca?700:500 }}>
+            <i className="ti ti-package" style={{ fontSize:20 }} aria-hidden="true" />
+            <span style={{ flex:1 }}>Aguardando peça</span>
+            <div style={{ width:36, height:22, borderRadius:11, background:verAgPeca?azul:T.border, position:'relative', flexShrink:0, transition:'background .15s' }}>
+              <div style={{ position:'absolute', top:2, left:verAgPeca?16:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.3)', transition:'left .15s' }} />
+            </div>
+          </button>
+          {/* Recusadas */}
+          {(zona === 'todos' || zona === 'financeiro') && (
+            <button onClick={()=>setVerRecusados(v=>!v)}
+              style={{ width:'100%', padding:'14px 14px', borderRadius:10, border:`1px solid ${verRecusados?azul:T.border}`, background:verRecusados?azulBg:T.cardAlt, color:verRecusados?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:11, textAlign:'left', fontSize:14, fontWeight:verRecusados?700:500 }}>
+              <i className="ti ti-eye" style={{ fontSize:20 }} aria-hidden="true" />
+              <span style={{ flex:1 }}>Mostrar recusadas</span>
+              <div style={{ width:36, height:22, borderRadius:11, background:verRecusados?azul:T.border, position:'relative', flexShrink:0, transition:'background .15s' }}>
+                <div style={{ position:'absolute', top:2, left:verRecusados?16:2, width:18, height:18, borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,.3)', transition:'left .15s' }} />
+              </div>
+            </button>
+          )}
+        </BottomSheet>
+      )}
+
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" mobile />}
       {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} user={user} onClose={()=>setDetalhe(null)} mobile />}
     </>
+  )
+}
+
+// ─── Bottom sheet reutilizável para filtros mobile ─────────────────────────
+function BottomSheet({ T, dark, onClose, titulo, subtitulo, icon, children }) {
+  useEffect(() => {
+    const handler = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', handler); document.body.style.overflow = prev }
+  }, [onClose])
+
+  return (
+    <div onClick={onClose}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', backdropFilter:'blur(2px)', zIndex:200, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+      <div onClick={e=>e.stopPropagation()}
+        style={{ background:T.card, borderRadius:'16px 16px 0 0', width:'100%', maxHeight:'85vh', display:'flex', flexDirection:'column', boxShadow:'0 -8px 32px rgba(0,0,0,.4)', border:`1px solid ${T.border}`, borderBottom:'none', overflow:'hidden', paddingBottom:'env(safe-area-inset-bottom, 0px)' }}>
+        {/* Grip */}
+        <div style={{ display:'flex', justifyContent:'center', padding:'8px 0 0' }}>
+          <div style={{ width:40, height:4, borderRadius:2, background:T.border }} />
+        </div>
+        {/* Header */}
+        <div style={{ padding:'10px 18px 14px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+            {icon && <i className={`ti ${icon}`} style={{ fontSize:20, color:T.textSecondary }} aria-hidden="true" />}
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>{titulo}</div>
+              {subtitulo && <div style={{ fontSize:11.5, color:T.textMuted, marginTop:2 }}>{subtitulo}</div>}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Fechar"
+            style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:6, borderRadius:6, fontSize:0, lineHeight:0, flexShrink:0 }}>
+            <i className="ti ti-x" style={{ fontSize:22 }} aria-hidden="true" />
+          </button>
+        </div>
+        {/* Conteúdo */}
+        <div style={{ flex:1, overflowY:'auto', padding:'12px 14px 18px', display:'flex', flexDirection:'column', gap:8 }}>
+          {children}
+        </div>
+      </div>
+    </div>
   )
 }
 
