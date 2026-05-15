@@ -188,6 +188,16 @@ const ETAPAS_TODOS = [
   { id:'concluido',      label:'Concluído',               curto:'Concluído',    cor:'green',  adminOnly:true, match: { atendimento:'concluido', fabricacao:'concluido', venda:'concluido' } },
 ]
 
+// ─── Zonas de atividade — agrupam etapas por área de trabalho ─────────────
+// Externo: tudo que envolve estar fora da oficina ou em contato com o cliente
+// Interno: trabalho dentro da oficina (desde receber até finalizar teste)
+// Financeiro: orçar, cobrar, fechar (e recusados ficam aqui também)
+const ZONAS = [
+  { id:'externo',    label:'Externo',    icon:'ti-truck-delivery', cor:'blue',   etapas:['ag_agendamento','agendamento','entrega'] },
+  { id:'interno',    label:'Interno',    icon:'ti-tool',           cor:'yellow', etapas:['recebido','diagnostico','oficina','teste_final'] },
+  { id:'financeiro', label:'Financeiro', icon:'ti-cash-banknote',  cor:'green',  etapas:['orcamento','pagamento','concluido'] },
+]
+
 // Cor de etapa traduzida para hex (respeita modo dark/claro)
 function corEtapa(nome, dark) {
   const map = {
@@ -1134,13 +1144,23 @@ function PainelMobile({ T, dark }) {
 function OSMobile({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const admin = isAdmin(user)
-  const [tipo, setTipo]       = useState('todos')
+  const [zona, setZona]       = useState('todos')
+  const [tiposAtivos, setTiposAtivos] = useState(new Set(['atendimento','fabricacao','venda']))
   const [filtro, setFiltro]   = useState('todas')
   const [busca, setBusca]     = useState('')
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
 
-  const universo = tipo === 'todos' ? OS_MOCK : OS_MOCK.filter(o => o.tipo === tipo)
+  // Universo: OS dos tipos ativos. Se zona != todos, filtra também pelas etapas da zona.
+  const zonaCfg = ZONAS.find(z => z.id === zona)
+  const universo = OS_MOCK.filter(o => {
+    if (!tiposAtivos.has(o.tipo)) return false
+    if (zona === 'todos') return true
+    return zonaCfg?.etapas.some(eid => {
+      const eu = ETAPAS_TODOS.find(et => et.id === eid)
+      return eu?.match?.[o.tipo] === o.etapa
+    })
+  })
   const buscando = busca.trim().length > 0
 
   // Esconde Pagamento/Concluído para não-admin
@@ -1168,8 +1188,8 @@ function OSMobile({ T, dark, user }) {
 
   const activeClr = dark ? P.blue : P.blueDark
   const abas = [
-    { id:'todos',       label:'Todos',       icon:'ti-layout-kanban',     cor:'blue' },
-    ...Object.entries(TIPOS_OS).map(([id, cfg]) => ({ id, label:cfg.label, icon:cfg.icon, cor:cfg.cor }))
+    { id:'todos', label:'Todos', icon:'ti-layout-kanban', cor:'blue' },
+    ...ZONAS.map(z => ({ id:z.id, label:z.label, icon:z.icon, cor:z.cor }))
   ]
 
   return (
@@ -1178,10 +1198,10 @@ function OSMobile({ T, dark, user }) {
         {/* Seletor de tipo */}
         <div style={{ display:'flex', gap:4, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, overflowX:'auto' }}>
           {abas.map(a => {
-            const ativo = a.id === tipo
+            const ativo = a.id === zona
             const c = corEtapa(a.cor, dark)
             return (
-              <button key={a.id} onClick={()=>setTipo(a.id)}
+              <button key={a.id} onClick={()=>setZona(a.id)}
                 style={{ flex:'1 0 auto', minWidth:0, padding:'8px 8px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(a.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:11.5, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:4, whiteSpace:'nowrap' }}>
                 <i className={`ti ${a.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
                 {a.label}
@@ -1203,7 +1223,29 @@ function OSMobile({ T, dark, user }) {
           </button>
         </div>
 
-        {/* Chips de filtro */}
+        {/* Chips de tipo de OS (toggle múltiplo) */}
+        <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:2 }}>
+          {Object.entries(TIPOS_OS).map(([id, cfg]) => {
+            const ativo = tiposAtivos.has(id)
+            const c = corEtapa(cfg.cor, dark)
+            return (
+              <button key={id} onClick={()=>{
+                setTiposAtivos(s => {
+                  const n = new Set(s)
+                  if (n.has(id)) n.delete(id); else n.add(id)
+                  if (n.size === 0) return s
+                  return n
+                })
+              }}
+                style={{ padding:'6px 13px', borderRadius:20, border:`1px solid ${ativo?c:T.border}`, background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:12, cursor:'pointer', whiteSpace:'nowrap', fontWeight:ativo?600:400, display:'inline-flex', alignItems:'center', gap:4 }}>
+                <i className={`ti ${cfg.icon}`} style={{ fontSize:12 }} aria-hidden="true" />
+                {cfg.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Chips de filtro de status */}
         <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:2 }}>
           {[['todas',`Todas · ${osList.length}`],['vencido','Atrasadas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v,l]) => (
             <button key={v} onClick={()=>setFiltro(v)}
@@ -1221,7 +1263,7 @@ function OSMobile({ T, dark, user }) {
         {osList.map(os => <OSCardMobile key={os.numero} os={os} T={T} dark={dark} onClick={()=>setDetalhe(os)} />)}
       </div>
 
-      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo==='todos'?'atendimento':tipo} mobile />}
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" mobile />}
       {detalhe && <OSDetalhe T={T} dark={dark} os={detalhe} user={user} onClose={()=>setDetalhe(null)} mobile />}
     </>
   )
@@ -1300,7 +1342,8 @@ function OS({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const role = getRole(user)
   const admin = isAdmin(user)
-  const [tipo, setTipo]   = useState('todos')
+  const [zona, setZona]   = useState('todos') // 'todos' | 'externo' | 'interno' | 'financeiro'
+  const [tiposAtivos, setTiposAtivos] = useState(new Set(['atendimento','fabricacao','venda']))
   const [busca, setBusca] = useState('')
   const [funcionario, setFuncionario] = useState('todos')
   const [statusF, setStatusF]         = useState('todos')
@@ -1325,15 +1368,12 @@ function OS({ T, dark, user }) {
   function moverOS(numero, etapaAlvo) {
     const os = osList.find(o => o.numero === numero)
     if (!os) return
-    // No modo "Todos", etapaAlvo é um ID unificado — traduz pra etapa do tipo da OS
-    let alvoReal = etapaAlvo
-    if (tipo === 'todos') {
-      const etapaUnif = ETAPAS_TODOS.find(e => e.id === etapaAlvo)
-      alvoReal = etapaUnif?.match?.[os.tipo]
-      if (!alvoReal) {
-        notify('erro', `Esta coluna não aceita OS de ${TIPOS_OS[os.tipo].label}`)
-        return
-      }
+    // etapaAlvo é sempre um ID unificado (ETAPAS_TODOS) — traduz pra etapa real do tipo da OS
+    const etapaUnif = ETAPAS_TODOS.find(e => e.id === etapaAlvo)
+    const alvoReal = etapaUnif?.match?.[os.tipo]
+    if (!alvoReal) {
+      notify('erro', `Esta coluna não aceita OS de ${TIPOS_OS[os.tipo].label}`)
+      return
     }
     const r = podeMoverOS(os, alvoReal)
     if (!r.ok) { notify('erro', r.motivo); return }
@@ -1356,14 +1396,17 @@ function OS({ T, dark, user }) {
     setOsList(prev => prev.map(o => o.numero === numero ? {...o, aguardando_peca: !o.aguardando_peca} : o))
   }
 
-  const etapasAtivas = tipo === 'todos' ? ETAPAS_TODOS : TIPOS_OS[tipo].etapas
-  const etapasVisiveis = etapasAtivas.filter(e => admin || !e.adminOnly)
+  // Etapas exibidas: ETAPAS_TODOS filtradas pela zona escolhida (e role do usuário)
+  const zonaCfg = ZONAS.find(z => z.id === zona)
+  const etapasZona = zona === 'todos' ? ETAPAS_TODOS : ETAPAS_TODOS.filter(e => zonaCfg?.etapas.includes(e.id))
+  const etapasVisiveis = etapasZona.filter(e => admin || !e.adminOnly)
 
-  const corPaleta = tipo === 'todos' ? 'blue' : TIPOS_OS[tipo].cor
+  const corPaleta = zonaCfg?.cor || 'blue'
   const tipoCor = corEtapa(corPaleta, dark)
   const tipoBg  = bgEtapa(corPaleta, dark)
 
-  const todasUniverso = tipo === 'todos' ? osList : osList.filter(o => o.tipo === tipo)
+  // Universo de OS: filtra pelos tipos ativos (toggle múltiplo)
+  const todasUniverso = osList.filter(o => tiposAtivos.has(o.tipo))
   const buscando = busca.trim().length > 0
 
   const osFiltradas = todasUniverso
@@ -1392,17 +1435,13 @@ function OS({ T, dark, user }) {
       (o.modelo||'').toLowerCase().includes(busca.toLowerCase()) ||
       (o.serie||'').toLowerCase().includes(busca.toLowerCase()))
 
-  // Distribuir por coluna
+  // Distribuir por coluna — sempre via match (visão unificada)
   const porEtapa = {}
   etapasVisiveis.forEach(e => porEtapa[e.id] = [])
   osFiltradas.forEach(os => {
     if (os.etapa === 'recusado') return
-    if (tipo === 'todos') {
-      const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
-      if (ec) porEtapa[ec.id].push(os)
-    } else {
-      if (porEtapa[os.etapa]) porEtapa[os.etapa].push(os)
-    }
+    const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
+    if (ec) porEtapa[ec.id].push(os)
   })
   // Aplicar ordenação por coluna
   Object.keys(porEtapa).forEach(k => { porEtapa[k] = ordenarColuna(k, porEtapa[k]) })
@@ -1412,8 +1451,8 @@ function OS({ T, dark, user }) {
   const totalAgPeca    = todasUniverso.filter(o => !!o.aguardando_peca).length
 
   const abas = [
-    { id:'todos',       label:'Todos',       icon:'ti-layout-kanban',     cor:'blue' },
-    ...Object.entries(TIPOS_OS).map(([id, cfg]) => ({ id, label:cfg.label, icon:cfg.icon, cor:cfg.cor }))
+    { id:'todos', label:'Todos', icon:'ti-layout-kanban', cor:'blue' },
+    ...ZONAS.map(z => ({ id:z.id, label:z.label, icon:z.icon, cor:z.cor }))
   ]
 
   // Scroll horizontal com wheel
@@ -1436,13 +1475,22 @@ function OS({ T, dark, user }) {
         <div style={{ display:'flex', gap:10, alignItems:'stretch' }}>
           <div style={{ display:'flex', gap:6, background:T.card, padding:4, borderRadius:10, border:`1px solid ${T.border}`, flex:1 }}>
             {abas.map(a => {
-              const ativo = a.id === tipo
+              const ativo = a.id === zona
               const c = corEtapa(a.cor, dark)
-              const n = a.id === 'todos'
-                ? osList.filter(o => o.etapa !== 'concluido' && o.etapa !== 'recusado').length
-                : osList.filter(o => o.tipo === a.id && o.etapa !== 'concluido' && o.etapa !== 'recusado').length
+              // Contador: OS dos tipos ativos, ativas (não concluido/recusado),
+              // e que caiam nas etapas dessa zona (ou todas, se a aba for Todos)
+              const n = osList.filter(o => {
+                if (o.etapa === 'concluido' || o.etapa === 'recusado') return false
+                if (!tiposAtivos.has(o.tipo)) return false
+                if (a.id === 'todos') return true
+                const z = ZONAS.find(z => z.id === a.id)
+                return z?.etapas.some(eid => {
+                  const eu = ETAPAS_TODOS.find(et => et.id === eid)
+                  return eu?.match?.[o.tipo] === o.etapa
+                })
+              }).length
               return (
-                <button key={a.id} onClick={()=>setTipo(a.id)}
+                <button key={a.id} onClick={()=>setZona(a.id)}
                   style={{ flex:1, padding:'10px 14px', borderRadius:7, border:'none', cursor:'pointer', background:ativo?bgEtapa(a.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:13, fontWeight:ativo?700:500, display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'background .15s' }}>
                   <i className={`ti ${a.icon}`} style={{ fontSize:16 }} aria-hidden="true" />
                   <span>{a.label}</span>
@@ -1479,12 +1527,34 @@ function OS({ T, dark, user }) {
                 style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${statusF===v?tipoCor:T.border}`, background:statusF===v?tipoBg:'transparent', color:statusF===v?tipoCor:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:statusF===v?600:500 }}>{l}</button>
             ))}
           </div>
+          <div style={{ display:'flex', gap:5 }}>
+            <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Tipo</span>
+            {Object.entries(TIPOS_OS).map(([id, cfg]) => {
+              const ativo = tiposAtivos.has(id)
+              const c = corEtapa(cfg.cor, dark)
+              return (
+                <button key={id} onClick={()=>{
+                  setTiposAtivos(s => {
+                    const n = new Set(s)
+                    if (n.has(id)) n.delete(id); else n.add(id)
+                    if (n.size === 0) return s // não deixa zerar — pelo menos 1 tipo ativo
+                    return n
+                  })
+                }}
+                  title={ativo?`Ocultar ${cfg.label}`:`Mostrar ${cfg.label}`}
+                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?c:T.border}`, background:ativo?bgEtapa(cfg.cor,dark):'transparent', color:ativo?c:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500, display:'flex', alignItems:'center', gap:4 }}>
+                  <i className={`ti ${cfg.icon}`} style={{ fontSize:12 }} aria-hidden="true" />
+                  {cfg.label}
+                </button>
+              )
+            })}
+          </div>
           <button onClick={()=>setVerAgPeca(v=>!v)}
             style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verAgPeca?'#ff9800':T.border}`, background:verAgPeca?(dark?'#3a2200':'#fff4e0'):'transparent', color:verAgPeca?'#ff9800':T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
             <i className={`ti ${verAgPeca?'ti-package':'ti-package-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
             Aguard. peça ({totalAgPeca})
           </button>
-          {(tipo === 'todos' || tipo === 'atendimento') && (
+          {(zona === 'todos' || zona === 'financeiro') && (
             <button onClick={()=>setVerRecusados(v=>!v)}
               style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verRecusados?cor(P.red,P.redDark):T.border}`, background:verRecusados?cor('#2a1515','#fde8e8'):'transparent', color:verRecusados?cor(P.red,P.redDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
               <i className={`ti ${verRecusados?'ti-eye':'ti-eye-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
@@ -1502,7 +1572,7 @@ function OS({ T, dark, user }) {
           style={{ flex:1, minHeight:0, overflowX:'auto', overflowY:'hidden', display:'flex', gap:10, paddingBottom:6 }}>
           {etapasVisiveis.map(etapa => (
             <KanbanCol key={etapa.id} etapa={etapa} osList={porEtapa[etapa.id]||[]} T={T} dark={dark} tipoCor={tipoCor}
-              modoTodos={tipo==='todos'} onCardClick={setDetalhe}
+              modoTodos={true} onCardClick={setDetalhe}
               arrastando={arrastando} colunaHover={colunaHover}
               onDragStart={(numero, etapaOrigem)=>setArrastando({numero, etapa:etapaOrigem})}
               onDragEnd={()=>{ setArrastando(null); setColunaHover(null) }}
@@ -1522,7 +1592,7 @@ function OS({ T, dark, user }) {
         )}
       </div>
 
-      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial={tipo==='todos'?'atendimento':tipo} />}
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" />}
       {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList}
         onClose={()=>setDetalhe(null)}
         onToggleAgPeca={()=>toggleAgPecaOS(osDetalheAtual.numero)}
