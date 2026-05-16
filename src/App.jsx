@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase'
 import { Chart as ChartJS, registerables } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
+import { useOS, uiEtapaToDb } from './hooks/useOS'
+import { useUsuarios } from './hooks/useUsuarios'
 
 ChartJS.register(...registerables)
 
@@ -369,9 +371,8 @@ function osPorNumero(numero, base) {
   return (base || OS_MOCK).find(o => o.numero === numero)
 }
 
-// ─── Dados mock de OS (substituir por fetch do Supabase depois) ───────────
-// Campos: marca/modelo/serie separados; historico = [{etapa, funcionario, data}]
-// aguardando_peca: true → badge laranja no card (toggle manual em "Em oficina")
+// TODO: remover após testes — OS_MOCK substituído por useOS() (hook Supabase)
+// Mantido para referência dos campos esperados e fallback em osPorNumero (nunca chamado)
 const OS_MOCK = [
   // ATENDIMENTO
   { numero:1036, tipo:'atendimento', cliente:'Ana Reis',     fone:'(67) 9 9911-1010', equipamento:'Lavadora LG 12kg', marca:'LG', modelo:'WD1485ATS', serie:'4AB12345', defeito:'Não centrifuga, faz ruído alto',          etapa:'oficina',       limpeza:'concluido', manutencao:'em_andamento', aguardando_peca:true, abertura:'2026-05-10', prazo:'2026-05-11', endereco:'R. das Acácias, 412 — Naviraí/MS', valor:380, desconto:0, fotos:2, observacoes:'Cliente urgente — viagem dia 15. Peça em falta: rolamento do cesto.', historico:[
@@ -1144,7 +1145,7 @@ function PainelMobile({ T, dark }) {
 // ─── OS Mobile ─────────────────────────────────────────────────────────────
 // Reescrito do zero com referência Trello: 2 modos (Painel + Coluna) + swipe lateral.
 // Totalmente isolado do OS desktop. Compartilha apenas mocks/helpers/configs.
-function OSMobile({ T, dark, user }) {
+function OSMobile({ T, dark, user, onSetRefetch }) {
   const cor = (d, c) => dark ? d : c
   const admin = isAdmin(user)
 
@@ -1182,6 +1183,16 @@ function OSMobile({ T, dark, user }) {
   // Ref pro scroll area da coluna (usado pra detectar topo do scroll)
   const scrollAreaRef = useRef(null)
 
+  const buscando = busca.trim().length > 0
+  // useOS para mobile — conectado ao Supabase
+  const { osList, loading: osLoading, refetch: osRefetch } = useOS(buscando)
+  const { usuarios } = useUsuarios()
+
+  // Expõe refetch para o pull-to-refresh do pai (App)
+  useEffect(() => {
+    if (onSetRefetch) onSetRefetch(() => osRefetch)
+  }, [osRefetch, onSetRefetch])
+
   // ── Etapas visíveis
   // No modo Lista: só as etapas da zona selecionada.
   // No modo Painel: TODAS as etapas (independente da zona).
@@ -1198,8 +1209,7 @@ function OSMobile({ T, dark, user }) {
   }
 
   // ── Universo base (sem filtrar por etapa)
-  const buscando = busca.trim().length > 0
-  const universoBase = OS_MOCK
+  const universoBase = osList
     .filter(o => tiposAtivos.has(o.tipo))
     .filter(o => admin || (o.etapa !== 'pagamento' && o.etapa !== 'concluido'))
     .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
@@ -1565,15 +1575,15 @@ function OSMobile({ T, dark, user }) {
           {/* RESPONSÁVEL */}
           <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px', marginTop:12, marginBottom:4 }}>Responsável</div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-            {[{id:'todos',nome:'Todos'}, ...FUNCIONARIOS].map(f => {
+            {[{id:'todos', nome:'Todos', apelido:'TD', cor:null}, ...usuarios].map(f => {
               const ativo = funcionario === f.id
               return (
                 <button key={f.id} onClick={()=>setFuncionario(f.id)}
                   style={{ flex:'1 1 calc(50% - 3px)', padding:'11px 12px', borderRadius:9, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:T.cardAlt, color:ativo?azul:T.textPrimary, cursor:'pointer', display:'flex', alignItems:'center', gap:7, fontSize:13, fontWeight:ativo?700:500 }}>
-                  {f.id !== 'todos' && f.cor
+                  {f.cor
                     ? <span style={{ width:20, height:20, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{f.apelido}</span>
                     : <i className="ti ti-users" style={{ fontSize:15 }} aria-hidden="true" />}
-                  <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{f.id==='todos' ? 'Todos' : (f.nome.split(' ')[0])}</span>
+                  <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{f.id==='todos' ? 'Todos' : (f.nome?.split(' ')[0] || f.apelido)}</span>
                 </button>
               )
             })}
@@ -1828,6 +1838,7 @@ function OS({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const role = getRole(user)
   const admin = isAdmin(user)
+  const [buscaAtiva, setBuscaAtiva] = useState(false)
   const [zona, setZona]   = useState('todos')
   // Tipos ativos por padrão: TODOS. Mínimo: 1 (proteção no toggle).
   const [tiposAtivos, setTiposAtivos] = useState(() => new Set(Object.keys(TIPOS_OS)))
@@ -1844,17 +1855,21 @@ function OS({ T, dark, user }) {
     })
   }
   const [busca, setBusca] = useState('')
+  // Sincroniza buscaAtiva para que useOS saiba se deve mostrar concluídas >24h
+  useEffect(() => { setBuscaAtiva(busca.trim().length > 0) }, [busca])
   const [funcionario, setFuncionario] = useState('todos')
   const [statusF, setStatusF]         = useState('todos')
   const [verRecusados, setVerRecusados] = useState(false)
   const [verAgPeca, setVerAgPeca]       = useState(false)
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
-  // Estado mutável das OS (permite drag-and-drop e toggle aguardando peça)
-  const [osList, setOsList] = useState(OS_MOCK)
+  // useOS: busca do banco + estado mutável para optimistic updates
+  const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch } = useOS(buscaAtiva)
+  const { usuarios } = useUsuarios()
   // Drag-and-drop
   const [arrastando, setArrastando] = useState(null) // {numero, etapa}
   const [colunaHover, setColunaHover] = useState(null) // etapaId destino
+  const [shakingNum, setShakingNum] = useState(null)
   const [toast, setToast] = useState(null) // {tipo:'ok'|'erro', msg}
 
   function notify(tipo, msg) {
@@ -1863,38 +1878,79 @@ function OS({ T, dark, user }) {
     notify._t = setTimeout(()=>setToast(null), 3200)
   }
 
-  // Mover OS — usa podeMoverOS e atualiza estado + histórico
-  function moverOS(numero, etapaAlvo) {
+  // Mover OS — optimistic update + persist no Supabase
+  async function moverOS(numero, etapaAlvo) {
     const os = osList.find(o => o.numero === numero)
     if (!os) return
-    // SEMPRE visão unificada — etapaAlvo é um ID de ETAPAS_TODOS — traduz pra etapa do tipo da OS
-    let alvoReal = etapaAlvo
+    // Traduz coluna unificada para etapa do tipo da OS
     const etapaUnif = ETAPAS_TODOS.find(e => e.id === etapaAlvo)
-    alvoReal = etapaUnif?.match?.[os.tipo]
+    const alvoReal = etapaUnif?.match?.[os.tipo]
     if (!alvoReal) {
       notify('erro', `Esta coluna não aceita OS de ${TIPOS_OS[os.tipo].label}`)
       return
     }
     const r = podeMoverOS(os, alvoReal)
-    if (!r.ok) { notify('erro', r.motivo); return }
-    const etapaFinal = r.alvo || alvoReal // pode ser redirecionado (ex: pagamento → concluido se pago)
-    const respLogado = role
-    const agora = new Date().toISOString().slice(0,16).replace('T',' ')
+    if (!r.ok) {
+      notify('erro', r.motivo)
+      setShakingNum(numero)
+      setTimeout(() => setShakingNum(null), 350)
+      return
+    }
+    const etapaFinal = r.alvo || alvoReal // pode redirecionar (ex: pagamento → concluido se pago)
+    const agora = new Date().toLocaleString('sv-SE', { timeZone: 'America/Cuiaba' }).slice(0, 16).replace('T', ' ')
+
+    // Optimistic update — salva estado anterior para reverter se falhar
+    const osPrev = osList
     setOsList(prev => prev.map(o => {
       if (o.numero !== numero) return o
       return {
         ...o,
         etapa: etapaFinal,
-        historico: [...(o.historico||[]), { etapa: etapaFinal, funcionario: respLogado, data: agora }]
+        historico: [...(o.historico||[]), { etapa: etapaFinal, funcionario: user?.id, data: agora }]
       }
     }))
     const labelFinal = TIPOS_OS[os.tipo].etapas.find(e => e.id === etapaFinal)?.label || etapaFinal
     if (r.alvo) notify('ok', `OS #${numero} já estava paga — foi direto para ${labelFinal}`)
     else        notify('ok', `OS #${numero} movida para ${labelFinal}`)
+
+    // Persistir no Supabase
+    try {
+      const dbEtapa = uiEtapaToDb(os.tipo, etapaFinal)
+      const { error: errUp } = await supabase.from('os').update({ etapa: dbEtapa }).eq('id', os.id)
+      if (errUp) throw errUp
+      // Inserir histórico manualmente (verificar se trigger já existe no banco — se houver duplicata, ignorar)
+      await supabase.from('os_historico').insert({
+        os_id: os.id,
+        etapa_de: uiEtapaToDb(os.tipo, os.etapa),
+        etapa_para: dbEtapa,
+        funcionario_id: user?.id,
+      })
+    } catch {
+      setOsList(osPrev)
+      notify('erro', 'Erro ao mover OS — mudança revertida')
+    }
   }
-  function toggleAgPecaOS(numero) {
-    setOsList(prev => prev.map(o => o.numero === numero ? {...o, aguardando_peca: !o.aguardando_peca} : o))
+
+  async function toggleAgPecaOS(numero) {
+    const os = osList.find(o => o.numero === numero)
+    if (!os) return
+    const novoValor = !os.aguardando_peca
+    const osPrev = osList
+    // Optimistic update
+    setOsList(prev => prev.map(o => o.numero === numero ? {...o, aguardando_peca: novoValor} : o))
+    try {
+      const { error: errUp } = await supabase.from('os').update({ aguardando_peca: novoValor }).eq('id', os.id)
+      if (errUp) throw errUp
+    } catch {
+      setOsList(osPrev)
+      notify('erro', 'Erro ao atualizar "Aguardando peça" — mudança revertida')
+    }
   }
+
+  // Mostrar erro de carregamento via toast (só uma vez por erro)
+  useEffect(() => {
+    if (osError) notify('erro', 'Erro ao carregar OS — tente recarregar')
+  }, [osError])
 
   // Zona define quais colunas aparecem. 'todos' = todas as colunas de ETAPAS_TODOS.
   const zonaCfg = ZONAS.find(z => z.id === zona)
@@ -2017,13 +2073,13 @@ function OS({ T, dark, user }) {
           </div>
           <div style={{ display:'flex', gap:5 }}>
             <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Resp.</span>
-            {[['todos','Todos'], ...FUNCIONARIOS.map(f=>[f.id, f.apelido])].map(([v,l]) => {
-              const ativo = funcionario === v
+            {[{id:'todos', apelido:'Todos'}, ...usuarios].map(u => {
+              const ativo = funcionario === u.id
               const azul = cor(P.blue, P.blueDark)
               const azulBg = cor('#0d2035', '#e6f1fb')
               return (
-                <button key={v} onClick={()=>setFuncionario(v)}
-                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500 }}>{l}</button>
+                <button key={u.id} onClick={()=>setFuncionario(u.id)}
+                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500 }}>{u.apelido}</button>
               )
             })}
           </div>
@@ -2080,6 +2136,8 @@ function OS({ T, dark, user }) {
             <KanbanCol key={etapa.id} etapa={etapa} osList={porEtapa[etapa.id]||[]} T={T} dark={dark} tipoCor={tipoCor}
               modoTodos={true} onCardClick={setDetalhe}
               arrastando={arrastando} colunaHover={colunaHover}
+              loading={osLoading}
+              shakingNum={shakingNum}
               onDragStart={(numero, etapaOrigem)=>setArrastando({numero, etapa:etapaOrigem})}
               onDragEnd={()=>{ setArrastando(null); setColunaHover(null) }}
               onDragOverCol={(etapaId)=>setColunaHover(etapaId)}
@@ -2099,7 +2157,7 @@ function OS({ T, dark, user }) {
       </div>
 
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" />}
-      {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList}
+      {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList} usuarios={usuarios}
         onClose={()=>setDetalhe(null)}
         onToggleAgPeca={()=>toggleAgPecaOS(osDetalheAtual.numero)}
         onAbrirOS={(num)=>{ const o = osList.find(x=>x.numero===num); if(o) setDetalhe(o) }} />}
@@ -2107,7 +2165,17 @@ function OS({ T, dark, user }) {
   )
 }
 
-function KanbanCol({ etapa, osList, T, dark, tipoCor, modoTodos, onCardClick, arrastando, colunaHover, onDragStart, onDragEnd, onDragOverCol, onDropCol, concluidoMesAtual }) {
+function KanbanSkeleton({ T }) {
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:8, padding:8 }}>
+      {[68, 80, 60, 72].map((h, i) => (
+        <div key={i} className="idemaq-skeleton" style={{ height:h, background:T.border, opacity:.6 }} />
+      ))}
+    </div>
+  )
+}
+
+function KanbanCol({ etapa, osList, T, dark, tipoCor, modoTodos, onCardClick, arrastando, colunaHover, onDragStart, onDragEnd, onDragOverCol, onDropCol, concluidoMesAtual, loading, shakingNum }) {
   const cor = (d, c) => dark ? d : c
   const c  = corEtapa(etapa.cor, dark)
   const bg = bgEtapa(etapa.cor, dark)
@@ -2129,12 +2197,14 @@ function KanbanCol({ etapa, osList, T, dark, tipoCor, modoTodos, onCardClick, ar
         <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:10, background:osList.length>0?bg:T.bg, color:osList.length>0?c:T.textDim, minWidth:22, textAlign:'center' }}>{osList.length}</span>
       </div>
       <div style={{ flex:1, overflowY:'auto', padding:8, display:'flex', flexDirection:'column', gap:8 }}>
-        {osList.length === 0 && (
+        {loading && <KanbanSkeleton T={T} />}
+        {!loading && osList.length === 0 && (
           <div style={{ padding:'1.2rem .5rem', textAlign:'center', color:T.textDim, fontSize:11, fontStyle:'italic' }}>
             {isHover ? 'Solte aqui' : 'vazio'}
           </div>
         )}
-        {osList.map(os => <KanbanCard key={os.numero} os={os} T={T} dark={dark} tipoCor={tipoCor} modoTodos={modoTodos}
+        {!loading && osList.map(os => <KanbanCard key={os.numero} os={os} T={T} dark={dark} tipoCor={tipoCor} modoTodos={modoTodos}
+          shaking={shakingNum === os.numero}
           onClick={()=>onCardClick(os)}
           onDragStart={()=>onDragStart?.(os.numero, etapa.id)}
           onDragEnd={onDragEnd} />)}
@@ -2143,7 +2213,7 @@ function KanbanCol({ etapa, osList, T, dark, tipoCor, modoTodos, onCardClick, ar
   )
 }
 
-function KanbanCard({ os, T, dark, tipoCor, modoTodos, onClick, onDragStart, onDragEnd }) {
+function KanbanCard({ os, T, dark, tipoCor, modoTodos, onClick, onDragStart, onDragEnd, shaking }) {
   const cor = (d, c) => dark ? d : c
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
@@ -2172,6 +2242,7 @@ function KanbanCard({ os, T, dark, tipoCor, modoTodos, onClick, onDragStart, onD
       draggable
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
+      className={shaking ? 'idemaq-shake' : undefined}
       style={{ ...baseStyle, borderRadius:9, padding:'11px 12px', cursor:'grab', transition:'box-shadow .15s, border-color .15s, transform .15s' }}
       onMouseEnter={e=>{
         if (dark) { e.currentTarget.style.borderColor = '#3a3a3e'; e.currentTarget.style.borderLeftColor = corLinha }
@@ -2645,14 +2716,41 @@ function ModalBase({ T, dark, onClose, children, maxWidth=720, mobile }) {
   )
 }
 
+// Banner "OS finalizada" — acessibilidade Deutan: ícone + texto "Finalizada" + cor verde
+function BannerFinalizada({ dark, cor, admin }) {
+  const [msg, setMsg] = useState(null)
+  function reabrir() {
+    setMsg('Funcionalidade disponível no Módulo 03')
+    setTimeout(() => setMsg(null), 3000)
+  }
+  return (
+    <div style={{ padding:'10px 18px', background:cor('#0f2a15','#e8f5ec'), borderBottom:'2px solid #28a745', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexShrink:0 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+        <i className="ti ti-circle-check" style={{ fontSize:18, color:cor('#4ade80','#1a7a3a') }} aria-hidden="true" />
+        <span style={{ fontSize:13, fontWeight:700, color:cor('#4ade80','#1a7a3a') }}>✓ OS finalizada</span>
+        <span style={{ fontSize:11, color:cor('#4ade80','#1a7a3a'), opacity:.75 }}>Somente leitura</span>
+        {msg && <span style={{ fontSize:11, color:cor('#4ade80','#1a7a3a'), fontStyle:'italic' }}>— {msg}</span>}
+      </div>
+      {admin && (
+        <button onClick={reabrir}
+          style={{ padding:'5px 12px', borderRadius:6, border:`1px solid ${cor('#4ade80','#1a7a3a')}`, background:'transparent', color:cor('#4ade80','#1a7a3a'), fontSize:11, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+          <i className="ti ti-refresh" style={{ fontSize:12 }} aria-hidden="true" />
+          Reabrir OS
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── OS Detalhe (somente leitura nesta etapa) ──────────────────────────────
-function OSDetalhe({ T, dark, os: osInicial, user, osBase, onClose, onToggleAgPeca, onAbrirOS, mobile }) {
+function OSDetalhe({ T, dark, os: osInicial, user, osBase, usuarios, onClose, onToggleAgPeca, onAbrirOS, mobile }) {
   const cor = (d, c) => dark ? d : c
   // Estado local: usado se props de callback não vierem (caso mobile não controlar)
   const [osLocal, setOsLocal] = useState(osInicial)
   const os = osInicial // sempre usa o que vem (atualizado pelo pai)
   const [aba, setAba] = useState('detalhe')
   const admin = isAdmin(user)
+  const isConcluido = os.etapa === 'concluido'
   const config = TIPOS_OS[os.tipo]
   const etapaAtual = config.etapas.findIndex(e => e.id === os.etapa)
   const isRecusado = os.etapa === 'recusado'
@@ -2691,6 +2789,10 @@ function OSDetalhe({ T, dark, os: osInicial, user, osBase, onClose, onToggleAgPe
 
   return (
     <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={780}>
+      {/* Banner OS finalizada — acessibilidade Deutan: ícone + texto + cor */}
+      {isConcluido && (
+        <BannerFinalizada dark={dark} cor={cor} admin={admin} />
+      )}
       {/* Header */}
       <div style={{ padding:'14px 18px 12px', borderBottom:`1px solid ${T.border}`, background:tipoCor+'08' }}>
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
@@ -3068,6 +3170,8 @@ export default function App() {
   // Refresh contextual mobile: cada página tem um contador, incrementa força re-mount
   const [refreshTick, setRefreshTick] = useState({})
   const isMobile = useIsMobile()
+  // Ref para o refetch do useOS exposto pelo OSMobile (pull-to-refresh)
+  const osRefetchFnRef = useRef(null)
 
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem('idemaq_tema')
@@ -3096,13 +3200,17 @@ export default function App() {
       el.id = styleId
       document.head.appendChild(el)
     }
+    const sharedKeyframes = `
+      @keyframes spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+      @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:.25} }
+      .idemaq-shake { animation: shake .3s ease both !important; }
+      .idemaq-skeleton { animation: pulse 1.4s ease-in-out infinite; border-radius: 6px; }
+    `
     if (dark) {
-      el.textContent = `
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `
+      el.textContent = sharedKeyframes
     } else {
-      el.textContent = `
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      el.textContent = sharedKeyframes + `
         /* Estilo "Conta Azul" no light mode: cards com sombra suave em vez de bordas */
         .idemaq-card {
           border-top: none !important;
@@ -3133,18 +3241,21 @@ export default function App() {
   if (!user) return <Login dark={dark} T={T} />
 
   if (isMobile) {
-    // Contador de refresh por página — incrementar força re-mount do conteúdo
-    // (até a Entrega 2 plugar Supabase real, o pull simula refresh via re-mount)
     const refreshKey = refreshTick[pagina] || 0
-    function refreshPagina() {
-      // Em produção (Entrega 2): refaz queries do Supabase pra `pagina` atual.
-      // Por ora: força remount do componente da página corrente.
+    function handleSetRefetch(fn) { osRefetchFnRef.current = fn }
+
+    async function refreshPagina() {
+      if (pagina === 'os' && osRefetchFnRef.current) {
+        // Chama o refetch real do useOS e aguarda terminar
+        return osRefetchFnRef.current()
+      }
+      // Para outras páginas, força remount (sem Supabase ainda)
       setRefreshTick(prev => ({ ...prev, [pagina]: (prev[pagina]||0) + 1 }))
       return new Promise(resolve => setTimeout(resolve, 400))
     }
     const conteudoMobile = {
       painel:     <PainelMobile key={`painel-${refreshKey}`} T={T} dark={dark} />,
-      os:         <OSMobile key={`os-${refreshKey}`} T={T} dark={dark} user={user} />,
+      os:         <OSMobile T={T} dark={dark} user={user} onSetRefetch={handleSetRefetch} />,
       estoque:    <EmConstrucao key={`est-${refreshKey}`} nome="Estoque" T={T} />,
       financeiro: <EmConstrucao key={`fin-${refreshKey}`} nome="Financeiro" T={T} />,
     }
