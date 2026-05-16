@@ -29,10 +29,7 @@ import {
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
 import Badge from '../components/ui/Badge'
-
-// Mock de itens das OS — placeholder até virem do Supabase.
-// Estrutura: { [osNumero]: [{ tipo, nome, qtd, valor }, ...] }
-const OS_ITENS_MOCK = {}
+import { OS_ITENS_MOCK } from '../_mocks/os'
 
 function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
   const cor = (d, c) => dark ? d : c

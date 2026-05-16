@@ -806,7 +806,55 @@ function OSCardMobile({ os, T, dark, onClick }) {
   )
 }
 
-// ─── OS — Kanban Desktop ───────────────────────────────────────────────────
+// ─── Helpers visuais usados por PainelMobile e OSCardMobile ───────────────
+
+function Badge({ color, bg, border, children }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '2px 7px', borderRadius: 8,
+      fontSize: 10, fontWeight: 700,
+      color, background: bg,
+      border: `1px solid ${border || color + '33'}`,
+      whiteSpace: 'nowrap',
+    }}>
+      {children}
+    </span>
+  )
+}
+
+function CountBadge({ n, red, T, dark }) {
+  const bg = red ? (dark ? '#2a1515' : '#fde8e8') : (dark ? '#0d2035' : '#e6f1fb')
+  const cor = red ? (dark ? '#ff6b6b' : '#c04242') : (dark ? '#5B9BD5' : '#3a7bbf')
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      minWidth: 18, height: 18, borderRadius: 9,
+      fontSize: 10, fontWeight: 700,
+      color: cor, background: bg,
+      padding: '0 5px',
+    }}>
+      {n}
+    </span>
+  )
+}
+
+function SecTitle({ icon, T, children, right }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      marginBottom: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {icon && <i className={`ti ${icon}`} style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />}
+        <span style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.4px' }}>
+          {children}
+        </span>
+      </div>
+      {right}
+    </div>
+  )
+}
 
 // ─── Exports ────────────────────────────────────────────────────────────
 export { PainelMobile, OSMobile, PullToRefresh, BottomSheet, OSCardMobile }
