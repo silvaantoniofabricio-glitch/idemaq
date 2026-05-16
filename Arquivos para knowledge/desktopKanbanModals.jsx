@@ -4,18 +4,15 @@
 // Visual e comportamento 100% idênticos ao original. Pendente de refatoração para o
 // design system (idemaq-src/components/ui) — fazer em sessões futuras com o Claude Code.
 //
-// REDESIGN 16/05/2026 — Nova OS (Passo 1 + Passo 2 Atendimento) e cadastro de cliente.
-//
 // Inclui:
-//   - NovaOSModal              (formulário de criação de OS — 3 tipos — REDESENHADO 16/05/2026)
-//   - NovoClienteModalCompleto (cadastro completo de cliente — NOVO 16/05/2026)
-//   - FormSecao                (sub-componente)
-//   - ModalBase                (overlay genérico)
-//   - BannerFinalizada         (banner de OS finalizada com reabertura)
-//   - OSDetalhe                (modal de detalhe da OS — Resumo/Itens/Histórico/Pagamento)
+//   - NovaOSModal     (formulário de criação de OS — 3 tipos)
+//   - FormSecao       (sub-componente do NovaOSModal)
+//   - ModalBase       (overlay genérico)
+//   - BannerFinalizada (banner de OS finalizada com reabertura)
+//   - OSDetalhe       (modal de detalhe da OS — Resumo/Itens/Histórico/Pagamento)
 //   - DetCard, Linha, DetMini, SubBox (helpers do OSDetalhe)
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { P } from '../theme'
 import {
@@ -32,350 +29,60 @@ import {
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
 import Badge from '../components/ui/Badge'
-import { OS_ITENS_MOCK } from '../_mocks/os'
 
-// ─── Constantes do redesign da Nova OS ──────────────────────────────────────
-const ORDEM_TIPOS_OS = ['atendimento', 'venda', 'fabricacao']
-const TIPOS_EQUIPAMENTO = ['Máquina de Lavar', 'Lava e Seca', 'Tanquinho', 'Micro-ondas']
-const MARCAS_EQUIPAMENTO = ['Brastemp', 'Electrolux', 'Consul', 'Outros']
-
-// Adapta CLIENTES_MOCK (que tem `endereco: string`) para o formato novo (`enderecos: array`).
-// Quando o Módulo 02 do roadmap entrar, isto vai para a tabela `cliente` do Supabase.
-function adaptarClientesMock(lista) {
-  return (lista || []).map(c => ({
-    ...c,
-    enderecos: c.enderecos && Array.isArray(c.enderecos) && c.enderecos.length > 0
-      ? c.enderecos
-      : (c.endereco ? [c.endereco] : []),
-  }))
-}
-
-// Helper: texto curto do status de campos obrigatórios faltando no Passo 2.
-function statusCamposFaltando(tipo, form) {
-  if (tipo === 'atendimento') {
-    if (!form.cliente) return 'selecione um cliente'
-    return 'pronto para criar'
-  }
-  if (tipo === 'fabricacao') {
-    if (!form.equipamentoTipo) return 'selecione o tipo da máquina'
-    return 'pronto para criar'
-  }
-  if (tipo === 'venda') {
-    if (!form.cliente) return 'selecione um cliente'
-    if (!form.maquinaEstoque) return 'selecione uma máquina do estoque'
-    return 'pronto para criar'
-  }
-  return ''
-}
-
-// ─── Modal: Novo Cliente Completo ───────────────────────────────────────────
-// Cadastro completo de cliente. Usado como sub-modal a partir da Nova OS
-// e também (futuramente) pela tela de Clientes.
-// Props:
-//   T, dark, onClose         — padrão
-//   onSalvar(cliente)        — callback ao cadastrar, recebe o objeto novo
-//   nomeInicial              — opcional, pré-preenche o nome (ex: vindo de busca)
-//   mobile                   — bottom sheet no mobile
-
-function NovoClienteModalCompleto({ T, dark, onClose, onSalvar, nomeInicial, mobile }) {
-  const cor = (d, c) => dark ? d : c
-  const [form, setForm] = useState({
-    nome: nomeInicial || '',
-    cpfCnpj: '',
-    email: '',
-    fone: '',
-    foneSecundario: '',
-    enderecos: [''], // sempre começa com 1
-  })
-
-  const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const updateEnd = (i, v) => setForm(f => {
-    const novos = [...f.enderecos]
-    novos[i] = v
-    return { ...f, enderecos: novos }
-  })
-  const addEndereco = () => {
-    setForm(f => f.enderecos.length >= 3 ? f : ({ ...f, enderecos: [...f.enderecos, ''] }))
-  }
-  const removerEndereco = (i) => {
-    setForm(f => f.enderecos.length <= 1 ? f : ({ ...f, enderecos: f.enderecos.filter((_, idx) => idx !== i) }))
-  }
-
-  const podeSalvar = !!(form.nome.trim() && form.fone.trim() && form.enderecos[0]?.trim())
-
-  function salvar() {
-    if (!podeSalvar) return
-    const novoCliente = {
-      id: 'novo-' + Date.now(),
-      nome: form.nome.trim(),
-      cpfCnpj: form.cpfCnpj.trim(),
-      email: form.email.trim(),
-      fone: form.fone.trim(),
-      foneSecundario: form.foneSecundario.trim(),
-      enderecos: form.enderecos.filter(e => e.trim()),
-      endereco: form.enderecos[0].trim(), // compat. com osData.js antigo
-    }
-    onSalvar?.(novoCliente)
-    onClose()
-  }
-
-  const inputStyle = { width:'100%', padding:'10px 12px', borderRadius:8, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
-  const miniLabel = { fontSize:10.5, color:T.textMuted, marginBottom:5, fontWeight:600, letterSpacing:'.3px', display:'flex', alignItems:'center', gap:6 }
-  const opcionalChip = <span style={{ fontSize:10, color:T.textDim, fontWeight:400 }}>— opcional</span>
-  const asterisco = <span style={{ fontSize:10, color:cor(P.red, P.redDark), fontWeight:700 }}>*</span>
-
-  const faltando = [
-    !form.nome.trim() && 'Nome',
-    !form.fone.trim() && 'Telefone',
-    !form.enderecos[0]?.trim() && 'Endereço 1',
-  ].filter(Boolean)
-
-  return (
-    <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={560}>
-      {/* Header */}
-      <div style={{ padding:'14px 20px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <i className="ti ti-user-plus" style={{ fontSize:18, color:'#fff' }} aria-hidden="true" />
-          </div>
-          <div>
-            <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>Novo cliente</div>
-            <div style={{ fontSize:11, color:T.textMuted, marginTop:1, display:'flex', alignItems:'center', gap:6 }}>
-              <span>Cadastro completo</span>
-              <span style={{ width:3, height:3, background:T.textMuted, borderRadius:'50%' }} />
-              {faltando.length > 0 ? (
-                <span style={{ color:cor(P.red, P.redDark) }}>falta: {faltando.join(', ')}</span>
-              ) : (
-                <span style={{ color:cor(P.blue, P.blueDark) }}>pronto para salvar</span>
-              )}
-            </div>
-          </div>
-        </div>
-        <button onClick={onClose} aria-label="Fechar"
-          style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:6, borderRadius:6, fontSize:0, lineHeight:0 }}>
-          <i className="ti ti-x" style={{ fontSize:20 }} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
-
-        {/* Dados pessoais */}
-        <div style={{ marginBottom:18 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <i className="ti ti-user" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-            <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Dados pessoais</span>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            <div style={{ gridColumn:'1 / -1' }}>
-              <label style={miniLabel}>NOME COMPLETO {asterisco}</label>
-              <input value={form.nome} onChange={e=>update('nome', e.target.value)} placeholder="Ex: Maria Silva" style={inputStyle} autoFocus />
-            </div>
-            <div>
-              <label style={miniLabel}>CPF / CNPJ {opcionalChip}</label>
-              <input value={form.cpfCnpj} onChange={e=>update('cpfCnpj', e.target.value)} placeholder="000.000.000-00" style={inputStyle} />
-            </div>
-            <div>
-              <label style={miniLabel}>E-MAIL {opcionalChip}</label>
-              <input type="email" value={form.email} onChange={e=>update('email', e.target.value)} placeholder="maria@email.com" style={inputStyle} />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ height:1, background:T.border, margin:'18px 0' }} />
-
-        {/* Contato */}
-        <div style={{ marginBottom:18 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <i className="ti ti-phone" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-            <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Contato</span>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-            <div>
-              <label style={miniLabel}>TELEFONE PRINCIPAL {asterisco}</label>
-              <input type="tel" value={form.fone} onChange={e=>update('fone', e.target.value)} placeholder="(67) 9 0000-0000" style={inputStyle} />
-              <div style={{ fontSize:10.5, color:cor(P.blue, P.blueDark), marginTop:4, display:'flex', alignItems:'center', gap:4 }}>
-                <i className="ti ti-brand-whatsapp" style={{ fontSize:12 }} aria-hidden="true" />
-                WhatsApp principal
-              </div>
-            </div>
-            <div>
-              <label style={miniLabel}>TELEFONE SECUNDÁRIO {opcionalChip}</label>
-              <input type="tel" value={form.foneSecundario} onChange={e=>update('foneSecundario', e.target.value)} placeholder="(67) 9 0000-0000" style={inputStyle} />
-              <div style={{ fontSize:10.5, color:T.textMuted, marginTop:4 }}>Esposo(a), parente, recado</div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ height:1, background:T.border, margin:'18px 0' }} />
-
-        {/* Endereços */}
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <i className="ti ti-map-pin" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-            <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Endereço 1</span>
-            <span style={{ fontSize:10, color:cor(P.red, P.redDark), fontWeight:700 }}>OBRIGATÓRIO</span>
-          </div>
-          <input value={form.enderecos[0] || ''} onChange={e=>updateEnd(0, e.target.value)} placeholder="Rua, número, bairro — cidade/UF" style={inputStyle} />
-          <div style={{ fontSize:10.5, color:T.textMuted, marginTop:4, display:'flex', alignItems:'center', gap:4 }}>
-            <i className="ti ti-map-search" style={{ fontSize:12 }} aria-hidden="true" />
-            Validado via Google Maps ao digitar
-          </div>
-
-          {/* Endereços extras */}
-          {form.enderecos.slice(1).map((end, idx) => {
-            const realIdx = idx + 1
-            return (
-              <div key={realIdx} style={{ marginTop:12, padding:12, background:T.cardAlt, border:`1px solid ${T.border}`, borderRadius:9 }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <i className="ti ti-map-pin" style={{ fontSize:14, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-                    <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Endereço {realIdx + 1}</span>
-                    <span style={{ fontSize:10, color:T.textDim }}>opcional</span>
-                  </div>
-                  <button onClick={()=>removerEndereco(realIdx)}
-                    style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:4, display:'flex', alignItems:'center', gap:3, fontSize:11 }}>
-                    <i className="ti ti-trash" style={{ fontSize:13 }} aria-hidden="true" /> Remover
-                  </button>
-                </div>
-                <input value={end} onChange={e=>updateEnd(realIdx, e.target.value)} placeholder="Rua, número, bairro — cidade/UF" style={inputStyle} />
-              </div>
-            )
-          })}
-
-          {form.enderecos.length < 3 && (
-            <button onClick={addEndereco}
-              style={{ marginTop:12, width:'100%', background:'transparent', color:cor(P.blue, P.blueDark), border:`1px dashed ${T.border}`, padding:'11px 12px', borderRadius:8, fontSize:12.5, fontWeight:500, display:'flex', alignItems:'center', justifyContent:'center', gap:6, cursor:'pointer' }}>
-              <i className="ti ti-plus" style={{ fontSize:15 }} aria-hidden="true" />
-              Adicionar outro endereço
-            </button>
-          )}
-          <div style={{ fontSize:10.5, color:T.textMuted, textAlign:'center', marginTop:6 }}>
-            até 3 endereços — útil pra clientes com casa e comércio
-          </div>
-        </div>
-      </div>
-
-      {/* Rodapé */}
-      <div style={{ padding:'12px 20px', borderTop:`1px solid ${T.border}`, display:'flex', justifyContent:'flex-end', gap:8, background:T.cardAlt, flexShrink:0 }}>
-        <button onClick={onClose}
-          style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${T.border}`, background:'transparent', color:T.textSecondary, fontSize:12.5, cursor:'pointer', fontWeight:500 }}>
-          Cancelar
-        </button>
-        <button onClick={salvar} disabled={!podeSalvar}
-          style={{ padding:'9px 18px', borderRadius:8, border:'none', background: podeSalvar?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: podeSalvar?'#fff':T.textDim, fontSize:12.5, cursor: podeSalvar?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:5, opacity: podeSalvar?1:.7 }}>
-          <i className="ti ti-check" style={{ fontSize:15 }} aria-hidden="true" /> Cadastrar cliente
-        </button>
-      </div>
-    </ModalBase>
-  )
-}
-
-// ─── Modal: Nova OS (redesenhado em 16/05/2026) ─────────────────────────────
+// Mock de itens das OS — placeholder até virem do Supabase.
+// Estrutura: { [osNumero]: [{ tipo, nome, qtd, valor }, ...] }
+const OS_ITENS_MOCK = {}
 
 function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
   const cor = (d, c) => dark ? d : c
   const [step, setStep] = useState(1)
   const [tipo, setTipo] = useState(tipoInicial || 'atendimento')
-
-  // Lista local de clientes (adapta o mock global; novos cadastros entram aqui).
-  const [clientes, setClientes] = useState(() => adaptarClientesMock(CLIENTES_MOCK))
-
   const [form, setForm] = useState({
-    cliente:'', clienteId:null, fone:'',
-    enderecoSelecionado:'',   // endereço escolhido pra esta OS (string)
-    enderecoIndex:0,          // índice do endereço selecionado (radio)
-    equipamentoTipo:'',       // dropdown
-    equipamentoMarca:'',      // dropdown
-    equipamentoMarcaOutros:'',// campo extra quando marca = "Outros"
-    equipamentoModelo:'',
-    equipamentoSerie:'',
-    defeito:'',
-    data:'', hora:'',
+    cliente:'', clienteId:null, fone:'', endereco:'',
+    equipamento:'', defeito:'',
+    data:'', hora:'', responsavel:'func1',
     maquinaEstoque:'', valor:'',
-    observacoes:'',
-    // Campos antigos preservados pra compat. com salvar/Supabase futuro
-    endereco:'', equipamento:'',
+    observacoes:''
   })
   const [buscaCli, setBuscaCli] = useState('')
-  const [modalNovoCli, setModalNovoCli] = useState(false)
+  const [novoCli, setNovoCli] = useState(false)
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
   const clientesFiltrados = buscaCli
-    ? clientes.filter(c => c.nome.toLowerCase().includes(buscaCli.toLowerCase()) || c.fone.includes(buscaCli)).slice(0, 5)
+    ? CLIENTES_MOCK.filter(c => c.nome.toLowerCase().includes(buscaCli.toLowerCase()) || c.fone.includes(buscaCli)).slice(0, 5)
     : []
 
   function escolherCliente(c) {
-    const enderecos = c.enderecos && c.enderecos.length > 0 ? c.enderecos : (c.endereco ? [c.endereco] : [])
-    setForm(f => ({
-      ...f,
-      cliente: c.nome,
-      clienteId: c.id,
-      fone: c.fone,
-      enderecoSelecionado: enderecos[0] || '',
-      enderecoIndex: 0,
-      endereco: enderecos[0] || '', // compat
-    }))
-    setBuscaCli('')
+    update('cliente', c.nome); update('clienteId', c.id); update('fone', c.fone); update('endereco', c.endereco)
+    setBuscaCli(''); setNovoCli(false)
   }
-
-  function trocarCliente() {
-    setForm(f => ({ ...f, cliente:'', clienteId:null, fone:'', enderecoSelecionado:'', enderecoIndex:0, endereco:'' }))
-    setBuscaCli('')
-  }
-
-  function clienteCadastrado(novoCli) {
-    setClientes(prev => [novoCli, ...prev])
-    escolherCliente(novoCli)
-  }
-
-  const clienteSelecionado = useMemo(
-    () => clientes.find(c => c.id === form.clienteId),
-    [clientes, form.clienteId]
-  )
-  const enderecosCliente = clienteSelecionado?.enderecos || []
 
   function salvar() {
-    const marcaFinal = form.equipamentoMarca === 'Outros' ? form.equipamentoMarcaOutros : form.equipamentoMarca
-    const eqTxt = [form.equipamentoTipo, marcaFinal, form.equipamentoModelo].filter(Boolean).join(' ')
-    alert(`OS de ${TIPOS_OS[tipo].label} criada com sucesso!\n\nCliente: ${form.cliente || '— Estoque'}\nEndereço: ${form.enderecoSelecionado || '—'}\nEquipamento: ${eqTxt || '— a preencher depois'}`)
+    // Mock: apenas fecha. Aqui depois entra o insert no Supabase.
+    alert(`OS de ${TIPOS_OS[tipo].label} criada com sucesso!\n\nCliente: ${form.cliente || '— Estoque'}\nEquipamento: ${form.equipamento}`)
     onClose()
   }
 
   const corTipo = corEtapa(TIPOS_OS[tipo].cor, dark)
-  const inputStyle = { width:'100%', padding:'10px 12px', borderRadius:8, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
-  const labelStyle = { fontSize:10.5, color:T.textMuted, display:'block', marginBottom:5, fontWeight:600, letterSpacing:'.3px' }
-  const opcionalChip = <span style={{ fontSize:10, color:T.textDim, fontWeight:400 }}>opcional</span>
+  const inputStyle = { width:'100%', padding:'9px 11px', borderRadius:7, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:13, outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
+  const labelStyle = { fontSize:11, color:T.textMuted, display:'block', marginBottom:5, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }
 
-  // Regras de obrigatórios POR TIPO (mudou: agora só Cliente é obrigatório no Atendimento)
   const podeAvancar = step === 1 ? true :
-    tipo === 'atendimento' ? !!form.cliente :
-    tipo === 'fabricacao'  ? !!form.equipamentoTipo :
-    tipo === 'venda'       ? !!(form.cliente && form.maquinaEstoque) : false
+    tipo === 'atendimento' ? (form.cliente && form.equipamento && form.defeito) :
+    tipo === 'fabricacao'  ? (form.equipamento) :
+    tipo === 'venda'       ? (form.cliente && form.maquinaEstoque) : false
 
   return (
-    <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={720}>
-      {/* Header */}
-      <div style={{ padding:'14px 20px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:38, height:38, borderRadius:10, background: step===1 ? `linear-gradient(135deg,${P.blue},#3a7bbf)` : `linear-gradient(135deg,${corTipo},${corTipo}dd)`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <i className={`ti ${step===1 ? 'ti-clipboard-plus' : TIPOS_OS[tipo].icon}`} style={{ fontSize:19, color:'#fff' }} aria-hidden="true" />
+    <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={680}>
+      <div style={{ padding:'14px 18px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:34, height:34, borderRadius:9, background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <i className="ti ti-clipboard-plus" style={{ fontSize:17, color:'#fff' }} aria-hidden="true" />
           </div>
           <div>
-            <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>
-              {step===1 ? 'Nova ordem de serviço' : `Nova OS — ${TIPOS_OS[tipo].label}`}
-            </div>
-            <div style={{ fontSize:11, color:T.textMuted, marginTop:2, display:'flex', alignItems:'center', gap:6 }}>
-              <span>Passo {step} de 2</span>
-              {step===2 && (
-                <>
-                  <span style={{ width:3, height:3, background:T.textMuted, borderRadius:'50%' }} />
-                  <span style={{ color: podeAvancar ? cor(P.blue, P.blueDark) : T.textMuted }}>
-                    {statusCamposFaltando(tipo, form)}
-                  </span>
-                </>
-              )}
-            </div>
+            <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>Nova ordem de serviço</div>
+            <div style={{ fontSize:11, color:T.textMuted, marginTop:1 }}>Passo {step} de 2 — {step===1?'Escolha o tipo':TIPOS_OS[tipo].label}</div>
           </div>
         </div>
         <button onClick={onClose} aria-label="Fechar"
@@ -384,37 +91,30 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
         </button>
       </div>
 
-      <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
+      <div style={{ flex:1, overflowY:'auto', padding:'16px 18px' }}>
 
-        {/* ────── PASSO 1 — Escolha do tipo (Atendimento · Venda · Fabricação) ────── */}
         {step === 1 && (
           <>
-            <div style={{ fontSize:12.5, color:T.textSecondary, marginBottom:16, lineHeight:1.5 }}>
-              Cada tipo tem um fluxo próprio. Selecione o que melhor descreve a OS.
+            <div style={{ fontSize:12.5, color:T.textSecondary, marginBottom:14, lineHeight:1.4 }}>
+              Selecione qual o tipo de OS você quer abrir. Cada tipo tem um fluxo próprio e pede informações diferentes.
             </div>
-            <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(3, 1fr)', gap:12 }}>
-              {ORDEM_TIPOS_OS.map(id => {
-                const cfg = TIPOS_OS[id]
-                if (!cfg) return null
+            <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(3, 1fr)', gap:10 }}>
+              {Object.entries(TIPOS_OS).map(([id, cfg]) => {
                 const ativo = id === tipo
                 const c = corEtapa(cfg.cor, dark)
                 const bg = bgEtapa(cfg.cor, dark)
                 return (
                   <button key={id} onClick={()=>setTipo(id)}
-                    style={{ padding:'18px 14px', borderRadius:12, border:`2px solid ${ativo?c:T.border}`, background:ativo?bg:T.cardAlt, cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:6, transition:'border-color .15s, background .15s', fontFamily:'inherit' }}>
+                    style={{ padding:'18px 14px', borderRadius:11, border:`2px solid ${ativo?c:T.border}`, background:ativo?bg:T.card, cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:6, transition:'border-color .15s, background .15s' }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                      <div style={{ width:44, height:44, borderRadius:10, background:c+'2c', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        <i className={`ti ${cfg.icon}`} style={{ fontSize:24, color:c }} aria-hidden="true" />
+                      <div style={{ width:36, height:36, borderRadius:9, background:c+'22', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <i className={`ti ${cfg.icon}`} style={{ fontSize:19, color:c }} aria-hidden="true" />
                       </div>
-                      {ativo && <i className="ti ti-circle-check-filled" style={{ fontSize:22, color:c }} aria-hidden="true" />}
+                      {ativo && <i className="ti ti-circle-check-filled" style={{ fontSize:20, color:c }} aria-hidden="true" />}
                     </div>
-                    <div style={{ fontSize:14.5, fontWeight:700, color:T.textPrimary, marginTop:6 }}>{cfg.label}</div>
-                    <div style={{ fontSize:11.5, color:T.textMuted, lineHeight:1.45 }}>{cfg.descricao}</div>
-                    <div style={{ marginTop:10, fontSize:10.5, color: ativo ? c : T.textDim, display:'flex', alignItems:'center', gap:4, fontWeight:ativo?600:500 }}>
-                      {ativo ? (
-                        <><i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> Selecionado</>
-                      ) : 'Clique para escolher'}
-                    </div>
+                    <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary, marginTop:3 }}>{cfg.label}</div>
+                    <div style={{ fontSize:12, color:T.textMuted, lineHeight:1.4 }}>{cfg.descricao}</div>
+                    <div style={{ fontSize:10.5, color:T.textDim, marginTop:5, paddingTop:8, borderTop:`1px solid ${T.border}` }}>{cfg.etapas.length} etapas no fluxo</div>
                   </button>
                 )
               })}
@@ -422,190 +122,98 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
           </>
         )}
 
-        {/* ────── PASSO 2 — Atendimento ────── */}
         {step === 2 && tipo === 'atendimento' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-
-            {/* CLIENTE */}
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <i className="ti ti-user" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-                <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Cliente</span>
-                <span style={{ fontSize:10, color:cor(P.red, P.redDark), fontWeight:700 }}>OBRIGATÓRIO</span>
-              </div>
-
-              {!form.cliente ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <FormSecao titulo="Cliente" icon="ti-user" T={T}>
+              {!form.cliente && !novoCli && (
                 <div style={{ position:'relative' }}>
                   <input value={buscaCli} onChange={e=>setBuscaCli(e.target.value)} placeholder="Buscar cliente por nome ou telefone…" style={inputStyle} autoFocus />
                   {clientesFiltrados.length > 0 && (
-                    <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, maxHeight:240, overflowY:'auto', zIndex:10, boxShadow:dark?'0 8px 24px rgba(0,0,0,.4)':'0 4px 16px rgba(0,0,0,.1)' }}>
+                    <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:T.card, border:`1px solid ${T.border}`, borderRadius:7, maxHeight:220, overflowY:'auto', zIndex:10, boxShadow:dark?'0 8px 24px rgba(0,0,0,.4)':'0 4px 16px rgba(0,0,0,.1)' }}>
                       {clientesFiltrados.map(c => (
                         <div key={c.id} onClick={()=>escolherCliente(c)}
-                          style={{ padding:'9px 12px', cursor:'pointer', borderBottom:`1px solid ${T.border}`, fontSize:12.5 }}
+                          style={{ padding:'8px 11px', cursor:'pointer', borderBottom:`1px solid ${T.border}`, fontSize:12.5 }}
                           onMouseEnter={e=>e.currentTarget.style.background=T.cardAlt}
                           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                           <div style={{ color:T.textPrimary, fontWeight:600 }}>{c.nome}</div>
-                          <div style={{ color:T.textMuted, fontSize:11, marginTop:2 }}>
-                            {c.fone} · {(c.enderecos?.length || 0)} endereço(s)
-                          </div>
+                          <div style={{ color:T.textMuted, fontSize:11, marginTop:2 }}>{c.fone} · {c.endereco}</div>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div style={{ marginTop:10, fontSize:11.5, color:T.textMuted }}>
-                    Não achou? <button onClick={()=>setModalNovoCli(true)}
-                      style={{ background:'transparent', border:'none', color:cor(P.blue, P.blueDark), cursor:'pointer', fontSize:11.5, fontWeight:600, padding:0, textDecoration:'underline' }}>+ Cadastrar novo cliente</button>
+                  <div style={{ marginTop:8, fontSize:11.5, color:T.textMuted }}>
+                    Não achou? <button onClick={()=>{setNovoCli(true); setBuscaCli('')}} style={{ background:'transparent', border:'none', color:cor(P.blue,P.blueDark), cursor:'pointer', fontSize:11.5, fontWeight:600, padding:0 }}>+ Cadastrar novo cliente</button>
                   </div>
                 </div>
-              ) : (
+              )}
+              {(form.cliente || novoCli) && (
                 <>
-                  {/* Card do cliente selecionado */}
-                  <div style={{ background:cor('#0d2035','#e6f1fb'), border:`1px solid ${cor(P.blue, P.blueDark)}`, borderRadius:9, padding:'10px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
-                    <div style={{ minWidth:0, flex:1 }}>
-                      <div style={{ fontSize:13.5, fontWeight:600, color:T.textPrimary }}>{form.cliente}</div>
-                      <div style={{ fontSize:11.5, color:T.textSecondary, marginTop:2 }}>
-                        <i className="ti ti-phone" style={{ fontSize:11, verticalAlign:-1 }} aria-hidden="true" /> {form.fone || '—'}
-                        <span style={{ margin:'0 6px', opacity:.5 }}>•</span>
-                        <i className="ti ti-map-pin" style={{ fontSize:11, verticalAlign:-1 }} aria-hidden="true" /> {enderecosCliente.length} endereço(s) cadastrado(s)
-                      </div>
+                  <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'2fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={labelStyle}>Nome completo</label>
+                      <input value={form.cliente} onChange={e=>update('cliente', e.target.value)} style={inputStyle} placeholder="Ex: Maria da Silva" />
                     </div>
-                    <button onClick={trocarCliente}
-                      style={{ background:'transparent', color:cor(P.blue, P.blueDark), border:`1px solid ${T.border}`, padding:'5px 9px', borderRadius:6, fontSize:11, display:'flex', alignItems:'center', gap:4, cursor:'pointer', flexShrink:0 }}>
-                      <i className="ti ti-pencil" style={{ fontSize:12 }} aria-hidden="true" /> Trocar
-                    </button>
+                    <div>
+                      <label style={labelStyle}>Telefone</label>
+                      <input value={form.fone} onChange={e=>update('fone', e.target.value)} style={inputStyle} placeholder="(67) 9 9999-9999" />
+                    </div>
                   </div>
-
-                  {/* Endereço da coleta (radio entre endereços do cliente) */}
-                  {enderecosCliente.length > 0 && (
-                    <div style={{ marginTop:14 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                        <i className="ti ti-map-pin" style={{ fontSize:14, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-                        <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Endereço da coleta</span>
-                        <span style={{ fontSize:10, color:cor(P.red, P.redDark), fontWeight:700 }}>*</span>
-                      </div>
-                      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                        {enderecosCliente.map((end, idx) => {
-                          const sel = form.enderecoIndex === idx
-                          return (
-                            <button key={idx} onClick={()=>setForm(f=>({ ...f, enderecoIndex:idx, enderecoSelecionado:end, endereco:end }))}
-                              style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px',
-                                background: sel ? cor('#0d2035','#e6f1fb') : 'transparent',
-                                border:`${sel?1.5:1}px solid ${sel ? cor(P.blue, P.blueDark) : T.border}`,
-                                borderRadius:9, cursor:'pointer', textAlign:'left', fontFamily:'inherit' }}>
-                              <div style={{ width:16, height:16, borderRadius:'50%', border:`2px solid ${sel ? cor(P.blue, P.blueDark) : T.textDim}`, background: sel ? cor(P.blue, P.blueDark) : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>
-                                {sel && <div style={{ width:6, height:6, borderRadius:'50%', background:'#fff' }} />}
-                              </div>
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2, flexWrap:'wrap' }}>
-                                  <span style={{ fontSize:12, fontWeight:600, color:T.textPrimary }}>Endereço {idx+1}</span>
-                                  {idx===0 && <span style={{ fontSize:9.5, padding:'2px 6px', background:cor(P.blue,P.blueDark)+'2c', color:cor(P.blue, P.blueDark), borderRadius:4, fontWeight:600, letterSpacing:'.3px' }}>PRINCIPAL</span>}
-                                </div>
-                                <div style={{ fontSize:12, color:T.textSecondary, lineHeight:1.4 }}>{end}</div>
-                              </div>
-                            </button>
-                          )
-                        })}
-                      </div>
+                  <div style={{ marginTop:10 }}>
+                    <label style={labelStyle}>Endereço (será validado pelo Google Maps)</label>
+                    <div style={{ position:'relative' }}>
+                      <i className="ti ti-map-pin" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
+                      <input value={form.endereco} onChange={e=>update('endereco', e.target.value)} style={{...inputStyle, paddingLeft:32}} placeholder="Rua, número, bairro — Naviraí/MS" />
                     </div>
+                  </div>
+                  {form.clienteId && (
+                    <button onClick={()=>{ update('cliente',''); update('clienteId',null); update('fone',''); update('endereco',''); setNovoCli(false) }}
+                      style={{ marginTop:8, background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', fontSize:11, padding:0 }}>← Trocar cliente</button>
                   )}
                 </>
               )}
-            </div>
+            </FormSecao>
 
-            <div style={{ height:1, background:T.border, margin:'2px 0' }} />
+            <FormSecao titulo="Equipamento e defeito relatado" icon="ti-tool" T={T}>
+              <label style={labelStyle}>Equipamento (marca + modelo)</label>
+              <input value={form.equipamento} onChange={e=>update('equipamento', e.target.value)} style={inputStyle} placeholder="Ex: Lavadora Brastemp 11kg BWK11" />
+              <label style={{...labelStyle, marginTop:10}}>Defeito relatado pelo cliente</label>
+              <textarea value={form.defeito} onChange={e=>update('defeito', e.target.value)} style={{...inputStyle, minHeight:64, resize:'vertical'}} placeholder="Descreva o que o cliente reportou…" />
+            </FormSecao>
 
-            {/* EQUIPAMENTO (opcional, 4 campos) */}
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, flexWrap:'wrap' }}>
-                <i className="ti ti-device-washing-machine" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-                <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Equipamento</span>
-                <span style={{ fontSize:10, color:T.textDim }}>opcional · pode preencher quando a máquina chegar</span>
-              </div>
-
-              <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap:10 }}>
-                <div>
-                  <label style={labelStyle}>TIPO</label>
-                  <select value={form.equipamentoTipo} onChange={e=>update('equipamentoTipo', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}}>
-                    <option value="">Selecione…</option>
-                    {TIPOS_EQUIPAMENTO.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={labelStyle}>MARCA</label>
-                  <select value={form.equipamentoMarca} onChange={e=>update('equipamentoMarca', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}}>
-                    <option value="">Selecione…</option>
-                    {MARCAS_EQUIPAMENTO.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-
-                {form.equipamentoMarca === 'Outros' && (
-                  <div style={{ gridColumn: mobile ? '1' : '1 / -1' }}>
-                    <label style={labelStyle}>NOME DA MARCA</label>
-                    <input value={form.equipamentoMarcaOutros} onChange={e=>update('equipamentoMarcaOutros', e.target.value)} placeholder="Ex: Mueller, Suggar, Mondial…" style={inputStyle} />
-                  </div>
-                )}
-
-                <div>
-                  <label style={labelStyle}>MODELO</label>
-                  <input value={form.equipamentoModelo} onChange={e=>update('equipamentoModelo', e.target.value)} placeholder="Ex: BWK11" style={inputStyle} />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Nº DE SÉRIE</label>
-                  <input value={form.equipamentoSerie} onChange={e=>update('equipamentoSerie', e.target.value)} placeholder="Ex: SN-12345" style={inputStyle} />
-                </div>
-              </div>
-            </div>
-
-            {/* DEFEITO RELATADO */}
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                <i className="ti ti-message-circle" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-                <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Defeito relatado pelo cliente</span>
-                {opcionalChip}
-              </div>
-              <textarea value={form.defeito} onChange={e=>update('defeito', e.target.value)} placeholder="Descreva o que o cliente reportou…" style={{...inputStyle, minHeight:64, resize:'vertical'}} />
-            </div>
-
-            <div style={{ height:1, background:T.border, margin:'2px 0' }} />
-
-            {/* AGENDAMENTO */}
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <i className="ti ti-calendar-event" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-                <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Agendamento da coleta</span>
-              </div>
+            <FormSecao titulo="Agendamento da coleta" icon="ti-calendar-event" T={T}>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 <div>
-                  <label style={labelStyle}>DATA</label>
+                  <label style={labelStyle}>Data</label>
                   <input type="date" value={form.data} onChange={e=>update('data', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
                 </div>
                 <div>
-                  <label style={labelStyle}>HORA</label>
+                  <label style={labelStyle}>Hora</label>
                   <input type="time" value={form.hora} onChange={e=>update('hora', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
                 </div>
               </div>
-
-              <div style={{ marginTop:10, background:cor('#0d2035','#e6f1fb'), borderLeft:`3px solid ${cor(P.blue, P.blueDark)}`, borderRadius:4, padding:'8px 12px', fontSize:11.5, color:T.textSecondary, lineHeight:1.4, display:'flex', alignItems:'center', gap:8 }}>
-                <i className="ti ti-info-circle" style={{ fontSize:14, color:cor(P.blue, P.blueDark), flexShrink:0 }} aria-hidden="true" />
-                <span>Sem data marcada? A OS abre como <strong style={{color:T.textPrimary, fontWeight:600}}>Aguardando agendamento</strong>.</span>
+              <div style={{ marginTop:8, fontSize:11, color:T.textDim, fontStyle:'italic' }}>
+                Sem data marcada? A OS abre como <strong style={{color:T.textMuted, fontStyle:'normal'}}>Aguardando agendamento</strong>.
               </div>
-            </div>
+            </FormSecao>
 
-            {/* OBSERVAÇÕES */}
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                <i className="ti ti-notes" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
-                <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Observações</span>
-                {opcionalChip}
+            <FormSecao titulo="Responsável pela coleta" icon="ti-user-cog" T={T}>
+              <div style={{ display:'flex', gap:7 }}>
+                {FUNCIONARIOS.map(f => (
+                  <button key={f.id} onClick={()=>update('responsavel', f.id)}
+                    style={{ flex:1, padding:'9px 8px', borderRadius:7, border:`1px solid ${form.responsavel===f.id?f.cor:T.border}`, background:form.responsavel===f.id?(f.cor+'22'):T.bg, color:form.responsavel===f.id?(dark?f.cor:'#000'):T.textMuted, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontWeight:form.responsavel===f.id?600:500 }}>
+                    <span style={{ width:20, height:20, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>
+                    {f.nome}
+                  </button>
+                ))}
               </div>
-              <textarea value={form.observacoes} onChange={e=>update('observacoes', e.target.value)} placeholder="Qualquer informação extra que ajude a equipe…" style={{...inputStyle, minHeight:50, resize:'vertical'}} />
-            </div>
+            </FormSecao>
+
+            <FormSecao titulo="Observações" icon="ti-notes" T={T} opcional>
+              <textarea value={form.observacoes} onChange={e=>update('observacoes', e.target.value)} style={{...inputStyle, minHeight:56, resize:'vertical'}} placeholder="Qualquer informação extra que ajude a equipe…" />
+            </FormSecao>
           </div>
         )}
 
-        {/* ────── PASSO 2 — Fabricação (mantém estrutura antiga, só ajustado o tipo dropdown) ────── */}
         {step === 2 && tipo === 'fabricacao' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ background:bgEtapa('yellow', dark), border:`1px solid ${corEtapa('yellow', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
@@ -614,20 +222,28 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
             </div>
 
             <FormSecao titulo="Máquina a fabricar" icon="ti-building-factory-2" T={T}>
-              <label style={labelStyle}>TIPO</label>
-              <select value={form.equipamentoTipo} onChange={e=>update('equipamentoTipo', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}}>
-                <option value="">Selecione…</option>
-                {TIPOS_EQUIPAMENTO.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <label style={{...labelStyle, marginTop:10}}>DESCRIÇÃO / ESTADO INICIAL</label>
+              <label style={labelStyle}>Descrição</label>
+              <input value={form.equipamento} onChange={e=>update('equipamento', e.target.value)} style={inputStyle} placeholder="Ex: Lavadora reformada Brastemp 11kg" />
+              <label style={{...labelStyle, marginTop:10}}>Estado inicial / itens a trocar</label>
               <textarea value={form.defeito} onChange={e=>update('defeito', e.target.value)} style={{...inputStyle, minHeight:64, resize:'vertical'}} placeholder="Ex: Estrutura ok, trocar rolamento, polia e colocar capa nova" />
-              <label style={{...labelStyle, marginTop:10}}>CUSTO INICIAL DA MÁQUINA BASE (R$)</label>
+              <label style={{...labelStyle, marginTop:10}}>Custo inicial da máquina base (R$)</label>
               <input type="number" value={form.valor} onChange={e=>update('valor', e.target.value)} style={inputStyle} placeholder="150,00" />
+            </FormSecao>
+
+            <FormSecao titulo="Responsável pela fabricação" icon="ti-user-cog" T={T}>
+              <div style={{ display:'flex', gap:7 }}>
+                {FUNCIONARIOS.map(f => (
+                  <button key={f.id} onClick={()=>update('responsavel', f.id)}
+                    style={{ flex:1, padding:'9px 8px', borderRadius:7, border:`1px solid ${form.responsavel===f.id?f.cor:T.border}`, background:form.responsavel===f.id?(f.cor+'22'):T.bg, color:form.responsavel===f.id?(dark?f.cor:'#000'):T.textMuted, fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontWeight:form.responsavel===f.id?600:500 }}>
+                    <span style={{ width:20, height:20, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>
+                    {f.nome}
+                  </button>
+                ))}
+              </div>
             </FormSecao>
           </div>
         )}
 
-        {/* ────── PASSO 2 — Venda ────── */}
         {step === 2 && tipo === 'venda' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ background:bgEtapa('green', dark), border:`1px solid ${corEtapa('green', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
@@ -636,7 +252,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
             </div>
 
             <FormSecao titulo="Cliente comprador" icon="ti-user" T={T}>
-              {!form.cliente ? (
+              {!form.cliente && !novoCli && (
                 <div style={{ position:'relative' }}>
                   <input value={buscaCli} onChange={e=>setBuscaCli(e.target.value)} placeholder="Buscar cliente por nome ou telefone…" style={inputStyle} autoFocus />
                   {clientesFiltrados.length > 0 && (
@@ -652,38 +268,37 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
                     </div>
                   )}
                   <div style={{ marginTop:8, fontSize:11.5, color:T.textMuted }}>
-                    Cliente novo? <button onClick={()=>setModalNovoCli(true)} style={{ background:'transparent', border:'none', color:cor(P.blue,P.blueDark), cursor:'pointer', fontSize:11.5, fontWeight:600, padding:0, textDecoration:'underline' }}>+ Cadastrar agora</button>
+                    Cliente novo? <button onClick={()=>setNovoCli(true)} style={{ background:'transparent', border:'none', color:cor(P.blue,P.blueDark), cursor:'pointer', fontSize:11.5, fontWeight:600, padding:0 }}>+ Cadastrar agora</button>
                   </div>
                 </div>
-              ) : (
-                <div style={{ background:cor('#0d2035','#e6f1fb'), border:`1px solid ${cor(P.blue, P.blueDark)}`, borderRadius:9, padding:'10px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
-                  <div style={{ minWidth:0, flex:1 }}>
-                    <div style={{ fontSize:13.5, fontWeight:600, color:T.textPrimary }}>{form.cliente}</div>
-                    <div style={{ fontSize:11.5, color:T.textSecondary, marginTop:2 }}>
-                      <i className="ti ti-phone" style={{ fontSize:11, verticalAlign:-1 }} aria-hidden="true" /> {form.fone || '—'}
-                    </div>
+              )}
+              {(form.cliente || novoCli) && (
+                <div style={{ display:'grid', gridTemplateColumns: mobile?'1fr':'2fr 1fr', gap:10 }}>
+                  <div>
+                    <label style={labelStyle}>Nome</label>
+                    <input value={form.cliente} onChange={e=>update('cliente', e.target.value)} style={inputStyle} />
                   </div>
-                  <button onClick={trocarCliente}
-                    style={{ background:'transparent', color:cor(P.blue, P.blueDark), border:`1px solid ${T.border}`, padding:'5px 9px', borderRadius:6, fontSize:11, display:'flex', alignItems:'center', gap:4, cursor:'pointer', flexShrink:0 }}>
-                    <i className="ti ti-pencil" style={{ fontSize:12 }} aria-hidden="true" /> Trocar
-                  </button>
+                  <div>
+                    <label style={labelStyle}>Telefone</label>
+                    <input value={form.fone} onChange={e=>update('fone', e.target.value)} style={inputStyle} />
+                  </div>
                 </div>
               )}
             </FormSecao>
 
             <FormSecao titulo="Máquina do estoque" icon="ti-package" T={T}>
-              <label style={labelStyle}>SELECIONE A MÁQUINA</label>
+              <label style={labelStyle}>Selecione a máquina</label>
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                 {ESTOQUE_MAQUINAS_MOCK.map(m => {
                   const sel = form.maquinaEstoque === m.id
                   return (
-                    <button key={m.id} onClick={()=>setForm(f=>({ ...f, maquinaEstoque:m.id, equipamento:m.descricao, valor:m.valor }))}
+                    <button key={m.id} onClick={()=>{ update('maquinaEstoque', m.id); update('equipamento', m.descricao); update('valor', m.valor) }}
                       style={{ padding:'10px 12px', borderRadius:7, border:`1px solid ${sel?corEtapa('green',dark):T.border}`, background:sel?bgEtapa('green',dark):T.bg, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', textAlign:'left' }}>
                       <div>
                         <div style={{ fontSize:12.5, fontWeight:600, color:T.textPrimary }}>{m.descricao}</div>
                         <div style={{ fontSize:10.5, color:T.textMuted, marginTop:2 }}>#{m.id}</div>
                       </div>
-                      <div style={{ fontSize:14, fontWeight:700, color:sel?corEtapa('green',dark):T.textSecondary, fontVariantNumeric:'tabular-nums' }}>R$ {m.valor.toLocaleString('pt-BR')}</div>
+                      <div style={{ fontSize:14, fontWeight:700, color:sel?corEtapa('green',dark):T.textSecondary }}>R$ {m.valor.toLocaleString('pt-BR')}</div>
                     </button>
                   )
                 })}
@@ -691,35 +306,18 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
             </FormSecao>
 
             <FormSecao titulo="Endereço e agendamento da entrega" icon="ti-truck-delivery" T={T}>
-              {enderecosCliente.length > 0 && (
-                <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
-                  {enderecosCliente.map((end, idx) => {
-                    const sel = form.enderecoIndex === idx
-                    return (
-                      <button key={idx} onClick={()=>setForm(f=>({ ...f, enderecoIndex:idx, enderecoSelecionado:end, endereco:end }))}
-                        style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px',
-                          background: sel ? cor('#0d2035','#e6f1fb') : 'transparent',
-                          border:`${sel?1.5:1}px solid ${sel ? cor(P.blue, P.blueDark) : T.border}`,
-                          borderRadius:9, cursor:'pointer', textAlign:'left', fontFamily:'inherit' }}>
-                        <div style={{ width:16, height:16, borderRadius:'50%', border:`2px solid ${sel ? cor(P.blue, P.blueDark) : T.textDim}`, background: sel ? cor(P.blue, P.blueDark) : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>
-                          {sel && <div style={{ width:6, height:6, borderRadius:'50%', background:'#fff' }} />}
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:T.textPrimary, marginBottom:2 }}>Endereço {idx+1}</div>
-                          <div style={{ fontSize:12, color:T.textSecondary, lineHeight:1.4 }}>{end}</div>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <label style={labelStyle}>Endereço (Google Maps)</label>
+              <div style={{ position:'relative' }}>
+                <i className="ti ti-map-pin" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
+                <input value={form.endereco} onChange={e=>update('endereco', e.target.value)} style={{...inputStyle, paddingLeft:32}} placeholder="Endereço de entrega" />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
                 <div>
-                  <label style={labelStyle}>DATA</label>
+                  <label style={labelStyle}>Data</label>
                   <input type="date" value={form.data} onChange={e=>update('data', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
                 </div>
                 <div>
-                  <label style={labelStyle}>HORA</label>
+                  <label style={labelStyle}>Hora</label>
                   <input type="time" value={form.hora} onChange={e=>update('hora', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
                 </div>
               </div>
@@ -728,44 +326,32 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
         )}
       </div>
 
-      {/* Rodapé */}
-      <div style={{ padding:'12px 20px', borderTop:`1px solid ${T.border}`, display:'flex', justifyContent:'space-between', gap:10, background:T.cardAlt, flexShrink:0 }}>
+      <div style={{ padding:'12px 18px', borderTop:`1px solid ${T.border}`, display:'flex', justifyContent:'space-between', gap:10, background:T.cardAlt, flexShrink:0 }}>
         <button onClick={onClose}
-          style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${T.border}`, background:'transparent', color:T.textSecondary, fontSize:12.5, cursor:'pointer', fontWeight:500 }}>
+          style={{ padding:'9px 16px', borderRadius:7, border:`1px solid ${T.border}`, background:'transparent', color:T.textSecondary, fontSize:13, cursor:'pointer', fontWeight:500 }}>
           Cancelar
         </button>
         <div style={{ display:'flex', gap:8 }}>
           {step > 1 && (
             <button onClick={()=>setStep(s => s-1)}
-              style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${T.border}`, background:T.bg, color:T.textSecondary, fontSize:12.5, cursor:'pointer', fontWeight:500, display:'flex', alignItems:'center', gap:5 }}>
+              style={{ padding:'9px 16px', borderRadius:7, border:`1px solid ${T.border}`, background:T.bg, color:T.textSecondary, fontSize:13, cursor:'pointer', fontWeight:500, display:'flex', alignItems:'center', gap:5 }}>
               <i className="ti ti-arrow-left" style={{ fontSize:14 }} aria-hidden="true" /> Voltar
             </button>
           )}
           {step === 1 && (
             <button onClick={()=>setStep(2)}
-              style={{ padding:'9px 18px', borderRadius:8, border:'none', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:12.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
-              Continuar <i className="ti ti-arrow-right" style={{ fontSize:14 }} aria-hidden="true" />
+              style={{ padding:'9px 18px', borderRadius:7, border:'none', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:13, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
+              Próximo <i className="ti ti-arrow-right" style={{ fontSize:14 }} aria-hidden="true" />
             </button>
           )}
           {step === 2 && (
             <button onClick={salvar} disabled={!podeAvancar}
-              style={{ padding:'9px 18px', borderRadius:8, border:'none', background: podeAvancar?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: podeAvancar?'#fff':T.textDim, fontSize:12.5, cursor: podeAvancar?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:5, opacity: podeAvancar?1:.7 }}>
-              <i className="ti ti-check" style={{ fontSize:15 }} aria-hidden="true" /> Criar OS
+              style={{ padding:'9px 18px', borderRadius:7, border:'none', background: podeAvancar?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: podeAvancar?'#fff':T.textDim, fontSize:13, cursor: podeAvancar?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:6, opacity: podeAvancar?1:.7 }}>
+              <i className="ti ti-check" style={{ fontSize:14 }} aria-hidden="true" /> Criar OS
             </button>
           )}
         </div>
       </div>
-
-      {/* Sub-modal: cadastrar novo cliente */}
-      {modalNovoCli && (
-        <NovoClienteModalCompleto
-          T={T} dark={dark}
-          nomeInicial={buscaCli}
-          mobile={mobile}
-          onClose={()=>setModalNovoCli(false)}
-          onSalvar={clienteCadastrado}
-        />
-      )}
     </ModalBase>
   )
 }
@@ -1245,4 +831,4 @@ function SubBox({ label, status, icon, T, dark }) {
 // ─── Em construção ─────────────────────────────────────────────────────────
 
 // ─── Exports ────────────────────────────────────────────────────────────
-export { NovaOSModal, NovoClienteModalCompleto, OSDetalhe, ModalBase, FormSecao, BannerFinalizada }
+export { NovaOSModal, OSDetalhe, ModalBase, FormSecao, BannerFinalizada }
