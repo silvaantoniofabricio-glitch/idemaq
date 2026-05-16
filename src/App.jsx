@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase'
 import { Chart as ChartJS, registerables } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
@@ -829,8 +829,7 @@ const _cardModerno = (T, extra = {}) => ({
   boxShadow: T.shadow,
   ...extra,
 })
-const _fmtBRL = (v) => v == null ? '—' : 'R$ ' + Math.abs(v).toLocaleString('pt-BR') * (v < 0 ? -1 : 1)
-// (correção do _fmtBRL: precisa retornar string)
+// fmtBRL — formata número como "R$ 1.234"
 function fmtBRL(v) {
   if (v == null) return '—'
   return (v < 0 ? '-' : '') + 'R$ ' + Math.abs(v).toLocaleString('pt-BR')
