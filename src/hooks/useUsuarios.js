@@ -15,15 +15,16 @@ export function useUsuarios() {
   useEffect(() => {
     supabase
       .from('usuarios')
-      .select('id, nome, apelido, papel')
-      .is('deleted_at', null)
+      .select('id, email, apelido, papel')
+      .eq('ativo', true)
       .order('apelido')
       .then(({ data, error }) => {
         if (!error && data) {
           setUsuarios(
             data.map(u => ({
               id:      u.id,
-              nome:    u.nome,
+              nome:    u.apelido,        // tabela não tem campo "nome" — usa apelido
+              email:   u.email,
               apelido: u.apelido,
               papel:   u.papel,
               cor:     COR_PAPEL[u.papel] || '#5B9BD5',
