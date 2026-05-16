@@ -1,0 +1,119 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.card-head{padding:10px 14px;display:flex;align-items:center;gap:8px;}
+.card-head i{font-size:16px;}
+.card-head-title{font-size:13px;font-weight:500;}
+.card-head-sub{font-size:11px;margin-left:auto;}
+.head-ip{background:#E6F1FB;}
+.head-ip i,.head-ip .card-head-title{color:#0C447C;}
+.head-ip .card-head-sub{color:#185FA5;}
+.head-ton{background:#FFD966;}
+.head-ton i,.head-ton .card-head-title{color:#7a6200;}
+.head-ton .card-head-sub{color:#854F0B;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:var(--color-background-secondary);font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:7px 12px;border-bottom:0.5px solid var(--color-border-tertiary);text-align:left;}
+th.right{text-align:right;}
+td{padding:7px 12px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary);}
+td.val{text-align:right;font-weight:500;}
+td.diff-better{text-align:right;font-weight:500;color:#27500A;}
+td.diff-worse{text-align:right;font-weight:500;color:#791F1F;}
+tr:last-child td{border-bottom:none;}
+.nota{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 12px;font-size:11px;color:var(--color-text-secondary);margin-top:10px;}
+.nota.green{background:#EAF3DE;color:#27500A;}
+.nota.amber{background:#FAEEDA;color:#633806;}
+.comparativo{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:12px;}
+.comp-head{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.comp-head i{font-size:15px;color:#5B9BD5;}
+.comp-head-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+</style>
+
+<h2 class="sr-only">Tabelas confirmadas de taxas InfinitePay e Ton Black — faturamento até R$20mil, recebimento D+1</h2>
+
+<div class="wrap">
+
+<div class="grid2">
+
+  <div class="card">
+    <div class="card-head head-ip">
+      <i class="ti ti-credit-card" aria-hidden="true"></i>
+      <span class="card-head-title">InfinitePay</span>
+      <span class="card-head-sub">Até R$20k · D+1</span>
+    </div>
+    <table>
+      <thead><tr><th>Modalidade</th><th class="right">Taxa</th></tr></thead>
+      <tbody>
+        <tr><td>PIX</td><td class="val">0%</td></tr>
+        <tr><td>Débito</td><td class="val">1,37%</td></tr>
+        <tr><td>Crédito 1x</td><td class="val">3,15%</td></tr>
+        <tr><td>Crédito 2x</td><td class="val">5,39%</td></tr>
+        <tr><td>Crédito 3x</td><td class="val">6,12%</td></tr>
+        <tr><td>Crédito 4x</td><td class="val">6,85%</td></tr>
+        <tr><td>Crédito 5x</td><td class="val">7,57%</td></tr>
+        <tr><td>Crédito 6x</td><td class="val">8,28%</td></tr>
+        <tr><td>Crédito 7x</td><td class="val">8,99%</td></tr>
+        <tr><td>Crédito 8x</td><td class="val">9,69%</td></tr>
+        <tr><td>Crédito 9x</td><td class="val">10,38%</td></tr>
+        <tr><td>Crédito 10x</td><td class="val">11,06%</td></tr>
+        <tr><td>Crédito 11x</td><td class="val">11,74%</td></tr>
+        <tr><td>Crédito 12x</td><td class="val">12,40%</td></tr>
+      </tbody>
+    </table>
+    <div class="nota">Fonte: site oficial InfinitePay · maio/2026</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head head-ton">
+      <i class="ti ti-credit-card" aria-hidden="true"></i>
+      <span class="card-head-title">Ton Black</span>
+      <span class="card-head-sub">Até R$20k · D+1 ✓ confirmado</span>
+    </div>
+    <table>
+      <thead><tr><th>Modalidade</th><th class="right">Taxa</th></tr></thead>
+      <tbody>
+        <tr><td>PIX</td><td class="val">—</td></tr>
+        <tr><td>Débito</td><td class="val">1,36%</td></tr>
+        <tr><td>Crédito 1x</td><td class="val">3,14%</td></tr>
+        <tr><td>Crédito 2x</td><td class="val">5,38%</td></tr>
+        <tr><td>Crédito 3x</td><td class="val">6,11%</td></tr>
+        <tr><td>Crédito 4x</td><td class="val">6,84%</td></tr>
+        <tr><td>Crédito 5x</td><td class="val">7,56%</td></tr>
+        <tr><td>Crédito 6x</td><td class="val">8,27%</td></tr>
+        <tr><td>Crédito 7x</td><td class="val">8,95%</td></tr>
+        <tr><td>Crédito 8x</td><td class="val">9,68%</td></tr>
+        <tr><td>Crédito 9x</td><td class="val">10,37%</td></tr>
+        <tr><td>Crédito 10x</td><td class="val">11,05%</td></tr>
+        <tr><td>Crédito 11x</td><td class="val">11,73%</td></tr>
+        <tr><td>Crédito 12x</td><td class="val">12,39%</td></tr>
+      </tbody>
+    </table>
+    <div class="nota green">Fonte: print do app · confirmado por você ✓</div>
+  </div>
+
+</div>
+
+<div class="comparativo">
+  <div class="comp-head">
+    <i class="ti ti-scale" aria-hidden="true"></i>
+    <span class="comp-head-title">Comparativo — diferença por modalidade</span>
+  </div>
+  <table>
+    <thead><tr><th>Modalidade</th><th class="right">InfinitePay</th><th class="right">Ton Black</th><th class="right">Diferença</th></tr></thead>
+    <tbody>
+      <tr><td>Débito</td><td class="val">1,37%</td><td class="val">1,36%</td><td class="diff-better">Ton -0,01%</td></tr>
+      <tr><td>Crédito 1x</td><td class="val">3,15%</td><td class="val">3,14%</td><td class="diff-better">Ton -0,01%</td></tr>
+      <tr><td>Crédito 3x</td><td class="val">6,12%</td><td class="val">6,11%</td><td class="diff-better">Ton -0,01%</td></tr>
+      <tr><td>Crédito 6x</td><td class="val">8,28%</td><td class="val">8,27%</td><td class="diff-better">Ton -0,01%</td></tr>
+      <tr><td>Crédito 12x</td><td class="val">12,40%</td><td class="val">12,39%</td><td class="diff-better">Ton -0,01%</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="nota amber">
+  As duas maquininhas têm taxas praticamente idênticas nessa faixa de faturamento — diferença de apenas 0,01% em todas as modalidades. No sistema, você pode usar a mesma tabela para as duas e ajustar quando necessário.
+</div>
+
+</div>

@@ -1,0 +1,233 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.form-wrap{padding:1rem 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:12px;}
+.section-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.section-header i{font-size:18px;}
+.section-title{font-size:14px;font-weight:500;color:var(--color-text-primary);}
+.field-row{display:grid;gap:10px;margin-bottom:10px;}
+.field-row.cols2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.field-row.cols3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:12px;color:var(--color-text-secondary);}
+.field input,.field select,.field textarea{font-size:13px;padding:7px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);width:100%;}
+.field textarea{resize:vertical;min-height:64px;}
+.maquina-grid{display:grid;grid-template-columns:1fr 160px;gap:12px;align-items:start;}
+.maquina-fields{display:flex;flex-direction:column;gap:10px;}
+.foto-zone{border:0.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-lg);background:var(--color-background-secondary);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;min-height:160px;padding:12px;transition:background 0.15s;}
+.foto-zone:hover{background:var(--color-background-tertiary);}
+.foto-zone i{font-size:28px;color:var(--color-text-secondary);}
+.foto-zone .fz-label{font-size:12px;color:var(--color-text-secondary);text-align:center;line-height:1.4;}
+.foto-zone .fz-sub{font-size:11px;color:var(--color-text-tertiary);text-align:center;}
+.foto-preview{position:relative;width:100%;min-height:160px;border-radius:var(--border-radius-lg);overflow:hidden;border:0.5px solid var(--color-border-tertiary);}
+.foto-preview img{width:100%;height:160px;object-fit:cover;display:block;}
+.foto-remove{position:absolute;top:6px;right:6px;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:4px 6px;cursor:pointer;font-size:12px;color:var(--color-text-secondary);display:flex;align-items:center;gap:4px;}
+.foto-remove:hover{background:var(--color-background-secondary);}
+.checklist-grid{display:grid;grid-template-columns:1fr auto auto auto;gap:0;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;}
+.chk-head{background:var(--color-background-secondary);font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.chk-head.center{text-align:center;}
+.chk-label{font-size:13px;color:var(--color-text-primary);padding:10px 12px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px;}
+.chk-label i{font-size:15px;color:var(--color-text-secondary);}
+.chk-cell{padding:8px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;}
+.chk-last .chk-label,.chk-last .chk-cell{border-bottom:none;}
+.radio-pill{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 9px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);white-space:nowrap;}
+.radio-pill input{display:none;}
+.radio-pill.ok.selected{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.radio-pill.defeito.selected{background:#FF6B6B;border-color:#FF6B6B;color:#fff;}
+.radio-pill.barulho.selected{background:#FFD966;border-color:#c8a800;color:#7a6200;}
+.servico-opts{display:flex;gap:8px;flex-wrap:wrap;}
+.serv-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:13px;color:var(--color-text-secondary);cursor:pointer;}
+.serv-btn.selected{background:#B8CCE4;border-color:#5B9BD5;color:#0C447C;}
+.serv-btn i{font-size:16px;}
+.obs-tabs{display:flex;gap:6px;margin-bottom:10px;}
+.obs-tab{font-size:12px;padding:5px 12px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);cursor:pointer;background:var(--color-background-secondary);}
+.obs-tab.active{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.footer-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:4px;}
+.btn-cancel{padding:9px 20px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:13px;color:var(--color-text-secondary);cursor:pointer;}
+.btn-save{padding:9px 20px;border-radius:var(--border-radius-md);border:none;background:#5B9BD5;font-size:13px;color:#fff;cursor:pointer;font-weight:500;}
+.os-badge{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);padding:4px 10px;border-radius:20px;border:0.5px solid var(--color-border-tertiary);}
+.top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.top-title{font-size:16px;font-weight:500;color:var(--color-text-primary);}
+.obs-textarea{width:100%;font-size:13px;padding:8px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);min-height:72px;resize:vertical;}
+</style>
+
+<h2 class="sr-only">Formulário de abertura de ordem de serviço da Idemaq — versão atualizada com número de série e foto</h2>
+
+<div class="form-wrap">
+
+<div class="card">
+  <div class="top-row">
+    <span class="top-title">Nova ordem de serviço</span>
+    <span class="os-badge"><i class="ti ti-hash" aria-hidden="true" style="font-size:14px;"></i> OS #1043</span>
+  </div>
+  <div class="section-header">
+    <i class="ti ti-user" aria-hidden="true" style="color:#5B9BD5;"></i>
+    <span class="section-title">Dados do cliente</span>
+  </div>
+  <div class="field-row cols2">
+    <div class="field"><label>Nome</label><input type="text" placeholder="Nome completo"></div>
+    <div class="field"><label>Telefone</label><input type="text" placeholder="(67) 9 0000-0000"></div>
+  </div>
+  <div class="field-row">
+    <div class="field"><label>Endereço completo</label><input type="text" placeholder="Rua, número, bairro — Naviraí/MS"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-header">
+    <i class="ti ti-washing-machine" aria-hidden="true" style="color:#5B9BD5;"></i>
+    <span class="section-title">Dados da máquina</span>
+  </div>
+
+  <div class="maquina-grid">
+    <div class="maquina-fields">
+      <div class="field-row cols2" style="margin-bottom:0;">
+        <div class="field"><label>Marca</label>
+          <select>
+            <option value="">Selecionar</option>
+            <option>Brastemp</option>
+            <option>Electrolux</option>
+            <option>Samsung</option>
+            <option>LG</option>
+            <option>Consul</option>
+            <option>Outra</option>
+          </select>
+        </div>
+        <div class="field"><label>Modelo</label><input type="text" placeholder="Ex: BWK11AB"></div>
+      </div>
+      <div class="field"><label>Número de série</label><input type="text" placeholder="Ex: BR2023XK00142"></div>
+      <div class="field-row cols2" style="margin-bottom:0;">
+        <div class="field"><label>Problema relatado</label><input type="text" placeholder="Ex: não centrifuga..."></div>
+        <div class="field"><label>Data de recebimento</label><input type="date"></div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;">Foto da máquina</div>
+      <div class="foto-zone" id="foto-zone" onclick="document.getElementById('foto-input').click()">
+        <i class="ti ti-camera" aria-hidden="true"></i>
+        <span class="fz-label">Toque para adicionar foto</span>
+        <span class="fz-sub">JPG ou PNG</span>
+      </div>
+      <div class="foto-preview" id="foto-preview" style="display:none;">
+        <img id="foto-img" src="" alt="Foto da máquina">
+        <button class="foto-remove" onclick="removePhoto(event)" aria-label="Remover foto">
+          <i class="ti ti-x" aria-hidden="true" style="font-size:12px;"></i> Remover
+        </button>
+      </div>
+      <input type="file" id="foto-input" accept="image/*" style="display:none;" onchange="handlePhoto(event)">
+    </div>
+  </div>
+
+  <div class="field-row" style="margin-top:10px;">
+    <div class="field"><label>Observações do recebimento</label><textarea placeholder="Estado físico ao chegar, acessórios entregues, combinados com o cliente..."></textarea></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-header">
+    <i class="ti ti-clipboard-check" aria-hidden="true" style="color:#5B9BD5;"></i>
+    <span class="section-title">Pré-diagnóstico</span>
+  </div>
+  <div class="checklist-grid">
+    <div class="chk-head">Teste</div>
+    <div class="chk-head center">Ok</div>
+    <div class="chk-head center">Com defeito</div>
+    <div class="chk-head center">Com barulho</div>
+
+    <div class="chk-label"><i class="ti ti-droplet" aria-hidden="true"></i>Entrada de água</div>
+    <div class="chk-cell"><label class="radio-pill ok" data-row="r1"><input type="radio" name="r1" value="ok"> Ok</label></div>
+    <div class="chk-cell"><label class="radio-pill defeito" data-row="r1"><input type="radio" name="r1" value="defeito"> Defeito</label></div>
+    <div class="chk-cell"><label class="radio-pill barulho" data-row="r1"><input type="radio" name="r1" value="barulho"> Barulho</label></div>
+
+    <div class="chk-label"><i class="ti ti-droplet-off" aria-hidden="true"></i>Saída de água</div>
+    <div class="chk-cell"><label class="radio-pill ok" data-row="r2"><input type="radio" name="r2" value="ok"> Ok</label></div>
+    <div class="chk-cell"><label class="radio-pill defeito" data-row="r2"><input type="radio" name="r2" value="defeito"> Defeito</label></div>
+    <div class="chk-cell"><label class="radio-pill barulho" data-row="r2"><input type="radio" name="r2" value="barulho"> Barulho</label></div>
+
+    <div class="chk-label"><i class="ti ti-rotate-clockwise" aria-hidden="true"></i>Agitação</div>
+    <div class="chk-cell"><label class="radio-pill ok" data-row="r3"><input type="radio" name="r3" value="ok"> Ok</label></div>
+    <div class="chk-cell"><label class="radio-pill defeito" data-row="r3"><input type="radio" name="r3" value="defeito"> Defeito</label></div>
+    <div class="chk-cell"><label class="radio-pill barulho" data-row="r3"><input type="radio" name="r3" value="barulho"> Barulho</label></div>
+
+    <div class="chk-label chk-last"><i class="ti ti-rotate-2" aria-hidden="true"></i>Centrifugação</div>
+    <div class="chk-cell chk-last"><label class="radio-pill ok" data-row="r4"><input type="radio" name="r4" value="ok"> Ok</label></div>
+    <div class="chk-cell chk-last"><label class="radio-pill defeito" data-row="r4"><input type="radio" name="r4" value="defeito"> Defeito</label></div>
+    <div class="chk-cell chk-last"><label class="radio-pill barulho" data-row="r4"><input type="radio" name="r4" value="barulho"> Barulho</label></div>
+  </div>
+  <div class="field-row" style="margin-top:10px;">
+    <div class="field"><label>Observações do pré-diagnóstico</label><textarea placeholder="Descreva detalhes observados nos testes..."></textarea></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-header">
+    <i class="ti ti-tool" aria-hidden="true" style="color:#5B9BD5;"></i>
+    <span class="section-title">Tipo de serviço</span>
+  </div>
+  <div class="servico-opts">
+    <div class="serv-btn" onclick="toggleServ(this)"><i class="ti ti-sparkles" aria-hidden="true"></i> Limpeza</div>
+    <div class="serv-btn" onclick="toggleServ(this)"><i class="ti ti-settings" aria-hidden="true"></i> Manutenção</div>
+    <div class="serv-btn" onclick="toggleServ(this)"><i class="ti ti-adjustments" aria-hidden="true"></i> Limpeza + manutenção</div>
+    <div class="serv-btn" onclick="toggleServ(this)"><i class="ti ti-search" aria-hidden="true"></i> Só diagnóstico</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-header">
+    <i class="ti ti-notes" aria-hidden="true" style="color:#5B9BD5;"></i>
+    <span class="section-title">Observações</span>
+  </div>
+  <div class="obs-tabs">
+    <div class="obs-tab active" onclick="switchTab(this,'tab-interna')">Internas</div>
+    <div class="obs-tab" onclick="switchTab(this,'tab-servico')">Do serviço</div>
+  </div>
+  <div id="tab-interna"><textarea class="obs-textarea" placeholder="Notas internas — o cliente não vê este campo..."></textarea></div>
+  <div id="tab-servico" style="display:none;"><textarea class="obs-textarea" placeholder="O que foi feito — aparece no documento do cliente..."></textarea></div>
+</div>
+
+<div class="footer-btns">
+  <button class="btn-cancel">Cancelar</button>
+  <button class="btn-save" onclick="sendPrompt('OS salva, próximo passo: ver o Kanban de OS')">Salvar OS ↗</button>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.radio-pill').forEach(function(pill){
+  pill.addEventListener('click',function(){
+    var row=this.dataset.row;
+    document.querySelectorAll('[data-row="'+row+'"]').forEach(function(p){p.classList.remove('selected');});
+    this.classList.add('selected');
+  });
+});
+function toggleServ(el){
+  document.querySelectorAll('.serv-btn').forEach(function(b){b.classList.remove('selected');});
+  el.classList.add('selected');
+}
+function switchTab(tab,id){
+  document.querySelectorAll('.obs-tab').forEach(function(t){t.classList.remove('active');});
+  tab.classList.add('active');
+  ['tab-interna','tab-servico'].forEach(function(t){document.getElementById(t).style.display='none';});
+  document.getElementById(id).style.display='block';
+}
+function handlePhoto(e){
+  var file=e.target.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    document.getElementById('foto-img').src=ev.target.result;
+    document.getElementById('foto-zone').style.display='none';
+    document.getElementById('foto-preview').style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+function removePhoto(e){
+  e.stopPropagation();
+  document.getElementById('foto-img').src='';
+  document.getElementById('foto-input').value='';
+  document.getElementById('foto-preview').style.display='none';
+  document.getElementById('foto-zone').style.display='flex';
+}
+</script>

@@ -23,84 +23,72 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO os (
   id, tipo, etapa, cliente_id, valor_total, desconto,
   pago, valor_pago, forma_pagamento,
-  garantia, garantia_dias,
+  garantia, os_origem_id, garantia_dias,
   recusada, aguardando_peca,
   prazo, data_conclusao
 ) VALUES
 
-  -- OS 1: Ana Reis — Lavadora LG 12kg — agendamento (atendimento)
+  -- OS 1: Ana Reis — agendamento (atendimento)
   (
     '22222222-0001-0000-0000-000000000001',
     'atendimento', 'agendamento',
     '11111111-0001-0000-0000-000000000001',
     0, 0,
     'nao', 0, NULL,
-    false, 90,
+    false, NULL, 90,
     false, false,
-    (NOW() AT TIME ZONE 'America/Cuiaba' + INTERVAL '2 days')::timestamptz,
-    NULL
+    (NOW() + INTERVAL '2 days'), NULL
   ),
 
-  -- OS 2: João Costa — Geladeira Consul — diagnostico (atendimento)
+  -- OS 2: João Costa — diagnostico (atendimento)
   (
     '22222222-0002-0000-0000-000000000001',
     'atendimento', 'diagnostico',
     '11111111-0002-0000-0000-000000000001',
     0, 0,
     'nao', 0, NULL,
-    false, 90,
+    false, NULL, 90,
     false, false,
-    (NOW() AT TIME ZONE 'America/Cuiaba' + INTERVAL '1 day')::timestamptz,
-    NULL
+    (NOW() + INTERVAL '1 day'), NULL
   ),
 
-  -- OS 3: Carlos Lima — Micro-ondas — orcamento, recusada (atendimento)
+  -- OS 3: Carlos Lima — orcamento, recusada=true (atendimento)
   (
     '22222222-0003-0000-0000-000000000001',
     'atendimento', 'orcamento',
     '11111111-0003-0000-0000-000000000001',
     215, 0,
     'nao', 0, NULL,
-    false, 90,
-    true, false,  -- recusada = true
-    (NOW() AT TIME ZONE 'America/Cuiaba' - INTERVAL '1 day')::timestamptz,
-    NULL
+    false, NULL, 90,
+    true, false,
+    (NOW() - INTERVAL '1 day'), NULL
   ),
 
-  -- OS 4: Marta Lopes — Lavadora Brastemp — em_oficina (fabricacao)
-  -- Observação: limpeza concluída, manutenção em andamento (usar campo observacoes quando disponível)
+  -- OS 4: Marta Lopes — em_oficina (fabricacao), aguardando peça
   (
     '22222222-0004-0000-0000-000000000001',
     'fabricacao', 'em_oficina',
     '11111111-0004-0000-0000-000000000001',
     380, 30,
     'nao', 0, NULL,
-    false, 90,
-    false, true,  -- aguardando_peca = true (peça de manutenção pendente)
-    (NOW() AT TIME ZONE 'America/Cuiaba' + INTERVAL '3 days')::timestamptz,
-    NULL
+    false, NULL, 90,
+    false, true,
+    (NOW() + INTERVAL '3 days'), NULL
   ),
 
-  -- OS 5: Pedro Alves — Secadora Brastemp — concluido (atendimento, pago total)
-  -- garantia = true, apontando para OS 3 como origem (demo de garantia)
+  -- OS 5: Pedro Alves — concluido (atendimento, pago PIX, garantia da OS 3)
   (
     '22222222-0005-0000-0000-000000000001',
     'atendimento', 'concluido',
     '11111111-0005-0000-0000-000000000001',
     420, 0,
     'total', 420, 'PIX',
-    true, 90,  -- garantia = true
+    true, '22222222-0003-0000-0000-000000000001', 90,
     false, false,
-    (NOW() AT TIME ZONE 'America/Cuiaba' - INTERVAL '5 days')::timestamptz,
-    NOW()  -- data_conclusao = agora (mês atual)
+    (NOW() - INTERVAL '5 days'), NOW()
   )
 
 ON CONFLICT (id) DO NOTHING;
-
--- Atualiza OS 5 com os_origem_id apontando para OS 3 (demo de garantia)
-UPDATE os
-  SET os_origem_id = '22222222-0003-0000-0000-000000000001'
-WHERE id = '22222222-0005-0000-0000-000000000001';
 
 -- ── Histórico das OS ─────────────────────────────────────────────────────────
 -- Tenta usar o primeiro usuário disponível como responsável.

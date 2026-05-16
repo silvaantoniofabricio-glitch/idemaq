@@ -1,0 +1,345 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.nav-telas{display:flex;gap:6px;margin-bottom:12px;}
+.nav-btn{padding:7px 16px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.nav-btn.ativa{background:#5B9BD5;border-color:#5B9BD5;color:#fff;font-weight:500;}
+.tela{display:none;}
+.tela.ativa{display:block;}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.periodo-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-primary);cursor:pointer;}
+.periodo-btn i{font-size:14px;color:#5B9BD5;}
+.novo-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--border-radius-md);border:none;background:#5B9BD5;font-size:12px;color:#fff;cursor:pointer;font-weight:500;margin-left:auto;}
+.layout{display:grid;grid-template-columns:155px 1fr 160px;gap:10px;align-items:start;}
+.filtros{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px;}
+.filtro-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+.filtro-limpar{font-size:11px;color:#5B9BD5;cursor:pointer;}
+.filtro-sec{margin-bottom:8px;}
+.filtro-lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:3px;}
+.filtro-select{width:100%;font-size:11px;padding:4px 6px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.filtro-input{width:100%;font-size:11px;padding:4px 6px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.filtrar-btn{width:100%;padding:6px;border-radius:var(--border-radius-md);border:0.5px solid #5B9BD5;background:transparent;font-size:12px;color:#0C447C;cursor:pointer;margin-top:4px;font-weight:500;}
+.central{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.abas{display:flex;border-bottom:0.5px solid var(--color-border-tertiary);}
+.aba{padding:8px 14px;font-size:12px;color:var(--color-text-secondary);cursor:pointer;border-bottom:2px solid transparent;}
+.aba.ativa{color:#5B9BD5;border-bottom-color:#5B9BD5;font-weight:500;}
+.busca-row{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.busca-wrap{flex:1;position:relative;}
+.busca-wrap i{position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--color-text-secondary);}
+.busca-input{width:100%;font-size:11px;padding:5px 7px 5px 26px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.sel-btn{display:flex;align-items:center;gap:4px;font-size:11px;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;white-space:nowrap;}
+.baixa-btn{display:none;align-items:center;gap:4px;font-size:11px;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid #97C459;background:#EAF3DE;color:#27500A;cursor:pointer;white-space:nowrap;}
+.th-row{display:grid;gap:0;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.th{font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:6px 8px;cursor:pointer;user-select:none;}
+.th:hover{color:var(--color-text-primary);}
+.th.r{text-align:right;}
+.item-row{display:grid;gap:0;border-bottom:0.5px solid var(--color-border-tertiary);align-items:center;}
+.item-row:last-child{border-bottom:none;}
+.item-row:hover{background:var(--color-background-secondary);}
+.item-row.sel{background:#E6F1FB;}
+.td{font-size:11px;padding:8px 8px;color:var(--color-text-primary);}
+.td.sec{color:var(--color-text-secondary);}
+.td.r{text-align:right;}
+.td.entrada{color:#27500A;font-weight:500;text-align:right;}
+.td.saida{color:#791F1F;font-weight:500;text-align:right;}
+.td.acts{display:flex;gap:4px;justify-content:center;}
+.act-btn{font-size:13px;color:var(--color-text-secondary);cursor:pointer;border:none;background:transparent;padding:2px;}
+.tag{font-size:10px;padding:2px 6px;border-radius:20px;font-weight:500;}
+.tag-aberto{background:#FAEEDA;color:#633806;}
+.tag-atras{background:#FCEBEB;color:#791F1F;}
+.tag-pago{background:#EAF3DE;color:#27500A;}
+.resumo{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px;}
+.res-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;}
+.res-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px;}
+.res-row:last-child{border-bottom:none;}
+.res-lbl{color:var(--color-text-secondary);}
+.res-val{font-weight:500;}
+.res-total{display:flex;justify-content:space-between;padding:7px 0 0;font-size:13px;font-weight:500;}
+</style>
+
+<h2 class="sr-only">Três telas financeiras — caixa, contas a receber e contas a pagar</h2>
+
+<div class="wrap">
+
+<div class="nav-telas">
+  <button class="nav-btn ativa" onclick="irTela('caixa',this)"><i class="ti ti-building-bank" aria-hidden="true" style="font-size:13px;margin-right:4px;"></i>Caixa</button>
+  <button class="nav-btn" onclick="irTela('receber',this)"><i class="ti ti-arrow-down" aria-hidden="true" style="font-size:13px;margin-right:4px;"></i>Contas a receber</button>
+  <button class="nav-btn" onclick="irTela('pagar',this)"><i class="ti ti-arrow-up" aria-hidden="true" style="font-size:13px;margin-right:4px;"></i>Contas a pagar</button>
+</div>
+
+<div class="tela ativa" id="tela-caixa">
+  <div class="topbar">
+    <div class="periodo-btn"><i class="ti ti-calendar" aria-hidden="true"></i>01/05/2026 até 31/05/2026<i class="ti ti-chevron-down" aria-hidden="true" style="font-size:11px;color:var(--color-text-secondary);"></i></div>
+    <button class="novo-btn"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Novo lançamento</button>
+  </div>
+  <div class="layout">
+    <div class="filtros">
+      <div class="filtro-title">Filtrar <span class="filtro-limpar">Limpar</span></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Categoria</div><select class="filtro-select"><option>Todas</option><option>Vendas de serviços</option><option>Peças</option><option>Funcionários</option><option>Tráfego pago</option></select></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Conta / Cartão</div><select class="filtro-select"><option>Todas</option><option>Cresol</option><option>Bradesco</option><option>Mercado Pago</option><option>Elo Grafite</option><option>Bradesco Visa</option><option>Nubank PJ</option><option>Inter</option></select></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Valor</div><input class="filtro-input" placeholder="R$ 0,00"></div>
+      <button class="filtrar-btn">Filtrar</button>
+    </div>
+    <div class="central">
+      <div class="abas">
+        <div class="aba ativa">Movimentações</div>
+        <div class="aba">Entradas</div>
+        <div class="aba">Saídas</div>
+      </div>
+      <div class="busca-row">
+        <div class="busca-wrap"><i class="ti ti-search" aria-hidden="true"></i><input class="busca-input" placeholder="Pesquisar..."></div>
+        <button class="sel-btn" onclick="toggleBaixa('caixa',this)"><i class="ti ti-checkbox" aria-hidden="true" style="font-size:12px;"></i> Selecionar</button>
+        <button class="baixa-btn" id="baixa-caixa"><i class="ti ti-trash" aria-hidden="true" style="font-size:12px;"></i> Excluir (<span>0</span>)</button>
+      </div>
+      <div class="th-row" style="grid-template-columns:26px 60px 1fr 1fr 90px 60px 52px;">
+        <div class="th"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Todos"></div>
+        <div class="th">Data ↕</div>
+        <div class="th">Categoria ↕</div>
+        <div class="th">Histórico</div>
+        <div class="th">Conta</div>
+        <div class="th r">Valor ↕</div>
+        <div class="th"></div>
+      </div>
+      <div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 1fr 90px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">14/05</div><div class="td">Vendas de serviços</div><div class="td sec">OS #1037 — João Costa</div>
+          <div class="td"><span class="tag" style="background:#E6F1FB;color:#0C447C;">PIX · Cresol</span></div>
+          <div class="td entrada">+ R$ 460,00</div>
+          <div class="td acts"><button class="act-btn" aria-label="Excluir"><i class="ti ti-trash" aria-hidden="true"></i></button></div>
+        </div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 1fr 90px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">14/05</div><div class="td">Taxas pagas</div><div class="td sec">Taxa cartão OS #1037</div>
+          <div class="td"><span class="tag" style="background:#E6F1FB;color:#0C447C;">Cresol</span></div>
+          <div class="td saida">— R$ 14,49</div>
+          <div class="td acts"><button class="act-btn" aria-label="Excluir"><i class="ti ti-trash" aria-hidden="true"></i></button></div>
+        </div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 1fr 90px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">13/05</div><div class="td">Tráfego pago</div><div class="td sec">Google Ads — mai</div>
+          <div class="td"><span class="tag" style="background:#FAEEDA;color:#633806;">Elo Grafite</span></div>
+          <div class="td saida">— R$ 500,00</div>
+          <div class="td acts"><button class="act-btn" aria-label="Excluir"><i class="ti ti-trash" aria-hidden="true"></i></button></div>
+        </div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 1fr 90px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">10/05</div><div class="td">Funcionários</div><div class="td sec">Salário func. 1 — mai</div>
+          <div class="td"><span class="tag" style="background:#E6F1FB;color:#0C447C;">PIX · Cresol</span></div>
+          <div class="td saida">— R$ 1.650,00</div>
+          <div class="td acts"><button class="act-btn" aria-label="Excluir"><i class="ti ti-trash" aria-hidden="true"></i></button></div>
+        </div>
+      </div>
+    </div>
+    <div class="resumo">
+      <div class="res-title">Maio 2026</div>
+      <div class="res-row"><span class="res-lbl">Registros</span><span class="res-val">12</span></div>
+      <div class="res-row"><span class="res-lbl">Entradas</span><span class="res-val" style="color:#27500A;">R$ 14.260</span></div>
+      <div class="res-row"><span class="res-lbl">Saídas</span><span class="res-val" style="color:#791F1F;">R$ 9.840</span></div>
+      <div class="res-total"><span>Saldo</span><span style="color:#5B9BD5;">R$ 4.420</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="tela" id="tela-receber">
+  <div class="topbar">
+    <div class="periodo-btn"><i class="ti ti-calendar" aria-hidden="true"></i>01/05/2026 até 31/05/2026<i class="ti ti-chevron-down" aria-hidden="true" style="font-size:11px;color:var(--color-text-secondary);"></i></div>
+    <button class="novo-btn"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Nova conta</button>
+  </div>
+  <div class="layout">
+    <div class="filtros">
+      <div class="filtro-title">Filtrar <span class="filtro-limpar">Limpar</span></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Opção</div>
+        <select class="filtro-select" onchange="toggleFiltroData(this)">
+          <option>Em aberto</option><option>Atrasadas</option><option>Emitidas</option><option>Recebidas</option>
+        </select>
+      </div>
+      <div class="filtro-sec" id="filtro-data-rec" style="display:none;">
+        <div class="filtro-lbl">Filtrar por data</div>
+        <select class="filtro-select"><option>Emissão</option><option>Vencimento</option><option>Recebimento</option></select>
+      </div>
+      <div class="filtro-sec"><div class="filtro-lbl">Categoria</div><select class="filtro-select"><option>Todas</option><option>Limpeza</option><option>Manutenção</option><option>Peças</option><option>Venda de máquinas</option></select></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Tipo de pagamento</div><select class="filtro-select"><option>Todas</option><option>PIX</option><option>Cartão</option><option>Dinheiro</option><option>A prazo</option></select></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Forma de pagamento</div><select class="filtro-select"><option>Todas</option><option>InfinitePay</option><option>Ton Black</option><option>Link</option></select></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Valor</div><input class="filtro-input" placeholder="R$ 0,00"></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Cliente</div><input class="filtro-input" placeholder="Nome do cliente..."></div>
+      <button class="filtrar-btn">Filtrar</button>
+    </div>
+    <div class="central">
+      <div class="busca-row">
+        <div class="busca-wrap"><i class="ti ti-search" aria-hidden="true"></i><input class="busca-input" placeholder="Pesquisar..."></div>
+        <button class="sel-btn" onclick="toggleBaixa('rec',this)"><i class="ti ti-checkbox" aria-hidden="true" style="font-size:12px;"></i> Selecionar</button>
+        <button class="baixa-btn" id="baixa-rec"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Dar baixa (<span>0</span>)</button>
+      </div>
+      <div class="th-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 60px 52px;">
+        <div class="th"></div>
+        <div class="th">Data ↕</div>
+        <div class="th">Cliente ↕</div>
+        <div class="th">Categoria ↕</div>
+        <div class="th">Vencimento ↕</div>
+        <div class="th">Situação</div>
+        <div class="th r">Valor ↕</div>
+        <div class="th"></div>
+      </div>
+      <div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">14/05</div><div class="td">Roberto Lima · OS #1020</div>
+          <div class="td sec">Limpeza</div><div class="td sec">13/05</div>
+          <div class="td"><span class="tag tag-atras">Atrasada</span></div>
+          <div class="td saida">R$ 185,00</div>
+          <div class="td acts">
+            <button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="act-btn" aria-label="Mais"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">12/05</div><div class="td">Sônia Barros · OS #1022</div>
+          <div class="td sec">Manutenção</div><div class="td sec">18/05</div>
+          <div class="td"><span class="tag tag-aberto">Em aberto</span></div>
+          <div class="td" style="text-align:right;font-weight:500;color:var(--color-text-primary);">R$ 350,00</div>
+          <div class="td acts">
+            <button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="act-btn" aria-label="Mais"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">10/05</div><div class="td">João Costa · OS #1037</div>
+          <div class="td sec">Limpeza + man.</div><div class="td sec">14/05</div>
+          <div class="td"><span class="tag tag-pago">Recebida</span></div>
+          <div class="td entrada">R$ 460,00</div>
+          <div class="td acts">
+            <button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="act-btn" aria-label="Mais"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resumo">
+      <div class="res-title">Maio 2026</div>
+      <div class="res-row"><span class="res-lbl">Em aberto</span><span class="res-val" style="color:#633806;">R$ 350,00</span></div>
+      <div class="res-row"><span class="res-lbl">Atrasadas</span><span class="res-val" style="color:#791F1F;">R$ 185,00</span></div>
+      <div class="res-row"><span class="res-lbl">Recebidas</span><span class="res-val" style="color:#27500A;">R$ 460,00</span></div>
+      <div class="res-total"><span>Total emitido</span><span style="color:#5B9BD5;">R$ 995,00</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="tela" id="tela-pagar">
+  <div class="topbar">
+    <div class="periodo-btn"><i class="ti ti-calendar" aria-hidden="true"></i>01/05/2026 até 31/05/2026<i class="ti ti-chevron-down" aria-hidden="true" style="font-size:11px;color:var(--color-text-secondary);"></i></div>
+    <button class="novo-btn"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Nova conta</button>
+  </div>
+  <div class="layout">
+    <div class="filtros">
+      <div class="filtro-title">Filtrar <span class="filtro-limpar">Limpar</span></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Opção</div>
+        <select class="filtro-select" onchange="toggleFiltroDataPagar(this)">
+          <option>Em aberto</option><option>Atrasadas</option><option>Emitidas</option><option>Pagas</option>
+        </select>
+      </div>
+      <div class="filtro-sec" id="filtro-data-pag" style="display:none;">
+        <div class="filtro-lbl">Filtrar por data</div>
+        <select class="filtro-select"><option>Emissão</option><option>Vencimento</option><option>Pagamento</option></select>
+      </div>
+      <div class="filtro-sec"><div class="filtro-lbl">Categoria</div><select class="filtro-select"><option>Todas</option><option>Peças (ML)</option><option>Funcionários</option><option>Tráfego pago</option><option>Impostos</option></select></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Cartão / Conta</div>
+        <select class="filtro-select"><option>Todas</option><option>Elo Grafite</option><option>Bradesco Visa</option><option>Mercado Pago</option><option>Bradesco PJ</option><option>Cresol</option><option>Nubank PJ</option><option>Inter</option></select>
+      </div>
+      <div class="filtro-sec"><div class="filtro-lbl">Origem</div><select class="filtro-select"><option>Todas</option><option>Cartão</option><option>Boleto</option><option>PIX</option><option>Dinheiro</option></select></div>
+      <div class="filtro-sec"><div class="filtro-lbl">Valor</div><input class="filtro-input" placeholder="R$ 0,00"></div>
+      <button class="filtrar-btn">Filtrar</button>
+    </div>
+    <div class="central">
+      <div class="busca-row">
+        <div class="busca-wrap"><i class="ti ti-search" aria-hidden="true"></i><input class="busca-input" placeholder="Pesquisar..."></div>
+        <button class="sel-btn" onclick="toggleBaixa('pag',this)"><i class="ti ti-checkbox" aria-hidden="true" style="font-size:12px;"></i> Selecionar</button>
+        <button class="baixa-btn" id="baixa-pag"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Dar baixa (<span>0</span>)</button>
+      </div>
+      <div class="th-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 70px 60px 52px;">
+        <div class="th"></div>
+        <div class="th">Data ↕</div>
+        <div class="th">Descrição ↕</div>
+        <div class="th">Categoria ↕</div>
+        <div class="th">Vencimento ↕</div>
+        <div class="th">Situação</div>
+        <div class="th">Cartão/Conta</div>
+        <div class="th r">Valor ↕</div>
+        <div class="th"></div>
+      </div>
+      <div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 70px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">01/05</div><div class="td">Google Ads</div>
+          <div class="td sec">Tráfego pago</div><div class="td sec">10/05</div>
+          <div class="td"><span class="tag tag-atras">Atrasada</span></div>
+          <div class="td"><span class="tag" style="background:#FAEEDA;color:#633806;">Elo Grafite</span></div>
+          <div class="td saida">R$ 500,00</div>
+          <div class="td acts">
+            <button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="act-btn" aria-label="Mais"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 70px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">05/05</div><div class="td">Salário func. 1</div>
+          <div class="td sec">Funcionários</div><div class="td sec">05/05</div>
+          <div class="td"><span class="tag tag-pago">Paga</span></div>
+          <div class="td"><span class="tag" style="background:#E6F1FB;color:#0C447C;">PIX · Cresol</span></div>
+          <div class="td saida">R$ 1.650,00</div>
+          <div class="td acts">
+            <button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="act-btn" aria-label="Mais"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <div class="item-row" style="grid-template-columns:26px 60px 1fr 90px 70px 80px 70px 60px 52px;">
+          <div class="td" style="display:flex;align-items:center;justify-content:center;"><input type="checkbox" style="width:12px;height:12px;accent-color:#5B9BD5;" aria-label="Selecionar"></div>
+          <div class="td sec">10/05</div><div class="td">Compressor — 3/10</div>
+          <div class="td sec">Ferramentas</div><div class="td sec">15/05</div>
+          <div class="td"><span class="tag tag-aberto">Em aberto</span></div>
+          <div class="td"><span class="tag" style="background:#FAEEDA;color:#633806;">Elo Grafite</span></div>
+          <div class="td saida">R$ 148,00</div>
+          <div class="td acts">
+            <button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="act-btn" aria-label="Mais"><i class="ti ti-dots-vertical" aria-hidden="true"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resumo">
+      <div class="res-title">Maio 2026</div>
+      <div class="res-row"><span class="res-lbl">Em aberto</span><span class="res-val" style="color:#633806;">R$ 648,00</span></div>
+      <div class="res-row"><span class="res-lbl">Atrasadas</span><span class="res-val" style="color:#791F1F;">R$ 500,00</span></div>
+      <div class="res-row"><span class="res-lbl">Pagas</span><span class="res-val" style="color:#27500A;">R$ 1.650,00</span></div>
+      <div class="res-total"><span>Total emitido</span><span style="color:#791F1F;">R$ 9.840,00</span></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function irTela(id,btn){
+  document.querySelectorAll('.tela').forEach(function(t){t.classList.remove('ativa');});
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('ativa');});
+  document.getElementById('tela-'+id).classList.add('ativa');
+  btn.classList.add('ativa');
+}
+function toggleBaixa(id,btn){
+  var b=document.getElementById('baixa-'+id);
+  var vis=b.style.display==='flex';
+  b.style.display=vis?'none':'flex';
+  btn.style.background=vis?'':'#E6F1FB';
+  btn.style.borderColor=vis?'':'#5B9BD5';
+  btn.style.color=vis?'':'#0C447C';
+}
+function toggleFiltroData(sel){
+  document.getElementById('filtro-data-rec').style.display=sel.value==='Emitidas'?'block':'none';
+}
+function toggleFiltroDataPagar(sel){
+  document.getElementById('filtro-data-pag').style.display=sel.value==='Emitidas'?'block':'none';
+}
+</script>

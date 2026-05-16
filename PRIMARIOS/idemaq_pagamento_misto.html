@@ -1,0 +1,274 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 16px;margin-bottom:10px;}
+.sec-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.sec-head i{font-size:16px;color:#5B9BD5;}
+.sec-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.total-box{display:flex;align-items:center;justify-content:space-between;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:14px;}
+.total-lbl{font-size:13px;color:var(--color-text-secondary);}
+.total-val{font-size:18px;font-weight:500;color:#5B9BD5;}
+.pgto-item{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:12px;margin-bottom:8px;border:0.5px solid var(--color-border-tertiary);}
+.pgto-item.prazo-item{border-color:#EF9F27;background:#FAEEDA;}
+.pgto-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.pgto-row:last-child{margin-bottom:0;}
+.pgto-tipo-btns{display:flex;gap:5px;}
+.tipo-btn{display:flex;align-items:center;gap:4px;font-size:12px;padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-secondary);cursor:pointer;white-space:nowrap;}
+.tipo-btn.active{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.tipo-btn.active-prazo{background:#FAEEDA;border-color:#EF9F27;color:#633806;}
+.tipo-btn i{font-size:13px;}
+.pgto-val-input{font-size:14px;font-weight:500;padding:6px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);width:110px;text-align:right;}
+.rem-btn{font-size:13px;color:var(--color-text-secondary);cursor:pointer;padding:4px;border:none;background:transparent;margin-left:auto;}
+.sub-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:center;}
+.sub-label{font-size:11px;color:var(--color-text-secondary);}
+.sub-select{font-size:12px;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);width:100%;}
+.taxa-info{font-size:11px;color:#854F0B;background:#FAEEDA;border-radius:var(--border-radius-md);padding:3px 8px;text-align:center;}
+.liquido-info{font-size:12px;font-weight:500;color:#27500A;text-align:right;}
+.prazo-date{font-size:12px;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid #EF9F27;background:var(--color-background-primary);color:var(--color-text-primary);width:100%;}
+.add-btn{display:flex;align-items:center;gap:5px;font-size:12px;color:#5B9BD5;cursor:pointer;border:none;background:transparent;padding:4px 0;margin-bottom:12px;}
+.resumo-box{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;margin-bottom:10px;}
+.resumo-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.resumo-row:last-child{border-bottom:none;}
+.resumo-lbl{color:var(--color-text-secondary);}
+.resumo-val{font-weight:500;color:var(--color-text-primary);}
+.resumo-val.green{color:#27500A;}
+.resumo-val.red{color:#791F1F;}
+.resumo-val.amber{color:#633806;}
+.resumo-val.blue{color:#0C447C;}
+.resumo-total{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--color-background-secondary);font-size:14px;font-weight:500;}
+.aviso-prazo{display:flex;align-items:center;gap:6px;background:#FAEEDA;border-radius:var(--border-radius-md);padding:8px 10px;margin-bottom:10px;font-size:12px;color:#633806;}
+.confirmar-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:var(--border-radius-md);border:none;background:#639922;font-size:13px;color:#fff;cursor:pointer;font-weight:500;}
+.confirmar-btn:disabled{background:var(--color-background-secondary);color:var(--color-text-tertiary);cursor:not-allowed;}
+.hint-btn{font-size:11px;color:var(--color-text-tertiary);font-style:italic;text-align:center;margin-top:6px;}
+</style>
+
+<h2 class="sr-only">Tela de pagamento misto — múltiplas formas, cálculo automático de taxas e a prazo com data de vencimento</h2>
+
+<div class="wrap">
+
+<div class="card">
+  <div class="sec-head">
+    <i class="ti ti-coin" aria-hidden="true"></i>
+    <span class="sec-title">Registrar pagamento</span>
+  </div>
+
+  <div class="total-box">
+    <span class="total-lbl">Total da OS #1037</span>
+    <span class="total-val" id="total-os">R$ 460,00</span>
+  </div>
+
+  <div id="pgto-lista"></div>
+
+  <button class="add-btn" onclick="addPgto()" id="add-btn">
+    <i class="ti ti-plus" aria-hidden="true" style="font-size:14px;"></i> Adicionar forma de pagamento
+  </button>
+
+  <div class="resumo-box" id="resumo">
+    <div class="resumo-row"><span class="resumo-lbl">Total da OS</span><span class="resumo-val">R$ 460,00</span></div>
+    <div class="resumo-row"><span class="resumo-lbl">Lançado</span><span class="resumo-val blue" id="res-lancado">R$ 0,00</span></div>
+    <div class="resumo-row"><span class="resumo-lbl">Faltando</span><span class="resumo-val red" id="res-faltando">R$ 460,00</span></div>
+    <div class="resumo-row" id="res-taxa-row" style="display:none;"><span class="resumo-lbl">Taxa total cartão</span><span class="resumo-val red" id="res-taxa">— R$ 0,00</span></div>
+    <div class="resumo-row" id="res-prazo-row" style="display:none;"><span class="resumo-lbl">A receber (prazo)</span><span class="resumo-val amber" id="res-prazo">R$ 0,00</span></div>
+    <div class="resumo-total"><span>Líquido a receber agora</span><span style="color:#27500A;" id="res-liquido">R$ 0,00</span></div>
+  </div>
+
+  <div class="aviso-prazo" id="aviso-prazo" style="display:none;">
+    <i class="ti ti-clock" aria-hidden="true" style="font-size:14px;flex-shrink:0;"></i>
+    <span id="aviso-prazo-txt">Pagamento a prazo vai para "A receber" com data de vencimento.</span>
+  </div>
+
+  <button class="confirmar-btn" id="confirmar-btn" disabled onclick="confirmar()">
+    <i class="ti ti-check" aria-hidden="true" style="font-size:14px;"></i> Confirmar pagamento — concluir OS
+  </button>
+  <div class="hint-btn" id="hint-btn">Lance o valor total para confirmar</div>
+</div>
+
+</div>
+
+<script>
+var TOTAL = 460;
+
+var TAXAS_IP_MAQUININHA = {deb:1.37, 1:3.15, 2:5.39, 3:6.12, 4:6.85, 5:7.57, 6:8.28, 7:8.99, 8:9.69, 9:10.38, 10:11.06, 11:11.74, 12:12.40};
+var TAXAS_IP_LINK = {1:4.20, 2:6.09, 3:7.01, 4:7.91, 5:8.80, 6:9.67, 7:12.59, 8:13.42, 9:14.25, 10:15.06, 11:15.87, 12:16.66};
+var TAXAS_TON = {deb:1.36, 1:3.14, 2:5.38, 3:6.11, 4:6.84, 5:7.56, 6:8.27, 7:8.95, 8:9.68, 9:10.37, 10:11.05, 11:11.73, 12:12.39};
+
+var itens = [];
+var nextId = 0;
+
+function fmt(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+
+function getTaxa(tipo, maquininha, parcelas) {
+  if (tipo === 'pix' || tipo === 'dinheiro') return 0;
+  if (tipo === 'prazo') return 0;
+  if (tipo === 'cartao') {
+    if (maquininha === 'link') return TAXAS_IP_LINK[parcelas] || 0;
+    if (maquininha === 'infinite') return parcelas === 'deb' ? TAXAS_IP_MAQUININHA.deb : (TAXAS_IP_MAQUININHA[parcelas] || 0);
+    if (maquininha === 'ton') return parcelas === 'deb' ? TAXAS_TON.deb : (TAXAS_TON[parcelas] || 0);
+  }
+  return 0;
+}
+
+function addPgto() {
+  var id = nextId++;
+  itens.push({id:id, tipo:'pix', maquininha:'infinite', parcelas:1, valor:'', prazo_data:''});
+  render();
+}
+
+function removePgto(id) {
+  itens = itens.filter(function(i){ return i.id !== id; });
+  render();
+}
+
+function setTipo(id, tipo) {
+  var item = itens.find(function(i){ return i.id === id; });
+  if (!item) return;
+  item.tipo = tipo;
+  if (tipo === 'cartao' && item.parcelas === 'deb') item.parcelas = 1;
+  render();
+}
+
+function setField(id, field, val) {
+  var item = itens.find(function(i){ return i.id === id; });
+  if (!item) return;
+  item[field] = val;
+  render();
+}
+
+function render() {
+  var html = '';
+  itens.forEach(function(item) {
+    var taxa = getTaxa(item.tipo, item.maquininha, item.parcelas);
+    var val = parseFloat((item.valor+'').replace(',','.')) || 0;
+    var liquido = val > 0 ? val * (1 - taxa/100) : 0;
+    var isPrazo = item.tipo === 'prazo';
+    var isCartao = item.tipo === 'cartao';
+
+    html += '<div class="pgto-item' + (isPrazo ? ' prazo-item' : '') + '" id="pgto-'+item.id+'">';
+
+    html += '<div class="pgto-row">';
+    html += '<div class="pgto-tipo-btns">';
+    html += '<button class="tipo-btn'+(item.tipo==='pix'?' active':'')+ '" onclick="setTipo('+item.id+',\'pix\')"><i class="ti ti-qrcode" aria-hidden="true"></i> PIX</button>';
+    html += '<button class="tipo-btn'+(item.tipo==='dinheiro'?' active':'')+ '" onclick="setTipo('+item.id+',\'dinheiro\')"><i class="ti ti-cash" aria-hidden="true"></i> Dinheiro</button>';
+    html += '<button class="tipo-btn'+(item.tipo==='cartao'?' active':'')+ '" onclick="setTipo('+item.id+',\'cartao\')"><i class="ti ti-credit-card" aria-hidden="true"></i> Cartão</button>';
+    html += '<button class="tipo-btn'+(item.tipo==='prazo'?' active-prazo active':'')+ '" onclick="setTipo('+item.id+',\'prazo\')"><i class="ti ti-calendar-due" aria-hidden="true"></i> A prazo</button>';
+    html += '</div>';
+    html += '<input type="text" class="pgto-val-input" placeholder="R$ 0,00" value="'+(item.valor||'')+'" oninput="setField('+item.id+',\'valor\',this.value)" aria-label="Valor">';
+    html += '<button class="rem-btn" onclick="removePgto('+item.id+')" aria-label="Remover"><i class="ti ti-x" aria-hidden="true"></i></button>';
+    html += '</div>';
+
+    if (isCartao) {
+      html += '<div class="sub-row">';
+      html += '<div><div class="sub-label">Tipo</div><select class="sub-select" onchange="setField('+item.id+',\'maquininha\',this.value)">';
+      html += '<option value="infinite"'+(item.maquininha==='infinite'?' selected':'')+'>Maquininha InfinitePay</option>';
+      html += '<option value="ton"'+(item.maquininha==='ton'?' selected':'')+'>Maquininha Ton Black</option>';
+      html += '<option value="link"'+(item.maquininha==='link'?' selected':'')+'>Link InfinitePay</option>';
+      html += '</select></div>';
+      html += '<div><div class="sub-label">Parcelas</div><select class="sub-select" onchange="setField('+item.id+',\'parcelas\',isNaN(this.value)?this.value:parseInt(this.value))">';
+      if (item.maquininha !== 'link') {
+        html += '<option value="deb"'+(item.parcelas==='deb'?' selected':'')+'>Débito</option>';
+      }
+      for(var p=1;p<=12;p++){
+        html += '<option value="'+p+'"'+(item.parcelas===p?' selected':'')+'>'+p+'x</option>';
+      }
+      html += '</select></div>';
+      html += '<div>';
+      if (taxa > 0 && val > 0) {
+        html += '<div class="sub-label">Taxa</div>';
+        html += '<div class="taxa-info">'+taxa.toFixed(2)+'% = — '+fmt(val*taxa/100)+'</div>';
+        html += '<div class="liquido-info">Líq: '+fmt(liquido)+'</div>';
+      } else if (taxa > 0) {
+        html += '<div class="sub-label">Taxa</div>';
+        html += '<div class="taxa-info">'+taxa.toFixed(2)+'%</div>';
+      }
+      html += '</div>';
+      html += '</div>';
+    }
+
+    if (isPrazo) {
+      html += '<div class="sub-row">';
+      html += '<div style="grid-column:1/-1"><div class="sub-label" style="margin-bottom:4px;">Data de vencimento</div>';
+      html += '<input type="date" class="prazo-date" value="'+(item.prazo_data||'')+'" onchange="setField('+item.id+',\'prazo_data\',this.value)" aria-label="Data de vencimento">';
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+  });
+
+  document.getElementById('pgto-lista').innerHTML = html;
+
+  var totalLancado = 0, totalTaxa = 0, totalPrazo = 0, totalLiquido = 0;
+  var temPrazo = false;
+  var prazoTextos = [];
+
+  itens.forEach(function(item) {
+    var val = parseFloat((item.valor+'').replace(',','.')) || 0;
+    var taxa = getTaxa(item.tipo, item.maquininha, item.parcelas);
+    totalLancado += val;
+    if (item.tipo === 'prazo') {
+      temPrazo = true;
+      totalPrazo += val;
+      var dStr = item.prazo_data ? item.prazo_data.split('-').reverse().join('/') : 'sem data';
+      prazoTextos.push(fmt(val) + ' vence ' + dStr);
+    } else {
+      totalTaxa += val * taxa / 100;
+      totalLiquido += val * (1 - taxa/100);
+    }
+  });
+
+  var faltando = Math.max(0, TOTAL - totalLancado);
+
+  document.getElementById('res-lancado').textContent = fmt(totalLancado);
+  document.getElementById('res-faltando').textContent = fmt(faltando);
+  document.getElementById('res-faltando').className = 'resumo-val ' + (faltando > 0 ? 'red' : 'green');
+
+  if (totalTaxa > 0) {
+    document.getElementById('res-taxa-row').style.display = 'flex';
+    document.getElementById('res-taxa').textContent = '— ' + fmt(totalTaxa);
+  } else {
+    document.getElementById('res-taxa-row').style.display = 'none';
+  }
+
+  if (totalPrazo > 0) {
+    document.getElementById('res-prazo-row').style.display = 'flex';
+    document.getElementById('res-prazo').textContent = fmt(totalPrazo);
+  } else {
+    document.getElementById('res-prazo-row').style.display = 'none';
+  }
+
+  document.getElementById('res-liquido').textContent = fmt(totalLiquido);
+
+  var aviso = document.getElementById('aviso-prazo');
+  if (temPrazo) {
+    aviso.style.display = 'flex';
+    document.getElementById('aviso-prazo-txt').textContent = prazoTextos.join(' · ') + ' → vai para "A receber"';
+  } else {
+    aviso.style.display = 'none';
+  }
+
+  var pronto = Math.abs(totalLancado - TOTAL) < 0.01 && totalLancado > 0;
+  var btn = document.getElementById('confirmar-btn');
+  var hint = document.getElementById('hint-btn');
+  btn.disabled = !pronto;
+  if (pronto) {
+    hint.textContent = 'Tudo lançado — pronto para confirmar';
+    hint.style.color = '#27500A';
+  } else if (totalLancado > TOTAL) {
+    hint.textContent = 'Valor lançado maior que o total da OS';
+    hint.style.color = '#791F1F';
+  } else {
+    hint.textContent = faltando > 0 ? 'Faltam ' + fmt(faltando) + ' para confirmar' : 'Lance o valor total para confirmar';
+    hint.style.color = '';
+  }
+
+  document.getElementById('add-btn').style.display = pronto ? 'none' : 'flex';
+}
+
+function confirmar() {
+  document.querySelector('.confirmar-btn').innerHTML = '<i class="ti ti-check" aria-hidden="true" style="font-size:14px;"></i> OS concluída — pagamento registrado';
+  document.querySelector('.confirmar-btn').style.background = '#5B9BD5';
+}
+
+render();
+addPgto();
+</script>

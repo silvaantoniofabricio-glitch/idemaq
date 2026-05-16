@@ -1,0 +1,348 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.nav-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.nav-tab{padding:7px 16px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.nav-tab.ativa{background:#5B9BD5;border-color:#5B9BD5;color:#fff;font-weight:500;}
+.tela{display:none;}
+.tela.ativa{display:block;}
+.topbar{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;}
+.busca-wrap{flex:1;position:relative;min-width:160px;}
+.busca-wrap i{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--color-text-secondary);}
+.busca{width:100%;font-size:12px;padding:6px 8px 6px 28px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.novo-btn{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--border-radius-md);border:none;background:#5B9BD5;font-size:12px;color:#fff;cursor:pointer;font-weight:500;white-space:nowrap;}
+.nota-btn{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);cursor:pointer;white-space:nowrap;}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center;}
+.metric-val{font-size:18px;font-weight:500;}
+.metric-lbl{font-size:11px;color:var(--color-text-secondary);margin-top:2px;}
+.alertas{margin-bottom:12px;}
+.alerta-row{display:flex;align-items:center;gap:7px;background:#FAEEDA;border-radius:var(--border-radius-md);padding:7px 10px;margin-bottom:4px;font-size:12px;color:#633806;}
+.alerta-row i{font-size:14px;flex-shrink:0;}
+.alerta-row.critico{background:#FCEBEB;color:#791F1F;}
+.tabela{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-primary);margin-bottom:10px;}
+.th-row{display:grid;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.th{font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:7px 10px;cursor:pointer;}
+.th:hover{color:var(--color-text-primary);}
+.th.r{text-align:right;}
+.item-row{display:grid;border-bottom:0.5px solid var(--color-border-tertiary);align-items:center;cursor:pointer;}
+.item-row:last-child{border-bottom:none;}
+.item-row:hover{background:var(--color-background-secondary);}
+.td{font-size:12px;padding:8px 10px;color:var(--color-text-primary);}
+.td.sec{color:var(--color-text-secondary);font-size:11px;}
+.td.r{text-align:right;}
+.td.ok{color:#27500A;font-weight:500;text-align:right;}
+.td.baixo{color:#791F1F;font-weight:500;text-align:right;}
+.td.alerta{color:#633806;font-weight:500;text-align:right;}
+.td.acts{display:flex;gap:4px;justify-content:center;}
+.act-btn{font-size:13px;color:var(--color-text-secondary);cursor:pointer;border:none;background:transparent;padding:2px;}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.tag-ok{background:#EAF3DE;color:#27500A;}
+.tag-baixo{background:#FCEBEB;color:#791F1F;}
+.tag-alerta{background:#FAEEDA;color:#633806;}
+.tag-disp{background:#EAF3DE;color:#27500A;}
+.tag-rev{background:#FFD966;color:#7a6200;}
+.tag-vend{background:#F1EFE8;color:#5F5E5A;}
+.maq-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;margin-bottom:8px;}
+.maq-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.maq-nome{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.maq-vals{display:flex;gap:12px;font-size:11px;margin-top:4px;flex-wrap:wrap;}
+.maq-val-item{display:flex;flex-direction:column;gap:1px;}
+.maq-val-lbl{color:var(--color-text-secondary);}
+.maq-val-num{font-weight:500;color:var(--color-text-primary);}
+.maq-val-num.lucro{color:#27500A;}
+.maq-os{font-size:11px;color:var(--color-text-secondary);margin-top:6px;padding-top:6px;border-top:0.5px solid var(--color-border-tertiary);}
+.modal-wrap{display:none;min-height:560px;background:rgba(0,0,0,0.4);border-radius:var(--border-radius-lg);align-items:flex-start;justify-content:center;padding:16px 0;margin-bottom:10px;}
+.modal-wrap.open{display:flex;}
+.modal{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px;width:340px;}
+.modal-title{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.custo-info{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:12px;}
+.ci-item{display:flex;flex-direction:column;gap:2px;}
+.ci-lbl{font-size:10px;color:var(--color-text-secondary);}
+.ci-val{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.qtd-info{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:12px;}
+.field{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;}
+.field label{font-size:11px;color:var(--color-text-secondary);}
+.field input,.field select{font-size:13px;padding:6px 9px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);width:100%;}
+.field-row{display:grid;gap:8px;margin-bottom:8px;}
+.field-row.cols2{grid-template-columns:1fr 1fr;}
+.field-row.cols3{grid-template-columns:1fr 1fr 1fr;}
+.preco-box{background:#E6F1FB;border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:8px;}
+.preco-lbl{font-size:11px;color:#0C447C;margin-bottom:6px;font-weight:500;}
+.preco-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.preco-input{font-size:13px;padding:6px 9px;border-radius:var(--border-radius-md);border:0.5px solid #B5D4F4;background:var(--color-background-primary);color:var(--color-text-primary);width:100%;}
+.pgto-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;}
+.btn-cancel{padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.btn-save{padding:7px 14px;border-radius:var(--border-radius-md);border:none;background:#5B9BD5;font-size:12px;color:#fff;cursor:pointer;font-weight:500;}
+.sec-lbl{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 6px;}
+</style>
+
+<h2 class="sr-only">Tela de estoque — peças com alertas, máquinas por status, entrada por nota e cadastro de nova peça</h2>
+
+<div class="wrap">
+
+<div class="nav-tabs">
+  <button class="nav-tab ativa" onclick="irTela('pecas',this)"><i class="ti ti-package" aria-hidden="true" style="font-size:13px;margin-right:4px;"></i>Peças</button>
+  <button class="nav-tab" onclick="irTela('maquinas',this)"><i class="ti ti-washing-machine" aria-hidden="true" style="font-size:13px;margin-right:4px;"></i>Máquinas</button>
+</div>
+
+<div class="tela ativa" id="tela-pecas">
+  <div class="topbar">
+    <div class="busca-wrap"><i class="ti ti-search" aria-hidden="true"></i><input class="busca" placeholder="Buscar peça..."></div>
+    <button class="nota-btn" onclick="abrirNota()"><i class="ti ti-file-invoice" aria-hidden="true" style="font-size:13px;"></i> Entrada por nota</button>
+    <button class="novo-btn" onclick="abrirModal()"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Nova entrada</button>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-val" style="color:#5B9BD5;">29</div><div class="metric-lbl">Tipos de peça</div></div>
+    <div class="metric"><div class="metric-val" style="color:#FF6B6B;">3</div><div class="metric-lbl">Abaixo do mínimo</div></div>
+    <div class="metric"><div class="metric-val" style="color:#27500A;">R$ 1.240</div><div class="metric-lbl">Valor em estoque</div></div>
+    <div class="metric"><div class="metric-val" style="color:#633806;">R$ 187</div><div class="metric-lbl">Última compra</div></div>
+  </div>
+
+  <div class="alertas">
+    <div class="alerta-row critico"><i class="ti ti-alert-triangle" aria-hidden="true"></i>Rolamento do cesto — 0 unid. · mínimo 2 · <strong style="margin-left:4px;">compra urgente</strong></div>
+    <div class="alerta-row"><i class="ti ti-alert-circle" aria-hidden="true"></i>Correia — 1 unid. · mínimo 3</div>
+    <div class="alerta-row"><i class="ti ti-alert-circle" aria-hidden="true"></i>Capacitor — 1 unid. · mínimo 2</div>
+  </div>
+
+  <div class="tabela">
+    <div class="th-row" style="grid-template-columns:1fr 80px 70px 70px 80px 80px 52px;">
+      <div class="th">Peça ↕</div>
+      <div class="th">Categoria</div>
+      <div class="th r">Qtd ↕</div>
+      <div class="th r">Mín/Máx</div>
+      <div class="th r">Custo médio ↕</div>
+      <div class="th r">Preço venda ↕</div>
+      <div class="th"></div>
+    </div>
+    <div class="item-row" style="grid-template-columns:1fr 80px 70px 70px 80px 80px 52px;" onclick="abrirModal()">
+      <div class="td">Rolamento do cesto</div>
+      <div class="td sec">Motor</div>
+      <div class="td baixo">0</div>
+      <div class="td sec r">2 / 6</div>
+      <div class="td sec r">R$ 42,00</div>
+      <div class="td r">R$ 85,00</div>
+      <div class="td acts"><button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button><button class="act-btn" aria-label="Entrada"><i class="ti ti-plus" aria-hidden="true"></i></button></div>
+    </div>
+    <div class="item-row" style="grid-template-columns:1fr 80px 70px 70px 80px 80px 52px;" onclick="abrirModal()">
+      <div class="td">Correia</div>
+      <div class="td sec">Motor</div>
+      <div class="td alerta">1</div>
+      <div class="td sec r">3 / 8</div>
+      <div class="td sec r">R$ 18,00</div>
+      <div class="td r">R$ 35,00</div>
+      <div class="td acts"><button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button><button class="act-btn" aria-label="Entrada"><i class="ti ti-plus" aria-hidden="true"></i></button></div>
+    </div>
+    <div class="item-row" style="grid-template-columns:1fr 80px 70px 70px 80px 80px 52px;">
+      <div class="td">Bomba de drenagem</div>
+      <div class="td sec">Água</div>
+      <div class="td ok">4</div>
+      <div class="td sec r">2 / 6</div>
+      <div class="td sec r">R$ 55,00</div>
+      <div class="td r">R$ 110,00</div>
+      <div class="td acts"><button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button><button class="act-btn" aria-label="Entrada"><i class="ti ti-plus" aria-hidden="true"></i></button></div>
+    </div>
+    <div class="item-row" style="grid-template-columns:1fr 80px 70px 70px 80px 80px 52px;">
+      <div class="td">Válvula de entrada</div>
+      <div class="td sec">Água</div>
+      <div class="td ok">3</div>
+      <div class="td sec r">2 / 6</div>
+      <div class="td sec r">R$ 28,00</div>
+      <div class="td r">R$ 55,00</div>
+      <div class="td acts"><button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button><button class="act-btn" aria-label="Entrada"><i class="ti ti-plus" aria-hidden="true"></i></button></div>
+    </div>
+    <div class="item-row" style="grid-template-columns:1fr 80px 70px 70px 80px 80px 52px;">
+      <div class="td">Capacitor</div>
+      <div class="td sec">Elétrico</div>
+      <div class="td alerta">1</div>
+      <div class="td sec r">2 / 5</div>
+      <div class="td sec r">R$ 22,00</div>
+      <div class="td r">R$ 45,00</div>
+      <div class="td acts"><button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button><button class="act-btn" aria-label="Entrada"><i class="ti ti-plus" aria-hidden="true"></i></button></div>
+    </div>
+    <div class="item-row" style="grid-template-columns:1fr 80px 70px 70px 80px 80px 52px;">
+      <div class="td">Sensor da tampa</div>
+      <div class="td sec">Elétrico</div>
+      <div class="td ok">5</div>
+      <div class="td sec r">2 / 6</div>
+      <div class="td sec r">R$ 15,00</div>
+      <div class="td r">R$ 30,00</div>
+      <div class="td acts"><button class="act-btn" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button><button class="act-btn" aria-label="Entrada"><i class="ti ti-plus" aria-hidden="true"></i></button></div>
+    </div>
+  </div>
+</div>
+
+<div class="tela" id="tela-maquinas">
+  <div class="topbar">
+    <div class="busca-wrap"><i class="ti ti-search" aria-hidden="true"></i><input class="busca" placeholder="Buscar máquina..."></div>
+    <button class="novo-btn"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Nova OS de fabricação</button>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-val" style="color:#27500A;">2</div><div class="metric-lbl">Disponíveis</div></div>
+    <div class="metric"><div class="metric-val" style="color:#c8a800;">3</div><div class="metric-lbl">Em revisão</div></div>
+    <div class="metric"><div class="metric-val" style="color:#5F5E5A;">5</div><div class="metric-lbl">Vendidas</div></div>
+    <div class="metric"><div class="metric-val" style="color:#27500A;">R$ 1.000</div><div class="metric-lbl">Lucro potencial</div></div>
+  </div>
+
+  <div class="sec-lbl">Disponíveis para venda</div>
+  <div class="maq-card">
+    <div class="maq-top"><span class="maq-nome">Brastemp BWK11</span><span class="tag tag-disp">disponível</span></div>
+    <div style="font-size:11px;color:var(--color-text-secondary);">S/N: BWK11BR20180772 · Revisada em 05/05</div>
+    <div class="maq-vals">
+      <div class="maq-val-item"><span class="maq-val-lbl">Valor pago</span><span class="maq-val-num">R$ 150,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Custo revisão</span><span class="maq-val-num">R$ 87,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Custo total</span><span class="maq-val-num">R$ 237,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Preço venda</span><span class="maq-val-num">R$ 650,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Lucro</span><span class="maq-val-num lucro">R$ 413,00</span></div>
+    </div>
+    <div class="maq-os"><i class="ti ti-file-description" aria-hidden="true" style="font-size:12px;"></i> OS #1044 de fabricação · <span style="color:#5B9BD5;cursor:pointer;">abrir OS de venda</span></div>
+  </div>
+
+  <div class="maq-card">
+    <div class="maq-top"><span class="maq-nome">Electrolux LAC11</span><span class="tag tag-disp">disponível</span></div>
+    <div style="font-size:11px;color:var(--color-text-secondary);">S/N: ELX11BR20190100 · Revisada em 08/05</div>
+    <div class="maq-vals">
+      <div class="maq-val-item"><span class="maq-val-lbl">Valor pago</span><span class="maq-val-num">R$ 150,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Custo revisão</span><span class="maq-val-num">R$ 97,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Custo total</span><span class="maq-val-num">R$ 247,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Preço venda</span><span class="maq-val-num">R$ 650,00</span></div>
+      <div class="maq-val-item"><span class="maq-val-lbl">Lucro</span><span class="maq-val-num lucro">R$ 403,00</span></div>
+    </div>
+    <div class="maq-os"><i class="ti ti-file-description" aria-hidden="true" style="font-size:12px;"></i> OS #1041 de fabricação · <span style="color:#5B9BD5;cursor:pointer;">abrir OS de venda</span></div>
+  </div>
+
+  <div class="sec-lbl">Em revisão</div>
+  <div class="maq-card" style="border-color:#FFD966;">
+    <div class="maq-top"><span class="maq-nome">Samsung WF08</span><span class="tag tag-rev">em revisão</span></div>
+    <div style="font-size:11px;color:var(--color-text-secondary);">OS #1048 · Comprada de Pedro Alves · R$ 150,00</div>
+    <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+      <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:#EAF3DE;color:#27500A;">Diagnóstico ✓</span>
+      <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:#FFD966;color:#7a6200;">Limpeza em andamento</span>
+      <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);">Manutenção</span>
+      <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);">Teste final</span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="modal-wrap" id="modal-entrada">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-package" aria-hidden="true" style="color:#5B9BD5;font-size:16px;"></i> Entrada de peça no estoque</div>
+
+    <div class="field">
+      <label>Peça</label>
+      <select onchange="selecionarPeca(this)">
+        <option>Selecionar peça...</option>
+        <option selected>Rolamento do cesto</option>
+        <option>Correia</option>
+        <option>Bomba de drenagem</option>
+        <option>Capacitor</option>
+      </select>
+    </div>
+
+    <div class="custo-info">
+      <div class="ci-item"><span class="ci-lbl">Custo mínimo pago</span><span class="ci-val">R$ 38,00</span></div>
+      <div class="ci-item"><span class="ci-lbl">Custo médio</span><span class="ci-val">R$ 42,00</span></div>
+      <div class="ci-item"><span class="ci-lbl">Custo máximo pago</span><span class="ci-val">R$ 48,00</span></div>
+      <div class="ci-item"><span class="ci-lbl">Último preço pago</span><span class="ci-val">R$ 45,00</span></div>
+    </div>
+
+    <div class="qtd-info">
+      <div class="ci-item"><span class="ci-lbl">Qtd atual</span><span class="ci-val" style="color:#791F1F;">0</span></div>
+      <div class="ci-item"><span class="ci-lbl">Qtd mínima</span><span class="ci-val">2</span></div>
+      <div class="ci-item"><span class="ci-lbl">Qtd máxima</span><span class="ci-val">6</span></div>
+      <div class="ci-item"><span class="ci-lbl">Entrando</span><span class="ci-val" style="color:#27500A;" id="qtd-preview">0</span></div>
+    </div>
+
+    <div class="field-row cols2">
+      <div class="field"><label>Quantidade</label><input type="number" min="1" value="4" oninput="document.getElementById('qtd-preview').textContent=this.value||'0'"></div>
+      <div class="field"><label>Custo atual (unit.)</label><input type="text" value="45,00" oninput="calcLucro('val')"></div>
+    </div>
+
+    <div class="preco-box">
+      <div class="preco-lbl">Preço de venda</div>
+      <div class="preco-row">
+        <div><div style="font-size:11px;color:#0C447C;margin-bottom:3px;">Valor (R$)</div><input class="preco-input" id="preco-val" type="text" value="85,00" oninput="calcLucro('val')"></div>
+        <div><div style="font-size:11px;color:#0C447C;margin-bottom:3px;">Lucro (%)</div><input class="preco-input" id="preco-pct" type="text" value="88,89" oninput="calcLucro('pct')"></div>
+      </div>
+    </div>
+
+    <div class="field-row cols2">
+      <div class="field"><label>Data da compra</label><input type="date" value="2025-05-12"></div>
+      <div class="field"><label>Fornecedor</label><input type="text" placeholder="Ex: Mercado Livre..."></div>
+    </div>
+
+    <div class="pgto-row">
+      <div class="field" style="margin-bottom:0;"><label>Forma de pagamento</label>
+        <select onchange="setCartao(this)">
+          <option>PIX</option><option>Cartão</option><option>Boleto</option><option>Dinheiro</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0;" id="campo-cartao" style="display:none;">
+        <label id="label-cartao">Banco (PIX)</label>
+        <select id="sel-cartao">
+          <option>Cresol</option><option>Bradesco</option><option>Mercado Pago</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-save">Salvar entrada</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function irTela(id,btn){
+  document.querySelectorAll('.tela').forEach(function(t){t.classList.remove('ativa');});
+  document.querySelectorAll('.nav-tab').forEach(function(b){b.classList.remove('ativa');});
+  document.getElementById('tela-'+id).classList.add('ativa');
+  btn.classList.add('ativa');
+}
+
+function abrirModal(){ document.getElementById('modal-entrada').classList.add('open'); }
+function fecharModal(){ document.getElementById('modal-entrada').classList.remove('open'); }
+function abrirNota(){ }
+function selecionarPeca(sel){ }
+
+function calcLucro(origem){
+  var custo=parseFloat('45.00')||0;
+  if(origem==='val'){
+    var val=parseFloat((document.getElementById('preco-val').value||'').replace(',','.'))||0;
+    if(custo>0&&val>0){
+      var pct=((val-custo)/custo*100).toFixed(2);
+      document.getElementById('preco-pct').value=pct;
+    }
+  } else {
+    var pct2=parseFloat((document.getElementById('preco-pct').value||'').replace(',','.'))||0;
+    if(custo>0){
+      var val2=(custo*(1+pct2/100)).toFixed(2).replace('.',',');
+      document.getElementById('preco-val').value=val2;
+    }
+  }
+}
+
+function setCartao(sel){
+  var campo=document.getElementById('campo-cartao');
+  var label=document.getElementById('label-cartao');
+  var selCartao=document.getElementById('sel-cartao');
+  campo.style.display='block';
+  if(sel.value==='Cartão'){
+    label.textContent='Cartão';
+    selCartao.innerHTML='<option>Elo Grafite</option><option>Bradesco Visa</option><option>Mercado Pago</option><option>Bradesco PJ</option><option>Cresol</option><option>Nubank PJ</option><option>Inter</option>';
+  } else if(sel.value==='PIX'||sel.value==='Boleto'){
+    label.textContent=sel.value==='PIX'?'Banco (PIX)':'Banco (Boleto)';
+    selCartao.innerHTML='<option>Cresol</option><option>Bradesco</option><option>Mercado Pago</option>';
+  } else {
+    campo.style.display='none';
+  }
+}
+
+document.getElementById('campo-cartao').style.display='block';
+</script>

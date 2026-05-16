@@ -1,0 +1,314 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center;}
+.metric-val{font-size:20px;font-weight:500;}
+.metric-lbl{font-size:11px;color:var(--color-text-secondary);margin-top:2px;}
+.layout{display:grid;grid-template-columns:1fr 240px;gap:10px;}
+.mapa{background:#B8CCE4;border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);min-height:320px;position:relative;overflow:hidden;}
+.mapa-bg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;}
+.mapa-lbl{font-size:13px;font-weight:500;color:#0C447C;}
+.mapa-sub{font-size:11px;color:#185FA5;}
+.pin{position:absolute;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
+.pin-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;border:2px solid #fff;}
+.pin-col{background:#5B9BD5;color:#fff;}
+.pin-ent{background:#F0997B;color:#fff;}
+.pin-done{background:#97C459;color:#fff;}
+.pin-label{font-size:10px;font-weight:500;background:var(--color-background-primary);padding:2px 5px;border-radius:3px;margin-top:2px;white-space:nowrap;color:var(--color-text-primary);border:0.5px solid var(--color-border-tertiary);}
+.rota-col{display:flex;flex-direction:column;gap:8px;}
+.rota-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.rota-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.rota-data{font-size:12px;color:var(--color-text-secondary);}
+.rota-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:10px 12px;}
+.rota-card.done{opacity:0.6;background:var(--color-background-secondary);}
+.rota-card.active{border-color:#5B9BD5;}
+.rc-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.rc-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;}
+.num-col{background:#5B9BD5;color:#fff;}
+.num-ent{background:#F0997B;color:#fff;}
+.num-done{background:#97C459;color:#fff;}
+.rc-nome{font-size:13px;font-weight:500;color:var(--color-text-primary);flex:1;}
+.rc-tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.tag-col{background:#E6F1FB;color:#0C447C;}
+.tag-ent{background:#FAECE7;color:#712B13;}
+.rc-info{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--color-text-secondary);margin-bottom:8px;}
+.rc-info i{font-size:13px;vertical-align:-2px;margin-right:3px;}
+.wa{color:#25D366;}
+.rc-foot{display:flex;gap:6px;flex-wrap:wrap;}
+.rc-btn{display:flex;align-items:center;gap:4px;font-size:11px;padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;}
+.rc-btn.concluir-col{border-color:#5B9BD5;color:#0C447C;background:#E6F1FB;}
+.rc-btn.concluir-ent{border-color:#F0997B;color:#712B13;background:#FAECE7;}
+.rc-btn.done-btn{border-color:#97C459;color:#27500A;background:#EAF3DE;cursor:default;}
+.foto-area{margin-top:8px;padding-top:8px;border-top:0.5px solid var(--color-border-tertiary);}
+.foto-area-title{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.foto-area-title i{font-size:13px;}
+.foto-opts{display:flex;gap:6px;}
+.foto-btn{display:flex;align-items:center;gap:4px;font-size:11px;padding:5px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;}
+.foto-btn.tirar{border-color:#5B9BD5;color:#0C447C;background:#E6F1FB;}
+.foto-preview{display:flex;align-items:center;gap:8px;background:#EAF3DE;border-radius:var(--border-radius-md);padding:6px 10px;margin-top:6px;}
+.foto-preview i{font-size:16px;color:#27500A;flex-shrink:0;}
+.foto-preview-txt{font-size:12px;color:#27500A;flex:1;}
+.foto-preview-rem{font-size:11px;color:#3B6D11;cursor:pointer;text-decoration:underline;}
+.confirmar-coleta{width:100%;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;padding:7px;border-radius:var(--border-radius-md);border:none;background:#639922;color:#fff;cursor:pointer;font-weight:500;margin-top:8px;}
+.confirmar-coleta:disabled{background:var(--color-background-secondary);color:var(--color-text-tertiary);cursor:not-allowed;}
+.pular-foto{font-size:11px;color:var(--color-text-secondary);text-align:center;margin-top:4px;cursor:pointer;text-decoration:underline;}
+.sem-rota{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:12px;margin-top:10px;}
+.sem-rota-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.sem-item{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 10px;margin-bottom:6px;font-size:12px;}
+.sem-item:last-child{margin-bottom:0;}
+.sem-nome{font-weight:500;color:var(--color-text-primary);margin-bottom:2px;}
+.sem-end{color:var(--color-text-secondary);font-size:11px;}
+.agendar-btn{font-size:11px;padding:4px 10px;border-radius:var(--border-radius-md);border:0.5px solid #5B9BD5;background:transparent;color:#0C447C;cursor:pointer;margin-top:5px;display:inline-flex;align-items:center;gap:4px;}
+.legenda{display:flex;gap:10px;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--color-text-secondary);}
+.leg-dot{width:10px;height:10px;border-radius:50%;}
+</style>
+
+<h2 class="sr-only">Logística com opção de foto nas coletas após marcar como concluída</h2>
+
+<div class="wrap">
+
+<div class="metrics">
+  <div class="metric"><div class="metric-val" style="color:#5B9BD5;">5</div><div class="metric-lbl">Paradas hoje</div></div>
+  <div class="metric"><div class="metric-val" style="color:#0C447C;">3</div><div class="metric-lbl">Coletas</div></div>
+  <div class="metric"><div class="metric-val" style="color:#712B13;">2</div><div class="metric-lbl">Entregas</div></div>
+  <div class="metric"><div class="metric-val" style="color:#27500A;" id="m-done">0</div><div class="metric-lbl">Concluídas</div></div>
+</div>
+
+<div class="layout">
+
+  <div class="mapa">
+    <div class="mapa-bg">
+      <i class="ti ti-map-2" aria-hidden="true" style="font-size:36px;color:#0C447C;"></i>
+      <span class="mapa-lbl">Naviraí / MS</span>
+      <span class="mapa-sub" id="mapa-sub">5 paradas na rota</span>
+    </div>
+    <div class="pin" style="top:22%;left:28%;">
+      <div class="pin-dot pin-col" id="pd-1">1</div>
+      <div class="pin-label">Pedro Alves</div>
+    </div>
+    <div class="pin" style="top:45%;left:55%;">
+      <div class="pin-dot pin-ent" id="pd-2">2</div>
+      <div class="pin-label">Vera Cruz</div>
+    </div>
+    <div class="pin" style="top:60%;left:35%;">
+      <div class="pin-dot pin-col" id="pd-3">3</div>
+      <div class="pin-label">Maria Silva</div>
+    </div>
+    <div class="pin" style="top:30%;left:65%;">
+      <div class="pin-dot pin-ent" id="pd-4">4</div>
+      <div class="pin-label">Paulo Mota</div>
+    </div>
+    <div class="pin" style="top:72%;left:60%;">
+      <div class="pin-dot pin-col" id="pd-5">5</div>
+      <div class="pin-label">Fernanda Lima</div>
+    </div>
+    <div class="legenda" style="position:absolute;bottom:10px;left:10px;">
+      <div class="leg-item"><div class="leg-dot" style="background:#5B9BD5;"></div>Coleta</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#F0997B;"></div>Entrega</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#97C459;"></div>Concluída</div>
+    </div>
+  </div>
+
+  <div class="rota-col">
+    <div class="rota-header">
+      <span class="rota-title">Rota de hoje</span>
+      <span class="rota-data">12/05/2025</span>
+    </div>
+
+    <div class="rota-card active" id="card-1">
+      <div class="rc-top">
+        <div class="rc-num num-col" id="n-1">1</div>
+        <span class="rc-nome">Pedro Alves</span>
+        <span class="rc-tag tag-col">Coleta</span>
+      </div>
+      <div class="rc-info">
+        <span><i class="ti ti-clock" aria-hidden="true"></i>08h00</span>
+        <span><i class="ti ti-map-pin" aria-hidden="true"></i>Rua Tiradentes, 45</span>
+        <span><i class="ti ti-phone" aria-hidden="true"></i>(67) 9 9812-3344 <i class="ti ti-brand-whatsapp wa" aria-hidden="true"></i></span>
+      </div>
+      <div class="rc-foot" id="foot-1">
+        <button class="rc-btn concluir-col" onclick="clicarConcluir(1,'col')"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Coleta realizada</button>
+      </div>
+      <div class="foto-area" id="foto-1" style="display:none;">
+        <div class="foto-area-title"><i class="ti ti-camera" aria-hidden="true"></i> Adicionar foto da máquina</div>
+        <div class="foto-opts">
+          <button class="foto-btn tirar" onclick="tirarFoto(1)"><i class="ti ti-camera" aria-hidden="true" style="font-size:12px;"></i> Tirar foto</button>
+          <button class="foto-btn" onclick="tirarFoto(1)"><i class="ti ti-upload" aria-hidden="true" style="font-size:12px;"></i> Galeria</button>
+        </div>
+        <div class="foto-preview" id="prev-1" style="display:none;">
+          <i class="ti ti-photo" aria-hidden="true"></i>
+          <span class="foto-preview-txt">foto_coleta_pedro_alves.jpg</span>
+          <span class="foto-preview-rem" onclick="removerFoto(1)">Remover</span>
+        </div>
+        <button class="confirmar-coleta" id="conf-1" onclick="confirmarColeta(1)"><i class="ti ti-circle-check" aria-hidden="true" style="font-size:13px;"></i> Confirmar coleta</button>
+        <div class="pular-foto" onclick="confirmarColeta(1)">Pular foto e confirmar</div>
+      </div>
+    </div>
+
+    <div class="rota-card" id="card-2">
+      <div class="rc-top">
+        <div class="rc-num num-ent" id="n-2">2</div>
+        <span class="rc-nome">Vera Cruz</span>
+        <span class="rc-tag tag-ent">Entrega</span>
+      </div>
+      <div class="rc-info">
+        <span><i class="ti ti-clock" aria-hidden="true"></i>09h00</span>
+        <span><i class="ti ti-map-pin" aria-hidden="true"></i>Rua Goiás, 34</span>
+        <span><i class="ti ti-info-circle" aria-hidden="true"></i>Portão azul</span>
+        <span><i class="ti ti-phone" aria-hidden="true"></i>(67) 9 9711-2233 <i class="ti ti-brand-whatsapp wa" aria-hidden="true"></i></span>
+      </div>
+      <div class="rc-foot">
+        <button class="rc-btn concluir-ent" onclick="clicarConcluir(2,'ent')"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Entrega realizada</button>
+      </div>
+    </div>
+
+    <div class="rota-card" id="card-3">
+      <div class="rc-top">
+        <div class="rc-num num-col" id="n-3">3</div>
+        <span class="rc-nome">Maria Silva</span>
+        <span class="rc-tag tag-col">Coleta</span>
+      </div>
+      <div class="rc-info">
+        <span><i class="ti ti-clock" aria-hidden="true"></i>10h30</span>
+        <span><i class="ti ti-map-pin" aria-hidden="true"></i>Rua Ipê, 503</span>
+        <span><i class="ti ti-phone" aria-hidden="true"></i>(67) 9 9923-1188 <i class="ti ti-brand-whatsapp wa" aria-hidden="true"></i></span>
+      </div>
+      <div class="rc-foot" id="foot-3">
+        <button class="rc-btn concluir-col" onclick="clicarConcluir(3,'col')"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Coleta realizada</button>
+      </div>
+      <div class="foto-area" id="foto-3" style="display:none;">
+        <div class="foto-area-title"><i class="ti ti-camera" aria-hidden="true"></i> Adicionar foto da máquina</div>
+        <div class="foto-opts">
+          <button class="foto-btn tirar" onclick="tirarFoto(3)"><i class="ti ti-camera" aria-hidden="true" style="font-size:12px;"></i> Tirar foto</button>
+          <button class="foto-btn" onclick="tirarFoto(3)"><i class="ti ti-upload" aria-hidden="true" style="font-size:12px;"></i> Galeria</button>
+        </div>
+        <div class="foto-preview" id="prev-3" style="display:none;">
+          <i class="ti ti-photo" aria-hidden="true"></i>
+          <span class="foto-preview-txt">foto_coleta_maria_silva.jpg</span>
+          <span class="foto-preview-rem" onclick="removerFoto(3)">Remover</span>
+        </div>
+        <button class="confirmar-coleta" id="conf-3" onclick="confirmarColeta(3)"><i class="ti ti-circle-check" aria-hidden="true" style="font-size:13px;"></i> Confirmar coleta</button>
+        <div class="pular-foto" onclick="confirmarColeta(3)">Pular foto e confirmar</div>
+      </div>
+    </div>
+
+    <div class="rota-card" id="card-4">
+      <div class="rc-top">
+        <div class="rc-num num-ent" id="n-4">4</div>
+        <span class="rc-nome">Paulo Mota</span>
+        <span class="rc-tag tag-ent">Entrega</span>
+      </div>
+      <div class="rc-info">
+        <span><i class="ti ti-clock" aria-hidden="true"></i>14h00</span>
+        <span><i class="ti ti-map-pin" aria-hidden="true"></i>Av. Brasil, 210</span>
+        <span><i class="ti ti-phone" aria-hidden="true"></i>(67) 9 9655-8800 <i class="ti ti-brand-whatsapp wa" aria-hidden="true"></i></span>
+      </div>
+      <div class="rc-foot">
+        <button class="rc-btn concluir-ent" onclick="clicarConcluir(4,'ent')"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Entrega realizada</button>
+      </div>
+    </div>
+
+    <div class="rota-card" id="card-5">
+      <div class="rc-top">
+        <div class="rc-num num-col" id="n-5">5</div>
+        <span class="rc-nome">Fernanda Lima</span>
+        <span class="rc-tag tag-col">Coleta</span>
+      </div>
+      <div class="rc-info">
+        <span><i class="ti ti-clock" aria-hidden="true"></i>15h30</span>
+        <span><i class="ti ti-map-pin" aria-hidden="true"></i>Rua Minas Gerais, 88</span>
+        <span><i class="ti ti-phone" aria-hidden="true"></i>(67) 9 9877-4411 <i class="ti ti-brand-whatsapp wa" aria-hidden="true"></i></span>
+      </div>
+      <div class="rc-foot" id="foot-5">
+        <button class="rc-btn concluir-col" onclick="clicarConcluir(5,'col')"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Coleta realizada</button>
+      </div>
+      <div class="foto-area" id="foto-5" style="display:none;">
+        <div class="foto-area-title"><i class="ti ti-camera" aria-hidden="true"></i> Adicionar foto da máquina</div>
+        <div class="foto-opts">
+          <button class="foto-btn tirar" onclick="tirarFoto(5)"><i class="ti ti-camera" aria-hidden="true" style="font-size:12px;"></i> Tirar foto</button>
+          <button class="foto-btn" onclick="tirarFoto(5)"><i class="ti ti-upload" aria-hidden="true" style="font-size:12px;"></i> Galeria</button>
+        </div>
+        <div class="foto-preview" id="prev-5" style="display:none;">
+          <i class="ti ti-photo" aria-hidden="true"></i>
+          <span class="foto-preview-txt">foto_coleta_fernanda_lima.jpg</span>
+          <span class="foto-preview-rem" onclick="removerFoto(5)">Remover</span>
+        </div>
+        <button class="confirmar-coleta" id="conf-5" onclick="confirmarColeta(5)"><i class="ti ti-circle-check" aria-hidden="true" style="font-size:13px;"></i> Confirmar coleta</button>
+        <div class="pular-foto" onclick="confirmarColeta(5)">Pular foto e confirmar</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="sem-rota">
+  <div class="sem-rota-title">
+    <i class="ti ti-clock" aria-hidden="true" style="color:#854F0B;font-size:14px;"></i>
+    Prontas — aguardando agendamento de entrega
+  </div>
+  <div class="sem-item">
+    <div class="sem-nome">Cláudia Souza — Samsung WD11 · OS #1025</div>
+    <div class="sem-end"><i class="ti ti-map-pin" aria-hidden="true" style="font-size:12px;"></i> Rua Paraná, 120 — Vila Nova</div>
+    <button class="agendar-btn"><i class="ti ti-calendar" aria-hidden="true" style="font-size:12px;"></i> Agendar entrega</button>
+  </div>
+  <div class="sem-item">
+    <div class="sem-nome">Carlos Neto — Brastemp BWL12 · OS #1029</div>
+    <div class="sem-end"><i class="ti ti-map-pin" aria-hidden="true" style="font-size:12px;"></i> Rua Goiás, 88 — Jd. América</div>
+    <button class="agendar-btn"><i class="ti ti-calendar" aria-hidden="true" style="font-size:12px;"></i> Agendar entrega</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+var concluidas = 0;
+
+function clicarConcluir(id, tipo) {
+  if (tipo === 'col') {
+    var foot = document.getElementById('foot-'+id);
+    if (foot) foot.style.display = 'none';
+    var foto = document.getElementById('foto-'+id);
+    if (foto) foto.style.display = 'block';
+  } else {
+    finalizarParada(id, 'ent');
+  }
+}
+
+function tirarFoto(id) {
+  var prev = document.getElementById('prev-'+id);
+  if (prev) { prev.style.display = 'flex'; }
+}
+
+function removerFoto(id) {
+  var prev = document.getElementById('prev-'+id);
+  if (prev) prev.style.display = 'none';
+}
+
+function confirmarColeta(id) {
+  finalizarParada(id, 'col');
+}
+
+function finalizarParada(id, tipo) {
+  var card = document.getElementById('card-'+id);
+  var num = document.getElementById('n-'+id);
+  var pin = document.getElementById('pd-'+id);
+  card.className = 'rota-card done';
+  num.className = 'rc-num num-done';
+  num.textContent = '✓';
+  if (pin) { pin.className = 'pin-dot pin-done'; pin.textContent = '✓'; }
+  var fotoArea = document.getElementById('foto-'+id);
+  if (fotoArea) fotoArea.style.display = 'none';
+  var foot = card.querySelector('.rc-foot');
+  if (foot) {
+    var temFoto = document.getElementById('prev-'+id) && document.getElementById('prev-'+id).style.display !== 'none';
+    foot.style.display = 'flex';
+    foot.innerHTML = '<button class="rc-btn done-btn"><i class="ti ti-circle-check" aria-hidden="true" style="font-size:12px;"></i> Concluída'+(tipo==='col'&&temFoto?' · foto registrada':'')+'</button>';
+  }
+  concluidas++;
+  document.getElementById('m-done').textContent = concluidas;
+  document.getElementById('mapa-sub').textContent = concluidas === 5 ? 'Rota concluída!' : (5 - concluidas) + ' paradas restantes';
+}
+</script>

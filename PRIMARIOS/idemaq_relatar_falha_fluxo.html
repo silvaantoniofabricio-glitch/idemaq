@@ -1,0 +1,250 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 16px;margin-bottom:10px;}
+.card.active-block{border-color:#5B9BD5;}
+.card.falha-block{border-color:#F09595;background:#FCEBEB;}
+.sec-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.sec-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.active-badge{display:flex;align-items:center;gap:4px;font-size:11px;color:#0C447C;background:#E6F1FB;padding:2px 8px;border-radius:20px;margin-left:auto;}
+.falha-badge{display:flex;align-items:center;gap:4px;font-size:11px;color:#791F1F;background:#FCEBEB;padding:2px 8px;border-radius:20px;border:0.5px solid #F09595;margin-left:auto;}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.tag-blue{background:#E6F1FB;color:#0C447C;}
+.tag-purple{background:#e8d5f5;color:#4a2080;}
+.chk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.chk-box{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.chk-box-head{display:flex;align-items:center;gap:7px;padding:9px 12px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.chk-box-title{font-size:12px;font-weight:500;}
+.chk-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;}
+.chk-row:last-child{border-bottom:none;}
+.chk-num{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;}
+.chk-num.done{background:#639922;color:#fff;}
+.chk-num.active{background:#5B9BD5;color:#fff;}
+.chk-num.fail{background:#E24B4A;color:#fff;}
+.chk-lbl{font-size:12px;font-weight:500;flex:1;color:var(--color-text-primary);}
+.chk-cb{width:15px;height:15px;accent-color:#5B9BD5;cursor:pointer;}
+.falha-banner{display:flex;align-items:flex-start;gap:8px;background:#FCEBEB;border:0.5px solid #F09595;border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:10px;}
+.falha-banner i{font-size:16px;color:#791F1F;flex-shrink:0;margin-top:1px;}
+.falha-banner-body{flex:1;}
+.falha-banner-title{font-size:12px;font-weight:500;color:#791F1F;margin-bottom:3px;}
+.falha-banner-desc{font-size:12px;color:#A32D2D;font-style:italic;}
+.falha-banner-tipo{font-size:11px;color:#791F1F;margin-top:4px;display:flex;align-items:center;gap:6px;}
+.falha-edit-btn{font-size:11px;padding:3px 9px;border-radius:20px;border:0.5px solid #F09595;background:transparent;color:#791F1F;cursor:pointer;flex-shrink:0;}
+.retorno-banner{display:flex;align-items:center;gap:8px;background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:var(--border-radius-md);padding:8px 12px;margin-bottom:10px;font-size:12px;color:#633806;}
+.retorno-banner i{font-size:15px;flex-shrink:0;}
+.footer-row{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:0.5px solid var(--color-border-tertiary);}
+.falha-btn{display:flex;align-items:center;gap:5px;font-size:12px;padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid #F09595;background:#FCEBEB;color:#791F1F;cursor:pointer;}
+.liberar-btn{display:flex;align-items:center;gap:5px;font-size:12px;padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-tertiary);cursor:not-allowed;opacity:0.6;}
+.hint{font-size:11px;color:var(--color-text-tertiary);font-style:italic;}
+.step-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.step-num{width:20px;height:20px;border-radius:50%;background:#5B9BD5;color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-num.red{background:#E24B4A;}
+.step-num.amber{background:#EF9F27;}
+.step-num.green{background:#639922;}
+.divider{border:none;border-top:0.5px dashed var(--color-border-secondary);margin:14px 0;}
+.modal-wrap{min-height:320px;background:rgba(0,0,0,0.35);border-radius:var(--border-radius-lg);display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.modal{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px;width:300px;}
+.modal-title{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.modal-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:5px;}
+.modal select,.modal textarea{width:100%;font-size:13px;padding:7px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);margin-bottom:10px;}
+.modal textarea{min-height:64px;resize:vertical;}
+.modal-hint{font-size:11px;color:var(--color-text-secondary);font-style:italic;margin-bottom:12px;margin-top:-6px;}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;}
+.btn-cancel-sm{padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.btn-red{padding:6px 12px;border-radius:var(--border-radius-md);border:none;background:#E24B4A;font-size:12px;color:#fff;cursor:pointer;font-weight:500;}
+.kanban-mini{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;}
+.kb-col-mini{flex-shrink:0;width:120px;}
+.kb-head-mini{font-size:11px;font-weight:500;padding:5px 8px;border-radius:var(--border-radius-md);margin-bottom:5px;}
+.kb-card-mini{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 8px;font-size:11px;}
+.kb-card-mini.falha{border-color:#F09595;background:#FCEBEB;}
+.kb-card-mini.highlight{border-color:#5B9BD5;background:#E6F1FB;}
+.kb-nome{font-weight:500;color:var(--color-text-primary);margin-bottom:2px;}
+.kb-sub{color:var(--color-text-secondary);}
+.kb-tag{font-size:10px;padding:1px 6px;border-radius:20px;font-weight:500;margin-top:4px;display:inline-block;}
+</style>
+
+<h2 class="sr-only">Fluxo completo de relatar falha no teste final — modal, estado pós-falha na OS e retorno ao Kanban</h2>
+
+<div class="wrap">
+
+<div class="step-label"><div class="step-num">1</div> Estado antes — teste incompleto, botão disponível</div>
+
+<div class="card active-block">
+  <div class="sec-head">
+    <i class="ti ti-check" aria-hidden="true" style="font-size:16px;color:#5B9BD5;"></i>
+    <span class="sec-title">Teste final e acabamento</span>
+    <span class="active-badge"><i class="ti ti-edit" aria-hidden="true" style="font-size:12px;"></i> Em andamento</span>
+  </div>
+  <div class="chk-grid">
+    <div class="chk-box">
+      <div class="chk-box-head" style="background:#E6F1FB;">
+        <i class="ti ti-check" aria-hidden="true" style="font-size:15px;color:#0C447C;"></i>
+        <span class="chk-box-title" style="color:#0C447C;">Teste final</span>
+      </div>
+      <div class="chk-row"><div class="chk-num done">1</div><span class="chk-lbl">Entrada de água</span><input type="checkbox" class="chk-cb" checked disabled aria-label="Entrada de água"></div>
+      <div class="chk-row"><div class="chk-num done">2</div><span class="chk-lbl">Agitação</span><input type="checkbox" class="chk-cb" checked disabled aria-label="Agitação"></div>
+      <div class="chk-row"><div class="chk-num active">3</div><span class="chk-lbl">Centrifugação</span><input type="checkbox" class="chk-cb" disabled aria-label="Centrifugação — não passou"></div>
+      <div class="chk-row"><div class="chk-num active">4</div><span class="chk-lbl">Saída de água</span><input type="checkbox" class="chk-cb" disabled aria-label="Saída de água"></div>
+    </div>
+    <div class="chk-box">
+      <div class="chk-box-head" style="background:#E1F5EE;">
+        <i class="ti ti-sparkles" aria-hidden="true" style="font-size:15px;color:#085041;"></i>
+        <span class="chk-box-title" style="color:#085041;">Acabamento</span>
+      </div>
+      <div class="chk-row"><div class="chk-num done">1</div><span class="chk-lbl">Polimento</span><input type="checkbox" class="chk-cb" checked disabled aria-label="Polimento"></div>
+      <div class="chk-row"><div class="chk-num active">2</div><span class="chk-lbl">Higienização</span><input type="checkbox" class="chk-cb" disabled aria-label="Higienização"></div>
+      <div class="chk-row"><div class="chk-num active">3</div><span class="chk-lbl">Enceramento</span><input type="checkbox" class="chk-cb" disabled aria-label="Enceramento"></div>
+    </div>
+  </div>
+  <div class="footer-row">
+    <span class="hint">Centrifugação não passou — relate a falha</span>
+    <div style="display:flex;gap:6px;">
+      <button class="falha-btn"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:13px;"></i> Relatar falha</button>
+      <button class="liberar-btn"><i class="ti ti-lock" aria-hidden="true" style="font-size:13px;"></i> Liberar para entrega</button>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+<div class="step-label"><div class="step-num red">2</div> Modal — registrar a falha</div>
+
+<div class="modal-wrap">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-alert-triangle" aria-hidden="true" style="color:#791F1F;font-size:16px;"></i> Registrar falha no teste</div>
+    <div class="modal-label">Tipo de falha</div>
+    <select>
+      <option>Defeito — volta para manutenção</option>
+      <option>Sujeira — volta para limpeza</option>
+      <option>Sujeira + defeito — volta para os dois</option>
+    </select>
+    <div class="modal-label">Descrição da falha</div>
+    <textarea>Barulho persistente na centrifugação após remontagem</textarea>
+    <div class="modal-hint">Pode ser editado após o novo diagnóstico</div>
+    <div class="modal-footer">
+      <button class="btn-cancel-sm">Cancelar</button>
+      <button class="btn-red">Registrar falha</button>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+<div class="step-label"><div class="step-num red">3</div> OS após registrar — bloco com falha e retorno à fila</div>
+
+<div class="card falha-block">
+  <div class="sec-head" style="border-bottom-color:#F09595;">
+    <i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:16px;color:#791F1F;"></i>
+    <span class="sec-title" style="color:#791F1F;">Teste final e acabamento</span>
+    <span class="falha-badge"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:11px;"></i> Falha registrada</span>
+  </div>
+  <div class="falha-banner">
+    <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+    <div class="falha-banner-body">
+      <div class="falha-banner-title">Falha no teste final</div>
+      <div class="falha-banner-desc">"Barulho persistente na centrifugação após remontagem"</div>
+      <div class="falha-banner-tipo">
+        <span class="tag" style="background:#FAECE7;color:#712B13;">defeito</span>
+        <span>→ voltando para manutenção</span>
+      </div>
+    </div>
+    <button class="falha-edit-btn"><i class="ti ti-edit" aria-hidden="true" style="font-size:12px;"></i> Editar</button>
+  </div>
+  <div class="retorno-banner">
+    <i class="ti ti-rotate-clockwise" aria-hidden="true"></i>
+    <span>OS retornada para a fila de manutenção — aguardando rediagnóstico</span>
+  </div>
+  <div class="chk-grid">
+    <div class="chk-box">
+      <div class="chk-box-head" style="background:#E6F1FB;">
+        <i class="ti ti-check" aria-hidden="true" style="font-size:15px;color:#0C447C;"></i>
+        <span class="chk-box-title" style="color:#0C447C;">Teste final</span>
+      </div>
+      <div class="chk-row"><div class="chk-num done">1</div><span class="chk-lbl">Entrada de água</span><input type="checkbox" class="chk-cb" checked disabled aria-label="ok"></div>
+      <div class="chk-row"><div class="chk-num done">2</div><span class="chk-lbl">Agitação</span><input type="checkbox" class="chk-cb" checked disabled aria-label="ok"></div>
+      <div class="chk-row" style="background:#FCEBEB;"><div class="chk-num fail">✗</div><span class="chk-lbl" style="color:#791F1F;">Centrifugação — falhou</span></div>
+      <div class="chk-row"><div class="chk-num active">4</div><span class="chk-lbl">Saída de água</span><input type="checkbox" class="chk-cb" disabled aria-label="pendente"></div>
+    </div>
+    <div class="chk-box">
+      <div class="chk-box-head" style="background:#E1F5EE;">
+        <i class="ti ti-sparkles" aria-hidden="true" style="font-size:15px;color:#085041;"></i>
+        <span class="chk-box-title" style="color:#085041;">Acabamento</span>
+      </div>
+      <div class="chk-row"><div class="chk-num done">1</div><span class="chk-lbl">Polimento</span><input type="checkbox" class="chk-cb" checked disabled aria-label="ok"></div>
+      <div class="chk-row"><div class="chk-num active">2</div><span class="chk-lbl">Higienização</span><input type="checkbox" class="chk-cb" disabled aria-label="pendente"></div>
+      <div class="chk-row"><div class="chk-num active">3</div><span class="chk-lbl">Enceramento</span><input type="checkbox" class="chk-cb" disabled aria-label="pendente"></div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+<div class="step-label"><div class="step-num amber">4</div> Kanban — OS volta para manutenção com badge de falha</div>
+
+<div class="card">
+  <div class="kanban-mini">
+    <div class="kb-col-mini">
+      <div class="kb-head-mini" style="background:#EAF3DE;color:#27500A;">Finalizado</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);font-style:italic;padding:6px 8px;">vazio</div>
+    </div>
+    <div class="kb-col-mini">
+      <div class="kb-head-mini" style="background:#FFD966;color:#7a6200;">Manutenção</div>
+      <div class="kb-card-mini falha">
+        <div class="kb-nome">João Costa</div>
+        <div class="kb-sub">Samsung · #1037</div>
+        <span class="kb-tag" style="background:#FCEBEB;color:#791F1F;"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:10px;"></i> falha</span>
+      </div>
+    </div>
+    <div class="kb-col-mini">
+      <div class="kb-head-mini" style="background:#EAF3DE;color:#27500A;">Finalizado</div>
+      <div class="kb-card-mini">
+        <div class="kb-nome">Silvio Prado</div>
+        <div class="kb-sub">Brastemp · #1034</div>
+        <span class="kb-tag" style="background:#EAF3DE;color:#27500A;">pronto</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+<div class="step-label"><div class="step-num green">5</div> Após corrigir e retornar ao teste — checklist zerado para refazer</div>
+
+<div class="card active-block">
+  <div class="sec-head">
+    <i class="ti ti-check" aria-hidden="true" style="font-size:16px;color:#5B9BD5;"></i>
+    <span class="sec-title">Teste final e acabamento</span>
+    <span class="active-badge"><i class="ti ti-refresh" aria-hidden="true" style="font-size:12px;"></i> Refazendo após falha</span>
+  </div>
+  <div class="retorno-banner" style="background:#E6F1FB;border-color:#5B9BD5;color:#0C447C;">
+    <i class="ti ti-info-circle" aria-hidden="true" style="color:#5B9BD5;"></i>
+    <span>Falha anterior: "barulho na centrifugação" — correção aplicada, refaça os testes</span>
+  </div>
+  <div class="chk-grid">
+    <div class="chk-box">
+      <div class="chk-box-head" style="background:#E6F1FB;">
+        <i class="ti ti-check" aria-hidden="true" style="font-size:15px;color:#0C447C;"></i>
+        <span class="chk-box-title" style="color:#0C447C;">Teste final</span>
+      </div>
+      <div class="chk-row"><div class="chk-num active">1</div><span class="chk-lbl">Entrada de água</span><input type="checkbox" class="chk-cb" aria-label="Entrada de água"></div>
+      <div class="chk-row"><div class="chk-num active">2</div><span class="chk-lbl">Agitação</span><input type="checkbox" class="chk-cb" aria-label="Agitação"></div>
+      <div class="chk-row"><div class="chk-num active">3</div><span class="chk-lbl">Centrifugação</span><input type="checkbox" class="chk-cb" aria-label="Centrifugação"></div>
+      <div class="chk-row"><div class="chk-num active">4</div><span class="chk-lbl">Saída de água</span><input type="checkbox" class="chk-cb" aria-label="Saída de água"></div>
+    </div>
+    <div class="chk-box">
+      <div class="chk-box-head" style="background:#E1F5EE;">
+        <i class="ti ti-sparkles" aria-hidden="true" style="font-size:15px;color:#085041;"></i>
+        <span class="chk-box-title" style="color:#085041;">Acabamento</span>
+      </div>
+      <div class="chk-row"><div class="chk-num active">1</div><span class="chk-lbl">Polimento</span><input type="checkbox" class="chk-cb" aria-label="Polimento"></div>
+      <div class="chk-row"><div class="chk-num active">2</div><span class="chk-lbl">Higienização</span><input type="checkbox" class="chk-cb" aria-label="Higienização"></div>
+      <div class="chk-row"><div class="chk-num active">3</div><span class="chk-lbl">Enceramento</span><input type="checkbox" class="chk-cb" aria-label="Enceramento"></div>
+    </div>
+  </div>
+  <div class="footer-row">
+    <span class="hint">Marque todos para liberar entrega</span>
+    <div style="display:flex;gap:6px;">
+      <button class="falha-btn"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:13px;"></i> Relatar falha</button>
+      <button class="liberar-btn"><i class="ti ti-lock" aria-hidden="true" style="font-size:13px;"></i> Liberar para entrega</button>
+    </div>
+  </div>
+</div>
+
+</div>

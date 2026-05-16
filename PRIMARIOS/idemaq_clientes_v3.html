@@ -1,0 +1,201 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.topo{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+.busca-wrap{flex:1;position:relative;}
+.busca-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--color-text-secondary);pointer-events:none;}
+.busca{width:100%;font-size:13px;padding:7px 10px 7px 34px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.novo-btn{display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--border-radius-md);border:none;background:#5B9BD5;font-size:12px;color:#fff;cursor:pointer;font-weight:500;white-space:nowrap;}
+.layout{display:grid;grid-template-columns:1fr 260px;gap:10px;align-items:start;}
+.lista{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-primary);}
+.lista-head{display:grid;grid-template-columns:32px 1fr 120px 36px 76px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.lh{font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:7px 10px;}
+.cli-row{display:grid;grid-template-columns:32px 1fr 120px 36px 76px;border-bottom:0.5px solid var(--color-border-tertiary);cursor:pointer;align-items:center;}
+.cli-row:last-child{border-bottom:none;}
+.cli-row:hover{background:var(--color-background-secondary);}
+.cli-row.selected{background:#E6F1FB;}
+.cli-av{width:26px;height:26px;border-radius:50%;background:#B8CCE4;color:#0C447C;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;margin:8px 4px 8px 8px;}
+.cli-info{padding:7px 8px;min-width:0;}
+.cli-nome{font-size:13px;color:var(--color-text-primary);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cli-end{font-size:11px;color:var(--color-text-secondary);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cli-tel{font-size:12px;color:var(--color-text-secondary);padding:7px 8px;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.cli-os{font-size:12px;font-weight:500;color:var(--color-text-primary);padding:7px 8px;text-align:center;}
+.cli-ativ{padding:6px 8px;display:flex;flex-direction:column;gap:1px;}
+.ativ-tempo{font-size:11px;font-weight:500;}
+.ativ-sub{font-size:10px;}
+.painel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.painel-vazio{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;text-align:center;gap:8px;}
+.painel-vazio i{font-size:28px;color:var(--color-text-secondary);}
+.painel-vazio span{font-size:12px;color:var(--color-text-secondary);}
+.painel-head{padding:12px 14px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);}
+.painel-av{width:40px;height:40px;border-radius:50%;background:#B8CCE4;color:#0C447C;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+.painel-nome{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px;}
+.painel-btns{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
+.p-btn{display:flex;align-items:center;gap:4px;font-size:11px;padding:5px 9px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-secondary);cursor:pointer;}
+.p-btn.blue{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.p-btn.wa{border-color:#25D366;color:#1a9e4a;}
+.painel-body{padding:12px 14px;}
+.info-row{display:flex;align-items:flex-start;gap:7px;font-size:12px;margin-bottom:8px;}
+.info-row i{font-size:14px;color:var(--color-text-secondary);flex-shrink:0;margin-top:1px;}
+.sec-lbl{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 6px;}
+.end-item{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:7px 10px;margin-bottom:5px;font-size:12px;}
+.end-item.principal{border:0.5px solid #5B9BD5;background:#E6F1FB;}
+.end-lbl{font-size:10px;color:var(--color-text-secondary);margin-bottom:2px;}
+.end-item.principal .end-lbl{color:#0C447C;}
+.os-item{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 10px;margin-bottom:5px;cursor:pointer;background:var(--color-background-primary);}
+.os-item:hover{background:var(--color-background-secondary);}
+.os-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
+.os-num{font-size:12px;font-weight:500;color:var(--color-text-primary);}
+.os-data{font-size:11px;color:var(--color-text-secondary);}
+.os-desc{font-size:11px;color:var(--color-text-secondary);}
+.os-foot{display:flex;align-items:center;justify-content:space-between;margin-top:5px;padding-top:5px;border-top:0.5px solid var(--color-border-tertiary);}
+.garantia-btn{font-size:10px;padding:2px 8px;border-radius:20px;border:0.5px solid #5B9BD5;background:transparent;color:#0C447C;cursor:pointer;}
+</style>
+
+<h2 class="sr-only">Tela de clientes com coluna de última atividade abreviada</h2>
+
+<div class="wrap">
+<div class="topo">
+  <div class="busca-wrap">
+    <i class="ti ti-search" aria-hidden="true"></i>
+    <input type="text" class="busca" placeholder="Buscar por nome, telefone ou endereço..." oninput="filtrar(this.value)">
+  </div>
+  <button class="novo-btn"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Novo cliente</button>
+</div>
+
+<div class="layout">
+  <div class="lista">
+    <div class="lista-head">
+      <div></div>
+      <div class="lh">Cliente / Endereço</div>
+      <div class="lh">Telefone</div>
+      <div class="lh" style="text-align:center;">OS</div>
+      <div class="lh">Últ. atividade</div>
+    </div>
+    <div id="lista-rows"></div>
+  </div>
+
+  <div class="painel">
+    <div class="painel-vazio" id="painel-vazio">
+      <i class="ti ti-user" aria-hidden="true"></i>
+      <span>Selecione um cliente para ver os detalhes</span>
+    </div>
+    <div id="painel-conteudo" style="display:none;">
+      <div class="painel-head">
+        <div class="painel-av" id="p-av"></div>
+        <div class="painel-nome" id="p-nome"></div>
+        <div style="font-size:11px;color:var(--color-text-secondary);" id="p-cpf"></div>
+        <div class="painel-btns">
+          <button class="p-btn wa"><i class="ti ti-brand-whatsapp" aria-hidden="true" style="font-size:13px;"></i> WhatsApp</button>
+          <button class="p-btn blue"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Nova OS</button>
+          <button class="p-btn"><i class="ti ti-edit" aria-hidden="true" style="font-size:13px;"></i> Editar</button>
+        </div>
+      </div>
+      <div class="painel-body">
+        <div class="info-row"><i class="ti ti-phone" aria-hidden="true"></i><span id="p-tel"></span></div>
+        <div class="info-row" id="p-obs-row" style="display:none;"><i class="ti ti-info-circle" aria-hidden="true"></i><span id="p-obs" style="color:var(--color-text-secondary);font-style:italic;"></span></div>
+        <div class="sec-lbl">Endereços</div>
+        <div id="p-ends"></div>
+        <div class="sec-lbl">Histórico de OS</div>
+        <div id="p-os"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+var clientes=[
+  {id:1,nome:'Maria Silva',ini:'MS',tel:'(67) 9 9923-1188',cpf:'123.456.789-00',obs:'Portão azul, campainha 2x',
+   ends:[{lbl:'Principal',end:'Rua Ipê, 503 — Vila Nova, Naviraí/MS'},{lbl:'Trabalho',end:'Av. Brasil, 1200 — Centro'}],
+   os:[{num:'#1037',data:'10/05/2025',desc:'Samsung WD11 · Limpeza + manutenção',val:'R$ 460,00',st:'concluido'},
+       {num:'#1028',data:'02/03/2025',desc:'LG TS1365 · Limpeza completa',val:'R$ 185,00',st:'concluido'},
+       {num:'#1012',data:'15/01/2025',desc:'Samsung WD11 · Diagnóstico',val:'R$ 30,00',st:'recusado'}],
+   ativ:{tempo:'3d',sub:'concluída',cor:'#27500A',bgcor:'#EAF3DE'}},
+  {id:2,nome:'João Costa',ini:'JC',tel:'(67) 9 9801-3322',cpf:'',obs:'',
+   ends:[{lbl:'Principal',end:'Av. Sete de Set., 321 — Centro, Naviraí/MS'}],
+   os:[{num:'#1033',data:'05/05/2025',desc:'Brastemp BWK11 · Manutenção',val:'R$ 185,00',st:'concluido'},
+       {num:'#1021',data:'10/02/2025',desc:'Brastemp BWK11 · Limpeza',val:'R$ 185,00',st:'concluido'}],
+   ativ:{tempo:'7d',sub:'concluída',cor:'#27500A',bgcor:'#EAF3DE'}},
+  {id:3,nome:'Carlos Neto',ini:'CN',tel:'(67) 9 9745-6600',cpf:'',obs:'',
+   ends:[{lbl:'Principal',end:'Rua Goiás, 88 — Jd. América, Naviraí/MS'}],
+   os:[{num:'#1038',data:'10/05/2025',desc:'Electrolux LAC11 · Limpeza + manutenção',val:'—',st:'andamento'}],
+   ativ:{tempo:'2d',sub:'em andamento',cor:'#0C447C',bgcor:'#E6F1FB'}},
+  {id:4,nome:'Ana Reis',ini:'AR',tel:'(67) 9 9812-4400',cpf:'987.654.321-00',obs:'Apartamento 203',
+   ends:[{lbl:'Principal',end:'Rua Minas Gerais, 45 — Centro'},{lbl:'Mãe',end:'Rua Paraná, 120 — Vila Nova'},{lbl:'Trabalho',end:'Av. Afonso Pena, 500 — Centro'}],
+   os:[{num:'#1036',data:'08/05/2025',desc:'Samsung WF08 · Diagnóstico',val:'—',st:'andamento'},
+       {num:'#1019',data:'20/12/2024',desc:'LG T10 · Limpeza completa',val:'R$ 185,00',st:'concluido'}],
+   ativ:{tempo:'4d',sub:'em andamento',cor:'#0C447C',bgcor:'#E6F1FB'}},
+  {id:5,nome:'Roberto Lima',ini:'RL',tel:'(67) 9 9533-9900',cpf:'',obs:'',
+   ends:[{lbl:'Principal',end:'Rua Mato Grosso, 67 — Res. Panorama'}],
+   os:[{num:'#1020',data:'01/05/2025',desc:'Consul CWB11 · Limpeza completa',val:'R$ 185,00',st:'areceber'}],
+   ativ:{tempo:'8m',sub:'sem OS ativa',cor:'#854F0B',bgcor:'#FAEEDA'}},
+  {id:6,nome:'Vera Cruz',ini:'VC',tel:'(67) 9 9711-2233',cpf:'',obs:'',
+   ends:[{lbl:'Principal',end:'Rua Goiás, 34 — Centro, Naviraí/MS'}],
+   os:[{num:'#1015',data:'10/09/2024',desc:'Brastemp BWK11 · Limpeza completa',val:'R$ 185,00',st:'concluido'}],
+   ativ:{tempo:'8m',sub:'sem OS ativa',cor:'#854F0B',bgcor:'#FAEEDA'}}
+];
+
+var sel=null,filtro='';
+
+function filtrar(v){filtro=v.toLowerCase();renderLista();}
+
+function renderLista(){
+  var lista=clientes.filter(function(c){
+    if(!filtro)return true;
+    return c.nome.toLowerCase().includes(filtro)||c.tel.includes(filtro)||c.ends.some(function(e){return e.end.toLowerCase().includes(filtro);});
+  });
+  var html='';
+  lista.forEach(function(c){
+    var s=sel&&sel.id===c.id?' selected':'';
+    html+='<div class="cli-row'+s+'" onclick="selecionar('+c.id+')">';
+    html+='<div class="cli-av">'+c.ini+'</div>';
+    html+='<div class="cli-info"><div class="cli-nome">'+c.nome+'</div><div class="cli-end">'+c.ends[0].end+'</div></div>';
+    html+='<div class="cli-tel">'+c.tel+' <i class="ti ti-brand-whatsapp" aria-hidden="true" style="font-size:13px;color:#25D366;flex-shrink:0;"></i></div>';
+    html+='<div class="cli-os">'+c.os.length+'</div>';
+    html+='<div class="cli-ativ">';
+    html+='<span class="ativ-tempo" style="color:'+c.ativ.cor+';">'+c.ativ.tempo+'</span>';
+    html+='<span class="ativ-sub" style="color:'+c.ativ.cor+';opacity:0.8;">'+c.ativ.sub+'</span>';
+    html+='</div>';
+    html+='</div>';
+  });
+  document.getElementById('lista-rows').innerHTML=html||'<div style="padding:20px;text-align:center;font-size:13px;color:var(--color-text-secondary);">Nenhum cliente encontrado</div>';
+}
+
+function selecionar(id){
+  sel=clientes.find(function(c){return c.id===id;});
+  renderLista();renderPainel();
+}
+
+function renderPainel(){
+  if(!sel){document.getElementById('painel-vazio').style.display='flex';document.getElementById('painel-conteudo').style.display='none';return;}
+  document.getElementById('painel-vazio').style.display='none';
+  document.getElementById('painel-conteudo').style.display='block';
+  document.getElementById('p-av').textContent=sel.ini;
+  document.getElementById('p-nome').textContent=sel.nome;
+  document.getElementById('p-cpf').textContent=sel.cpf?'CPF: '+sel.cpf:'';
+  document.getElementById('p-tel').textContent=sel.tel;
+  var obsRow=document.getElementById('p-obs-row');
+  if(sel.obs){obsRow.style.display='flex';document.getElementById('p-obs').textContent=sel.obs;}
+  else obsRow.style.display='none';
+  var endsHtml='';
+  sel.ends.forEach(function(e,i){
+    endsHtml+='<div class="end-item'+(i===0?' principal':'')+'"><div class="end-lbl">'+e.lbl+(i===0?' · principal':'')+'</div><div>'+e.end+'</div></div>';
+  });
+  document.getElementById('p-ends').innerHTML=endsHtml;
+  var stMap={concluido:'#EAF3DE|#27500A|Concluída',recusado:'#FCEBEB|#791F1F|Recusada',andamento:'#E6F1FB|#0C447C|Em andamento',areceber:'#FAEEDA|#633806|A receber'};
+  var osHtml='';
+  sel.os.forEach(function(os){
+    var s=(stMap[os.st]||'#F1EFE8|#5F5E5A|—').split('|');
+    osHtml+='<div class="os-item"><div class="os-top"><span class="os-num">OS '+os.num+'</span><span class="os-data">'+os.data+'</span></div>';
+    osHtml+='<div class="os-desc">'+os.desc+'</div>';
+    osHtml+='<div class="os-foot"><span style="font-size:10px;padding:2px 7px;border-radius:20px;background:'+s[0]+';color:'+s[1]+';">'+s[2]+'</span>';
+    if(os.st==='concluido')osHtml+='<button class="garantia-btn">Garantia</button>';
+    osHtml+='<span style="font-size:12px;font-weight:500;color:#27500A;">'+os.val+'</span></div></div>';
+  });
+  document.getElementById('p-os').innerHTML=osHtml;
+}
+
+renderLista();
+</script>

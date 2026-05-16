@@ -1,0 +1,267 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.topbar-title{font-size:15px;font-weight:500;color:var(--color-text-primary);}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px;}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center;}
+.metric-val{font-size:20px;font-weight:500;}
+.metric-lbl{font-size:11px;color:var(--color-text-secondary);margin-top:2px;}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.col-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--border-radius-md);margin-bottom:10px;}
+.col-head i{font-size:17px;}
+.col-head-title{font-size:13px;font-weight:500;}
+.col-head-count{font-size:11px;padding:1px 8px;border-radius:20px;font-weight:500;margin-left:auto;}
+.head-limpeza{background:#B8CCE4;}
+.head-limpeza i,.head-limpeza .col-head-title{color:#0C447C;}
+.head-limpeza .col-head-count{background:#5B9BD5;color:#fff;}
+.head-manutencao{background:#FFD966;}
+.head-manutencao i,.head-manutencao .col-head-title{color:#7a6200;}
+.head-manutencao .col-head-count{background:#c8a800;color:#fff;}
+.srv-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:11px 12px;margin-bottom:8px;transition:opacity 0.3s;}
+.srv-card.done{opacity:0.45;}
+.srv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.srv-os{font-size:11px;color:var(--color-text-secondary);}
+.srv-nome{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px;}
+.srv-marca{font-size:12px;color:var(--color-text-secondary);margin-bottom:7px;}
+.srv-tag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;}
+.tag-limpeza{background:#B8CCE4;color:#0C447C;}
+.tag-manutencao{background:#FFD966;color:#7a6200;}
+.tag-ambos{background:#e8d5f5;color:#4a2080;}
+.problema{font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:5px 8px;margin-bottom:8px;display:flex;align-items:flex-start;gap:5px;}
+.problema i{font-size:13px;margin-top:1px;flex-shrink:0;}
+.checklist{display:flex;flex-direction:column;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;margin-bottom:8px;}
+.chk-step{border-bottom:0.5px solid var(--color-border-tertiary);}
+.chk-step:last-child{border-bottom:none;}
+.chk-step-head{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--color-background-secondary);}
+.chk-num{width:18px;height:18px;border-radius:50%;background:#5B9BD5;color:#fff;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.2s;}
+.chk-num.done{background:#639922;}
+.chk-label{font-size:12px;font-weight:500;color:var(--color-text-primary);flex:1;}
+.chk-check{width:16px;height:16px;accent-color:#5B9BD5;cursor:pointer;}
+.pecas-list{padding:4px 0;}
+.peca-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.peca-row:last-child{border-bottom:none;}
+.peca-dot{width:18px;height:18px;border-radius:50%;background:#5B9BD5;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.2s;}
+.peca-dot.done{background:#639922;}
+.peca-nome{font-size:12px;color:var(--color-text-primary);flex:1;}
+.peca-badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;}
+.badge-man{background:#FFD966;color:#7a6200;}
+.badge-troca{background:#FAECE7;color:#712B13;}
+.peca-check{width:16px;height:16px;accent-color:#5B9BD5;cursor:pointer;}
+.aguard-banner{display:flex;align-items:center;gap:6px;font-size:11px;color:#854F0B;background:#FAEEDA;border-radius:var(--border-radius-md);padding:6px 10px;margin-bottom:8px;}
+.aguard-banner i{font-size:14px;flex-shrink:0;}
+.finalizado-banner{display:none;align-items:center;gap:6px;font-size:11px;color:#27500A;background:#EAF3DE;border-radius:var(--border-radius-md);padding:6px 10px;margin-bottom:8px;}
+.finalizado-banner i{font-size:14px;flex-shrink:0;}
+.srv-footer{display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:0.5px solid var(--color-border-tertiary);}
+.srv-days{font-size:11px;color:var(--color-text-secondary);display:flex;align-items:center;gap:3px;}
+.srv-days i{font-size:12px;}
+.concluir-btn{display:flex;align-items:center;gap:5px;font-size:12px;padding:5px 11px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-tertiary);cursor:not-allowed;opacity:0.6;}
+.concluir-btn.ready{border-color:var(--color-border-secondary);color:var(--color-text-secondary);opacity:1;cursor:pointer;}
+.concluir-btn.done-btn{background:#EAF3DE;border-color:#97C459;color:#27500A;opacity:1;cursor:pointer;}
+.concluir-btn i{font-size:14px;}
+.hint{font-size:11px;color:var(--color-text-tertiary);font-style:italic;}
+</style>
+
+<h2 class="sr-only">Visão da oficina Idemaq — botão de conclusão bloqueado até todos os checkboxes serem marcados</h2>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="topbar-title">Oficina — fila do dia</span>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-val" style="color:#5B9BD5;" id="cnt-limpeza">2</div><div class="metric-lbl">Na limpeza</div></div>
+    <div class="metric"><div class="metric-val" style="color:#c8a800;" id="cnt-manutencao">2</div><div class="metric-lbl">Na manutenção</div></div>
+    <div class="metric"><div class="metric-val" style="color:#27500A;" id="cnt-concluidos">0</div><div class="metric-lbl">Concluídos hoje</div></div>
+    <div class="metric"><div class="metric-val" style="color:#FF6B6B;">1</div><div class="metric-lbl">Aguard. etapa</div></div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="col-head head-limpeza">
+        <i class="ti ti-sparkles" aria-hidden="true"></i>
+        <span class="col-head-title">Limpeza</span>
+        <span class="col-head-count">2</span>
+      </div>
+
+      <div class="srv-card" id="lim-1034">
+        <div class="srv-top"><span class="srv-os">OS #1034</span><span class="srv-tag tag-limpeza">limpeza</span></div>
+        <div class="srv-nome">Silvio Prado</div>
+        <div class="srv-marca">Brastemp · BWL12</div>
+        <div class="problema"><i class="ti ti-alert-circle" aria-hidden="true"></i>Não centrifuga direito</div>
+        <div class="checklist">
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="lim1034-n1">1</div><span class="chk-label">Desmontagem</span><input type="checkbox" class="chk-check" onchange="onCheck('lim-1034','lim1034-n1',this,'lim','1034')" aria-label="Desmontagem"></div></div>
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="lim1034-n2">2</div><span class="chk-label">Limpeza</span><input type="checkbox" class="chk-check" onchange="onCheck('lim-1034','lim1034-n2',this,'lim','1034')" aria-label="Limpeza"></div></div>
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="lim1034-n3">3</div><span class="chk-label">Montagem</span><input type="checkbox" class="chk-check" onchange="onCheck('lim-1034','lim1034-n3',this,'lim','1034')" aria-label="Montagem"></div></div>
+        </div>
+        <div class="srv-footer">
+          <span class="srv-days hint" id="hint-lim-1034">Marque todos os itens para concluir</span>
+          <button class="concluir-btn" id="btn-lim-1034" disabled onclick="concluir('lim','1034')"><i class="ti ti-lock" aria-hidden="true"></i> Marcar limpeza</button>
+        </div>
+      </div>
+
+      <div class="srv-card" id="lim-1037">
+        <div class="srv-top"><span class="srv-os">OS #1037</span><span class="srv-tag tag-ambos">limpeza+man.</span></div>
+        <div class="srv-nome">João Costa</div>
+        <div class="srv-marca">Samsung · WD11</div>
+        <div class="aguard-banner" id="aguard-lim-1037"><i class="ti ti-clock" aria-hidden="true"></i> Aguardando manutenção para finalizar OS</div>
+        <div class="finalizado-banner" id="final-lim-1037"><i class="ti ti-check" aria-hidden="true"></i> Limpeza concluída — aguardando manutenção</div>
+        <div class="problema"><i class="ti ti-alert-circle" aria-hidden="true"></i>Barulho na centrifugação + calcário</div>
+        <div class="checklist">
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="lim1037-n1">1</div><span class="chk-label">Desmontagem</span><input type="checkbox" class="chk-check" onchange="onCheck('lim-1037','lim1037-n1',this,'lim','1037')" aria-label="Desmontagem"></div></div>
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="lim1037-n2">2</div><span class="chk-label">Limpeza</span><input type="checkbox" class="chk-check" onchange="onCheck('lim-1037','lim1037-n2',this,'lim','1037')" aria-label="Limpeza"></div></div>
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="lim1037-n3">3</div><span class="chk-label">Montagem</span><input type="checkbox" class="chk-check" onchange="onCheck('lim-1037','lim1037-n3',this,'lim','1037')" aria-label="Montagem"></div></div>
+        </div>
+        <div class="srv-footer">
+          <span class="srv-days hint" id="hint-lim-1037">Marque todos os itens para concluir</span>
+          <button class="concluir-btn" id="btn-lim-1037" disabled onclick="concluir('lim','1037')"><i class="ti ti-lock" aria-hidden="true"></i> Marcar limpeza</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="col-head head-manutencao">
+        <i class="ti ti-settings" aria-hidden="true"></i>
+        <span class="col-head-title">Manutenção</span>
+        <span class="col-head-count">2</span>
+      </div>
+
+      <div class="srv-card" id="man-1037">
+        <div class="srv-top"><span class="srv-os">OS #1037</span><span class="srv-tag tag-ambos">limpeza+man.</span></div>
+        <div class="srv-nome">João Costa</div>
+        <div class="srv-marca">Samsung · WD11</div>
+        <div class="aguard-banner" id="aguard-man-1037"><i class="ti ti-clock" aria-hidden="true"></i> Aguardando limpeza para finalizar OS</div>
+        <div class="finalizado-banner" id="final-man-1037"><i class="ti ti-check" aria-hidden="true"></i> Manutenção concluída — aguardando limpeza</div>
+        <div class="problema"><i class="ti ti-alert-circle" aria-hidden="true"></i>Barulho — rolamento suspeito</div>
+        <div class="checklist">
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="man1037-n1">1</div><span class="chk-label">Desmontagem</span><input type="checkbox" class="chk-check" onchange="onCheck('man-1037','man1037-n1',this,'man','1037')" aria-label="Desmontagem"></div></div>
+          <div class="chk-step">
+            <div class="chk-step-head"><div class="chk-num" id="man1037-n2">2</div><span class="chk-label">Peças</span></div>
+            <div class="pecas-list">
+              <div class="peca-row"><div class="peca-dot" id="man1037-p1">•</div><span class="peca-nome">Rolamentos do cesto</span><span class="peca-badge badge-troca">troca</span><input type="checkbox" class="peca-check" onchange="onPeca('man-1037','man1037-p1',this,'man','1037')" aria-label="Rolamentos executado"></div>
+              <div class="peca-row"><div class="peca-dot" id="man1037-p2">•</div><span class="peca-nome">Correia</span><span class="peca-badge badge-man">man.</span><input type="checkbox" class="peca-check" onchange="onPeca('man-1037','man1037-p2',this,'man','1037')" aria-label="Correia executada"></div>
+            </div>
+          </div>
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="man1037-n3">3</div><span class="chk-label">Montagem</span><input type="checkbox" class="chk-check" onchange="onCheck('man-1037','man1037-n3',this,'man','1037')" aria-label="Montagem"></div></div>
+        </div>
+        <div class="srv-footer">
+          <span class="srv-days hint" id="hint-man-1037">Marque todos os itens para concluir</span>
+          <button class="concluir-btn" id="btn-man-1037" disabled onclick="concluir('man','1037')"><i class="ti ti-lock" aria-hidden="true"></i> Marcar manutenção</button>
+        </div>
+      </div>
+
+      <div class="srv-card" id="man-1030">
+        <div class="srv-top"><span class="srv-os">OS #1030</span><span class="srv-tag tag-manutencao">manutenção</span></div>
+        <div class="srv-nome">Lucas Freitas</div>
+        <div class="srv-marca">Electrolux · LAC11</div>
+        <div class="problema"><i class="ti ti-alert-circle" aria-hidden="true"></i>Não agita — correia partida</div>
+        <div class="checklist">
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="man1030-n1">1</div><span class="chk-label">Desmontagem</span><input type="checkbox" class="chk-check" onchange="onCheck('man-1030','man1030-n1',this,'man','1030')" aria-label="Desmontagem"></div></div>
+          <div class="chk-step">
+            <div class="chk-step-head"><div class="chk-num" id="man1030-n2">2</div><span class="chk-label">Peças</span></div>
+            <div class="pecas-list">
+              <div class="peca-row"><div class="peca-dot" id="man1030-p1">•</div><span class="peca-nome">Correia</span><span class="peca-badge badge-troca">troca</span><input type="checkbox" class="peca-check" onchange="onPeca('man-1030','man1030-p1',this,'man','1030')" aria-label="Correia executada"></div>
+              <div class="peca-row"><div class="peca-dot" id="man1030-p2">•</div><span class="peca-nome">Polia do mecanismo</span><span class="peca-badge badge-man">man.</span><input type="checkbox" class="peca-check" onchange="onPeca('man-1030','man1030-p2',this,'man','1030')" aria-label="Polia executada"></div>
+            </div>
+          </div>
+          <div class="chk-step"><div class="chk-step-head"><div class="chk-num" id="man1030-n3">3</div><span class="chk-label">Montagem</span><input type="checkbox" class="chk-check" onchange="onCheck('man-1030','man1030-n3',this,'man','1030')" aria-label="Montagem"></div></div>
+        </div>
+        <div class="srv-footer">
+          <span class="srv-days hint" id="hint-man-1030">Marque todos os itens para concluir</span>
+          <button class="concluir-btn" id="btn-man-1030" disabled onclick="concluir('man','1030')"><i class="ti ti-lock" aria-hidden="true"></i> Marcar manutenção</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var state = {
+  'lim-1034': false,
+  'lim-1037': false,
+  'man-1037': false,
+  'man-1030': false
+};
+
+function allChecked(cardId) {
+  var card = document.getElementById(cardId);
+  var all = card.querySelectorAll('.chk-check, .peca-check');
+  for (var i = 0; i < all.length; i++) { if (!all[i].checked) return false; }
+  return true;
+}
+
+function updateBtn(tipo, os) {
+  var cardId = tipo + '-' + os;
+  var btn = document.getElementById('btn-' + cardId);
+  var hint = document.getElementById('hint-' + cardId);
+  var ready = allChecked(cardId);
+  if (state[cardId]) return;
+  if (ready) {
+    btn.disabled = false;
+    btn.classList.add('ready');
+    btn.innerHTML = '<i class="ti ti-circle" aria-hidden="true"></i> ' + (tipo === 'lim' ? 'Marcar limpeza' : 'Marcar manutenção');
+    hint.textContent = 'Pronto para concluir';
+    hint.style.color = '#27500A';
+  } else {
+    btn.disabled = true;
+    btn.classList.remove('ready');
+    btn.innerHTML = '<i class="ti ti-lock" aria-hidden="true"></i> ' + (tipo === 'lim' ? 'Marcar limpeza' : 'Marcar manutenção');
+    hint.textContent = 'Marque todos os itens para concluir';
+    hint.style.color = '';
+  }
+}
+
+function onCheck(cardId, numId, cb, tipo, os) {
+  var num = document.getElementById(numId);
+  if (cb.checked) { num.classList.add('done'); } else { num.classList.remove('done'); }
+  updateBtn(tipo, os);
+}
+
+function onPeca(cardId, dotId, cb, tipo, os) {
+  var dot = document.getElementById(dotId);
+  if (cb.checked) { dot.classList.add('done'); dot.textContent = '✓'; }
+  else { dot.classList.remove('done'); dot.textContent = '•'; }
+  updateBtn(tipo, os);
+}
+
+function concluir(tipo, os) {
+  var cardId = tipo + '-' + os;
+  if (!allChecked(cardId)) return;
+  state[cardId] = true;
+  var card = document.getElementById(cardId);
+  var btn = document.getElementById('btn-' + cardId);
+  var hint = document.getElementById('hint-' + cardId);
+  card.classList.add('done');
+  btn.classList.remove('ready');
+  btn.classList.add('done-btn');
+  btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Concluído';
+  btn.disabled = true;
+  hint.textContent = 'Etapa concluída';
+  hint.style.color = '#27500A';
+
+  if (os === '1037') {
+    var outro = tipo === 'lim' ? 'man' : 'lim';
+    var outroConcluido = state[outro + '-1037'];
+    var finalBanner = document.getElementById('final-' + cardId);
+    var aguardBanner = document.getElementById('aguard-' + cardId);
+    aguardBanner.style.display = 'none';
+    finalBanner.style.display = 'flex';
+    if (outroConcluido) {
+      var finalLim = document.getElementById('final-lim-1037');
+      var finalMan = document.getElementById('final-man-1037');
+      finalLim.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> OS #1037 finalizada — indo para Finalizados';
+      finalLim.style.background = '#EAF3DE';
+      finalMan.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> OS #1037 finalizada — indo para Finalizados';
+      finalMan.style.background = '#EAF3DE';
+      finalLim.style.display = 'flex';
+      finalMan.style.display = 'flex';
+      var cnt = document.getElementById('cnt-concluidos');
+      cnt.textContent = parseInt(cnt.textContent) + 1;
+    }
+  } else {
+    var cnt = document.getElementById('cnt-concluidos');
+    cnt.textContent = parseInt(cnt.textContent) + 1;
+  }
+}
+</script>

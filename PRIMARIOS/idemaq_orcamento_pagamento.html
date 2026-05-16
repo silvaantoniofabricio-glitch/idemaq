@@ -1,0 +1,399 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 16px;margin-bottom:10px;}
+.sec-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.sec-head i{font-size:16px;color:#5B9BD5;}
+.sec-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.doc-btns{display:flex;gap:6px;margin-left:auto;}
+.doc-btn{display:flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;}
+.doc-btn.wa{border-color:#25D366;color:#1a9e4a;}
+table.itens{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;table-layout:fixed;}
+table.itens th{font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:6px 8px;border-bottom:0.5px solid var(--color-border-tertiary);text-align:left;}
+table.itens th.r{text-align:right;}
+table.itens td{padding:7px 8px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle;}
+table.itens td input,table.itens td select{font-size:12px;padding:4px 6px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);width:100%;}
+table.itens td.r{text-align:right;font-weight:500;color:var(--color-text-primary);}
+table.itens td.rem{width:28px;text-align:center;}
+.add-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#5B9BD5;cursor:pointer;border:none;background:transparent;padding:4px 0;margin-bottom:10px;}
+.desconto-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:10px;border:0.5px solid var(--color-border-tertiary);}
+.desc-row{display:flex;align-items:center;gap:10px;}
+.desc-lbl{font-size:12px;color:var(--color-text-secondary);min-width:70px;}
+.desc-input-wrap{display:flex;align-items:center;gap:4px;flex:1;}
+.desc-input{font-size:13px;padding:6px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);width:90px;text-align:right;}
+.desc-unit{font-size:12px;color:var(--color-text-secondary);}
+.totais-box{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;margin-bottom:10px;}
+.tot-row{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.tot-row:last-child{border-bottom:none;}
+.tot-lbl{color:var(--color-text-secondary);}
+.tot-val{font-weight:500;color:var(--color-text-primary);}
+.tot-val.green{color:#27500A;}
+.tot-val.red{color:#791F1F;}
+.tot-total{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--color-background-secondary);font-size:14px;font-weight:500;}
+.pgto-item{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:10px 12px;margin-bottom:7px;border:0.5px solid var(--color-border-tertiary);}
+.pgto-item.prazo-item{border-color:#EF9F27;background:#FAEEDA;}
+.pgto-top{display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap;}
+.tipo-btns{display:flex;gap:4px;flex-wrap:wrap;}
+.tipo-btn{font-size:11px;padding:4px 9px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-secondary);cursor:pointer;white-space:nowrap;}
+.tipo-btn.sel{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.tipo-btn.sel-prazo{background:#FAEEDA;border-color:#EF9F27;color:#633806;}
+.val-input{font-size:13px;font-weight:500;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);width:100px;text-align:right;}
+.rem-btn{font-size:13px;color:var(--color-text-secondary);cursor:pointer;padding:3px;border:none;background:transparent;margin-left:auto;}
+.pgto-sub{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;}
+.pgto-sub-lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:3px;}
+.pgto-sub select{font-size:12px;padding:5px 7px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);width:100%;}
+.taxa-pill{font-size:11px;background:#FAEEDA;color:#633806;border-radius:var(--border-radius-md);padding:3px 7px;text-align:center;}
+.liq-val{font-size:12px;font-weight:500;color:#27500A;text-align:right;}
+.prazo-input{font-size:12px;padding:5px 7px;border-radius:var(--border-radius-md);border:0.5px solid #EF9F27;background:var(--color-background-primary);color:var(--color-text-primary);width:100%;}
+.add-pgto{display:flex;align-items:center;gap:5px;font-size:12px;color:#5B9BD5;cursor:pointer;border:none;background:transparent;padding:4px 0;margin-bottom:10px;}
+.resumo{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;margin-bottom:8px;}
+.res-row{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.res-row:last-child{border-bottom:none;}
+.res-lbl{color:var(--color-text-secondary);}
+.res-val{font-weight:500;}
+.res-total{display:flex;justify-content:space-between;padding:10px 12px;background:var(--color-background-secondary);font-size:14px;font-weight:500;}
+.confirmar-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:var(--border-radius-md);border:none;background:#639922;font-size:13px;color:#fff;cursor:pointer;font-weight:500;}
+.confirmar-btn:disabled{background:var(--color-background-secondary);color:var(--color-text-tertiary);cursor:not-allowed;}
+.hint{font-size:11px;text-align:center;margin-top:5px;color:var(--color-text-tertiary);}
+.sep{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:10px 0;}
+</style>
+
+<h2 class="sr-only">Orçamento editável com desconto automático e pagamento misto com comprovante</h2>
+
+<div class="wrap">
+
+<div class="card">
+  <div class="sec-head">
+    <i class="ti ti-receipt" aria-hidden="true"></i>
+    <span class="sec-title">Orçamento — OS #1037</span>
+    <div class="doc-btns">
+      <div class="doc-btn wa" onclick="gerarDoc('wa')"><i class="ti ti-brand-whatsapp" aria-hidden="true" style="font-size:13px;"></i> WhatsApp</div>
+      <div class="doc-btn" onclick="gerarDoc('pdf')"><i class="ti ti-file-type-pdf" aria-hidden="true" style="font-size:13px;"></i> PDF</div>
+      <div class="doc-btn" onclick="gerarDoc('print')"><i class="ti ti-printer" aria-hidden="true" style="font-size:13px;"></i> Imprimir</div>
+    </div>
+  </div>
+
+  <table class="itens">
+    <thead>
+      <tr>
+        <th style="width:40%">Item</th>
+        <th style="width:12%">Tipo</th>
+        <th style="width:10%">Qtd</th>
+        <th style="width:18%">Unit.</th>
+        <th style="width:14%" class="r">Subtotal</th>
+        <th style="width:6%" class="r"></th>
+      </tr>
+    </thead>
+    <tbody id="itens-body"></tbody>
+  </table>
+
+  <div style="display:flex;gap:8px;">
+    <button class="add-item" onclick="addItem('serv')"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Serviço</button>
+    <button class="add-item" onclick="addItem('peca')"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Peça</button>
+  </div>
+
+  <div class="desconto-box">
+    <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px;">Desconto</div>
+    <div class="desc-row">
+      <span class="desc-lbl">Valor (R$)</span>
+      <div class="desc-input-wrap">
+        <input type="number" class="desc-input" id="desc-val" placeholder="0,00" min="0" step="0.01" oninput="onDescVal(this.value)">
+        <span class="desc-unit">reais</span>
+      </div>
+      <span style="font-size:12px;color:var(--color-text-secondary);margin:0 8px;">ou</span>
+      <span class="desc-lbl">Porcentagem</span>
+      <div class="desc-input-wrap">
+        <input type="number" class="desc-input" id="desc-pct" placeholder="0,00" min="0" max="100" step="0.01" oninput="onDescPct(this.value)">
+        <span class="desc-unit">%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="totais-box">
+    <div class="tot-row"><span class="tot-lbl">Subtotal serviços</span><span class="tot-val" id="sub-serv">R$ 0,00</span></div>
+    <div class="tot-row"><span class="tot-lbl">Subtotal peças</span><span class="tot-val" id="sub-peca">R$ 0,00</span></div>
+    <div class="tot-row" id="row-desc" style="display:none;"><span class="tot-lbl">Desconto</span><span class="tot-val red" id="tot-desc">— R$ 0,00</span></div>
+    <div class="tot-total"><span>Total</span><span id="tot-total" style="color:#5B9BD5;">R$ 0,00</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="sec-head">
+    <i class="ti ti-coin" aria-hidden="true"></i>
+    <span class="sec-title">Pagamento</span>
+  </div>
+
+  <div id="pgto-lista"></div>
+  <button class="add-pgto" onclick="addPgto()" id="add-pgto-btn"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Adicionar forma de pagamento</button>
+
+  <div class="resumo">
+    <div class="res-row"><span class="res-lbl">Total a pagar</span><span class="res-val" id="res-total" style="color:#5B9BD5;">R$ 0,00</span></div>
+    <div class="res-row"><span class="res-lbl">Lançado</span><span class="res-val" id="res-lanc" style="color:#0C447C;">R$ 0,00</span></div>
+    <div class="res-row"><span class="res-lbl">Faltando</span><span class="res-val" id="res-falt" style="color:#791F1F;">R$ 0,00</span></div>
+    <div class="res-row" id="res-taxa-row" style="display:none;"><span class="res-lbl">Taxa cartão</span><span class="res-val red" id="res-taxa" style="color:#791F1F;">— R$ 0,00</span></div>
+    <div class="res-row" id="res-prazo-row" style="display:none;"><span class="res-lbl">A receber (prazo)</span><span class="res-val" id="res-prazo" style="color:#633806;">R$ 0,00</span></div>
+    <div class="res-total"><span>Líquido agora</span><span id="res-liq" style="color:#27500A;">R$ 0,00</span></div>
+  </div>
+
+  <button class="confirmar-btn" id="confirmar-btn" disabled><i class="ti ti-check" aria-hidden="true" style="font-size:14px;"></i> Confirmar pagamento — concluir OS</button>
+  <div class="hint" id="hint-msg">Adicione formas de pagamento para continuar</div>
+</div>
+
+<div id="doc-preview" style="display:none;">
+  <div class="card" style="border-color:#97C459;">
+    <div class="sec-head" style="border-bottom-color:#97C459;">
+      <i class="ti ti-file-check" aria-hidden="true" style="font-size:16px;color:#27500A;"></i>
+      <span class="sec-title" style="color:#27500A;">Comprovante / Orçamento gerado</span>
+      <div class="doc-btns">
+        <div class="doc-btn" style="border-color:#97C459;color:#27500A;"><i class="ti ti-copy" aria-hidden="true" style="font-size:13px;"></i> Copiar link</div>
+        <div class="doc-btn" onclick="document.getElementById('doc-preview').style.display='none'"><i class="ti ti-x" aria-hidden="true" style="font-size:13px;"></i> Fechar</div>
+      </div>
+    </div>
+    <div style="background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:14px;font-size:12px;color:var(--color-text-primary);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);">
+        <div><div style="font-size:15px;font-weight:500;">Idemaq</div><div style="font-size:11px;color:var(--color-text-secondary);">Assistência técnica · Naviraí/MS</div></div>
+        <div style="text-align:right;"><div style="font-weight:500;">OS #1037</div><div style="color:var(--color-text-secondary);" id="doc-data"></div></div>
+      </div>
+      <div style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);">
+        <div style="font-weight:500;margin-bottom:3px;">João Costa</div>
+        <div style="color:var(--color-text-secondary);">Samsung WD11 · S/N: SAM2023WD110012</div>
+      </div>
+      <div id="doc-itens" style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);"></div>
+      <div id="doc-totais" style="margin-bottom:14px;padding-bottom:12px;border-bottom:0.5px solid var(--color-border-tertiary);"></div>
+      <div style="border:0.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-md);padding:16px 12px;text-align:center;">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:20px;">Assinatura do cliente — confirmo o recebimento da máquina em perfeito estado</div>
+        <div style="border-top:0.5px solid var(--color-border-tertiary);padding-top:6px;font-size:11px;color:var(--color-text-secondary);">Nome / Data</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+var TAXAS_IP_MAQ={deb:1.37,1:3.15,2:5.39,3:6.12,4:6.85,5:7.57,6:8.28,7:8.99,8:9.69,9:10.38,10:11.06,11:11.74,12:12.40};
+var TAXAS_IP_LINK={1:4.20,2:6.09,3:7.01,4:7.91,5:8.80,6:9.67,7:12.59,8:13.42,9:14.25,10:15.06,11:15.87,12:16.66};
+var TAXAS_TON={deb:1.36,1:3.14,2:5.38,3:6.11,4:6.84,5:7.56,6:8.27,7:8.95,8:9.68,9:10.37,10:11.05,11:11.73,12:12.39};
+
+var itens=[
+  {id:0,tipo:'serv',nome:'Limpeza completa',qtd:1,unit:185},
+  {id:1,tipo:'serv',nome:'Manutenção',qtd:1,unit:185},
+  {id:2,tipo:'peca',nome:'Rolamentos do cesto',qtd:2,unit:45}
+];
+var nextId=3;
+var descVal=0, descPct=0;
+var pgtos=[];
+var nextPgtoId=0;
+var editingDesc='';
+
+function fmt(v){return 'R$ '+Math.abs(v).toFixed(2).replace('.',',');}
+function parseV(s){return parseFloat((s+'').replace(',','.'))||0;}
+
+function subServicos(){return itens.filter(function(i){return i.tipo==='serv';}).reduce(function(a,i){return a+i.qtd*i.unit;},0);}
+function subPecas(){return itens.filter(function(i){return i.tipo==='peca';}).reduce(function(a,i){return a+i.qtd*i.unit;},0);}
+function subTotal(){return subServicos()+subPecas();}
+function totalFinal(){return Math.max(0,subTotal()-descVal);}
+
+function onDescVal(v){
+  if(editingDesc==='pct')return;
+  editingDesc='val';
+  descVal=parseV(v)||0;
+  var st=subTotal();
+  descPct=st>0?parseFloat((descVal/st*100).toFixed(2)):0;
+  var pctEl=document.getElementById('desc-pct');
+  if(document.activeElement!==pctEl) pctEl.value=descPct>0?descPct:'';
+  editingDesc='';
+  renderTotais();renderPgtoResumo();
+}
+
+function onDescPct(v){
+  if(editingDesc==='val')return;
+  editingDesc='pct';
+  descPct=parseV(v)||0;
+  descVal=parseFloat((subTotal()*descPct/100).toFixed(2));
+  var valEl=document.getElementById('desc-val');
+  if(document.activeElement!==valEl) valEl.value=descVal>0?descVal:'';
+  editingDesc='';
+  renderTotais();renderPgtoResumo();
+}
+
+function addItem(tipo){
+  itens.push({id:nextId++,tipo:tipo,nome:'',qtd:1,unit:0});
+  renderItens();renderTotais();renderPgtoResumo();
+}
+
+function removeItem(id){
+  itens=itens.filter(function(i){return i.id!==id;});
+  renderItens();renderTotais();renderPgtoResumo();
+}
+
+function setItemField(id,field,val){
+  var item=itens.find(function(i){return i.id===id;});
+  if(!item)return;
+  if(field==='qtd'||field==='unit') item[field]=parseV(val)||0;
+  else item[field]=val;
+  renderItens();renderTotais();renderPgtoResumo();
+}
+
+function renderItens(){
+  var html='';
+  itens.forEach(function(item){
+    var sub=item.qtd*item.unit;
+    html+='<tr>';
+    html+='<td><input type="text" value="'+item.nome+'" placeholder="'+(item.tipo==='serv'?'Serviço':'Peça')+'" oninput="setItemField('+item.id+',\'nome\',this.value)" aria-label="Nome do item"></td>';
+    html+='<td><span style="font-size:10px;padding:2px 6px;border-radius:20px;'+(item.tipo==='serv'?'background:#E6F1FB;color:#0C447C':'background:#FAEEDA;color:#633806')+'">'+( item.tipo==='serv'?'serviço':'peça')+'</span></td>';
+    html+='<td><input type="number" value="'+item.qtd+'" min="1" style="width:48px;" oninput="setItemField('+item.id+',\'qtd\',this.value)" aria-label="Quantidade"></td>';
+    html+='<td><input type="number" value="'+item.unit+'" min="0" step="0.01" oninput="setItemField('+item.id+',\'unit\',this.value)" aria-label="Valor unitário"></td>';
+    html+='<td class="r">'+fmt(sub)+'</td>';
+    html+='<td class="rem"><button style="border:none;background:transparent;font-size:13px;color:var(--color-text-secondary);cursor:pointer;" onclick="removeItem('+item.id+')" aria-label="Remover"><i class="ti ti-x" aria-hidden="true"></i></button></td>';
+    html+='</tr>';
+  });
+  document.getElementById('itens-body').innerHTML=html;
+}
+
+function renderTotais(){
+  var ss=subServicos(),sp=subPecas(),st=subTotal(),tf=totalFinal();
+  document.getElementById('sub-serv').textContent=fmt(ss);
+  document.getElementById('sub-peca').textContent=fmt(sp);
+  var rowDesc=document.getElementById('row-desc');
+  if(descVal>0){rowDesc.style.display='flex';document.getElementById('tot-desc').textContent='— '+fmt(descVal);}
+  else rowDesc.style.display='none';
+  document.getElementById('tot-total').textContent=fmt(tf);
+  document.getElementById('res-total').textContent=fmt(tf);
+  var valEl=document.getElementById('desc-val');
+  var pctEl=document.getElementById('desc-pct');
+  if(document.activeElement!==valEl&&editingDesc!=='val') valEl.value=descVal>0?descVal.toFixed(2):'';
+  if(document.activeElement!==pctEl&&editingDesc!=='pct') pctEl.value=descPct>0?descPct.toFixed(2):'';
+}
+
+function getTaxa(tipo,maq,parc){
+  if(tipo!=='cartao')return 0;
+  if(maq==='link')return TAXAS_IP_LINK[parc]||0;
+  if(maq==='infinite')return parc==='deb'?TAXAS_IP_MAQ.deb:(TAXAS_IP_MAQ[parc]||0);
+  if(maq==='ton')return parc==='deb'?TAXAS_TON.deb:(TAXAS_TON[parc]||0);
+  return 0;
+}
+
+function addPgto(){
+  pgtos.push({id:nextPgtoId++,tipo:'pix',maq:'infinite',parc:1,val:'',data:''});
+  renderPgtos();renderPgtoResumo();
+}
+
+function removePgto(id){
+  pgtos=pgtos.filter(function(p){return p.id!==id;});
+  renderPgtos();renderPgtoResumo();
+}
+
+function setPgtoField(id,field,val){
+  var p=pgtos.find(function(p){return p.id===id;});
+  if(!p)return;
+  if(field==='parc'&&!isNaN(val))val=parseInt(val);
+  p[field]=val;
+  renderPgtos();renderPgtoResumo();
+}
+
+function renderPgtos(){
+  var html='';
+  pgtos.forEach(function(p){
+    var val=parseV(p.val);
+    var taxa=getTaxa(p.tipo,p.maq,p.parc);
+    var liq=val>0?val*(1-taxa/100):0;
+    var isPrazo=p.tipo==='prazo';
+    var isCartao=p.tipo==='cartao';
+    html+='<div class="pgto-item'+(isPrazo?' prazo-item':'')+'">';
+    html+='<div class="pgto-top">';
+    html+='<div class="tipo-btns">';
+    ['pix','dinheiro','cartao','prazo'].forEach(function(t){
+      var labels={pix:'PIX',dinheiro:'Dinheiro',cartao:'Cartão',prazo:'A prazo'};
+      var sel=p.tipo===t?(t==='prazo'?' sel-prazo sel':' sel'):'';
+      html+='<button class="tipo-btn'+sel+'" onclick="setPgtoField('+p.id+',\'tipo\',\''+t+'\')">'+labels[t]+'</button>';
+    });
+    html+='</div>';
+    html+='<input type="text" class="val-input" value="'+(p.val||'')+'" placeholder="R$ 0,00" oninput="setPgtoField('+p.id+',\'val\',this.value)" aria-label="Valor">';
+    html+='<button class="rem-btn" onclick="removePgto('+p.id+')" aria-label="Remover"><i class="ti ti-x" aria-hidden="true"></i></button>';
+    html+='</div>';
+    if(isCartao){
+      html+='<div class="pgto-sub">';
+      html+='<div><div class="pgto-sub-lbl">Tipo</div><select onchange="setPgtoField('+p.id+',\'maq\',this.value)">';
+      [{v:'infinite',l:'InfinitePay'},{v:'ton',l:'Ton Black'},{v:'link',l:'Link InfinitePay'}].forEach(function(o){
+        html+='<option value="'+o.v+'"'+(p.maq===o.v?' selected':'')+'>'+o.l+'</option>';
+      });
+      html+='</select></div>';
+      html+='<div><div class="pgto-sub-lbl">Parcelas</div><select onchange="setPgtoField('+p.id+',\'parc\',this.value)">';
+      if(p.maq!=='link') html+='<option value="deb"'+(p.parc==='deb'?' selected':'')+'>Débito</option>';
+      for(var x=1;x<=12;x++) html+='<option value="'+x+'"'+(p.parc===x?' selected':'')+'>'+x+'x</option>';
+      html+='</select></div>';
+      html+='<div>';
+      if(taxa>0&&val>0){
+        html+='<div class="taxa-pill">'+taxa.toFixed(2)+'% = — '+fmt(val*taxa/100)+'</div>';
+        html+='<div class="liq-val">Líq: '+fmt(liq)+'</div>';
+      } else if(taxa>0){
+        html+='<div class="taxa-pill">'+taxa.toFixed(2)+'%</div>';
+      }
+      html+='</div></div>';
+    }
+    if(isPrazo){
+      html+='<div style="margin-top:6px;"><div class="pgto-sub-lbl">Data de vencimento</div>';
+      html+='<input type="date" class="prazo-input" value="'+(p.data||'')+'" onchange="setPgtoField('+p.id+',\'data\',this.value)" aria-label="Data de vencimento"></div>';
+    }
+    html+='</div>';
+  });
+  document.getElementById('pgto-lista').innerHTML=html;
+}
+
+function renderPgtoResumo(){
+  var tf=totalFinal();
+  var totalLanc=0,totalTaxa=0,totalPrazo=0,totalLiq=0;
+  pgtos.forEach(function(p){
+    var v=parseV(p.val);
+    var taxa=getTaxa(p.tipo,p.maq,p.parc);
+    totalLanc+=v;
+    if(p.tipo==='prazo'){totalPrazo+=v;}
+    else{totalTaxa+=v*taxa/100;totalLiq+=v*(1-taxa/100);}
+  });
+  var falt=Math.max(0,tf-totalLanc);
+  document.getElementById('res-total').textContent=fmt(tf);
+  document.getElementById('res-lanc').textContent=fmt(totalLanc);
+  document.getElementById('res-falt').textContent=fmt(falt);
+  document.getElementById('res-falt').style.color=falt>0?'#791F1F':'#27500A';
+  if(totalTaxa>0){document.getElementById('res-taxa-row').style.display='flex';document.getElementById('res-taxa').textContent='— '+fmt(totalTaxa);}
+  else document.getElementById('res-taxa-row').style.display='none';
+  if(totalPrazo>0){document.getElementById('res-prazo-row').style.display='flex';document.getElementById('res-prazo').textContent=fmt(totalPrazo);}
+  else document.getElementById('res-prazo-row').style.display='none';
+  document.getElementById('res-liq').textContent=fmt(totalLiq);
+  var pronto=tf>0&&Math.abs(totalLanc-tf)<0.02;
+  var btn=document.getElementById('confirmar-btn');
+  btn.disabled=!pronto;
+  var hint=document.getElementById('hint-msg');
+  if(pronto){hint.textContent='Pronto para confirmar';hint.style.color='#27500A';}
+  else if(totalLanc>tf){hint.textContent='Valor lançado maior que o total';hint.style.color='#791F1F';}
+  else if(totalLanc>0){hint.textContent='Faltam '+fmt(falt)+' para confirmar';hint.style.color='';}
+  else{hint.textContent='Adicione formas de pagamento para continuar';hint.style.color='';}
+}
+
+function gerarDoc(tipo){
+  var tf=totalFinal();
+  var ss=subServicos(),sp=subPecas();
+  var d=new Date();
+  var ds=d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear();
+  document.getElementById('doc-data').textContent=ds;
+  var itensHtml='';
+  itens.forEach(function(item){
+    if(!item.nome)return;
+    itensHtml+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--color-border-tertiary);"><span>'+item.nome+' ('+item.qtd+'x)</span><span style="font-weight:500;">'+fmt(item.qtd*item.unit)+'</span></div>';
+  });
+  document.getElementById('doc-itens').innerHTML=itensHtml||'<div style="color:var(--color-text-secondary);">Nenhum item</div>';
+  var totaisHtml='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;color:var(--color-text-secondary);"><span>Serviços</span><span>'+fmt(ss)+'</span></div>';
+  totaisHtml+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;color:var(--color-text-secondary);"><span>Peças</span><span>'+fmt(sp)+'</span></div>';
+  if(descVal>0) totaisHtml+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;color:#791F1F;"><span>Desconto</span><span>— '+fmt(descVal)+'</span></div>';
+  totaisHtml+='<div style="display:flex;justify-content:space-between;padding:6px 0 0;font-size:14px;font-weight:500;"><span>Total</span><span style="color:#5B9BD5;">'+fmt(tf)+'</span></div>';
+  document.getElementById('doc-totais').innerHTML=totaisHtml;
+  document.getElementById('doc-preview').style.display='block';
+  document.getElementById('doc-preview').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+renderItens();
+renderTotais();
+renderPgtoResumo();
+</script>

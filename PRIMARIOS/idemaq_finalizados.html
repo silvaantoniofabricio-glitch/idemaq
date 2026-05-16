@@ -1,0 +1,197 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.topbar-title{font-size:15px;font-weight:500;color:var(--color-text-primary);}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px;}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center;}
+.metric-val{font-size:20px;font-weight:500;}
+.metric-lbl{font-size:11px;color:var(--color-text-secondary);margin-top:2px;}
+.cards{display:flex;flex-direction:column;gap:10px;}
+.srv-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;}
+.srv-card.done{opacity:0.45;}
+.srv-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.srv-os{font-size:11px;color:var(--color-text-secondary);}
+.srv-info{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.srv-nome{font-size:14px;font-weight:500;color:var(--color-text-primary);}
+.srv-marca{font-size:12px;color:var(--color-text-secondary);}
+.srv-tag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;}
+.tag-limpeza{background:#B8CCE4;color:#0C447C;}
+.tag-manutencao{background:#FFD966;color:#7a6200;}
+.tag-ambos{background:#e8d5f5;color:#4a2080;}
+.body{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.checklist{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;}
+.chk-head{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.chk-head i{font-size:15px;}
+.chk-head-title{font-size:12px;font-weight:500;color:var(--color-text-primary);}
+.chk-head-badge{font-size:10px;padding:1px 7px;border-radius:20px;font-weight:500;margin-left:auto;}
+.badge-obrig{background:#B8CCE4;color:#0C447C;}
+.badge-limpeza{background:#E1F5EE;color:#085041;}
+.chk-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.chk-item:last-child{border-bottom:none;}
+.chk-num{width:18px;height:18px;border-radius:50%;background:#5B9BD5;color:#fff;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.2s;}
+.chk-num.done{background:#639922;}
+.chk-lbl{font-size:12px;color:var(--color-text-primary);flex:1;}
+.chk-cb{width:16px;height:16px;accent-color:#5B9BD5;cursor:pointer;}
+.srv-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--color-border-tertiary);}
+.srv-days{font-size:11px;color:var(--color-text-secondary);display:flex;align-items:center;gap:4px;}
+.srv-days i{font-size:13px;}
+.hint{font-size:11px;color:var(--color-text-tertiary);font-style:italic;}
+.concluir-btn{display:flex;align-items:center;gap:5px;font-size:12px;padding:6px 13px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-tertiary);cursor:not-allowed;opacity:0.6;}
+.concluir-btn.ready{border-color:var(--color-border-secondary);color:var(--color-text-secondary);opacity:1;cursor:pointer;}
+.concluir-btn.done-btn{background:#EAF3DE;border-color:#97C459;color:#27500A;opacity:1;cursor:pointer;}
+.concluir-btn i{font-size:14px;}
+</style>
+
+<h2 class="sr-only">Tela de finalizados Idemaq — teste final obrigatório e polimento para quem passou por limpeza</h2>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="topbar-title">Finalizados — aguardando entrega</span>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-val" style="color:#27500A;" id="cnt-prontos">3</div><div class="metric-lbl">Prontos para entrega</div></div>
+    <div class="metric"><div class="metric-val" style="color:#5B9BD5;" id="cnt-pendentes">3</div><div class="metric-lbl">Pendentes checklist</div></div>
+    <div class="metric"><div class="metric-val" style="color:#c8a800;">2</div><div class="metric-lbl">Entregas agendadas hoje</div></div>
+  </div>
+
+  <div class="cards">
+
+    <div class="srv-card" id="fin-1034">
+      <div class="srv-top">
+        <span class="srv-os">OS #1034 · Silvio Prado</span>
+        <span class="srv-tag tag-limpeza">limpeza</span>
+      </div>
+      <div class="srv-marca">Brastemp · BWL12 · S/N: BWL12BR20230211</div>
+      <div class="body">
+        <div class="checklist">
+          <div class="chk-head">
+            <i class="ti ti-check" aria-hidden="true" style="color:#0C447C;"></i>
+            <span class="chk-head-title">Teste final</span>
+            <span class="chk-head-badge badge-obrig">obrigatório</span>
+          </div>
+          <div class="chk-item"><div class="chk-num" id="f1034-t1">1</div><span class="chk-lbl">Entrada de água</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1034-t1','fin-1034')" aria-label="Entrada de água"></div>
+          <div class="chk-item"><div class="chk-num" id="f1034-t2">2</div><span class="chk-lbl">Agitação</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1034-t2','fin-1034')" aria-label="Agitação"></div>
+          <div class="chk-item"><div class="chk-num" id="f1034-t3">3</div><span class="chk-lbl">Centrifugação</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1034-t3','fin-1034')" aria-label="Centrifugação"></div>
+          <div class="chk-item"><div class="chk-num" id="f1034-t4">4</div><span class="chk-lbl">Saída de água</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1034-t4','fin-1034')" aria-label="Saída de água"></div>
+        </div>
+        <div class="checklist">
+          <div class="chk-head">
+            <i class="ti ti-sparkles" aria-hidden="true" style="color:#085041;"></i>
+            <span class="chk-head-title">Polimento</span>
+            <span class="chk-head-badge badge-limpeza">limpeza</span>
+          </div>
+          <div class="chk-item"><div class="chk-num" id="f1034-p1">1</div><span class="chk-lbl">Tampa e painel</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1034-p1','fin-1034')" aria-label="Tampa e painel"></div>
+          <div class="chk-item"><div class="chk-num" id="f1034-p2">2</div><span class="chk-lbl">Lateral e fundo</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1034-p2','fin-1034')" aria-label="Lateral e fundo"></div>
+          <div class="chk-item"><div class="chk-num" id="f1034-p3">3</div><span class="chk-lbl">Borracha da porta</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1034-p3','fin-1034')" aria-label="Borracha da porta"></div>
+        </div>
+      </div>
+      <div class="srv-footer">
+        <span class="hint" id="hint-fin-1034">Marque todos os itens para liberar entrega</span>
+        <button class="concluir-btn" id="btn-fin-1034" disabled onclick="concluirFin('fin-1034')"><i class="ti ti-lock" aria-hidden="true"></i> Liberar para entrega</button>
+      </div>
+    </div>
+
+    <div class="srv-card" id="fin-1030">
+      <div class="srv-top">
+        <span class="srv-os">OS #1030 · Lucas Freitas</span>
+        <span class="srv-tag tag-manutencao">manutenção</span>
+      </div>
+      <div class="srv-marca">Electrolux · LAC11 · S/N: ELX11BR20190388</div>
+      <div class="body">
+        <div class="checklist" style="grid-column:1/-1;max-width:320px;">
+          <div class="chk-head">
+            <i class="ti ti-check" aria-hidden="true" style="color:#0C447C;"></i>
+            <span class="chk-head-title">Teste final</span>
+            <span class="chk-head-badge badge-obrig">obrigatório</span>
+          </div>
+          <div class="chk-item"><div class="chk-num" id="f1030-t1">1</div><span class="chk-lbl">Entrada de água</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1030-t1','fin-1030')" aria-label="Entrada de água"></div>
+          <div class="chk-item"><div class="chk-num" id="f1030-t2">2</div><span class="chk-lbl">Agitação</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1030-t2','fin-1030')" aria-label="Agitação"></div>
+          <div class="chk-item"><div class="chk-num" id="f1030-t3">3</div><span class="chk-lbl">Centrifugação</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1030-t3','fin-1030')" aria-label="Centrifugação"></div>
+          <div class="chk-item"><div class="chk-num" id="f1030-t4">4</div><span class="chk-lbl">Saída de água</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1030-t4','fin-1030')" aria-label="Saída de água"></div>
+        </div>
+      </div>
+      <div class="srv-footer">
+        <span class="hint" id="hint-fin-1030">Marque todos os itens para liberar entrega</span>
+        <button class="concluir-btn" id="btn-fin-1030" disabled onclick="concluirFin('fin-1030')"><i class="ti ti-lock" aria-hidden="true"></i> Liberar para entrega</button>
+      </div>
+    </div>
+
+    <div class="srv-card" id="fin-1037">
+      <div class="srv-top">
+        <span class="srv-os">OS #1037 · João Costa</span>
+        <span class="srv-tag tag-ambos">limpeza+man.</span>
+      </div>
+      <div class="srv-marca">Samsung · WD11 · S/N: SAM2023WD110012</div>
+      <div class="body">
+        <div class="checklist">
+          <div class="chk-head">
+            <i class="ti ti-check" aria-hidden="true" style="color:#0C447C;"></i>
+            <span class="chk-head-title">Teste final</span>
+            <span class="chk-head-badge badge-obrig">obrigatório</span>
+          </div>
+          <div class="chk-item"><div class="chk-num" id="f1037-t1">1</div><span class="chk-lbl">Entrada de água</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1037-t1','fin-1037')" aria-label="Entrada de água"></div>
+          <div class="chk-item"><div class="chk-num" id="f1037-t2">2</div><span class="chk-lbl">Agitação</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1037-t2','fin-1037')" aria-label="Agitação"></div>
+          <div class="chk-item"><div class="chk-num" id="f1037-t3">3</div><span class="chk-lbl">Centrifugação</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1037-t3','fin-1037')" aria-label="Centrifugação"></div>
+          <div class="chk-item"><div class="chk-num" id="f1037-t4">4</div><span class="chk-lbl">Saída de água</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1037-t4','fin-1037')" aria-label="Saída de água"></div>
+        </div>
+        <div class="checklist">
+          <div class="chk-head">
+            <i class="ti ti-sparkles" aria-hidden="true" style="color:#085041;"></i>
+            <span class="chk-head-title">Polimento</span>
+            <span class="chk-head-badge badge-limpeza">limpeza</span>
+          </div>
+          <div class="chk-item"><div class="chk-num" id="f1037-p1">1</div><span class="chk-lbl">Tampa e painel</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1037-p1','fin-1037')" aria-label="Tampa e painel"></div>
+          <div class="chk-item"><div class="chk-num" id="f1037-p2">2</div><span class="chk-lbl">Lateral e fundo</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1037-p2','fin-1037')" aria-label="Lateral e fundo"></div>
+          <div class="chk-item"><div class="chk-num" id="f1037-p3">3</div><span class="chk-lbl">Borracha da porta</span><input type="checkbox" class="chk-cb" onchange="onFin(this,'f1037-p3','fin-1037')" aria-label="Borracha da porta"></div>
+        </div>
+      </div>
+      <div class="srv-footer">
+        <span class="hint" id="hint-fin-1037">Marque todos os itens para liberar entrega</span>
+        <button class="concluir-btn" id="btn-fin-1037" disabled onclick="concluirFin('fin-1037')"><i class="ti ti-lock" aria-hidden="true"></i> Liberar para entrega</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function allFin(cardId){
+  var card=document.getElementById(cardId);
+  var all=card.querySelectorAll('.chk-cb');
+  for(var i=0;i<all.length;i++){if(!all[i].checked)return false;}
+  return true;
+}
+function onFin(cb,numId,cardId){
+  var num=document.getElementById(numId);
+  if(cb.checked){num.classList.add('done');}else{num.classList.remove('done');}
+  var btn=document.getElementById('btn-'+cardId);
+  var hint=document.getElementById('hint-'+cardId);
+  if(allFin(cardId)){
+    btn.disabled=false;btn.classList.add('ready');
+    btn.innerHTML='<i class="ti ti-circle" aria-hidden="true"></i> Liberar para entrega';
+    hint.textContent='Pronto para entrega';hint.style.color='#27500A';
+  } else {
+    btn.disabled=true;btn.classList.remove('ready');
+    btn.innerHTML='<i class="ti ti-lock" aria-hidden="true"></i> Liberar para entrega';
+    hint.textContent='Marque todos os itens para liberar entrega';hint.style.color='';
+  }
+}
+function concluirFin(cardId){
+  if(!allFin(cardId))return;
+  var card=document.getElementById(cardId);
+  var btn=document.getElementById('btn-'+cardId);
+  var hint=document.getElementById('hint-'+cardId);
+  card.classList.add('done');
+  btn.classList.remove('ready');btn.classList.add('done-btn');btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-check" aria-hidden="true"></i> Liberado para entrega';
+  hint.textContent='Agendando entrega...';hint.style.color='#27500A';
+  var p=document.getElementById('cnt-pendentes');
+  var r=document.getElementById('cnt-prontos');
+  var pv=parseInt(p.textContent)-1;var rv=parseInt(r.textContent)+1;
+  if(pv>=0)p.textContent=pv;
+  r.textContent=rv;
+}
+</script>

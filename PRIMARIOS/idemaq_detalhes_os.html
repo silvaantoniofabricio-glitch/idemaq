@@ -1,0 +1,242 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.os-header{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 16px;margin-bottom:10px;}
+.os-header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.os-num{font-size:16px;font-weight:500;color:var(--color-text-primary);}
+.os-acoes{display:flex;gap:6px;}
+.btn-sm{display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.btn-sm.blue{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.os-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.meta-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-text-secondary);}
+.meta-item i{font-size:14px;}
+.meta-item span{color:var(--color-text-primary);}
+.tag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;}
+.tag-ambos{background:#e8d5f5;color:#4a2080;}
+.tag-limpeza{background:#B8CCE4;color:#0C447C;}
+.tag-manutencao{background:#FFD966;color:#7a6200;}
+.tag-status{background:#FAEEDA;color:#854F0B;}
+.layout{display:grid;grid-template-columns:1fr 200px;gap:10px;margin-bottom:10px;}
+.bloco{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:10px;}
+.bloco-head{display:flex;align-items:center;gap:7px;padding:9px 14px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.bloco-head i{font-size:15px;color:#5B9BD5;}
+.bloco-title{font-size:12px;font-weight:500;color:var(--color-text-primary);}
+.bloco-body{padding:12px 14px;}
+.info-row{display:flex;align-items:flex-start;gap:7px;font-size:12px;margin-bottom:7px;}
+.info-row:last-child{margin-bottom:0;}
+.info-row i{font-size:14px;color:var(--color-text-secondary);margin-top:1px;flex-shrink:0;}
+.info-lbl{color:var(--color-text-secondary);min-width:90px;flex-shrink:0;}
+.info-val{color:var(--color-text-primary);}
+.foto-box{background:#B8CCE4;border-radius:var(--border-radius-md);height:100px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+.foto-box i{font-size:28px;color:#0C447C;}
+.sn{font-size:11px;color:var(--color-text-secondary);text-align:center;}
+.defeito-box{background:#FAEEDA;border-radius:var(--border-radius-md);padding:8px 10px;margin-bottom:10px;display:flex;align-items:flex-start;gap:7px;}
+.defeito-box i{font-size:15px;color:#854F0B;flex-shrink:0;margin-top:1px;}
+.defeito-txt{font-size:12px;color:#633806;font-style:italic;}
+.testes-grid{display:grid;grid-template-columns:1fr auto;gap:0;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;margin-bottom:10px;}
+.tg-head{background:var(--color-background-secondary);font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:6px 10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.tg-row{display:contents;}
+.tg-lbl{font-size:12px;color:var(--color-text-primary);padding:7px 10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.tg-res{font-size:11px;padding:7px 10px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:flex-end;}
+.tg-last .tg-lbl,.tg-last .tg-res{border-bottom:none;}
+.res-ok{color:#27500A;background:#EAF3DE;padding:2px 8px;border-radius:20px;font-weight:500;}
+.res-barulho{color:#854F0B;background:#FAEEDA;padding:2px 8px;border-radius:20px;font-weight:500;}
+.res-defeito{color:#791F1F;background:#FCEBEB;padding:2px 8px;border-radius:20px;font-weight:500;}
+.obs-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 10px;font-size:12px;color:var(--color-text-secondary);font-style:italic;}
+.pecas-list{display:flex;flex-direction:column;gap:0;}
+.peca-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.peca-row:last-child{border-bottom:none;}
+.peca-nome{color:var(--color-text-primary);}
+.peca-tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.badge-man{background:#FFD966;color:#7a6200;}
+.badge-troca{background:#FAECE7;color:#712B13;}
+.obs-interna{background:#FFF8E1;border-radius:var(--border-radius-md);padding:8px 10px;font-size:12px;color:#7a6200;margin-bottom:8px;}
+.obs-interna-lbl{font-size:10px;font-weight:500;color:#854F0B;margin-bottom:3px;}
+.obs-servico{background:#EAF3DE;border-radius:var(--border-radius-md);padding:8px 10px;font-size:12px;color:#27500A;}
+.obs-servico-lbl{font-size:10px;font-weight:500;color:#3B6D11;margin-bottom:3px;}
+.fin-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.fin-row:last-child{border-bottom:none;}
+.fin-lbl{color:var(--color-text-secondary);}
+.fin-val{font-weight:500;color:var(--color-text-primary);}
+.fin-pago{color:#27500A;background:#EAF3DE;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;}
+.timeline{display:flex;flex-direction:column;gap:0;}
+.tl-item{display:flex;gap:10px;padding-bottom:12px;position:relative;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:#5B9BD5;flex-shrink:0;margin-top:3px;}
+.tl-dot.done{background:#639922;}
+.tl-line{position:absolute;left:4px;top:13px;bottom:0;width:1px;background:var(--color-border-tertiary);}
+.tl-item:last-child .tl-line{display:none;}
+.tl-content{flex:1;}
+.tl-data{font-size:11px;color:var(--color-text-secondary);}
+.tl-desc{font-size:12px;color:var(--color-text-primary);}
+</style>
+
+<h2 class="sr-only">Tela de detalhes da OS #1037 — João Costa — Samsung WD11</h2>
+
+<div class="wrap">
+
+  <div class="os-header">
+    <div class="os-header-top">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="os-num">OS #1037</span>
+        <span class="tag tag-ambos">limpeza + manutenção</span>
+        <span class="tag tag-status">Em manutenção</span>
+      </div>
+      <div class="os-acoes">
+        <div class="btn-sm"><i class="ti ti-edit" aria-hidden="true" style="font-size:13px;"></i> Editar</div>
+        <div class="btn-sm"><i class="ti ti-printer" aria-hidden="true" style="font-size:13px;"></i> Imprimir</div>
+        <div class="btn-sm blue"><i class="ti ti-arrow-right" aria-hidden="true" style="font-size:13px;"></i> Avançar etapa</div>
+      </div>
+    </div>
+    <div class="os-meta">
+      <div class="meta-item"><i class="ti ti-calendar" aria-hidden="true"></i><span>Aberta 10/05/2025</span></div>
+      <div class="meta-item"><i class="ti ti-clock" aria-hidden="true"></i><span>3 dias em aberto</span></div>
+      <div class="meta-item"><i class="ti ti-user" aria-hidden="true"></i><span>João Costa</span></div>
+      <div class="meta-item"><i class="ti ti-phone" aria-hidden="true"></i><span>(67) 9 9801-3322</span></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+
+      <div class="bloco">
+        <div class="bloco-head"><i class="ti ti-user" aria-hidden="true"></i><span class="bloco-title">Cliente e máquina</span></div>
+        <div class="bloco-body">
+          <div style="display:grid;grid-template-columns:1fr 110px;gap:12px;align-items:start;">
+            <div>
+              <div class="info-row"><i class="ti ti-map-pin" aria-hidden="true"></i><span class="info-lbl">Endereço</span><span class="info-val">Av. Sete de Set., 321 — Centro</span></div>
+              <div class="info-row"><i class="ti ti-washing-machine" aria-hidden="true"></i><span class="info-lbl">Máquina</span><span class="info-val">Samsung · WD11</span></div>
+              <div class="info-row"><i class="ti ti-barcode" aria-hidden="true"></i><span class="info-lbl">Nº de série</span><span class="info-val">SAM2023WD110012</span></div>
+            </div>
+            <div>
+              <div class="foto-box"><i class="ti ti-camera" aria-hidden="true"></i></div>
+              <div class="sn">Foto da máquina</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bloco">
+        <div class="bloco-head"><i class="ti ti-clipboard-check" aria-hidden="true"></i><span class="bloco-title">Pré-diagnóstico</span></div>
+        <div class="bloco-body">
+          <div class="defeito-box">
+            <i class="ti ti-message-circle" aria-hidden="true"></i>
+            <span class="defeito-txt">"Máquina fazendo barulho forte durante a centrifugação"</span>
+          </div>
+          <div class="testes-grid">
+            <div class="tg-head">Teste</div><div class="tg-head" style="text-align:right;">Resultado</div>
+            <div class="tg-row"><div class="tg-lbl">Entrada de água</div><div class="tg-res"><span class="res-ok">Ok</span></div></div>
+            <div class="tg-row"><div class="tg-lbl">Saída de água</div><div class="tg-res"><span class="res-ok">Ok</span></div></div>
+            <div class="tg-row"><div class="tg-lbl">Agitação</div><div class="tg-res"><span class="res-ok">Ok</span></div></div>
+            <div class="tg-row tg-last"><div class="tg-lbl">Centrifugação</div><div class="tg-res"><span class="res-barulho">Com barulho</span></div></div>
+          </div>
+          <div class="obs-box">Máquina com leve amassado na lateral direita — cliente ciente antes da coleta.</div>
+        </div>
+      </div>
+
+      <div class="bloco">
+        <div class="bloco-head"><i class="ti ti-tool" aria-hidden="true"></i><span class="bloco-title">Serviço e peças</span></div>
+        <div class="bloco-body">
+          <div class="pecas-list" style="margin-bottom:10px;">
+            <div class="peca-row"><span class="peca-nome">Rolamentos do cesto</span><span class="peca-tag badge-troca">troca</span></div>
+            <div class="peca-row"><span class="peca-nome">Correia</span><span class="peca-tag badge-man">manutenção</span></div>
+          </div>
+          <div class="obs-interna">
+            <div class="obs-interna-lbl">Observações internas</div>
+            Rolamento traseiro com folga excessiva. Correia com desgaste mas ainda recuperável. Comprar rolamento no ML antes de ligar pro cliente.
+          </div>
+          <div class="obs-servico">
+            <div class="obs-servico-lbl">Observações do serviço</div>
+            Realizada limpeza completa e substituição dos rolamentos do cesto. Correia revitalizada. Máquina testada e aprovada. Garantia de 90 dias.
+          </div>
+        </div>
+      </div>
+
+      <div class="bloco">
+        <div class="bloco-head"><i class="ti ti-coin" aria-hidden="true"></i><span class="bloco-title">Financeiro</span></div>
+        <div class="bloco-body">
+          <div class="fin-row"><span class="fin-lbl">Serviço</span><span class="fin-val">R$ 350,00</span></div>
+          <div class="fin-row"><span class="fin-lbl">Peças</span><span class="fin-val">R$ 120,00</span></div>
+          <div class="fin-row"><span class="fin-lbl">Total</span><span class="fin-val" style="font-size:14px;">R$ 470,00</span></div>
+          <div class="fin-row"><span class="fin-lbl">Pagamento</span><span class="fin-pago">Pago · PIX</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div>
+      <div class="bloco">
+        <div class="bloco-head"><i class="ti ti-history" aria-hidden="true"></i><span class="bloco-title">Histórico</span></div>
+        <div class="bloco-body">
+          <div class="timeline">
+            <div class="tl-item">
+              <div class="tl-dot done"></div>
+              <div class="tl-line"></div>
+              <div class="tl-content">
+                <div class="tl-data">10/05 · 08h30</div>
+                <div class="tl-desc">OS aberta</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot done"></div>
+              <div class="tl-line"></div>
+              <div class="tl-content">
+                <div class="tl-data">10/05 · 14h00</div>
+                <div class="tl-desc">Máquina coletada</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot done"></div>
+              <div class="tl-line"></div>
+              <div class="tl-content">
+                <div class="tl-data">11/05 · 09h15</div>
+                <div class="tl-desc">Pré-diagnóstico realizado</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot done"></div>
+              <div class="tl-line"></div>
+              <div class="tl-content">
+                <div class="tl-data">11/05 · 10h00</div>
+                <div class="tl-desc">Orçamento enviado ao cliente</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot done"></div>
+              <div class="tl-line"></div>
+              <div class="tl-content">
+                <div class="tl-data">11/05 · 11h22</div>
+                <div class="tl-desc">Orçamento aprovado</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot done"></div>
+              <div class="tl-line"></div>
+              <div class="tl-content">
+                <div class="tl-data">12/05 · 08h00</div>
+                <div class="tl-desc">Limpeza iniciada</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot done"></div>
+              <div class="tl-line"></div>
+              <div class="tl-content">
+                <div class="tl-data">12/05 · 10h30</div>
+                <div class="tl-desc">Limpeza concluída</div>
+              </div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-dot" style="background:#FFD966;border:0.5px solid #c8a800;"></div>
+              <div class="tl-content">
+                <div class="tl-data">13/05 · em andamento</div>
+                <div class="tl-desc" style="color:#854F0B;">Manutenção em andamento</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

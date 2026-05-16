@@ -1,0 +1,172 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.topbar-title{font-size:15px;font-weight:500;color:var(--color-text-primary);}
+.topbar-actions{display:flex;gap:8px;}
+.btn{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.btn.primary{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.search-row{display:flex;gap:8px;margin-bottom:12px;}
+.search-row input{flex:1;font-size:13px;padding:7px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.layout{display:grid;grid-template-columns:1fr 280px;gap:12px;}
+.lista{display:flex;flex-direction:column;gap:0;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.lista-head{display:grid;grid-template-columns:1fr 100px 80px 60px;gap:0;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);}
+.lh-cell{font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:8px 12px;}
+.lista-row{display:grid;grid-template-columns:1fr 100px 80px 60px;border-bottom:0.5px solid var(--color-border-tertiary);cursor:pointer;transition:background 0.1s;}
+.lista-row:last-child{border-bottom:none;}
+.lista-row:hover{background:var(--color-background-secondary);}
+.lista-row.selected{background:#E6F1FB;}
+.lr-cell{padding:9px 12px;font-size:13px;color:var(--color-text-primary);display:flex;align-items:center;}
+.lr-cell.muted{color:var(--color-text-secondary);font-size:12px;}
+.avatar{width:26px;height:26px;border-radius:50%;background:#B8CCE4;color:#0C447C;font-size:10px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:8px;}
+.tag-ativo{font-size:10px;padding:2px 7px;border-radius:20px;background:#EAF3DE;color:#27500A;font-weight:500;}
+.tag-inativo{font-size:10px;padding:2px 7px;border-radius:20px;background:#F1EFE8;color:#5F5E5A;font-weight:500;}
+.detalhe{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px;}
+.det-avatar{width:44px;height:44px;border-radius:50%;background:#B8CCE4;color:#0C447C;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.det-nome{font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px;}
+.det-since{font-size:11px;color:var(--color-text-secondary);margin-bottom:12px;}
+.det-divider{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:10px 0;}
+.det-row{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--color-text-secondary);margin-bottom:7px;}
+.det-row i{font-size:14px;margin-top:1px;flex-shrink:0;}
+.det-row span{color:var(--color-text-primary);}
+.det-section{font-size:11px;font-weight:500;color:var(--color-text-secondary);margin:10px 0 6px;}
+.os-mini{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);margin-bottom:4px;font-size:12px;}
+.os-mini-num{color:var(--color-text-secondary);}
+.os-mini-tipo{font-size:10px;padding:1px 6px;border-radius:20px;}
+.os-mini-val{font-size:12px;font-weight:500;color:var(--color-text-primary);}
+.tag-l{background:#B8CCE4;color:#0C447C;}
+.tag-m{background:#FFD966;color:#7a6200;}
+.tag-a{background:#e8d5f5;color:#4a2080;}
+.det-total{display:flex;justify-content:space-between;padding:7px 8px;border-radius:var(--border-radius-md);background:#E6F1FB;font-size:12px;margin-top:6px;}
+.det-total-lbl{color:#0C447C;}
+.det-total-val{font-weight:500;color:#0C447C;}
+.det-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:var(--border-radius-md);border:0.5px solid #5B9BD5;background:transparent;font-size:12px;color:#5B9BD5;cursor:pointer;margin-top:10px;}
+</style>
+
+<h2 class="sr-only">Cadastro de clientes Idemaq — lista com busca e painel de detalhes</h2>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="topbar-title">Clientes</span>
+    <div class="topbar-actions">
+      <div class="btn"><i class="ti ti-download" aria-hidden="true" style="font-size:14px;"></i> Exportar</div>
+      <div class="btn primary" onclick="sendPrompt('Abrir formulário de novo cliente')"><i class="ti ti-plus" aria-hidden="true" style="font-size:14px;"></i> Novo cliente ↗</div>
+    </div>
+  </div>
+
+  <div class="search-row">
+    <input type="text" placeholder="Buscar por nome, telefone ou endereço..." oninput="filtrar(this.value)">
+  </div>
+
+  <div class="layout">
+    <div class="lista" id="lista">
+      <div class="lista-head">
+        <div class="lh-cell">Cliente</div>
+        <div class="lh-cell">Telefone</div>
+        <div class="lh-cell">OS</div>
+        <div class="lh-cell">Status</div>
+      </div>
+      <div class="lista-row selected" onclick="selecionar(this,0)">
+        <div class="lr-cell"><div class="avatar">MS</div>Maria Silva</div>
+        <div class="lr-cell muted">(67) 9 9923-1188</div>
+        <div class="lr-cell muted">8 OS</div>
+        <div class="lr-cell"><span class="tag-ativo">ativo</span></div>
+      </div>
+      <div class="lista-row" onclick="selecionar(this,1)">
+        <div class="lr-cell"><div class="avatar">JC</div>João Costa</div>
+        <div class="lr-cell muted">(67) 9 9801-3322</div>
+        <div class="lr-cell muted">3 OS</div>
+        <div class="lr-cell"><span class="tag-ativo">ativo</span></div>
+      </div>
+      <div class="lista-row" onclick="selecionar(this,2)">
+        <div class="lr-cell"><div class="avatar">CN</div>Carlos Neto</div>
+        <div class="lr-cell muted">(67) 9 9745-6600</div>
+        <div class="lr-cell muted">5 OS</div>
+        <div class="lr-cell"><span class="tag-ativo">ativo</span></div>
+      </div>
+      <div class="lista-row" onclick="selecionar(this,3)">
+        <div class="lr-cell"><div class="avatar">AR</div>Ana Reis</div>
+        <div class="lr-cell muted">(67) 9 9812-4411</div>
+        <div class="lr-cell muted">2 OS</div>
+        <div class="lr-cell"><span class="tag-ativo">ativo</span></div>
+      </div>
+      <div class="lista-row" onclick="selecionar(this,4)">
+        <div class="lr-cell"><div class="avatar">SP</div>Silvio Prado</div>
+        <div class="lr-cell muted">(67) 9 9600-7788</div>
+        <div class="lr-cell muted">1 OS</div>
+        <div class="lr-cell"><span class="tag-inativo">inativo</span></div>
+      </div>
+      <div class="lista-row" onclick="selecionar(this,5)">
+        <div class="lr-cell"><div class="avatar">VC</div>Vera Cruz</div>
+        <div class="lr-cell muted">(67) 9 9711-2233</div>
+        <div class="lr-cell muted">4 OS</div>
+        <div class="lr-cell"><span class="tag-ativo">ativo</span></div>
+      </div>
+      <div class="lista-row" onclick="selecionar(this,6)">
+        <div class="lr-cell"><div class="avatar">RL</div>Roberto Lima</div>
+        <div class="lr-cell muted">(67) 9 9533-9900</div>
+        <div class="lr-cell muted">6 OS</div>
+        <div class="lr-cell"><span class="tag-ativo">ativo</span></div>
+      </div>
+    </div>
+
+    <div class="detalhe" id="detalhe">
+      <div class="det-avatar" id="det-av">MS</div>
+      <div class="det-nome" id="det-nome">Maria Silva</div>
+      <div class="det-since" id="det-since">Cliente desde jan/2022 · 8 atendimentos</div>
+      <hr class="det-divider">
+      <div class="det-row"><i class="ti ti-phone" aria-hidden="true"></i><span id="det-tel">(67) 9 9923-1188</span></div>
+      <div class="det-row"><i class="ti ti-map-pin" aria-hidden="true"></i><span id="det-end">Rua Ipê, 503 — Vila Nova</span></div>
+      <div class="det-row"><i class="ti ti-note" aria-hidden="true"></i><span id="det-obs">Portão verde, campainha no lado direito</span></div>
+      <hr class="det-divider">
+      <div class="det-section">Últimas OS</div>
+      <div id="det-os">
+        <div class="os-mini"><span class="os-mini-num">#1033 · mai/25</span><span class="os-mini-tipo tag-l">limpeza</span><span class="os-mini-val">R$ 185</span></div>
+        <div class="os-mini"><span class="os-mini-num">#0998 · fev/25</span><span class="os-mini-tipo tag-a">limpeza+man.</span><span class="os-mini-val">R$ 350</span></div>
+        <div class="os-mini"><span class="os-mini-num">#0971 · nov/24</span><span class="os-mini-tipo tag-l">limpeza</span><span class="os-mini-val">R$ 185</span></div>
+      </div>
+      <div class="det-total"><span class="det-total-lbl">Total gasto</span><span class="det-total-val" id="det-total">R$ 1.480</span></div>
+      <button class="det-btn" onclick="sendPrompt('Abrir nova OS para Maria Silva')"><i class="ti ti-plus" aria-hidden="true" style="font-size:14px;"></i> Nova OS para este cliente ↗</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var clientes = [
+  {av:'MS',nome:'Maria Silva',since:'jan/2022',ats:8,tel:'(67) 9 9923-1188',end:'Rua Ipê, 503 — Vila Nova',obs:'Portão verde, campainha no lado direito',os:[{n:'#1033',d:'mai/25',t:'limpeza',tc:'tag-l',v:'R$ 185'},{n:'#0998',d:'fev/25',t:'limpeza+man.',tc:'tag-a',v:'R$ 350'},{n:'#0971',d:'nov/24',t:'limpeza',tc:'tag-l',v:'R$ 185'}],total:'R$ 1.480'},
+  {av:'JC',nome:'João Costa',since:'mar/2023',ats:3,tel:'(67) 9 9801-3322',end:'Av. Sete de Set., 321 — Centro',obs:'—',os:[{n:'#1037',d:'mai/25',t:'limpeza+man.',tc:'tag-a',v:'R$ 350'},{n:'#1010',d:'jan/25',t:'manutenção',tc:'tag-m',v:'R$ 185'},{n:'#0990',d:'out/24',t:'limpeza',tc:'tag-l',v:'R$ 185'}],total:'R$ 720'},
+  {av:'CN',nome:'Carlos Neto',since:'jun/2021',ats:5,tel:'(67) 9 9745-6600',end:'Rua das Flores, 88 — Jardim',obs:'Ligar antes de chegar',os:[{n:'#1038',d:'mai/25',t:'limpeza',tc:'tag-l',v:'R$ 185'},{n:'#1005',d:'dez/24',t:'limpeza',tc:'tag-l',v:'R$ 185'},{n:'#0980',d:'ago/24',t:'manutenção',tc:'tag-m',v:'R$ 250'}],total:'R$ 985'},
+  {av:'AR',nome:'Ana Reis',since:'set/2024',ats:2,tel:'(67) 9 9812-4411',end:'Rua Mato Grosso, 17 — Centro',obs:'—',os:[{n:'#1036',d:'mai/25',t:'manutenção',tc:'tag-m',v:'R$ 250'},{n:'#1001',d:'nov/24',t:'limpeza',tc:'tag-l',v:'R$ 185'}],total:'R$ 435'},
+  {av:'SP',nome:'Silvio Prado',since:'mai/2025',ats:1,tel:'(67) 9 9600-7788',end:'Rua Cuiabá, 77 — Bairro Alto',obs:'—',os:[{n:'#1034',d:'mai/25',t:'limpeza',tc:'tag-l',v:'R$ 185'}],total:'R$ 185'},
+  {av:'VC',nome:'Vera Cruz',since:'abr/2022',ats:4,tel:'(67) 9 9711-2233',end:'Rua Goiás, 34 — Jardim',obs:'Portão azul, tocar campainha 2x',os:[{n:'#1028',d:'mai/25',t:'limpeza',tc:'tag-l',v:'R$ 185'},{n:'#1000',d:'dez/24',t:'limpeza+man.',tc:'tag-a',v:'R$ 350'},{n:'#0960',d:'jul/24',t:'limpeza',tc:'tag-l',v:'R$ 185'}],total:'R$ 905'},
+  {av:'RL',nome:'Roberto Lima',since:'fev/2021',ats:6,tel:'(67) 9 9533-9900',end:'Rua Bahia, 156 — Vila Nova',obs:'Prefere ligações à tarde',os:[{n:'#1020',d:'abr/25',t:'manutenção',tc:'tag-m',v:'R$ 350'},{n:'#0995',d:'jan/25',t:'limpeza',tc:'tag-l',v:'R$ 185'},{n:'#0970',d:'out/24',t:'limpeza+man.',tc:'tag-a',v:'R$ 350'}],total:'R$ 1.920'}
+];
+
+function selecionar(row, idx) {
+  document.querySelectorAll('.lista-row').forEach(function(r){r.classList.remove('selected');});
+  row.classList.add('selected');
+  var c = clientes[idx];
+  document.getElementById('det-av').textContent = c.av;
+  document.getElementById('det-nome').textContent = c.nome;
+  document.getElementById('det-since').textContent = 'Cliente desde ' + c.since + ' · ' + c.ats + ' atendimentos';
+  document.getElementById('det-tel').textContent = c.tel;
+  document.getElementById('det-end').textContent = c.end;
+  document.getElementById('det-obs').textContent = c.obs;
+  document.getElementById('det-total').textContent = c.total;
+  var osHtml = '';
+  c.os.forEach(function(o){
+    osHtml += '<div class="os-mini"><span class="os-mini-num">'+o.n+' · '+o.d+'</span><span class="os-mini-tipo '+o.tc+'">'+o.t+'</span><span class="os-mini-val">'+o.v+'</span></div>';
+  });
+  document.getElementById('det-os').innerHTML = osHtml;
+}
+
+function filtrar(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.lista-row').forEach(function(row, i) {
+    var c = clientes[i];
+    var match = c.nome.toLowerCase().includes(q) || c.tel.includes(q) || c.end.toLowerCase().includes(q);
+    row.style.display = match ? '' : 'none';
+  });
+}
+</script>

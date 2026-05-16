@@ -1,0 +1,65 @@
+/* idemaq-src/styles/global.css
+ * Estilo global do Idemaq — animações, .idemaq-card (sombra estilo Conta Azul no light),
+ * scrollbar, reset básico e import de fontes/ícones.
+ *
+ * Importe uma vez no entry point: `import './styles/global.css'`
+ */
+
+/* Tabler Icons */
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css');
+
+/* Inter (UI + display) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Reset básico */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; min-height: 100%; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button { font-family: inherit; }
+a { text-decoration: none; }
+h1, h2, h3, h4 { margin: 0; font-weight: 500; }
+
+/* Scrollbar discreta */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(127, 127, 127, 0.25); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(127, 127, 127, 0.4); }
+
+/* Animações compartilhadas */
+@keyframes idemaq-spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes idemaq-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+@keyframes idemaq-pulse { 0%,100%{opacity:.5} 50%{opacity:.25} }
+
+.idemaq-shake    { animation: idemaq-shake .3s ease both !important; }
+.idemaq-skeleton { animation: idemaq-pulse 1.4s ease-in-out infinite; border-radius: 6px; }
+
+/*
+ * Estilo "Conta Azul" no light mode: cards com sombra suave em vez de bordas.
+ * No dark, o estilo do .idemaq-card vem das bordas inline do componente.
+ * (regra ativada via classe `idemaq-theme-claro` no <html>, controlada pelo useTheme)
+ */
+html.idemaq-theme-claro .idemaq-card {
+  border-top: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  transition: box-shadow .15s, transform .15s, border-color .15s;
+}
+html.idemaq-theme-claro .idemaq-card:not([data-no-left-border]) {
+  border-left: none !important;
+}
+html.idemaq-theme-claro .idemaq-card.idemaq-card-hover:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.06);
+  transform: translateY(-1px);
+}
+
+/* sr-only para títulos acessíveis */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(cp \"C:/Users/Toni-PC/Downloads/App_3.jsx\" \"C:/Users/Toni-PC/projetos/idemaq/src/App.jsx\")",
+      "Bash(git commit *)",
+      "Bash(cp \"C:/Users/Toni-PC/Downloads/App_11.jsx\" \"C:/Users/Toni-PC/projetos/idemaq/src/App.jsx\" && cd \"c:/Users/Toni-PC/projetos/idemaq\" && npm run build 2>&1)",
+      "Bash(cp \"C:/Users/Toni-PC/Downloads/App \\(1\\).jsx\" \"C:/Users/Toni-PC/projetos/idemaq/src/App.jsx\" && cd \"c:/Users/Toni-PC/projetos/idemaq\" && npm run build 2>&1)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Toni-PC\\Downloads"
+    ]
+  }
+}

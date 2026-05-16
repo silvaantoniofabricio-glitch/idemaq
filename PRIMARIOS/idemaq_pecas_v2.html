@@ -1,0 +1,98 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.cat-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.cat-head{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.cat-head i{font-size:16px;color:#5B9BD5;}
+.cat-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.cat-count{font-size:11px;padding:1px 8px;border-radius:20px;background:#B8CCE4;color:#0C447C;font-weight:500;margin-left:auto;}
+.peca-list{padding:8px 0;}
+.peca-item{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.peca-item:last-child{border-bottom:none;}
+.peca-nome{font-size:13px;color:var(--color-text-primary);}
+.peca-tags{display:flex;gap:4px;}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.tag-man{background:#FFD966;color:#7a6200;}
+.tag-troca{background:#FAECE7;color:#712B13;}
+</style>
+
+<h2 class="sr-only">Lista de peças atualizada da máquina de lavar — checklist de manutenção Idemaq</h2>
+
+<div class="wrap">
+  <div class="grid">
+
+    <div class="cat-card">
+      <div class="cat-head">
+        <i class="ti ti-rotate-clockwise" aria-hidden="true"></i>
+        <span class="cat-title">Motor e transmissão</span>
+        <span class="cat-count">9</span>
+      </div>
+      <div class="peca-list">
+        <div class="peca-item"><span class="peca-nome">Motor principal</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Correia</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Polia do motor</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Mecanismo</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Embreagem</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Polia do mecanismo</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Catraca / engaste</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Rolamentos do cesto</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Rolamento do eixo</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Rolamentos do motor</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="cat-head">
+        <i class="ti ti-droplet" aria-hidden="true"></i>
+        <span class="cat-title">Sistema de água</span>
+        <span class="cat-count">7</span>
+      </div>
+      <div class="peca-list">
+        <div class="peca-item"><span class="peca-nome">Bomba de drenagem</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Válvula de entrada</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Mangueira de entrada</span><div class="peca-tags"><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Mangueira de saída</span><div class="peca-tags"><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Mangueira interna</span><div class="peca-tags"><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Pressostato</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Borracha da porta</span><div class="peca-tags"><span class="tag tag-troca">troca</span></div></div>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="cat-head">
+        <i class="ti ti-bolt" aria-hidden="true"></i>
+        <span class="cat-title">Sistema elétrico</span>
+        <span class="cat-count">6</span>
+      </div>
+      <div class="peca-list">
+        <div class="peca-item"><span class="peca-nome">Placa de potência</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Placa interface</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Timer mecânico</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Capacitor</span><div class="peca-tags"><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Sensor de temperatura</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Sensor da tampa</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Trava da porta</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+      </div>
+    </div>
+
+    <div class="cat-card">
+      <div class="cat-head">
+        <i class="ti ti-box" aria-hidden="true"></i>
+        <span class="cat-title">Estrutura</span>
+        <span class="cat-count">7</span>
+      </div>
+      <div class="peca-list">
+        <div class="peca-item"><span class="peca-nome">Cesto</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Agitador</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Suporte do cesto</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Eixo do cesto</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Suspensão</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Tirantes da suspensão</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+        <div class="peca-item"><span class="peca-nome">Pé nivelador</span><div class="peca-tags"><span class="tag tag-man">man.</span><span class="tag tag-troca">troca</span></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,250 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 16px;margin-bottom:10px;}
+.card.locked{background:var(--color-background-secondary);opacity:0.7;}
+.card.active-block{border-color:#5B9BD5;}
+.card.done-block{border-color:#97C459;background:#EAF3DE;}
+.sec-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.sec-title{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.done-badge{display:flex;align-items:center;gap:4px;font-size:11px;color:#27500A;background:#EAF3DE;padding:2px 8px;border-radius:20px;margin-left:auto;}
+.active-badge{display:flex;align-items:center;gap:4px;font-size:11px;color:#0C447C;background:#E6F1FB;padding:2px 8px;border-radius:20px;margin-left:auto;}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.tag-blue{background:#E6F1FB;color:#0C447C;}
+.tag-green{background:#EAF3DE;color:#27500A;}
+.tag-amber{background:#FAEEDA;color:#633806;}
+.datas-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;}
+.data-lbl{font-size:11px;color:var(--color-text-secondary);}
+.data-val{font-size:12px;font-weight:500;color:var(--color-text-primary);}
+.data-val.pending{color:var(--color-text-tertiary);font-style:italic;font-weight:400;}
+.data-val.done{color:#27500A;}
+.read-row{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--color-text-secondary);margin-bottom:5px;}
+.read-row i{font-size:14px;flex-shrink:0;}
+.read-val{color:var(--color-text-primary);}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.resumo-box{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;margin-bottom:10px;}
+.resumo-row{display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.resumo-row:last-child{border-bottom:none;}
+.resumo-lbl{color:var(--color-text-secondary);}
+.resumo-val{font-weight:500;color:var(--color-text-primary);}
+.resumo-total{display:flex;justify-content:space-between;padding:10px 12px;background:var(--color-background-secondary);font-size:14px;font-weight:500;}
+.agend-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:10px;}
+.agend-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.agend-row:last-child{margin-bottom:0;}
+.agend-lbl{font-size:12px;color:var(--color-text-secondary);min-width:80px;}
+.agend-val{font-size:13px;font-weight:500;color:var(--color-text-primary);}
+.cal-btn{display:flex;align-items:center;gap:4px;font-size:11px;padding:4px 9px;border-radius:var(--border-radius-md);border:0.5px solid #5B9BD5;background:transparent;color:#5B9BD5;cursor:pointer;}
+.pgto-opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px;}
+.pgto-opt{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);cursor:pointer;font-size:12px;color:var(--color-text-secondary);}
+.pgto-opt i{font-size:20px;}
+.pgto-opt.sel{background:#E6F1FB;border-color:#5B9BD5;color:#0C447C;}
+.pgto-opt.sel i{color:#5B9BD5;}
+.pgto-parcelado{margin-bottom:10px;}
+.pgto-parcelado select{width:100%;font-size:13px;padding:7px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.prazo-box{background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:10px;}
+.prazo-lbl{font-size:12px;font-weight:500;color:#633806;margin-bottom:6px;}
+.prazo-row{display:flex;align-items:center;gap:10px;}
+.prazo-row input{flex:1;font-size:13px;padding:6px 10px;border-radius:var(--border-radius-md);border:0.5px solid #EF9F27;background:var(--color-background-primary);color:var(--color-text-primary);}
+.field label{font-size:12px;color:var(--color-text-secondary);margin-bottom:4px;display:block;}
+.concluir-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:var(--border-radius-md);border:none;background:#5B9BD5;font-size:13px;color:#fff;cursor:pointer;font-weight:500;margin-top:4px;}
+.concluir-btn.green{background:#639922;}
+.concluido-box{display:flex;align-items:center;gap:12px;background:#EAF3DE;border-radius:var(--border-radius-md);padding:12px;}
+.concluido-icon{width:40px;height:40px;border-radius:50%;background:#97C459;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.concluido-icon i{font-size:20px;color:#fff;}
+.concluido-txt{font-size:13px;font-weight:500;color:#27500A;}
+.concluido-sub{font-size:12px;color:#3B6D11;margin-top:2px;}
+.tl{display:flex;flex-direction:column;}
+.tl-item{display:flex;gap:10px;padding-bottom:10px;position:relative;}
+.tl-item:last-child{padding-bottom:0;}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.tl-dot.done{background:#5B9BD5;}
+.tl-dot.done-green{background:#639922;}
+.tl-dot.active{background:#FFD966;border:2px solid #c8a800;}
+.tl-dot.pending{background:var(--color-background-secondary);border:0.5px solid var(--color-border-secondary);}
+.tl-line{position:absolute;left:4px;top:13px;bottom:0;width:1px;background:var(--color-border-tertiary);}
+.tl-item:last-child .tl-line{display:none;}
+.tl-data{font-size:11px;color:var(--color-text-secondary);}
+.tl-desc{font-size:12px;color:var(--color-text-primary);}
+.btn-sm{display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.divider-lbl{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 8px;display:flex;align-items:center;gap:8px;}
+.step-num{width:20px;height:20px;border-radius:50%;background:#5B9BD5;color:#fff;font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-num.green{background:#639922;}
+</style>
+
+<h2 class="sr-only">OS #1037 nas etapas de entrega e pagamento — agendamento, formas de pagamento e encerramento</h2>
+
+<div class="wrap">
+
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:16px;font-weight:500;color:var(--color-text-primary);">OS #1037</span>
+      <span class="tag tag-blue">atendimento</span>
+      <span class="tag tag-green">Aguardando entrega</span>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <div class="btn-sm"><i class="ti ti-printer" aria-hidden="true" style="font-size:13px;"></i> Imprimir OS</div>
+      <div class="btn-sm" style="border-color:#25D366;color:#1a9e4a;"><i class="ti ti-brand-whatsapp" aria-hidden="true" style="font-size:13px;"></i> Avisar cliente</div>
+    </div>
+  </div>
+  <div class="datas-grid">
+    <div><div class="data-lbl">Abertura</div><div class="data-val">10/05/2025</div></div>
+    <div><div class="data-lbl">Visita</div><div class="data-val">11/05 · 14h00</div></div>
+    <div><div class="data-lbl">Recebimento</div><div class="data-val">11/05/2025</div></div>
+    <div><div class="data-lbl">Entrega</div><div class="data-val pending" id="data-entrega">A agendar</div></div>
+    <div><div class="data-lbl">Pagamento</div><div class="data-val pending" id="data-pgto">—</div></div>
+  </div>
+</div>
+
+<div class="card locked">
+  <div class="sec-head">
+    <i class="ti ti-receipt" aria-hidden="true" style="font-size:16px;color:var(--color-text-secondary);"></i>
+    <span class="sec-title">Resumo do serviço</span>
+    <span class="done-badge"><i class="ti ti-check" aria-hidden="true" style="font-size:12px;"></i> Aprovado · R$ 460,00</span>
+  </div>
+  <div class="resumo-box">
+    <div class="resumo-row"><span class="resumo-lbl">Limpeza completa</span><span class="resumo-val">R$ 185,00</span></div>
+    <div class="resumo-row"><span class="resumo-lbl">Manutenção</span><span class="resumo-val">R$ 185,00</span></div>
+    <div class="resumo-row"><span class="resumo-lbl">Rolamentos do cesto (2x)</span><span class="resumo-val">R$ 90,00</span></div>
+    <div class="resumo-total"><span>Total</span><span>R$ 460,00</span></div>
+  </div>
+  <div style="font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 10px;font-style:italic;">
+    "Realizada limpeza completa e substituição dos rolamentos do cesto. Correia revitalizada. Garantia de 90 dias."
+  </div>
+</div>
+
+<div class="divider-lbl"><div class="step-num">1</div> Agendar entrega</div>
+
+<div class="card active-block">
+  <div class="sec-head">
+    <i class="ti ti-truck" aria-hidden="true" style="font-size:16px;color:#5B9BD5;"></i>
+    <span class="sec-title">Agendamento da entrega</span>
+    <span class="active-badge"><i class="ti ti-calendar" aria-hidden="true" style="font-size:12px;"></i> Aguardando agendamento</span>
+  </div>
+  <div class="agend-box">
+    <div class="agend-row">
+      <span class="agend-lbl">Endereço</span>
+      <span class="agend-val">Av. Sete de Set., 321 — Centro</span>
+    </div>
+    <div class="agend-row">
+      <span class="agend-lbl">Data</span>
+      <input type="date" style="font-size:13px;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);flex:1;" id="input-data-entrega">
+    </div>
+    <div class="agend-row">
+      <span class="agend-lbl">Horário</span>
+      <input type="time" style="font-size:13px;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);flex:1;" value="09:00">
+    </div>
+    <div class="agend-row">
+      <span class="agend-lbl">Observação</span>
+      <input type="text" placeholder="Ex: ligar antes de chegar..." style="font-size:13px;padding:5px 8px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);color:var(--color-text-primary);flex:1;">
+    </div>
+  </div>
+  <button class="concluir-btn" onclick="agendarEntrega()"><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;"></i> Confirmar agendamento → entra na rota ↗</button>
+</div>
+
+<div class="divider-lbl"><div class="step-num">2</div> Registrar pagamento</div>
+
+<div class="card active-block">
+  <div class="sec-head">
+    <i class="ti ti-coin" aria-hidden="true" style="font-size:16px;color:#5B9BD5;"></i>
+    <span class="sec-title">Pagamento</span>
+    <span class="active-badge"><i class="ti ti-clock" aria-hidden="true" style="font-size:12px;"></i> Aguardando</span>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;margin-bottom:12px;">
+    <span style="font-size:13px;color:var(--color-text-secondary);">Valor a receber</span>
+    <span style="font-size:18px;font-weight:500;color:#5B9BD5;">R$ 460,00</span>
+  </div>
+
+  <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:8px;">Forma de pagamento</div>
+  <div class="pgto-opts" id="pgto-opts">
+    <div class="pgto-opt sel" onclick="setPgto(this,'pix')" id="opt-pix">
+      <i class="ti ti-qrcode" aria-hidden="true"></i>
+      <span>PIX</span>
+    </div>
+    <div class="pgto-opt" onclick="setPgto(this,'dinheiro')" id="opt-dinheiro">
+      <i class="ti ti-cash" aria-hidden="true"></i>
+      <span>Dinheiro</span>
+    </div>
+    <div class="pgto-opt" onclick="setPgto(this,'cartao')" id="opt-cartao">
+      <i class="ti ti-credit-card" aria-hidden="true"></i>
+      <span>Cartão</span>
+    </div>
+    <div class="pgto-opt" onclick="setPgto(this,'prazo')" id="opt-prazo">
+      <i class="ti ti-calendar-due" aria-hidden="true"></i>
+      <span>A prazo</span>
+    </div>
+  </div>
+
+  <div id="bloco-parcelado" style="display:none;" class="pgto-parcelado">
+    <select>
+      <option>1x de R$ 460,00</option>
+      <option>2x de R$ 230,00</option>
+      <option>3x de R$ 153,33</option>
+    </select>
+  </div>
+
+  <div id="bloco-prazo" style="display:none;" class="prazo-box">
+    <div class="prazo-lbl">Prazo para pagamento</div>
+    <div class="prazo-row">
+      <input type="date" style="flex:1;font-size:13px;padding:6px 10px;border-radius:var(--border-radius-md);border:0.5px solid #EF9F27;background:var(--color-background-primary);color:var(--color-text-primary);">
+      <span style="font-size:12px;color:#633806;">vai para "A receber"</span>
+    </div>
+  </div>
+
+  <button class="concluir-btn green" onclick="registrarPgto()"><i class="ti ti-check" aria-hidden="true" style="font-size:14px;"></i> Confirmar pagamento — concluir OS ↗</button>
+</div>
+
+<div id="bloco-concluido" style="display:none;" class="card done-block">
+  <div class="concluido-box">
+    <div class="concluido-icon"><i class="ti ti-check" aria-hidden="true"></i></div>
+    <div>
+      <div class="concluido-txt">OS #1037 concluída</div>
+      <div class="concluido-sub">João Costa · Samsung WD11 · R$ 460,00 · PIX · 14/05/2025</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="sec-head"><i class="ti ti-history" aria-hidden="true" style="font-size:16px;color:#5B9BD5;"></i><span class="sec-title">Histórico</span></div>
+  <div class="tl">
+    <div class="tl-item"><div class="tl-dot done"></div><div class="tl-line"></div><div><div class="tl-data">10/05 · 08h30</div><div class="tl-desc">OS aberta</div></div></div>
+    <div class="tl-item"><div class="tl-dot done"></div><div class="tl-line"></div><div><div class="tl-data">11/05 · 14h30</div><div class="tl-desc">Máquina coletada e recebida</div></div></div>
+    <div class="tl-item"><div class="tl-dot done"></div><div class="tl-line"></div><div><div class="tl-data">12/05 · 09h00</div><div class="tl-desc">Diagnóstico concluído</div></div></div>
+    <div class="tl-item"><div class="tl-dot done"></div><div class="tl-line"></div><div><div class="tl-data">12/05 · 11h22</div><div class="tl-desc">Orçamento aprovado — R$ 460,00</div></div></div>
+    <div class="tl-item"><div class="tl-dot done"></div><div class="tl-line"></div><div><div class="tl-data">13/05 · 16h45</div><div class="tl-desc">Limpeza e manutenção concluídas</div></div></div>
+    <div class="tl-item"><div class="tl-dot done"></div><div class="tl-line"></div><div><div class="tl-data">14/05 · 09h20</div><div class="tl-desc">Teste final aprovado — liberado para entrega</div></div></div>
+    <div class="tl-item"><div class="tl-dot active"></div><div class="tl-line"></div><div><div class="tl-data">14/05 · em andamento</div><div class="tl-desc" style="color:#854F0B;">Aguardando agendamento e pagamento</div></div></div>
+    <div class="tl-item"><div class="tl-dot pending"></div><div class="tl-line"></div><div><div class="tl-data" id="tl-entrega-data">—</div><div class="tl-desc" style="color:var(--color-text-tertiary);" id="tl-entrega-desc">Entrega agendada</div></div></div>
+    <div class="tl-item"><div class="tl-dot pending"></div><div><div class="tl-data" id="tl-pgto-data">—</div><div class="tl-desc" style="color:var(--color-text-tertiary);" id="tl-pgto-desc">Pagamento</div></div></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function setPgto(el, tipo) {
+  document.querySelectorAll('.pgto-opt').forEach(function(o){ o.classList.remove('sel'); });
+  el.classList.add('sel');
+  document.getElementById('bloco-parcelado').style.display = tipo === 'cartao' ? 'block' : 'none';
+  document.getElementById('bloco-prazo').style.display = tipo === 'prazo' ? 'block' : 'none';
+}
+function agendarEntrega() {
+  var d = document.getElementById('input-data-entrega').value;
+  var label = d ? d.split('-').reverse().join('/') : '15/05/2025';
+  document.getElementById('data-entrega').textContent = label;
+  document.getElementById('data-entrega').className = 'data-val done';
+  document.getElementById('tl-entrega-data').textContent = label;
+  document.getElementById('tl-entrega-desc').textContent = 'Entrega agendada — entra na rota';
+  document.getElementById('tl-entrega-desc').style.color = '';
+}
+function registrarPgto() {
+  document.getElementById('data-pgto').textContent = '14/05/2025';
+  document.getElementById('data-pgto').className = 'data-val done';
+  document.getElementById('tl-pgto-data').textContent = '14/05/2025';
+  document.getElementById('tl-pgto-desc').textContent = 'Pagamento confirmado — OS concluída';
+  document.getElementById('tl-pgto-desc').style.color = '#27500A';
+  document.getElementById('bloco-concluido').style.display = 'block';
+}
+</script>

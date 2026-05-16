@@ -1,0 +1,181 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:12px;}
+.top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.top-title{font-size:16px;font-weight:500;color:var(--color-text-primary);}
+.section-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.section-header i{font-size:18px;color:#5B9BD5;}
+.section-title{font-size:14px;font-weight:500;color:var(--color-text-primary);}
+.field-row{display:grid;gap:10px;margin-bottom:10px;}
+.field-row.cols2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.field{display:flex;flex-direction:column;gap:4px;position:relative;}
+.field label{font-size:12px;color:var(--color-text-secondary);display:flex;align-items:center;gap:6px;}
+.field input{font-size:13px;padding:7px 10px 7px 32px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);width:100%;}
+.field input.confirmed{border-color:#97C459;background:#EAF3DE;}
+.field input.plain{padding-left:10px;}
+.field-icon{position:absolute;left:10px;top:32px;font-size:15px;color:var(--color-text-secondary);}
+.field-icon.confirmed{color:#27500A;}
+.sugestoes{position:absolute;top:100%;left:0;right:0;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);z-index:10;overflow:hidden;margin-top:2px;}
+.sug-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:0.5px solid var(--color-border-tertiary);}
+.sug-item:last-child{border-bottom:none;}
+.sug-item:hover{background:var(--color-background-secondary);}
+.sug-icon{font-size:16px;color:#5B9BD5;flex-shrink:0;margin-top:1px;}
+.sug-nome{font-size:13px;color:var(--color-text-primary);}
+.sug-comp{font-size:11px;color:var(--color-text-secondary);}
+.confirmed-box{display:none;align-items:center;gap:8px;background:#EAF3DE;border:0.5px solid #97C459;border-radius:var(--border-radius-md);padding:8px 12px;margin-top:6px;}
+.confirmed-box.show{display:flex;}
+.confirmed-box i{font-size:16px;color:#27500A;flex-shrink:0;}
+.confirmed-txt{font-size:12px;color:#27500A;flex:1;}
+.confirmed-change{font-size:11px;color:#3B6D11;cursor:pointer;text-decoration:underline;flex-shrink:0;}
+.mapa-preview{background:#B8CCE4;border-radius:var(--border-radius-md);height:120px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;border:0.5px solid var(--color-border-tertiary);}
+.mapa-preview.show{display:flex;}
+.mapa-preview i{font-size:24px;color:#0C447C;}
+.mapa-preview span{font-size:12px;color:#0C447C;font-weight:500;}
+.opcional{font-size:10px;padding:1px 7px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary);}
+.footer-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:4px;}
+.btn-cancel{padding:9px 20px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:13px;color:var(--color-text-secondary);cursor:pointer;}
+.btn-save{padding:9px 20px;border-radius:var(--border-radius-md);border:none;background:#5B9BD5;font-size:13px;color:#fff;cursor:pointer;font-weight:500;}
+</style>
+
+<h2 class="sr-only">Formulário de cadastro de cliente com busca de endereço via Google Maps</h2>
+
+<div class="wrap">
+  <div class="card">
+    <div class="top-row">
+      <span class="top-title">Novo cliente</span>
+    </div>
+
+    <div class="section-header">
+      <i class="ti ti-user" aria-hidden="true"></i>
+      <span class="section-title">Dados pessoais</span>
+    </div>
+
+    <div class="field-row cols2">
+      <div class="field">
+        <label>Nome completo</label>
+        <input type="text" placeholder="Nome completo do cliente" class="plain">
+      </div>
+      <div class="field">
+        <label>Telefone</label>
+        <input type="text" placeholder="(67) 9 0000-0000" class="plain">
+      </div>
+    </div>
+
+    <div class="field-row cols2">
+      <div class="field">
+        <label>CPF <span class="opcional">opcional</span></label>
+        <input type="text" placeholder="000.000.000-00" class="plain">
+      </div>
+      <div class="field">
+        <label>Observações de acesso</label>
+        <input type="text" placeholder="Ex: portão azul, campainha 2x..." class="plain">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field" id="campo-endereco">
+        <label>Endereço</label>
+        <i class="ti ti-map-pin field-icon" id="icon-end" aria-hidden="true"></i>
+        <input
+          type="text"
+          id="input-end"
+          placeholder="Digite o endereço para buscar no Google Maps..."
+          oninput="buscarEndereco(this.value)"
+          onfocus="buscarEndereco(this.value)"
+          autocomplete="off"
+        >
+        <div class="sugestoes" id="sugestoes" style="display:none;"></div>
+        <div class="confirmed-box" id="confirmed-box">
+          <i class="ti ti-circle-check" aria-hidden="true"></i>
+          <span class="confirmed-txt" id="confirmed-txt"></span>
+          <span class="confirmed-change" onclick="trocarEndereco()">Trocar</span>
+        </div>
+        <div class="mapa-preview" id="mapa-preview" style="display:none;">
+          <i class="ti ti-map-2" aria-hidden="true"></i>
+          <span id="mapa-label">Pin confirmado no mapa</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-btns">
+    <button class="btn-cancel">Cancelar</button>
+    <button class="btn-save">Salvar cliente</button>
+  </div>
+</div>
+
+<script>
+var sugestoes = [
+  {nome:'Rua Ipê, 503', comp:'Vila Nova, Naviraí — MS, Brasil'},
+  {nome:'Rua Ipê, 50', comp:'Centro, Naviraí — MS, Brasil'},
+  {nome:'Rua Ipê Amarelo, 12', comp:'Jardim Ipê, Naviraí — MS, Brasil'},
+];
+var sugestoesAv = [
+  {nome:'Avenida Brasil, 210', comp:'Centro, Naviraí — MS, Brasil'},
+  {nome:'Avenida Brasil, 1200', comp:'Jardim Progresso, Naviraí — MS, Brasil'},
+];
+var sugestoesTir = [
+  {nome:'Rua Tiradentes, 45', comp:'Centro, Naviraí — MS, Brasil'},
+  {nome:'Rua Tiradentes, 180', comp:'Vila Nova, Naviraí — MS, Brasil'},
+];
+var timer = null;
+
+function buscarEndereco(val) {
+  clearTimeout(timer);
+  var box = document.getElementById('sugestoes');
+  if (!val || val.length < 3) { box.style.display='none'; return; }
+  timer = setTimeout(function(){
+    var lista = val.toLowerCase().includes('av') ? sugestoesAv :
+                val.toLowerCase().includes('tir') ? sugestoesTir : sugestoes;
+    var html = lista.map(function(s){
+      return '<div class="sug-item" onclick="selecionarEndereco(\''+s.nome+'\',\''+s.comp+'\')">' +
+        '<i class="ti ti-map-pin sug-icon" aria-hidden="true"></i>' +
+        '<div><div class="sug-nome">'+s.nome+'</div><div class="sug-comp">'+s.comp+'</div></div>' +
+        '</div>';
+    }).join('');
+    box.innerHTML = html;
+    box.style.display = 'block';
+  }, 350);
+}
+
+function selecionarEndereco(nome, comp) {
+  var input = document.getElementById('input-end');
+  var box = document.getElementById('sugestoes');
+  var confirmed = document.getElementById('confirmed-box');
+  var confirmedTxt = document.getElementById('confirmed-txt');
+  var mapa = document.getElementById('mapa-preview');
+  var mapaLabel = document.getElementById('mapa-label');
+  var icon = document.getElementById('icon-end');
+
+  input.value = nome + ', ' + comp.split(',')[0];
+  input.classList.add('confirmed');
+  icon.classList.add('confirmed');
+  box.style.display = 'none';
+  confirmedTxt.textContent = nome + ' — ' + comp;
+  confirmed.classList.add('show');
+  mapaLabel.textContent = 'Pin em ' + nome.split(',')[0];
+  mapa.style.display = 'flex';
+}
+
+function trocarEndereco() {
+  var input = document.getElementById('input-end');
+  var confirmed = document.getElementById('confirmed-box');
+  var mapa = document.getElementById('mapa-preview');
+  var icon = document.getElementById('icon-end');
+  input.value = '';
+  input.classList.remove('confirmed');
+  icon.classList.remove('confirmed');
+  confirmed.classList.remove('show');
+  mapa.style.display = 'none';
+  input.focus();
+}
+
+document.addEventListener('click', function(e){
+  if (!document.getElementById('campo-endereco').contains(e.target)) {
+    document.getElementById('sugestoes').style.display = 'none';
+  }
+});
+</script>

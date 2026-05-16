@@ -1,0 +1,163 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+.wrap{padding:1rem 0;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.topbar-title{font-size:15px;font-weight:500;color:var(--color-text-primary);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.mes-sel{font-size:13px;padding:6px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary);}
+.btn{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.btn.primary{background:#5B9BD5;border-color:#5B9BD5;color:#fff;}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px;}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;text-align:center;}
+.metric-val{font-size:18px;font-weight:500;}
+.metric-lbl{font-size:11px;color:var(--color-text-secondary);margin-top:2px;}
+.layout{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.col-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--color-border-tertiary);}
+.col-head-left{display:flex;align-items:center;gap:7px;}
+.col-head-left i{font-size:16px;}
+.col-head-title{font-size:13px;font-weight:500;}
+.col-head-total{font-size:13px;font-weight:500;}
+.head-rec{background:#EAF3DE;}
+.head-rec i,.head-rec .col-head-title{color:#27500A;}
+.head-rec .col-head-total{color:#27500A;}
+.head-des{background:#FCEBEB;}
+.head-des i,.head-des .col-head-title{color:#791F1F;}
+.head-des .col-head-total{color:#791F1F;}
+.lanc-list{padding:0;}
+.lanc-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.lanc-row:last-child{border-bottom:none;}
+.lanc-left{display:flex;align-items:center;gap:8px;}
+.lanc-cat{color:var(--color-text-primary);}
+.lanc-data{font-size:11px;color:var(--color-text-secondary);}
+.lanc-val-rec{font-weight:500;color:#27500A;}
+.lanc-val-des{font-weight:500;color:#791F1F;}
+.lanc-badge{font-size:10px;padding:1px 6px;border-radius:20px;font-weight:500;}
+.badge-rec{background:#EAF3DE;color:#27500A;}
+.badge-des{background:#FCEBEB;color:#791F1F;}
+.badge-arec{background:#FAEEDA;color:#854F0B;}
+.add-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:0;border:none;border-top:0.5px solid var(--color-border-tertiary);background:transparent;font-size:12px;color:var(--color-text-secondary);cursor:pointer;}
+.add-btn:hover{background:var(--color-background-secondary);}
+.arec-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;}
+.arec-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--color-border-tertiary);background:#FAEEDA;}
+.arec-head-left{display:flex;align-items:center;gap:7px;}
+.arec-head-left i{font-size:16px;color:#854F0B;}
+.arec-head-title{font-size:13px;font-weight:500;color:#633806;}
+.arec-head-total{font-size:13px;font-weight:500;color:#633806;}
+.arec-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;}
+.arec-row:last-child{border-bottom:none;}
+.arec-cliente{color:var(--color-text-primary);}
+.arec-os{font-size:11px;color:var(--color-text-secondary);}
+.arec-venc{font-size:11px;}
+.arec-venc.vencido{color:#FF6B6B;font-weight:500;}
+.arec-venc.hoje{color:#854F0B;font-weight:500;}
+.arec-venc.ok{color:var(--color-text-secondary);}
+.arec-val{font-weight:500;color:#854F0B;}
+.saldo-bar{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;}
+.saldo-item{text-align:center;}
+.saldo-lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:3px;}
+.saldo-val{font-size:15px;font-weight:500;}
+.saldo-divider{width:1px;background:var(--color-border-tertiary);height:32px;}
+</style>
+
+<h2 class="sr-only">Tela financeira Idemaq — receitas, despesas e a receber do mês</h2>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="topbar-title">Financeiro</span>
+    <div class="topbar-right">
+      <select class="mes-sel">
+        <option>Maio 2025</option>
+        <option>Abril 2025</option>
+        <option>Março 2025</option>
+      </select>
+      <div class="btn primary" onclick="sendPrompt('Lançar novo registro financeiro')"><i class="ti ti-plus" aria-hidden="true" style="font-size:14px;"></i> Lançar ↗</div>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-val" style="color:#27500A;">R$ 14.260</div><div class="metric-lbl">Receita do mês</div></div>
+    <div class="metric"><div class="metric-val" style="color:#791F1F;">R$ 9.840</div><div class="metric-lbl">Despesas do mês</div></div>
+    <div class="metric"><div class="metric-val" style="color:#854F0B;">R$ 720</div><div class="metric-lbl">A receber</div></div>
+    <div class="metric"><div class="metric-val" style="color:#5B9BD5;">R$ 4.420</div><div class="metric-lbl">Saldo líquido</div></div>
+  </div>
+
+  <div class="layout">
+    <div class="col-card">
+      <div class="col-head head-rec">
+        <div class="col-head-left"><i class="ti ti-trending-up" aria-hidden="true"></i><span class="col-head-title">Receitas</span></div>
+        <span class="col-head-total">R$ 14.260</span>
+      </div>
+      <div class="lanc-list">
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Limpeza completa</span><span class="lanc-data">12/05</span></div><span class="lanc-val-rec">R$ 185</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Limpeza + manutenção</span><span class="lanc-data">11/05</span></div><span class="lanc-val-rec">R$ 350</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Mão de obra manutenção</span><span class="lanc-data">10/05</span></div><span class="lanc-val-rec">R$ 185</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Venda de peças</span><span class="lanc-data">09/05</span></div><span class="lanc-val-rec">R$ 240</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Venda de máquina reformada</span><span class="lanc-data">08/05</span></div><span class="lanc-val-rec">R$ 650</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Limpeza completa</span><span class="lanc-data">07/05</span></div><span class="lanc-val-rec">R$ 185</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Taxa de diagnóstico</span><span class="lanc-data">06/05</span></div><span class="lanc-val-rec">R$ 30</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Venda de capa</span><span class="lanc-data">05/05</span></div><span class="lanc-val-rec">R$ 85</span></div>
+      </div>
+      <button class="add-btn" onclick="sendPrompt('Adicionar receita')"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Adicionar receita</button>
+    </div>
+
+    <div class="col-card">
+      <div class="col-head head-des">
+        <div class="col-head-left"><i class="ti ti-trending-down" aria-hidden="true"></i><span class="col-head-title">Despesas</span></div>
+        <span class="col-head-total">R$ 9.840</span>
+      </div>
+      <div class="lanc-list">
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Funcionários</span><span class="lanc-data">05/05</span></div><span class="lanc-val-des">R$ 3.300</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Peças (Mercado Livre)</span><span class="lanc-data">10/05</span></div><span class="lanc-val-des">R$ 890</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Tráfego pago</span><span class="lanc-data">01/05</span></div><span class="lanc-val-des">R$ 500</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Impostos</span><span class="lanc-data">10/05</span></div><span class="lanc-val-des">R$ 480</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Financiamento</span><span class="lanc-data">05/05</span></div><span class="lanc-val-des">R$ 420</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Materiais de limpeza</span><span class="lanc-data">08/05</span></div><span class="lanc-val-des">R$ 180</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Combustível</span><span class="lanc-data">09/05</span></div><span class="lanc-val-des">R$ 160</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Taxas bancárias</span><span class="lanc-data">01/05</span></div><span class="lanc-val-des">R$ 95</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Luz</span><span class="lanc-data">08/05</span></div><span class="lanc-val-des">R$ 280</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Internet</span><span class="lanc-data">01/05</span></div><span class="lanc-val-des">R$ 120</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Água</span><span class="lanc-data">08/05</span></div><span class="lanc-val-des">R$ 85</span></div>
+        <div class="lanc-row"><div class="lanc-left"><span class="lanc-cat">Ferramentas</span><span class="lanc-data">06/05</span></div><span class="lanc-val-des">R$ 330</span></div>
+      </div>
+      <button class="add-btn" onclick="sendPrompt('Adicionar despesa')"><i class="ti ti-plus" aria-hidden="true" style="font-size:13px;"></i> Adicionar despesa</button>
+    </div>
+  </div>
+
+  <div class="arec-card" style="margin-bottom:12px;">
+    <div class="arec-head">
+      <div class="arec-head-left"><i class="ti ti-clock" aria-hidden="true"></i><span class="arec-head-title">A receber</span></div>
+      <span class="arec-head-total">R$ 720</span>
+    </div>
+    <div class="lanc-list">
+      <div class="arec-row">
+        <div><div class="arec-cliente">Roberto Lima</div><div class="arec-os">OS #1020 · manutenção</div></div>
+        <span class="arec-venc vencido"><i class="ti ti-alert-circle" aria-hidden="true" style="font-size:12px;vertical-align:-1px;"></i> Vencido ontem</span>
+        <span class="arec-val">R$ 350</span>
+      </div>
+      <div class="arec-row">
+        <div><div class="arec-cliente">Sônia Barros</div><div class="arec-os">OS #1022 · limpeza</div></div>
+        <span class="arec-venc hoje">Vence 18/05</span>
+        <span class="arec-val">R$ 185</span>
+      </div>
+      <div class="arec-row">
+        <div><div class="arec-cliente">Fernanda Lima</div><div class="arec-os">OS #1042 · limpeza+man.</div></div>
+        <span class="arec-venc ok">Vence 25/05</span>
+        <span class="arec-val">R$ 185</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="saldo-bar">
+    <div class="saldo-item"><div class="saldo-lbl">Receita</div><div class="saldo-val" style="color:#27500A;">R$ 14.260</div></div>
+    <div class="saldo-divider"></div>
+    <div class="saldo-item"><div class="saldo-lbl">Despesas</div><div class="saldo-val" style="color:#791F1F;">R$ 9.840</div></div>
+    <div class="saldo-divider"></div>
+    <div class="saldo-item"><div class="saldo-lbl">A receber</div><div class="saldo-val" style="color:#854F0B;">R$ 720</div></div>
+    <div class="saldo-divider"></div>
+    <div class="saldo-item"><div class="saldo-lbl">Saldo líquido</div><div class="saldo-val" style="color:#5B9BD5;">R$ 4.420</div></div>
+    <div class="saldo-divider"></div>
+    <div class="saldo-item"><div class="saldo-lbl">Meta do mês</div><div class="saldo-val" style="color:var(--color-text-secondary);">R$ 20.000</div></div>
+  </div>
+</div>
