@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from './supabase'
 import { Chart as ChartJS, registerables } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
@@ -784,274 +784,584 @@ function BottomNav({ pagina, setPagina, sair, T, dark }) {
   )
 }
 
-// ─── Painel Desktop ────────────────────────────────────────────────────────
+
+// ── Hook auto-injeta Inter via Google Fonts (uma vez por sessão) ────────
+function useInterFont() {
+  useEffect(() => {
+    if (document.getElementById('idemaq-inter-font')) return
+    const l1 = document.createElement('link'); l1.rel = 'preconnect'; l1.href = 'https://fonts.googleapis.com'
+    const l2 = document.createElement('link'); l2.rel = 'preconnect'; l2.href = 'https://fonts.gstatic.com'; l2.crossOrigin = 'anonymous'
+    const l3 = document.createElement('link'); l3.id = 'idemaq-inter-font'; l3.rel = 'stylesheet'
+    l3.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
+    document.head.appendChild(l1); document.head.appendChild(l2); document.head.appendChild(l3)
+  }, [])
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+const _fontPainel = `'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`
+const _divider = (dark) => dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+const _bgBy = (key, dark) => {
+  const map = {
+    blue:      dark ? '#0d2035' : '#e6f1fb',
+    yellow:    dark ? '#2a2000' : '#fdf6dc',
+    red:       dark ? '#2a1515' : '#fde8e8',
+    blueLight: dark ? '#0d2035' : '#e6f1fb',
+    green:     dark ? '#0f2a15' : '#e8f5ec',
+  }
+  return map[key] || (dark ? '#2a2a2c' : '#ebebed')
+}
+const _colorBy = (key, dark) => {
+  const map = {
+    blue:      dark ? P.blue       : P.blueDark,
+    yellow:    dark ? P.yellow     : P.yellowDark,
+    red:       dark ? P.red        : P.redDark,
+    blueLight: dark ? P.blueLight  : P.blueLightDark,
+    green:     dark ? P.green      : P.greenDark,
+    muted:     dark ? '#666666'    : '#6a6a6e',
+  }
+  return map[key] || key
+}
+const _cardModerno = (T, extra = {}) => ({
+  background: T.card,
+  borderRadius: 14,
+  padding: '18px 20px',
+  border: `1px solid ${T.border}`,
+  boxShadow: T.shadow,
+  ...extra,
+})
+const _fmtBRL = (v) => v == null ? '—' : 'R$ ' + Math.abs(v).toLocaleString('pt-BR') * (v < 0 ? -1 : 1)
+// (correção do _fmtBRL: precisa retornar string)
+function fmtBRL(v) {
+  if (v == null) return '—'
+  return (v < 0 ? '-' : '') + 'R$ ' + Math.abs(v).toLocaleString('pt-BR')
+}
+
+// ── Sparkline (SVG inline com gradient sob a área) ──────────────────────
+function Sparkline({ data, color, fill = 0.22, height = 38, strokeWidth = 1.5 }) {
+  if (!data || data.length < 2) return null
+  const clean = data.filter(v => v != null && !isNaN(v))
+  if (clean.length < 2) return null
+  const min = Math.min(...clean), max = Math.max(...clean), range = max - min || 1
+  const w = 100, step = w / (data.length - 1)
+  const pts = data.map((v, i) => v == null ? null : ({
+    x: i * step,
+    y: height - ((v - min) / range) * (height - 4) - 2,
+  })).filter(Boolean)
+  const path = pts.reduce((acc, p, i) => {
+    if (i === 0) return `M${p.x},${p.y}`
+    const prev = pts[i - 1]
+    const cx = (prev.x + p.x) / 2
+    return acc + ` Q${cx},${prev.y} ${cx},${(prev.y + p.y) / 2} T${p.x},${p.y}`
+  }, '')
+  const area = path + ` L${pts[pts.length - 1].x},${height} L${pts[0].x},${height} Z`
+  const gid = 'spk-' + Math.random().toString(36).slice(2, 8)
+  return (
+    <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <defs>
+        <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={fill} />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gid})`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+// ── DeltaPill (↗ +12% verde / ↘ -3% vermelho) ───────────────────────────
+function DeltaPill({ value, dark, lbl, neutral }) {
+  const pos = value > 0, isZero = value === 0 || value == null
+  const cor = isZero || neutral ? _colorBy('muted', dark) : pos ? _colorBy('green', dark) : _colorBy('red', dark)
+  const bg = isZero || neutral
+    ? (dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
+    : pos ? _bgBy('green', dark) : _bgBy('red', dark)
+  const icon = isZero || neutral ? 'ti-minus' : pos ? 'ti-trending-up' : 'ti-trending-down'
+  return (
+    <span style={{
+      display:'inline-flex', alignItems:'center', gap:3, fontSize:11, fontWeight:600,
+      color:cor, background:bg, padding:'2px 7px 2px 6px', borderRadius:6,
+      letterSpacing:'.01em', fontVariantNumeric:'tabular-nums',
+    }}>
+      <i className={`ti ${icon}`} style={{ fontSize:12 }} aria-hidden="true" />
+      {value != null && (isZero ? '0' : (pos ? '+' : '') + value + '%')}
+      {lbl && <span style={{ opacity:.8, fontWeight:500 }}>{lbl}</span>}
+    </span>
+  )
+}
+
+// ── SecHead (label uppercase + ícone + ação opcional) ───────────────────
+function SecHead({ icon, children, action, T, sm }) {
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: sm ? 10 : 14 }}>
+      <div style={{
+        display:'flex', alignItems:'center', gap:7,
+        fontSize:11, fontWeight:600, color:T.textMuted,
+        textTransform:'uppercase', letterSpacing:'.06em',
+      }}>
+        {icon && <i className={`ti ${icon}`} style={{ fontSize:13, color:T.textMuted }} aria-hidden="true" />}
+        {children}
+      </div>
+      {action}
+    </div>
+  )
+}
+
+function SecAction({ children, dark }) {
+  const blueC = _colorBy('blue', dark)
+  return (
+    <button style={{
+      display:'inline-flex', alignItems:'center', gap:3,
+      fontSize:11.5, fontWeight:500, color:blueC,
+      background:'transparent', border:'none', cursor:'pointer',
+      padding:'4px 6px', borderRadius:5, fontFamily:'inherit',
+    }}>
+      {children}
+      <i className="ti ti-arrow-right" style={{ fontSize:12 }} aria-hidden="true" />
+    </button>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HERO — Faturamento do mês (card grande, 2/3 da largura)
+// ═══════════════════════════════════════════════════════════════════════
+function HeroFaturamento({ T, dark, hero }) {
+  const blueC = _colorBy('blue', dark)
+  const blueLightC = _colorBy('blueLight', dark)
+  const pctMeta = Math.round((hero.atual / hero.meta) * 100)
+  const falta = hero.meta - hero.atual
+  const corHero = dark ? '#f1f5f9' : '#0a0a0d'
+
+  return (
+    <div style={{ ..._cardModerno(T, { padding:0, overflow:'hidden', position:'relative' }), minHeight:260, display:'flex', flexDirection:'column' }}>
+      <div style={{
+        position:'absolute', top:-60, right:-60, width:240, height:240,
+        background:`radial-gradient(circle, ${blueC}22 0%, transparent 70%)`, pointerEvents:'none',
+      }} />
+      <div style={{ padding:'20px 22px 8px', position:'relative' }}>
+        <SecHead T={T} icon="ti-cash" sm action={<SecAction dark={dark}>Ver financeiro</SecAction>}>
+          Faturamento · {hero.mesLabel}
+        </SecHead>
+        <div style={{ display:'flex', alignItems:'baseline', gap:14, flexWrap:'wrap', marginTop:2 }}>
+          <div style={{
+            fontSize:44, fontWeight:700, color:corHero,
+            letterSpacing:'-.035em', lineHeight:1,
+            fontVariantNumeric:'tabular-nums',
+          }}>{fmtBRL(hero.atual)}</div>
+          <DeltaPill value={hero.deltaPct} dark={dark} lbl="vs abr" />
+        </div>
+        <div style={{ marginTop:14, marginBottom:6 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6 }}>
+            <span style={{ fontSize:11.5, color:T.textMuted, fontWeight:500 }}>Meta de {fmtBRL(hero.meta)}</span>
+            <span style={{ fontSize:11.5, color:T.textSecondary, fontVariantNumeric:'tabular-nums' }}>
+              <strong style={{ color:corHero, fontWeight:600 }}>{pctMeta}%</strong>
+              <span style={{ color:T.textDim }}> · faltam {fmtBRL(falta)}</span>
+            </span>
+          </div>
+          <div style={{ background:T.progBg, borderRadius:99, height:6, overflow:'hidden' }}>
+            <div style={{
+              width:`${pctMeta}%`, height:'100%',
+              background:`linear-gradient(90deg, ${blueC}, ${blueLightC})`,
+              borderRadius:99, transition:'width .6s ease',
+            }} />
+          </div>
+        </div>
+      </div>
+      <div style={{ padding:'6px 22px 14px', flex:1, display:'flex', flexDirection:'column', justifyContent:'flex-end' }}>
+        <div style={{ fontSize:10, color:T.textDim, marginBottom:6, letterSpacing:'.05em', textTransform:'uppercase', fontWeight:600 }}>
+          Recebimentos diários · últimos 30 dias
+        </div>
+        <Sparkline data={hero.spark30d} color={blueC} fill={0.18} height={56} />
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop:4, fontSize:10, color:T.textDim, fontVariantNumeric:'tabular-nums' }}>
+          <span>15/abr</span><span>30/abr</span>
+          <span style={{ color:blueC, fontWeight:600 }}>{hero.hojeLabel} · hoje</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HOJE — Sidekick do hero (1/3 da largura)
+// ═══════════════════════════════════════════════════════════════════════
+function HojeSidekick({ T, dark, hoje }) {
+  const blueC = _colorBy('blue', dark)
+  const yellowC = _colorBy('yellow', dark)
+  const greenC = _colorBy('green', dark)
+  const redC = _colorBy('red', dark)
+  const corHero = dark ? '#f1f5f9' : '#0a0a0d'
+
+  const corByTipo = (t) => t === 'urgente' ? redC : t === 'hoje' ? yellowC : greenC
+
+  return (
+    <div style={{ ..._cardModerno(T, { padding:0, overflow:'hidden', display:'flex', flexDirection:'column' }), minHeight:260 }}>
+      <div style={{ padding:'18px 18px 6px' }}>
+        <SecHead T={T} icon="ti-calendar-event" sm>
+          Hoje · {new Date().toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'short' })}
+        </SecHead>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
+          <div style={{ gridColumn:'span 2', background:T.cardAlt, borderRadius:9, padding:'11px 13px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontSize:10.5, color:T.textMuted, textTransform:'uppercase', letterSpacing:'.05em', fontWeight:600 }}>Recebido hoje</div>
+              <div style={{ fontSize:22, fontWeight:700, color:corHero, letterSpacing:'-.02em', fontVariantNumeric:'tabular-nums', marginTop:2 }}>{fmtBRL(hoje.recebido)}</div>
+            </div>
+            <DeltaPill value={null} lbl={`${hoje.osPagas} OS`} neutral dark={dark} />
+          </div>
+          {[
+            { lbl:'OS abertas', v:hoje.osAbertas, c:blueC },
+            { lbl:'Em rota',    v:hoje.emRota,    c:yellowC },
+          ].map((s, i) => (
+            <div key={i} style={{ background:T.cardAlt, borderRadius:9, padding:'9px 12px' }}>
+              <div style={{ fontSize:22, fontWeight:700, color:s.c, letterSpacing:'-.02em', fontVariantNumeric:'tabular-nums', lineHeight:1 }}>{s.v}</div>
+              <div style={{ fontSize:10.5, color:T.textMuted, marginTop:3 }}>{s.lbl}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex:1, padding:'0 18px 18px', display:'flex', flexDirection:'column' }}>
+        <div style={{ fontSize:10, color:T.textDim, marginBottom:6, letterSpacing:'.05em', textTransform:'uppercase', fontWeight:600 }}>
+          Próximas paradas
+        </div>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+          {hoje.proximas.slice(0, 3).map((p, i) => (
+            <div key={i} style={{
+              display:'flex', alignItems:'center', gap:9,
+              borderTop: i === 0 ? 'none' : `1px solid ${_divider(dark)}`,
+              paddingTop: i === 0 ? 0 : 7,
+            }}>
+              <div style={{ fontSize:11, color:T.textSecondary, fontWeight:600, fontVariantNumeric:'tabular-nums', minWidth:36 }}>{p.hr}</div>
+              <div style={{ width:4, height:22, borderRadius:2, background:corByTipo(p.tipo), flexShrink:0 }} />
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, color:T.textSecondary, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.cliente}</div>
+                <div style={{ fontSize:10, color:T.textMuted, marginTop:1 }}>{p.svc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// KPI Card (com sparkline + delta)
+// ═══════════════════════════════════════════════════════════════════════
+function KPICard({ k, T, dark }) {
+  const cor = _colorBy(k.corKey, dark)
+  const corHero = dark ? '#f1f5f9' : '#0a0a0d'
+  const valorTxt = k.formatoCru ? k.valor : fmtBRL(k.valor)
+
+  return (
+    <div style={{
+      ..._cardModerno(T, { padding:'16px 18px 0', display:'flex', flexDirection:'column', cursor:'pointer', transition:'transform .15s, box-shadow .15s' }),
+    }}
+    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = T.shadowHover }}
+    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)';    e.currentTarget.style.boxShadow = T.shadow }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:10.5, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em' }}>
+          <i className={`ti ${k.icon}`} style={{ fontSize:13, color:cor }} aria-hidden="true" />
+          {k.label}
+        </div>
+      </div>
+      <div style={{ fontSize:26, fontWeight:700, color:corHero, letterSpacing:'-.025em', lineHeight:1, fontVariantNumeric:'tabular-nums' }}>{valorTxt}</div>
+      <div style={{ marginTop:6, display:'flex', alignItems:'center', gap:8, minHeight:22 }}>
+        {k.delta != null && <DeltaPill value={k.delta} lbl={k.deltaLbl} dark={dark} />}
+        {k.deltaTxt && <span style={{ fontSize:11, color:T.textMuted, fontWeight:500 }}>{k.deltaTxt}</span>}
+        {k.sub && <span style={{ fontSize:11, color:T.textDim }}>· {k.sub}</span>}
+      </div>
+      <div style={{ marginTop:'auto', paddingTop:8, marginLeft:-18, marginRight:-18 }}>
+        <Sparkline data={k.spark} color={cor} fill={0.22} height={32} />
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PIPELINE OS — barras verticais proporcionais
+// ═══════════════════════════════════════════════════════════════════════
+function PipelineOS({ T, dark, etapas }) {
+  const corHero = dark ? '#f1f5f9' : '#0a0a0d'
+  const total = etapas.reduce((s, e) => s + e.n, 0)
+  const max = Math.max(...etapas.map(e => e.n), 1)
+  return (
+    <div style={_cardModerno(T)}>
+      <SecHead T={T} icon="ti-layout-kanban"
+        action={
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:11, color:T.textMuted }}>
+              Total <strong style={{ color:corHero, fontWeight:600, fontVariantNumeric:'tabular-nums' }}>{total} OS</strong>
+            </span>
+            <SecAction dark={dark}>Abrir kanban</SecAction>
+          </div>
+        }>Pipeline operacional</SecHead>
+
+      <div style={{ display:'grid', gridTemplateColumns:`repeat(${etapas.length}, minmax(0,1fr))`, gap:6, alignItems:'end' }}>
+        {etapas.map(p => {
+          const c  = p.corKey === 'neutro' ? T.osNeutroT : _colorBy(p.corKey, dark)
+          const bg = p.corKey === 'neutro' ? T.osNeutro  : _bgBy(p.corKey, dark)
+          const altura = p.n === 0 ? 18 : Math.max(36, (p.n / max) * 88)
+          const isZero = p.n === 0
+          return (
+            <div key={p.id} style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <div style={{
+                height:altura, background: isZero ? T.osNeutro : bg,
+                borderRadius:8, border:`1px solid ${isZero ? T.border : c + '33'}`,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                position:'relative', overflow:'hidden', cursor:'pointer', transition:'transform .15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:c, opacity: isZero ? 0.3 : 1 }} />
+                <span style={{ fontSize:20, fontWeight:700, color: isZero ? T.textDim : c, letterSpacing:'-.02em', fontVariantNumeric:'tabular-nums' }}>{p.n}</span>
+              </div>
+              <div style={{ fontSize:10.5, fontWeight:500, color:T.textSecondary, textAlign:'center', lineHeight:1.25 }}>{p.label}</div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div style={{ display:'flex', gap:14, marginTop:14, paddingTop:12, borderTop:`1px solid ${_divider(dark)}` }}>
+        {[
+          { lbl:'Externo (logística)', c: _colorBy('blue', dark) },
+          { lbl:'Interno (oficina)',    c: _colorBy('yellow', dark) },
+          { lbl:'Financeiro',           c: _colorBy('green', dark) },
+        ].map((l, i) => (
+          <span key={i} style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:10.5, color:T.textMuted }}>
+            <span style={{ width:8, height:8, borderRadius:2, background:l.c }} />
+            {l.lbl}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ALERTAS CRÍTICOS — banner horizontal (top 3 urgentes)
+// ═══════════════════════════════════════════════════════════════════════
+function AlertasCriticos({ T, dark, criticos }) {
+  const redC = _colorBy('red', dark)
+  return (
+    <div style={_cardModerno(T, { padding:0, overflow:'hidden', borderLeft:`3px solid ${redC}` })}>
+      <div style={{ display:'grid', gridTemplateColumns:'auto 1fr' }}>
+        <div style={{
+          padding:'14px 18px', display:'flex', flexDirection:'column', justifyContent:'center',
+          borderRight:`1px solid ${T.border}`, background:'rgba(192,66,66,0.04)', minWidth:170,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+            <i className="ti ti-alert-octagon-filled" style={{ fontSize:17, color:redC }} aria-hidden="true" />
+            <span style={{ fontSize:11, fontWeight:700, color:redC, textTransform:'uppercase', letterSpacing:'.06em' }}>
+              Críticos · agir hoje
+            </span>
+          </div>
+          <div style={{ fontSize:11, color:T.textMuted, marginTop:4 }}>{criticos.length} itens · revise agora</div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:`repeat(${criticos.length}, minmax(0,1fr))` }}>
+          {criticos.map((a, i) => (
+            <div key={i} style={{
+              padding:'14px 16px', borderLeft: i > 0 ? `1px solid ${T.border}` : 'none',
+              display:'flex', alignItems:'center', gap:11, minWidth:0,
+            }}>
+              <div style={{
+                width:30, height:30, borderRadius:8, background:_bgBy('red', dark), color:redC,
+                display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+              }}>
+                <i className={`ti ${a.icon}`} style={{ fontSize:15 }} aria-hidden="true" />
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12.5, fontWeight:600, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{a.msg}</div>
+                <div style={{ fontSize:10.5, color:T.textMuted, marginTop:1 }}>{a.sub}</div>
+              </div>
+              <button style={{
+                fontSize:11, fontWeight:600, padding:'5px 10px', borderRadius:6,
+                background:'transparent', border:`1px solid ${T.border}`, color:T.textPrimary,
+                cursor:'pointer', fontFamily:'inherit', flexShrink:0,
+              }}>{a.acao}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRÓXIMAS PARADAS — timeline vertical com avatares
+// ═══════════════════════════════════════════════════════════════════════
+function ProximasParadasTimeline({ T, dark, paradas }) {
+  const redC = _colorBy('red', dark), yellowC = _colorBy('yellow', dark), greenC = _colorBy('green', dark)
+  const corByTipo = (t) => t === 'urgente' ? redC : t === 'hoje' ? yellowC : greenC
+  const bgByTipo  = (t) => t === 'urgente' ? _bgBy('red', dark) : t === 'hoje' ? _bgBy('yellow', dark) : _bgBy('green', dark)
+  return (
+    <div style={{ ..._cardModerno(T), height:'100%' }}>
+      <SecHead T={T} icon="ti-route" action={<SecAction dark={dark}>Ver logística</SecAction>}>
+        Próximas paradas · {paradas.length}
+      </SecHead>
+      <div style={{ position:'relative' }}>
+        <div style={{ position:'absolute', left:19, top:8, bottom:8, width:1, background:_divider(dark) }} />
+        {paradas.map((p, i) => {
+          const cor = corByTipo(p.tipo)
+          return (
+            <div key={i} style={{ display:'flex', gap:14, padding:'9px 0' }}>
+              <div style={{ width:38, display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                <div style={{
+                  width:32, height:32, borderRadius:'50%',
+                  background:cor + '22', color:cor,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:11, fontWeight:700,
+                  border:`2px solid ${T.card}`, boxShadow:`0 0 0 1px ${cor}66`,
+                  position:'relative', zIndex:2,
+                }}>{p.ini}</div>
+              </div>
+              <div style={{ flex:1, minWidth:0, padding:'2px 10px 2px 0' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:1 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:T.textPrimary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.cliente}</div>
+                  <span style={{
+                    fontSize:10, padding:'2px 7px', borderRadius:6,
+                    background:bgByTipo(p.tipo), color:cor, fontWeight:600, whiteSpace:'nowrap',
+                  }}>{p.hr} · {p.dt}</span>
+                </div>
+                <div style={{ fontSize:11, color:T.textMuted, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  {p.svc} · {p.equip} <span style={{ marginLeft:6, color:T.textDim, fontFamily:'ui-monospace, monospace', fontSize:10.5 }}>OS {p.os}</span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PAINEL DESKTOP — função substituta da sua `function Painel({ T, dark })`
+// ═══════════════════════════════════════════════════════════════════════
 function Painel({ T, dark }) {
+  useInterFont()
   const cor = (d, c) => dark ? d : c
 
-  const metas = [
-    { label:'Faturamento — meta R$ 20.000', pct:71, cor:cor(P.blue,P.blueDark), sub:'R$ 14.260 atingido · faltam R$ 5.740' },
-    { label:'Meta diária — Seg a Sab · 11 dias restantes', pct:58, cor:cor(P.yellow,P.yellowDark), sub:'R$ 491/dia necessário · feriados excluídos' },
-  ]
+  // — Dados do Hero —
+  const hero = {
+    mesLabel:  'Maio 2026',
+    atual:     14260,
+    meta:      20000,
+    deltaPct:  12,
+    hojeLabel: '14/mai',
+    spark30d:  [320,580,240,0,0,1180,460,720,380,0,0,950,540,1620,880,1240,0,0,720,660,1490,520,0,0,1280,940,1840,1320],
+  }
 
+  // — Dados do Hoje sidekick —
+  const hoje = {
+    recebido: 1240,
+    osPagas: 3,
+    osAbertas: 14,
+    emRota: 5,
+    proximas: [
+      { hr:'08:30', tipo:'urgente', cliente:'Ana Reis',     svc:'Diagnóstico' },
+      { hr:'10:00', tipo:'hoje',    cliente:'João Costa',   svc:'Manutenção'  },
+      { hr:'14:00', tipo:'hoje',    cliente:'Maria Silva',  svc:'Limpeza'     },
+    ],
+  }
+
+  // — KPIs com sparkline embutida —
   const kpis = [
-    { label:'Faturamento mai', valor:'R$ 14.260', cor:cor(P.blue,P.blueDark),           icoBg:cor('#0d2035','#e6f1fb'), ico:'ti-cash',              trend:'+12% vs abr',       trendCor:cor(P.green,P.greenDark) },
-    { label:'Saldo líquido',   valor:'R$ 4.420',  cor:cor(P.blueLight,P.blueLightDark), icoBg:cor('#0d2035','#e6f1fb'), ico:'ti-trending-up',        trend:'+8% vs abr',        trendCor:cor(P.green,P.greenDark) },
-    { label:'A pagar hoje',    valor:'R$ 2.090',  cor:cor(P.red,P.redDark),             icoBg:cor('#2a1515','#fde8e8'), ico:'ti-receipt',            trend:'2 vencimentos',     trendCor:cor(P.red,P.redDark) },
-    { label:'Máq. na oficina', valor:'18',         cor:cor(P.yellow,P.yellowDark),       icoBg:cor('#2a2000','#fdf6dc'), ico:'ti-building-warehouse', trend:'14 em OS · 4 à venda', trendCor:T.textMuted },
+    { id:'saldo',   label:'Saldo líquido',   valor:4420,  corKey:'blue',      delta:8, deltaLbl:'vs abr', icon:'ti-wallet',
+      spark:[3100,3450,3200,3680,3950,4100,3880,4250,4180,4420] },
+    { id:'receber', label:'A receber',       valor:6820,  corKey:'yellow',    deltaTxt:'7 OS abertas', sub:'R$ 535 vencido', icon:'ti-arrow-down-right',
+      spark:[5400,5100,5800,6200,5900,6400,6100,6500,6700,6820] },
+    { id:'pagar',   label:'A pagar',          valor:2090,  corKey:'red',       deltaTxt:'2 vencimentos', sub:'Vence em 2d', icon:'ti-arrow-up-right',
+      spark:[1200,1800,1500,2400,1900,2100,2300,1700,2000,2090] },
+    { id:'oficina', label:'Máq. na oficina', valor:18,    corKey:'yellow',    deltaTxt:'14 OS · 4 venda', formatoCru:true, icon:'ti-building-warehouse',
+      spark:[12,14,13,16,17,15,18,19,17,18] },
   ]
 
-  const chartAnualData = {
-    labels:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
-    datasets:[
-      { label:'Recebido', data:[18000,12000,15000,9000,14260,0,0,0,0,0,0,0], backgroundColor:cor(P.blue,P.blueDark), borderRadius:3, stack:'s' },
-      { label:'Pago',     data:[-12000,-9000,-11000,-7000,-9840,0,0,0,0,0,0,0], backgroundColor:cor(P.red,P.redDark), borderRadius:3, stack:'s' },
-      { type:'line', label:'Saldo', data:[6000,9000,13000,15000,19420,null,null,null,null,null,null,null], borderColor:cor(P.blueLight,P.blueLightDark), borderWidth:1.5, pointBackgroundColor:cor(P.blueLight,P.blueLightDark), pointRadius:3, tension:0.4, fill:false, stack:undefined },
-    ]
-  }
-  const chartMesData = {
-    labels:['10/mai','11/mai','12/mai','13/mai','14/mai'],
-    datasets:[
-      { label:'Recebido', data:[48000,14000,16000,32000,0],    backgroundColor:cor(P.blue,P.blueDark), borderRadius:3, stack:'s' },
-      { label:'Pago',     data:[-28000,-8000,-10000,-18000,0], backgroundColor:cor(P.red,P.redDark),  borderRadius:3, stack:'s' },
-      { type:'line', label:'Saldo', data:[68000,64000,70000,72000,68000], borderColor:cor(P.blueLight,P.blueLightDark), borderWidth:1.5, pointBackgroundColor:cor(P.blueLight,P.blueLightDark), pointRadius:3, tension:0.4, fill:false, stack:undefined },
-    ]
-  }
+  // — Banner críticos —
+  const criticos = [
+    { icon:'ti-package-off',    msg:'Rolamento do cesto',  sub:'Esgotado · 14 saídas/mês',     acao:'Pedir' },
+    { icon:'ti-alert-triangle', msg:'OS #1037 · J. Costa', sub:'Parada em diagnóstico há 31h', acao:'Abrir' },
+    { icon:'ti-calendar-x',     msg:'OS #1036 · Ana Reis', sub:'Prazo atrasado em 2 dias',     acao:'Abrir' },
+  ]
 
+  // — Pipeline OS —
+  const pipeline = [
+    { id:'ag_agenda', label:'Ag. agenda',   n:2, corKey:'neutro' },
+    { id:'agendado',  label:'Agendado',     n:3, corKey:'neutro' },
+    { id:'recebido',  label:'Recebido',     n:0, corKey:'neutro' },
+    { id:'diagnos',   label:'Diagnóstico',  n:2, corKey:'yellow' },
+    { id:'orcam',     label:'Orçamento',    n:2, corKey:'red' },
+    { id:'oficina',   label:'Em oficina',   n:2, corKey:'blueLight' },
+    { id:'teste',     label:'Teste final',  n:1, corKey:'blue' },
+    { id:'entrega',   label:'Entregas',     n:2, corKey:'blue' },
+  ]
+
+  // — Próximas paradas (timeline maior) —
+  const proximas = [
+    { hr:'08:30', dt:'hoje',   tipo:'urgente', cliente:'Ana Reis',     ini:'AR', svc:'Diagnóstico', equip:'Lavadora LG 12kg',       os:'#1036' },
+    { hr:'10:00', dt:'hoje',   tipo:'hoje',    cliente:'João Costa',   ini:'JC', svc:'Manutenção',  equip:'Geladeira Consul',        os:'#1037' },
+    { hr:'14:00', dt:'hoje',   tipo:'hoje',    cliente:'Maria Silva',  ini:'MS', svc:'Limpeza',     equip:'Fogão Brastemp',          os:'#1040' },
+    { hr:'16:30', dt:'hoje',   tipo:'hoje',    cliente:'Bianca Souza', ini:'BS', svc:'Entrega',     equip:'Lavadora LG 14kg',        os:'#1042' },
+    { hr:'09:00', dt:'amanhã', tipo:'proximo', cliente:'Carlos Lima',  ini:'CL', svc:'Orçamento',   equip:'Micro-ondas Electrolux',  os:'#1039' },
+  ]
+
+  // — Chart.js opts (mantém igual ao seu — substitua se quiser usar os mesmos `chartAnualData/chartMesData` que você já monta) —
   const gridColor = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'
   const tickColor = T.textDim
   const chartOpts = () => ({
-    responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{display:false}, tooltip:{ backgroundColor:T.card, titleColor:T.textPrimary, bodyColor:T.textSecondary, borderColor:T.border, borderWidth:1, padding:9 } },
-    scales:{
-      x:{ stacked:true, grid:{color:gridColor}, ticks:{color:tickColor,font:{size:10}}, border:{color:'transparent'} },
-      y:{ stacked:true, grid:{color:gridColor}, ticks:{color:tickColor,font:{size:10},callback:v=>(v<0?'-R$'+Math.abs(Math.round(v/1000))+'k':'R$'+Math.round(v/1000)+'k')}, border:{color:'transparent'} }
-    }
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor:T.card, titleColor:T.textPrimary, bodyColor:T.textSecondary, borderColor:T.border, borderWidth:1, padding:9 },
+    },
+    scales: {
+      x: { stacked:true, grid:{ color:gridColor }, ticks:{ color:tickColor, font:{ size:10 } }, border:{ color:'transparent' } },
+      y: { stacked:true, grid:{ color:gridColor }, ticks:{ color:tickColor, font:{ size:10 }, callback:v => (v<0?'-R$'+Math.abs(Math.round(v/1000))+'k':'R$'+Math.round(v/1000)+'k') }, border:{ color:'transparent' } },
+    },
   })
-
-  const osItems = [
-    { label:'Ag. agenda',  n:2, bg:T.osNeutro,                      border:T.border,                                      c:T.osNeutroT },
-    { label:'Agendado',    n:3, bg:T.osNeutro,                       border:T.border,                                      c:T.osNeutroT },
-    { label:'Diagnóstico', n:2, bg:cor('#2a2000','#fdf6dc'),         border:cor(P.yellow+'22',P.yellowDark+'33'),           c:cor(P.yellow,P.yellowDark) },
-    { label:'Orçamento',   n:2, bg:cor('#2a1515','#fde8e8'),         border:cor(P.red+'22',P.redDark+'33'),                 c:cor(P.red,P.redDark) },
-    { label:'Limpeza',     n:1, bg:T.osNeutro,                       border:T.border,                                      c:T.osNeutroT },
-    { label:'Manutenção',  n:1, bg:T.osNeutro,                       border:T.border,                                      c:T.osNeutroT },
-    { label:'Finalizado',  n:1, bg:cor('#0f2a15','#e8f5ec'),         border:cor(P.green+'22',P.greenDark+'33'),             c:cor(P.green,P.greenDark) },
-    { label:'Entregas',    n:2, bg:cor('#0d2035','#e6f1fb'),         border:cor(P.blue+'22',P.blueDark+'33'),               c:cor(P.blue,P.blueDark) },
-  ]
-
-  const agendamentos = [
-    { hr:'08:30', dt:'hoje',   tipo:'urgente', nm:'Ana Reis · Lavadora LG',              svc:'Diagnóstico', tempo:'1h 20min' },
-    { hr:'10:00', dt:'hoje',   tipo:'hoje',    nm:'João Costa · Geladeira Consul',        svc:'Manutenção',  tempo:'2h 50min' },
-    { hr:'14:00', dt:'hoje',   tipo:'hoje',    nm:'Maria Silva · Fogão Brastemp',         svc:'Limpeza',     tempo:'6h 50min' },
-    { hr:'09:00', dt:'amanhã', tipo:'proximo', nm:'Carlos Lima · Micro-ondas Electrolux', svc:'Orçamento',   tempo:'amanhã' },
-    { hr:'11:30', dt:'amanhã', tipo:'proximo', nm:'Paula Mendes · Ar cond. Midea',        svc:'Instalação',  tempo:'amanhã' },
-  ]
-  const calCor = t => t==='urgente'?cor(P.red,P.redDark):t==='hoje'?cor(P.yellow,P.yellowDark):cor(P.green,P.greenDark)
-  const calBg  = t => t==='urgente'?cor('#2a1515','#fde8e8'):t==='hoje'?cor('#2a2000','#fdf6dc'):cor('#0f2a15','#e8f5ec')
-
-  const alertaReceber = [
-    { msg:'OS #1031 · João Costa',  sub:'Venceu há 3 dias · R$ 320,00', tipo:'vencido' },
-    { msg:'OS #1028 · Ana Reis',    sub:'Venceu há 5 dias · R$ 215,00', tipo:'vencido' },
-    { msg:'OS #1036 · Maria Silva', sub:'Vence hoje · R$ 480,00',        tipo:'hoje' },
-  ]
-  const alertaPagar = [
-    { msg:'Fornecedor Peças ABC', sub:'Venceu ontem · R$ 890,00',    tipo:'vencido' },
-    { msg:'Aluguel',              sub:'Vence amanhã · R$ 1.200,00',  tipo:'amanha' },
-    { msg:'Energia elétrica',     sub:'Vence em 2 dias · R$ 380,00', tipo:'2dias' },
-  ]
-  const alertaEtapas = [
-    { msg:'OS #1037 · João Costa',   sub:'Diagnóstico há 31h', horas:'31h', critico:true },
-    { msg:'OS #1034 · Paula Mendes', sub:'Orçamento há 26h',   horas:'26h', critico:true },
-    { msg:'OS #1041 · Carlos Lima',  sub:'Pré-diag. há 22h',   horas:'22h', critico:false },
-  ]
-  const alertaPrazo = [
-    { msg:'OS #1036 · Ana Reis · Lavadora LG',    sub:'Prazo era 11/mai · 2 dias atrasado', tipo:'atrasada' },
-    { msg:'OS #1033 · Pedro Alves · Secadora',    sub:'Prazo era 12/mai · 1 dia atrasado',  tipo:'atrasada' },
-    { msg:'OS #1039 · Carlos Lima · Micro-ondas', sub:'Prazo hoje às 18h · faltam 5h',      tipo:'hoje' },
-  ]
-  const alertaEstoque = [
-    { msg:'Rolamento do cesto', sub:'0 unid. · 14 saídas/mês', tipo:'esgotado' },
-    { msg:'Resistência 220V',   sub:'1 unid. · 11 saídas/mês', tipo:'critico' },
-    { msg:'Dreno sanfonado',    sub:'3 unid. · 9 saídas/mês',  tipo:'baixo' },
-  ]
-  const top5 = [
-    { nm:'Rolamento do cesto',   pct:100, qtd:0,  qtdCor:cor(P.red,P.redDark) },
-    { nm:'Resistência 220V',     pct:79,  qtd:1,  qtdCor:cor(P.red,P.redDark) },
-    { nm:'Dreno sanfonado',      pct:64,  qtd:3,  qtdCor:cor(P.yellow,P.yellowDark) },
-    { nm:'Capacitor partida',    pct:50,  qtd:8,  qtdCor:T.textMuted },
-    { nm:'Termostato universal', pct:36,  qtd:12, qtdCor:T.textMuted },
-  ]
-
-  const sepColor = dark ? '#1e1e20' : '#f0f0f2'
-
-  function AlRow({ msg, sub, dot, badge }) {
-    return (
-      <div style={{ display:'flex', alignItems:'flex-start', gap:7, padding:'6px 0', borderBottom:`1px solid ${sepColor}` }}>
-        <div style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, marginTop:5, background:dot }} />
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:12, color:T.textSecondary, lineHeight:1.3, fontWeight:500 }}>{msg}</div>
-          <div style={{ fontSize:10, color:T.textDim, marginTop:2 }}>{sub}</div>
-        </div>
-        {badge}
-      </div>
-    )
+  const chartAnualData = {
+    labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+    datasets: [
+      { label:'Recebido', data:[18000,12000,15000,9000,14260,0,0,0,0,0,0,0], backgroundColor:cor(P.blue,P.blueDark), borderRadius:3, stack:'s' },
+      { label:'Pago',     data:[-12000,-9000,-11000,-7000,-9840,0,0,0,0,0,0,0], backgroundColor:cor(P.red,P.redDark), borderRadius:3, stack:'s' },
+      { type:'line', label:'Saldo', data:[6000,9000,13000,15000,19420,null,null,null,null,null,null,null], borderColor:cor(P.blueLight,P.blueLightDark), borderWidth:1.5, pointBackgroundColor:cor(P.blueLight,P.blueLightDark), pointRadius:3, tension:0.4, fill:false },
+    ],
   }
-
-  function AlCard({ icon, title, count, countRed, children, footer }) {
-    return (
-      <div style={{ background:T.cardAlt, borderRadius:10, padding:'12px 13px', border:`1px solid ${T.border}` }}>
-        <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:9, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:5 }}><i className={`ti ${icon}`} style={{ fontSize:14 }} aria-hidden="true" />{title}</div>
-          <CountBadge n={count} red={countRed} T={T} dark={dark} />
-        </div>
-        {children}
-        {footer && <div style={{ marginTop:7, paddingTop:7, borderTop:`1px solid ${T.border}`, fontSize:11, color:T.textDim, display:'flex', gap:12, flexWrap:'wrap' }}>{footer}</div>}
-      </div>
-    )
-  }
-
-  const card = { background:T.card, borderRadius:11, padding:'14px 16px', border:`1px solid ${T.border}` }
-  const row2 = { display:'grid', gridTemplateColumns:'repeat(2,minmax(0,1fr))', gap:10 }
-  const row4 = { display:'grid', gridTemplateColumns:'repeat(4,minmax(0,1fr))', gap:10 }
-  const row3 = { display:'grid', gridTemplateColumns:'repeat(3,minmax(0,1fr))', gap:10 }
 
   return (
-    <div style={{ padding:'1.1rem', overflowY:'auto', flex:1, display:'flex', flexDirection:'column', gap:10, fontSize:14 }}>
-
-      {/* Metas */}
-      <div style={card}>
-        <SecTitle icon="ti-target" T={T}>Metas de maio</SecTitle>
-        <div style={row2}>
-          {metas.map((m,i) => (
-            <div key={i}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:5 }}>
-                <span style={{ fontSize:11, color:T.textSecondary }}>{m.label}</span>
-                <span style={{ fontSize:13, fontWeight:600, color:m.cor }}>{m.pct}%</span>
-              </div>
-              <div style={{ background:T.progBg, borderRadius:3, height:4, overflow:'hidden' }}>
-                <div style={{ width:`${m.pct}%`, height:'100%', borderRadius:3, background:m.cor }} />
-              </div>
-              <div style={{ fontSize:10, color:T.textDim, marginTop:4 }}>{m.sub}</div>
-            </div>
-          ))}
-        </div>
+    <div style={{
+      padding:'20px 24px 32px', overflowY:'auto', flex:1,
+      display:'flex', flexDirection:'column', gap:14,
+      fontSize:14, fontFamily:_fontPainel, fontFeatureSettings:'"cv11", "ss01"',
+    }}>
+      {/* Hero row */}
+      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:14 }}>
+        <HeroFaturamento T={T} dark={dark} hero={hero} />
+        <HojeSidekick T={T} dark={dark} hoje={hoje} />
       </div>
 
-      {/* KPIs */}
-      <div style={row4}>
-        {kpis.map((k,i) => (
-          <div key={i} style={{ background:T.card, borderRadius:11, border:`1px solid ${T.border}`, overflow:'hidden' }}>
-            <div style={{ height:3, background:k.cor }} />
-            <div style={{ padding:'13px 15px' }}>
-              <div style={{ width:30, height:30, borderRadius:8, background:k.icoBg, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:9 }}>
-                <i className={`ti ${k.ico}`} style={{ fontSize:15, color:k.cor }} aria-hidden="true" />
-              </div>
-              <div style={{ fontSize:20, fontWeight:700, color:k.cor, marginBottom:3, letterSpacing:'-.5px' }}>{k.valor}</div>
-              <div style={{ fontSize:11, color:T.textMuted, marginBottom:6 }}>{k.label}</div>
-              <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:k.trendCor }}>
-                <i className="ti ti-minus" style={{ fontSize:11 }} aria-hidden="true" /><span>{k.trend}</span>
-              </div>
-            </div>
+      {/* KPI row */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4, minmax(0, 1fr))', gap:12 }}>
+        {kpis.map(k => <KPICard key={k.id} k={k} T={T} dark={dark} />)}
+      </div>
+
+      {/* Críticos banner */}
+      <AlertasCriticos T={T} dark={dark} criticos={criticos} />
+
+      {/* Pipeline */}
+      <PipelineOS T={T} dark={dark} etapas={pipeline} />
+
+      {/* Fluxo de caixa + Paradas */}
+      <div style={{ display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:14 }}>
+        <div style={{ ..._cardModerno(T, { padding:'18px 20px 14px', display:'flex', flexDirection:'column' }) }}>
+          <SecHead T={T} icon="ti-arrows-exchange" sm>Fluxo de caixa · 2026</SecHead>
+          <div style={{ display:'flex', alignItems:'baseline', gap:10, marginTop:-2, marginBottom:8 }}>
+            <span style={{ fontSize:26, fontWeight:700, color: dark ? '#f1f5f9' : '#0a0a0d', letterSpacing:'-.025em', fontVariantNumeric:'tabular-nums' }}>R$ 68.260</span>
+            <span style={{ fontSize:11, color:T.textMuted }}>recebido em 2026 até mai</span>
           </div>
-        ))}
-      </div>
-
-      {/* Gráficos */}
-      <div style={row2}>
-        {[
-          { title:'Fluxo de caixa anual',  total:'R$ 68.260', sub:'recebido em 2025 até mai', data:chartAnualData },
-          { title:'Fluxo de caixa — maio', total:'R$ 19.420', sub:'saldo acumulado em maio',  data:chartMesData },
-        ].map((g,i) => (
-          <div key={i} style={card}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-              <div>
-                <div style={{ fontSize:11, fontWeight:600, color:T.textMuted, textTransform:'uppercase', letterSpacing:'.5px', marginBottom:3, display:'flex', alignItems:'center', gap:5 }}>
-                  <i className="ti ti-arrows-exchange" style={{ fontSize:13 }} aria-hidden="true" />{g.title}
-                </div>
-                <div style={{ fontSize:18, fontWeight:700, color:cor(P.blue,P.blueDark), letterSpacing:'-.5px' }}>{g.total}</div>
-                <div style={{ fontSize:10, color:T.textDim, marginTop:2 }}>{g.sub}</div>
-              </div>
-              <div style={{ display:'flex', gap:10 }}>
-                {[{c:cor(P.blue,P.blueDark),l:'Rec.'},{c:cor(P.red,P.redDark),l:'Pago'},{c:cor(P.blueLight,P.blueLightDark),l:'Saldo',line:true}].map((leg,j) => (
-                  <span key={j} style={{ display:'flex', alignItems:'center', gap:3, fontSize:10, color:T.textDim }}>
-                    {leg.line?<span style={{ width:10, height:2, background:leg.c, display:'inline-block' }}/>:<span style={{ width:8, height:8, borderRadius:2, background:leg.c, display:'inline-block' }}/>}
-                    {leg.l}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div style={{ position:'relative', width:'100%', height:150 }}>
-              <Bar data={g.data} options={chartOpts()} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* OS + Agendamentos */}
-      <div style={row2}>
-        <div style={card}>
-          <SecTitle icon="ti-clipboard-list" T={T} right={<CountBadge n="14 total" T={T} dark={dark} />}>Situação das OS</SecTitle>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(0,1fr))', gap:6 }}>
-            {osItems.map((os,i) => (
-              <div key={i} style={{ borderRadius:8, padding:'9px 6px', textAlign:'center', border:`1px solid ${os.border}`, background:os.bg }}>
-                <div style={{ fontSize:17, fontWeight:700, color:os.c }}>{os.n}</div>
-                <div style={{ fontSize:10, marginTop:3, lineHeight:1.3, color:os.c, opacity:.85 }}>{os.label}</div>
-              </div>
-            ))}
+          <div style={{ position:'relative', width:'100%', height:220 }}>
+            <Bar data={chartAnualData} options={chartOpts()} />
           </div>
         </div>
-
-        <div style={card}>
-          <SecTitle icon="ti-calendar-event" T={T} right={<CountBadge n="5 hoje e amanhã" T={T} dark={dark} />}>Próximos agendamentos</SecTitle>
-          {agendamentos.map((a,i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 0', borderBottom:i<agendamentos.length-1?`1px solid ${sepColor}`:'none' }}>
-              <div style={{ textAlign:'right', minWidth:46 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:T.textPrimary }}>{a.hr}</div>
-                <div style={{ fontSize:10, color:T.textMuted }}>{a.dt}</div>
-              </div>
-              <div style={{ width:3, height:34, borderRadius:2, flexShrink:0, background:calCor(a.tipo) }} />
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:12, color:T.textSecondary, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontWeight:500 }}>{a.nm}</div>
-                <div style={{ fontSize:10, color:T.textMuted, marginTop:1 }}>{a.svc}</div>
-              </div>
-              <Badge color={calCor(a.tipo)} bg={calBg(a.tipo)} border={calCor(a.tipo)+'33'}>{a.tempo}</Badge>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Alertas */}
-      <div style={card}>
-        <SecTitle icon="ti-alert-triangle" T={T} right={<CountBadge n="9 ativos" red T={T} dark={dark} />}>Alertas da operação</SecTitle>
-        <div style={row3}>
-          <AlCard icon="ti-arrow-down-circle" title="A receber" count={3} countRed footer={<><span>Vencido: <strong style={{color:cor(P.red,P.redDark)}}>R$ 535</strong></span><span>Próx. 2d: <strong style={{color:cor(P.yellow,P.yellowDark)}}>R$ 1.080</strong></span></>}>
-            {alertaReceber.map((a,i)=><AlRow key={i} msg={a.msg} sub={a.sub} dot={a.tipo==='vencido'?cor(P.red,P.redDark):a.tipo==='hoje'?cor(P.yellow,P.yellowDark):cor(P.green,P.greenDark)} badge={<StatusBadge tipo={a.tipo} dark={dark}/>}/>)}
-          </AlCard>
-          <AlCard icon="ti-arrow-up-circle" title="A pagar" count={3} countRed footer={<><span>Vencido: <strong style={{color:cor(P.red,P.redDark)}}>R$ 890</strong></span><span>Próx. 2d: <strong style={{color:cor(P.yellow,P.yellowDark)}}>R$ 2.090</strong></span></>}>
-            {alertaPagar.map((a,i)=><AlRow key={i} msg={a.msg} sub={a.sub} dot={a.tipo==='vencido'?cor(P.red,P.redDark):a.tipo==='amanha'?cor(P.yellow,P.yellowDark):cor(P.green,P.greenDark)} badge={<StatusBadge tipo={a.tipo} dark={dark}/>}/>)}
-          </AlCard>
-          <AlCard icon="ti-clock-exclamation" title="Etapas +24h" count={3} countRed>
-            {alertaEtapas.map((a,i)=><AlRow key={i} msg={a.msg} sub={a.sub} dot={a.critico?cor(P.red,P.redDark):cor(P.yellow,P.yellowDark)} badge={<Badge color={a.critico?cor(P.red,P.redDark):cor(P.yellow,P.yellowDark)} bg={a.critico?cor('#2a1515','#fde8e8'):cor('#2a2000','#fdf6dc')} border={(a.critico?cor(P.red,P.redDark):cor(P.yellow,P.yellowDark))+'33'}>{a.horas}</Badge>}/>)}
-          </AlCard>
-          <AlCard icon="ti-calendar-x" title="Prazo de conclusão" count={3} countRed>
-            {alertaPrazo.map((a,i)=><AlRow key={i} msg={a.msg} sub={a.sub} dot={a.tipo==='atrasada'?cor(P.red,P.redDark):cor(P.yellow,P.yellowDark)} badge={<StatusBadge tipo={a.tipo} dark={dark}/>}/>)}
-          </AlCard>
-          <AlCard icon="ti-package" title="Estoque crítico" count={3} countRed>
-            {alertaEstoque.map((a,i)=><AlRow key={i} msg={a.msg} sub={a.sub} dot={a.tipo==='esgotado'||a.tipo==='critico'?cor(P.red,P.redDark):cor(P.yellow,P.yellowDark)} badge={<StatusBadge tipo={a.tipo} dark={dark}/>}/>)}
-          </AlCard>
-          <AlCard icon="ti-packages" title="Top 5 peças" count="saídas/mês">
-            {top5.map((p,i)=>(
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 0', borderBottom:i<top5.length-1?`1px solid ${sepColor}`:'none' }}>
-                <span style={{ fontSize:10, color:T.textDim, minWidth:16, fontWeight:600 }}>#{i+1}</span>
-                <span style={{ fontSize:11, color:T.textMuted, flex:1, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.nm}</span>
-                <div style={{ width:46, background:T.progBg, borderRadius:2, height:3, overflow:'hidden', flexShrink:0 }}>
-                  <div style={{ width:`${p.pct}%`, height:'100%', borderRadius:2, background:cor(P.blue,P.blueDark) }} />
-                </div>
-                <span style={{ fontSize:11, minWidth:32, textAlign:'right', flexShrink:0, fontWeight:600, color:p.qtdCor }}>{p.qtd} un</span>
-              </div>
-            ))}
-          </AlCard>
-        </div>
+        <ProximasParadasTimeline T={T} dark={dark} paradas={proximas} />
       </div>
     </div>
   )
