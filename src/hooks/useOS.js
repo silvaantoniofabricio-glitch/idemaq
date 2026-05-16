@@ -4,7 +4,7 @@ import { supabase } from '../supabase'
 // Traduz etapa do banco (DB) para o valor usado na UI
 function dbEtapaToUI(tipo, dbEtapa) {
   if (!dbEtapa) return dbEtapa
-  if (dbEtapa === 'aguardando_ag') return 'ag_agendamento'
+  if (dbEtapa === 'aguardando_agendamento') return 'ag_agendamento'
   // 'agendamento' no DB = 'agendado' na UI para atendimento, 'agendamento' para venda
   if (dbEtapa === 'agendamento' && tipo === 'atendimento') return 'agendado'
   if (dbEtapa === 'em_oficina') return 'oficina'
@@ -16,7 +16,7 @@ function dbEtapaToUI(tipo, dbEtapa) {
 // Traduz etapa da UI para o valor do banco (para UPDATE)
 export function uiEtapaToDb(tipo, uiEtapa) {
   if (!uiEtapa) return uiEtapa
-  if (uiEtapa === 'ag_agendamento') return 'aguardando_ag'
+  if (uiEtapa === 'ag_agendamento') return 'aguardando_agendamento'
   if (uiEtapa === 'agendado') return 'agendamento'
   if (uiEtapa === 'oficina') return 'em_oficina'
   if (uiEtapa === 'entregue') return 'entrega'
