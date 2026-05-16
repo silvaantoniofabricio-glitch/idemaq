@@ -21,7 +21,8 @@ import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 
 // UI library
 import KanbanColumn from '../components/kanban/KanbanColumn'
-import { NovaOSModal, OSDetalhe } from '../_legacy/desktopKanbanModals'
+import { NovaOSModal } from '../_legacy/desktopKanbanModals'
+import { OSDrawer } from '../components/os'
 
 export default function Kanban({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
@@ -372,10 +373,11 @@ export default function Kanban({ T, dark, user }) {
       </div>
 
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" />}
-      {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList} usuarios={usuarios}
+      {osDetalheAtual && <OSDrawer T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList}
         onClose={()=>setDetalhe(null)}
         onToggleAgPeca={()=>toggleAgPecaOS(osDetalheAtual.numero)}
-        onAbrirOS={(num)=>{ const o = osList.find(x=>x.numero===num); if(o) setDetalhe(o) }} />}
+        onAbrirOS={(num)=>{ const o = osList.find(x=>x.numero===num); if(o) setDetalhe(o) }}
+        onMoverOS={moverOS} />}
     </>
   )
 }

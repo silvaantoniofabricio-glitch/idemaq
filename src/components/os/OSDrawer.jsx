@@ -1,0 +1,566 @@
+// src/components/os/OSDrawer.jsx
+// Painel lateral de detalhe de OS — desktop only.
+// Slide-in da direita (480 px) · 4 abas · footer com "Avançar etapa".
+
+import React, { useState, useEffect } from 'react'
+import { P } from '../../theme'
+import { TIPOS_OS, ETAPAS_TODOS, funcPorId } from '../../utils/osData'
+import {
+  estaPagaTotal, estaPagaParcial,
+  calcStatusPrazo, diasPrazo, responsavelAtual,
+  isAdmin, dentroGarantia, podeMoverOS,
+} from '../../utils/osHelpers'
+import { corEtapa, bgEtapa } from '../../utils/colors'
+import { OS_ITENS_MOCK } from '../../_mocks/os'
+
+export default function OSDrawer({ T, dark, os, user, osBase, onClose, onToggleAgPeca, onAbrirOS, onMoverOS }) {
+  const cor = (d, c) => dark ? d : c
+  const [aba, setAba] = useState('resumo')
+  const admin = isAdmin(user)
+
+  const config      = TIPOS_OS[os.tipo]
+  const tipoCor     = corEtapa(config.cor, dark)
+  const etapaIdx    = config.etapas.findIndex(e => e.id === os.etapa)
+  const etapaAtual  = config.etapas[etapaIdx]
+  const isConcluido = os.etapa === 'concluido'
+  const isRecusado  = os.etapa === 'recusado'
+
+  const status     = calcStatusPrazo(os.prazo, os.etapa)
+  const dias       = diasPrazo(os.prazo)
+  const pagoTotal  = estaPagaTotal(os)
+  const pagoParcial = !pagoTotal && estaPagaParcial(os)
+  const valorPago  = os.valor_pago || 0
+
+  const itens    = OS_ITENS_MOCK[os.numero] || []
+  const subtotal = itens.reduce((s, i) => s + i.valor * i.qtd, 0)
+  const totalLiq = subtotal - (os.desconto || 0)
+  const aPagar   = Math.max(0, totalLiq - valorPago)
+
+  const respId = responsavelAtual(os)
+  const func   = funcPorId(respId)
+
+  const osOrigem      = os.garantia && osBase ? osBase.find(o => o.numero === os.os_origem_id) : null
+  const garantiaValida = isConcluido ? dentroGarantia(os) : false
+
+  // Próxima etapa — mapeada para ID unificado (o que moverOS espera)
+  const proximaEtapaCfg  = config.etapas[etapaIdx + 1]
+  const proximaEtapaUnif = proximaEtapaCfg
+    ? ETAPAS_TODOS.find(e => e.match?.[os.tipo] === proximaEtapaCfg.id)
+    : null
+  const podeAvancar = proximaEtapaCfg && !isConcluido && !isRecusado
+    ? podeMoverOS(os, proximaEtapaCfg.id)
+    : { ok: false, motivo: isConcluido ? 'OS concluída' : isRecusado ? 'OS recusada' : 'Última etapa' }
+
+  const historico = os.historico || []
+
+  // ESC fecha
+  useEffect(() => {
+    const fn = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [onClose])
+
+  const abas = [
+    { id: 'resumo',    label: 'Resumo',                      icon: 'ti-info-circle'   },
+    { id: 'itens',     label: `Itens (${itens.length})`,     icon: 'ti-list-details'  },
+    { id: 'historico', label: `Histórico (${historico.length})`, icon: 'ti-history'  },
+    { id: 'pagamento', label: 'Pagamento',                   icon: 'ti-cash-banknote' },
+  ]
+
+  return (
+    <>
+      <style>{`@keyframes os-drawer-in{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+
+      {/* Overlay escurecido */}
+      <div
+        onClick={onClose}
+        style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:200, backdropFilter:'blur(2px)' }}
+      />
+
+      {/* Painel lateral */}
+      <div style={{
+        position:'fixed', top:0, right:0, bottom:0, width:480,
+        background:T.bg, zIndex:201,
+        boxShadow:'-4px 0 40px rgba(0,0,0,.35)',
+        display:'flex', flexDirection:'column',
+        animation:'os-drawer-in .2s cubic-bezier(.32,1,.5,1)',
+      }}>
+
+        {/* ── HEADER FIXO ───────────────────────────────────────────────── */}
+        <div style={{ flexShrink:0, borderBottom:`1px solid ${T.border}`, background:tipoCor+'0a' }}>
+
+          {/* Linha 1: tipo + OS# + badges de estado + botões */}
+          <div style={{ padding:'12px 14px 8px', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
+              <span style={{ padding:'3px 9px', borderRadius:6, background:tipoCor+'22', color:tipoCor, fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:5, textTransform:'uppercase', letterSpacing:'.3px' }}>
+                <i className={`ti ${config.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
+                {config.label}
+              </span>
+              <span style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>OS #{os.numero}</span>
+              {os.garantia && (
+                <_Pill cor={cor(P.blue,P.blueDark)} bg={cor('#0d2035','#e6f1fb')}>
+                  <i className="ti ti-shield-check" style={{ fontSize:11 }} aria-hidden="true" /> Garantia
+                </_Pill>
+              )}
+              {pagoTotal && (
+                <_Pill cor={cor(P.green,P.greenDark)} bg={cor('#0f2a15','#e8f5ec')}>
+                  <i className="ti ti-check" style={{ fontSize:11 }} aria-hidden="true" /> Pago
+                </_Pill>
+              )}
+              {pagoParcial && (
+                <_Pill cor={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')}>Parcial</_Pill>
+              )}
+              {!isRecusado && status==='vencido' && (
+                <_Pill cor={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')}>{Math.abs(dias)}d atraso</_Pill>
+              )}
+              {status==='hoje'   && <_Pill cor={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')}>Vence hoje</_Pill>}
+              {status==='amanha' && <_Pill cor={cor(P.yellow,P.yellowDark)} bg={cor('#2a2000','#fdf6dc')}>Vence amanhã</_Pill>}
+              {isRecusado && <_Pill cor={cor(P.red,P.redDark)} bg={cor('#2a1515','#fde8e8')}>Recusada</_Pill>}
+              {os.aguardando_peca && <_Pill cor="#ff9800" bg={cor('#3a2200','#fff4e0')}><i className="ti ti-package" style={{ fontSize:11 }} aria-hidden="true" /> Ag. peça</_Pill>}
+            </div>
+
+            <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+              <button onClick={onToggleAgPeca} title={os.aguardando_peca ? 'Desmarcar aguardando peça' : 'Marcar aguardando peça'}
+                style={{ padding:'5px 8px', borderRadius:6, border:`1px solid ${os.aguardando_peca?'#ff9800':T.border}`, background:os.aguardando_peca?cor('#3a2200','#fff4e0'):'transparent', color:os.aguardando_peca?'#ff9800':T.textMuted, cursor:'pointer', display:'flex', alignItems:'center' }}>
+                <i className={`ti ${os.aguardando_peca?'ti-package':'ti-package-off'}`} style={{ fontSize:14 }} aria-hidden="true" />
+              </button>
+              <button onClick={onClose} aria-label="Fechar"
+                style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:'5px 6px', borderRadius:6, display:'flex', alignItems:'center' }}>
+                <i className="ti ti-x" style={{ fontSize:20 }} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          {/* Linha 2: cliente + equipamento + etapa pill + avatar */}
+          <div style={{ padding:'0 14px 10px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+            <div style={{ minWidth:0, flex:1 }}>
+              <div style={{ fontSize:14, fontWeight:700, color:T.textPrimary, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{os.cliente}</div>
+              <div style={{ fontSize:11.5, color:T.textMuted }}>
+                {[os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento}
+              </div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+              {etapaAtual && (
+                <span style={{ padding:'4px 10px', borderRadius:20, background:bgEtapa(etapaAtual.cor, dark), color:corEtapa(etapaAtual.cor, dark), fontSize:11, fontWeight:700, border:`1px solid ${corEtapa(etapaAtual.cor, dark)}33`, whiteSpace:'nowrap' }}>
+                  {etapaAtual.curto}
+                </span>
+              )}
+              {func && (
+                <span title={func.nome} style={{ width:30, height:30, borderRadius:'50%', background:func.cor+'33', color:func.cor, fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:`1.5px solid ${func.cor}55`, flexShrink:0, userSelect:'none' }}>
+                  {func.apelido}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Abas underline */}
+          <div style={{ display:'flex' }}>
+            {abas.map(a => {
+              if (!admin && a.id === 'pagamento') return null
+              const ativo = aba === a.id
+              return (
+                <button key={a.id} onClick={() => setAba(a.id)}
+                  style={{ flex:1, padding:'8px 6px', border:'none', borderBottom:`2px solid ${ativo?tipoCor:'transparent'}`, background:'transparent', color:ativo?tipoCor:T.textMuted, fontSize:11, fontWeight:ativo?700:500, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, transition:'border-color .12s,color .12s', whiteSpace:'nowrap' }}>
+                  <i className={`ti ${a.icon}`} style={{ fontSize:12 }} aria-hidden="true" />
+                  {a.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── CONTEÚDO SCROLLÁVEL ────────────────────────────────────────── */}
+        <div style={{ flex:1, overflowY:'auto', padding:'14px 14px', display:'flex', flexDirection:'column', gap:12 }}>
+          {aba==='resumo'    && <AbaResumo os={os} config={config} etapaIdx={etapaIdx} osOrigem={osOrigem} garantiaValida={garantiaValida} admin={admin} T={T} dark={dark} tipoCor={tipoCor} status={status} dias={dias} onAbrirOS={onAbrirOS} onToggleAgPeca={onToggleAgPeca} historico={historico} />}
+          {aba==='itens'     && <AbaItens itens={itens} subtotal={subtotal} totalLiq={totalLiq} os={os} pagoTotal={pagoTotal} pagoParcial={pagoParcial} valorPago={valorPago} aPagar={aPagar} tipoCor={tipoCor} T={T} dark={dark} />}
+          {aba==='historico' && <AbaHistorico historico={historico} config={config} T={T} dark={dark} />}
+          {aba==='pagamento' && admin && <AbaPagamento os={os} totalLiq={totalLiq} valorPago={valorPago} aPagar={aPagar} pagoTotal={pagoTotal} pagoParcial={pagoParcial} T={T} dark={dark} tipoCor={tipoCor} />}
+        </div>
+
+        {/* ── FOOTER FIXO ────────────────────────────────────────────────── */}
+        {!isConcluido && !isRecusado && (
+          <div style={{ flexShrink:0, padding:'10px 14px', borderTop:`1px solid ${T.border}`, background:T.card, display:'flex', alignItems:'center', gap:10 }}>
+            <div style={{ flex:1, fontSize:11.5 }}>
+              {podeAvancar.ok && proximaEtapaCfg
+                ? <span style={{ color:T.textMuted }}>Avançar para <strong style={{ color:T.textPrimary }}>{proximaEtapaCfg.label}</strong></span>
+                : <span style={{ color:cor(P.red,P.redDark), display:'flex', alignItems:'center', gap:5 }}>
+                    <i className="ti ti-lock" style={{ fontSize:13 }} aria-hidden="true" />
+                    {podeAvancar.motivo || 'Última etapa do fluxo'}
+                  </span>
+              }
+            </div>
+            <button
+              onClick={() => { if (podeAvancar.ok && proximaEtapaUnif) onMoverOS(os.numero, proximaEtapaUnif.id) }}
+              disabled={!podeAvancar.ok || !proximaEtapaUnif}
+              style={{
+                padding:'8px 16px', borderRadius:7, border:'none',
+                cursor: podeAvancar.ok && proximaEtapaUnif ? 'pointer' : 'not-allowed',
+                background: podeAvancar.ok ? `linear-gradient(135deg,${tipoCor},${tipoCor}cc)` : T.cardAlt,
+                color: podeAvancar.ok ? '#fff' : T.textDim,
+                fontSize:12.5, fontWeight:700, display:'flex', alignItems:'center', gap:6,
+                opacity: podeAvancar.ok ? 1 : 0.55, flexShrink:0,
+              }}>
+              <i className="ti ti-arrow-right" style={{ fontSize:14 }} aria-hidden="true" />
+              Avançar etapa
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─── Pill de badge inline ────────────────────────────────────────────────────
+function _Pill({ cor, bg, children }) {
+  return (
+    <span style={{ padding:'2px 8px', borderRadius:5, background:bg, color:cor, border:`1px solid ${cor}33`, fontSize:10.5, fontWeight:700, display:'inline-flex', alignItems:'center', gap:4 }}>
+      {children}
+    </span>
+  )
+}
+
+// ─── Aba Resumo ──────────────────────────────────────────────────────────────
+function AbaResumo({ os, config, etapaIdx, osOrigem, garantiaValida, admin, T, dark, tipoCor, status, dias, onAbrirOS, onToggleAgPeca, historico }) {
+  const cor = (d, c) => dark ? d : c
+  const isRecusado = os.etapa === 'recusado'
+
+  return (
+    <>
+      {/* OS em garantia — exibe OS de origem */}
+      {os.garantia && osOrigem && (
+        <div onClick={() => onAbrirOS?.(osOrigem.numero)}
+          style={{ padding:'10px 14px', borderRadius:9, background:bgEtapa('blue', dark), border:`1px solid ${corEtapa('blue', dark)}55`, fontSize:12, color:T.textSecondary, display:'flex', alignItems:'center', gap:10, cursor:onAbrirOS?'pointer':'default' }}>
+          <i className="ti ti-shield-check" style={{ fontSize:20, color:corEtapa('blue', dark), flexShrink:0 }} aria-hidden="true" />
+          <div style={{ flex:1 }}>
+            <div style={{ fontWeight:700, color:T.textPrimary, marginBottom:2 }}>OS em garantia</div>
+            <div style={{ lineHeight:1.4 }}>
+              Referente à OS #{' '}<strong style={{ color:corEtapa('blue', dark) }}>{osOrigem.numero}</strong>{' '}
+              de {osOrigem.cliente} ({osOrigem.equipamento}). Peças a preço de custo, sem mão de obra.
+            </div>
+          </div>
+          {onAbrirOS && <i className="ti ti-chevron-right" style={{ fontSize:18, color:T.textDim }} aria-hidden="true" />}
+        </div>
+      )}
+
+      {/* Garantia ativa (OS concluída original) */}
+      {!os.garantia && os.etapa==='concluido' && garantiaValida && (
+        <div style={{ padding:'10px 14px', borderRadius:9, background:bgEtapa('blue', dark), border:`1px solid ${corEtapa('blue', dark)}55`, fontSize:12, color:T.textSecondary, display:'flex', alignItems:'center', gap:10 }}>
+          <i className="ti ti-shield-check" style={{ fontSize:20, color:corEtapa('blue', dark), flexShrink:0 }} aria-hidden="true" />
+          <div>
+            <div style={{ fontWeight:700, color:T.textPrimary, marginBottom:2 }}>Garantia ativa</div>
+            <div>Se houver retorno, abra nova OS marcando "Garantia" e referenciando esta.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline das etapas */}
+      {!isRecusado && (
+        <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+            <i className="ti ti-route" style={{ fontSize:14 }} aria-hidden="true" />
+            Fluxo — etapa atual: <strong style={{ color:tipoCor }}>{config.etapas[etapaIdx]?.label}</strong>
+          </div>
+          <div style={{ display:'flex', gap:3, overflowX:'auto', paddingBottom:4 }}>
+            {config.etapas.map((e, i) => {
+              if (e.adminOnly && !admin) return null
+              const passou = i < etapaIdx
+              const atual  = i === etapaIdx
+              const corE   = atual ? corEtapa(e.cor, dark) : (passou ? cor(P.green, P.greenDark) : T.textDim)
+              const bgE    = atual ? bgEtapa(e.cor, dark)  : (passou ? cor('#0f2a15', '#e8f5ec') : T.bg)
+              const reg    = historico.find(h => h.etapa === e.id)
+              const f      = reg && funcPorId(reg.funcionario)
+              return (
+                <div key={e.id} style={{ flex:'1 0 auto', minWidth:78, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                  <div style={{ width:22, height:22, borderRadius:'50%', background:bgE, color:corE, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, border:`1.5px solid ${atual?corE:'transparent'}` }}>
+                    {passou ? <i className="ti ti-check" style={{ fontSize:12 }} aria-hidden="true" /> : atual ? <div style={{ width:6, height:6, borderRadius:'50%', background:corE }} /> : i+1}
+                  </div>
+                  <span style={{ fontSize:9.5, color:corE, textAlign:'center', lineHeight:1.25, fontWeight:atual?700:500, maxWidth:80 }}>{e.curto}</span>
+                  {f && (
+                    <span title={`Feito por ${f.nome}`} style={{ fontSize:8, color:f.cor, fontWeight:700, padding:'1px 5px', borderRadius:8, background:f.cor+'22', border:`1px solid ${f.cor}33` }}>
+                      {f.apelido}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Limpeza e Manutenção — só na etapa oficina */}
+      {os.etapa==='oficina' && (
+        <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+          <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <i className="ti ti-tool" style={{ fontSize:14 }} aria-hidden="true" />
+              Em oficina
+            </div>
+            <button onClick={onToggleAgPeca}
+              style={{ padding:'4px 10px', borderRadius:6, border:`1px solid ${os.aguardando_peca?'#ff9800':T.border}`, background:os.aguardando_peca?cor('#3a2200','#fff4e0'):T.bg, color:os.aguardando_peca?'#ff9800':T.textMuted, fontSize:10.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5, textTransform:'none', letterSpacing:'normal' }}>
+              <i className={`ti ${os.aguardando_peca?'ti-package':'ti-package-off'}`} style={{ fontSize:12 }} aria-hidden="true" />
+              {os.aguardando_peca ? 'Aguardando peça' : 'Marcar ag. peça'}
+            </button>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <_SubBox label="Limpeza"    status={os.limpeza}    icon="ti-droplet" T={T} dark={dark} />
+            <_SubBox label="Manutenção" status={os.manutencao} icon="ti-tool"    T={T} dark={dark} />
+          </div>
+          <div style={{ fontSize:11, color:T.textDim, marginTop:8, fontStyle:'italic' }}>
+            <i className="ti ti-info-circle" style={{ fontSize:12, marginRight:4, verticalAlign:'middle' }} aria-hidden="true" />
+            Teste final libera quando ambas concluídas.
+          </div>
+        </div>
+      )}
+
+      {/* Cliente e Equipamento */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+        <_DetCard icon="ti-user" titulo="Cliente" T={T}>
+          <_Linha label="Nome"     valor={os.cliente}  T={T} />
+          {os.fone     && <_Linha label="Telefone" valor={os.fone}     T={T} />}
+          {os.endereco && <_Linha label="Endereço" valor={os.endereco} T={T} multi />}
+        </_DetCard>
+        <_DetCard icon="ti-device-mobile-cog" titulo="Equipamento" T={T}>
+          {os.marca  && <_Linha label="Marca"   valor={os.marca}  T={T} />}
+          {os.modelo && <_Linha label="Modelo"  valor={os.modelo} T={T} />}
+          {os.serie  && <_Linha label="Nº série" valor={os.serie} T={T} mono />}
+          <_Linha label="Defeito" valor={os.defeito} T={T} multi />
+        </_DetCard>
+      </div>
+
+      {/* Datas */}
+      {(() => {
+        const aberturaStr = os.abertura || os.criado_em
+        const aberturaD   = aberturaStr ? new Date(aberturaStr) : null
+        const prazoD      = os.prazo    ? new Date(os.prazo)    : null
+        const diasNaOS    = aberturaD   ? Math.max(1, Math.round((Date.now()-aberturaD)/86400000)) : null
+        return (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+            <_DetMini icon="ti-calendar-plus"  label="Aberta" valor={aberturaD ? aberturaD.toLocaleDateString('pt-BR') : '—'} T={T} />
+            <_DetMini icon="ti-calendar-check" label="Prazo"  valor={prazoD ? prazoD.toLocaleDateString('pt-BR') : '—'} T={T}
+              cor={prazoD && status==='vencido' ? (dark?P.red:P.redDark) : prazoD && (status==='hoje'||status==='amanha') ? (dark?P.yellow:P.yellowDark) : undefined} />
+            <_DetMini icon="ti-clock-hour-4"   label="Na OS"  valor={diasNaOS != null ? diasNaOS+'d' : '—'} T={T} />
+          </div>
+        )
+      })()}
+
+      {/* Observações */}
+      {os.observacoes && (
+        <_DetCard icon="ti-notes" titulo="Observações" T={T}>
+          <div style={{ fontSize:12.5, color:T.textSecondary, lineHeight:1.5, whiteSpace:'pre-wrap' }}>{os.observacoes}</div>
+        </_DetCard>
+      )}
+    </>
+  )
+}
+
+// ─── Aba Itens ────────────────────────────────────────────────────────────────
+function AbaItens({ itens, subtotal, totalLiq, os, pagoTotal, pagoParcial, valorPago, aPagar, tipoCor, T, dark }) {
+  const cor = (d, c) => dark ? d : c
+  if (itens.length === 0) {
+    return (
+      <div style={{ textAlign:'center', padding:'3rem 1rem', color:T.textDim }}>
+        <i className="ti ti-list-details" style={{ fontSize:36, display:'block', marginBottom:10, opacity:.4 }} aria-hidden="true" />
+        <div style={{ fontSize:13, fontWeight:600 }}>Nenhum item cadastrado</div>
+        <div style={{ fontSize:11.5, marginTop:4 }}>Os itens aparecerão aqui quando forem adicionados à OS.</div>
+      </div>
+    )
+  }
+  return (
+    <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}`, display:'flex', flexDirection:'column', gap:5 }}>
+      {itens.map((it, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', background:T.bg, borderRadius:6, fontSize:12.5, gap:10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:9, minWidth:0, flex:1 }}>
+            <i className={`ti ${it.tipo==='servico'?'ti-tool':'ti-package'}`}
+              style={{ fontSize:14, color:it.tipo==='servico'?cor(P.blueLight,P.blueLightDark):cor(P.blue,P.blueDark), flexShrink:0 }} aria-hidden="true" />
+            <span style={{ color:T.textPrimary, fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{it.nome}</span>
+            <span style={{ color:T.textDim, fontSize:11, flexShrink:0 }}>×{it.qtd}</span>
+          </div>
+          <span style={{ color:T.textSecondary, fontWeight:600, whiteSpace:'nowrap', fontVariantNumeric:'tabular-nums' }}>
+            R$ {(it.valor*it.qtd).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+          </span>
+        </div>
+      ))}
+
+      {/* Totais */}
+      <div style={{ marginTop:8, paddingTop:10, borderTop:`1px solid ${T.border}`, display:'flex', flexDirection:'column', gap:5 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:T.textMuted }}>
+          <span>Subtotal</span>
+          <span style={{ fontVariantNumeric:'tabular-nums' }}>R$ {subtotal.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+        </div>
+        {(os.desconto||0) > 0 && (
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:cor(P.green,P.greenDark) }}>
+            <span>Desconto</span>
+            <span style={{ fontVariantNumeric:'tabular-nums' }}>− R$ {os.desconto.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+          </div>
+        )}
+        <div style={{ display:'flex', justifyContent:'space-between', fontSize:14, color:T.textPrimary, fontWeight:700, marginTop:2 }}>
+          <span>Total</span>
+          <span style={{ color:tipoCor, fontVariantNumeric:'tabular-nums' }}>R$ {totalLiq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+        </div>
+        {(pagoTotal||pagoParcial) && (
+          <>
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:cor(P.green,P.greenDark), marginTop:5, paddingTop:6, borderTop:`1px dashed ${T.border}` }}>
+              <span>
+                <i className="ti ti-cash-banknote" style={{ fontSize:13, marginRight:5, verticalAlign:'middle' }} aria-hidden="true" />
+                Pago{os.forma_pagamento?` (${os.forma_pagamento})`:''}
+              </span>
+              <span style={{ fontVariantNumeric:'tabular-nums' }}>R$ {valorPago.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+            </div>
+            {pagoParcial && (
+              <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:cor(P.yellow,P.yellowDark), fontWeight:600 }}>
+                <span>A receber</span>
+                <span style={{ fontVariantNumeric:'tabular-nums' }}>R$ {aPagar.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Aba Histórico ────────────────────────────────────────────────────────────
+function AbaHistorico({ historico, config, T, dark }) {
+  if (historico.length === 0) {
+    return (
+      <div style={{ textAlign:'center', padding:'3rem 1rem', color:T.textDim }}>
+        <i className="ti ti-clipboard-off" style={{ fontSize:36, display:'block', marginBottom:10, opacity:.4 }} aria-hidden="true" />
+        <div style={{ fontSize:13, fontWeight:600 }}>Sem movimentações ainda</div>
+      </div>
+    )
+  }
+  return (
+    <div style={{ background:T.cardAlt, borderRadius:9, padding:'14px 14px', border:`1px solid ${T.border}`, position:'relative' }}>
+      {historico.map((h, i) => {
+        const e     = config.etapas.find(et => et.id === h.etapa) || { label:h.etapa, cor:'neutro' }
+        const f     = funcPorId(h.funcionario)
+        const corE  = corEtapa(e.cor, dark)
+        const isLast = i === historico.length - 1
+        return (
+          <div key={i} style={{ display:'flex', gap:12, position:'relative', paddingBottom:isLast?0:14 }}>
+            {!isLast && <div style={{ position:'absolute', left:13, top:28, bottom:0, width:2, background:T.border }} />}
+            <div style={{ width:28, height:28, borderRadius:'50%', background:bgEtapa(e.cor, dark), color:corE, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:`1.5px solid ${corE}44`, zIndex:1 }}>
+              <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" />
+            </div>
+            <div style={{ flex:1, paddingTop:2 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:3 }}>
+                <span style={{ fontSize:13, fontWeight:700, color:T.textPrimary }}>{e.label}</span>
+                {f && (
+                  <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                    <span style={{ width:18, height:18, borderRadius:'50%', background:f.cor+'33', color:f.cor, fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{f.apelido}</span>
+                    <span style={{ fontSize:11.5, color:T.textSecondary, fontWeight:600 }}>{f.nome}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize:11, color:T.textMuted }}>
+                <i className="ti ti-clock" style={{ fontSize:11, marginRight:4, verticalAlign:'middle' }} aria-hidden="true" />
+                {h.data}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Aba Pagamento ────────────────────────────────────────────────────────────
+function AbaPagamento({ os, totalLiq, valorPago, aPagar, pagoTotal, pagoParcial, T, dark, tipoCor }) {
+  const cor = (d, c) => dark ? d : c
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      {/* Card de status */}
+      <div style={{
+        background: pagoTotal ? cor('#0f2a15','#e8f5ec') : pagoParcial ? cor('#2a2000','#fdf6dc') : T.cardAlt,
+        borderRadius:9, padding:'14px 16px',
+        border:`1px solid ${(pagoTotal?cor(P.green,P.greenDark):pagoParcial?cor(P.yellow,P.yellowDark):T.border)}44`,
+        display:'flex', alignItems:'center', gap:12,
+      }}>
+        <i className={`ti ${pagoTotal?'ti-circle-check':pagoParcial?'ti-clock':'ti-cash-banknote'}`}
+          style={{ fontSize:28, color:pagoTotal?cor(P.green,P.greenDark):pagoParcial?cor(P.yellow,P.yellowDark):T.textMuted, flexShrink:0 }} aria-hidden="true" />
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:T.textPrimary }}>
+            {pagoTotal ? 'Pago integralmente' : pagoParcial ? 'Pagamento parcial' : 'Aguardando pagamento'}
+          </div>
+          {pagoParcial && (
+            <div style={{ fontSize:12, color:T.textMuted, marginTop:3 }}>
+              R${' '}<span style={{ fontVariantNumeric:'tabular-nums' }}>{valorPago.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+              {' '}de R${' '}<span style={{ fontVariantNumeric:'tabular-nums' }}>{totalLiq.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Resumo financeiro */}
+      <_DetCard icon="ti-receipt" titulo="Resumo financeiro" T={T}>
+        <_Linha label="Total OS"    valor={`R$ ${totalLiq.toLocaleString('pt-BR',{minimumFractionDigits:2})}`}  T={T} />
+        <_Linha label="Valor pago"  valor={`R$ ${valorPago.toLocaleString('pt-BR',{minimumFractionDigits:2})}`} T={T} />
+        {pagoParcial && <_Linha label="A receber" valor={`R$ ${aPagar.toLocaleString('pt-BR',{minimumFractionDigits:2})}`} T={T} />}
+        {os.forma_pagamento && <_Linha label="Forma" valor={os.forma_pagamento} T={T} />}
+        {(os.desconto||0) > 0 && <_Linha label="Desconto" valor={`R$ ${os.desconto.toLocaleString('pt-BR',{minimumFractionDigits:2})}`} T={T} />}
+      </_DetCard>
+
+      {!pagoTotal && (
+        <div style={{ padding:'10px 12px', borderRadius:8, background:bgEtapa('blue', dark), border:`1px dashed ${corEtapa('blue', dark)}55`, fontSize:11.5, color:T.textSecondary, display:'flex', alignItems:'center', gap:8 }}>
+          <i className="ti ti-info-circle" style={{ fontSize:15, color:corEtapa('blue', dark), flexShrink:0 }} aria-hidden="true" />
+          <span>O registro de pagamento estará disponível na Entrega 2 do sistema.</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Helpers visuais internos ─────────────────────────────────────────────────
+function _DetCard({ icon, titulo, children, T }) {
+  return (
+    <div style={{ background:T.cardAlt, borderRadius:9, padding:'12px 14px', border:`1px solid ${T.border}` }}>
+      <div style={{ fontSize:11, color:T.textMuted, fontWeight:600, marginBottom:10, display:'flex', alignItems:'center', gap:6, textTransform:'uppercase', letterSpacing:'.4px' }}>
+        <i className={`ti ${icon}`} style={{ fontSize:14 }} aria-hidden="true" />
+        {titulo}
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:7 }}>{children}</div>
+    </div>
+  )
+}
+
+function _Linha({ label, valor, T, multi, mono }) {
+  return (
+    <div style={{ display:'flex', flexDirection:multi?'column':'row', justifyContent:'space-between', gap:multi?3:8, alignItems:'flex-start' }}>
+      <span style={{ fontSize:11, color:T.textDim, flexShrink:0, fontWeight:500 }}>{label}</span>
+      <span style={{ fontSize:12.5, color:T.textPrimary, textAlign:multi?'left':'right', wordBreak:'break-word', lineHeight:1.4, fontFamily:mono?'ui-monospace,SFMono-Regular,monospace':'inherit', fontVariantNumeric:'tabular-nums' }}>
+        {valor || '—'}
+      </span>
+    </div>
+  )
+}
+
+function _DetMini({ icon, label, valor, T, cor }) {
+  return (
+    <div style={{ background:T.cardAlt, borderRadius:9, padding:'11px 12px', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', gap:9 }}>
+      <i className={`ti ${icon}`} style={{ fontSize:17, color:cor||T.textMuted }} aria-hidden="true" />
+      <div style={{ minWidth:0 }}>
+        <div style={{ fontSize:10, color:T.textDim, marginBottom:2, fontWeight:500, textTransform:'uppercase', letterSpacing:'.3px' }}>{label}</div>
+        <div style={{ fontSize:12.5, fontWeight:600, color:cor||T.textPrimary }}>{valor}</div>
+      </div>
+    </div>
+  )
+}
+
+function _SubBox({ label, status, icon, T, dark }) {
+  const cor = (d, c) => dark ? d : c
+  const map = {
+    concluido:    { c:cor(P.green,P.greenDark),   bg:cor('#0f2a15','#e8f5ec'), txt:'Concluída'    },
+    em_andamento: { c:cor(P.yellow,P.yellowDark), bg:cor('#2a2000','#fdf6dc'), txt:'Em andamento' },
+    aguardando:   { c:T.textMuted,                bg:T.bg,                    txt:'Aguardando'   },
+  }
+  const m = map[status] || map.aguardando
+  return (
+    <div style={{ background:m.bg, border:`1px solid ${m.c}33`, borderRadius:8, padding:'10px 12px', display:'flex', alignItems:'center', gap:9 }}>
+      <i className={`ti ${icon}`} style={{ fontSize:18, color:m.c }} aria-hidden="true" />
+      <div>
+        <div style={{ fontSize:11, color:T.textMuted, marginBottom:1, fontWeight:500 }}>{label}</div>
+        <div style={{ fontSize:12.5, fontWeight:700, color:m.c }}>{m.txt}</div>
+      </div>
+    </div>
+  )
+}
