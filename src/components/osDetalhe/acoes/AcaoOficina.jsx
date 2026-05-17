@@ -172,6 +172,28 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
         </div>
       )}
 
+      {/* === AVISO: falhas do teste (OS voltou pra oficina) === */}
+      {(os.teste_falhas || []).length > 0 && (
+        <div style={{
+          padding: '11px 14px', borderRadius: 8,
+          background: cor('#2a1515', '#fde8e8'),
+          border: `1px solid ${vermelho}66`,
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <i className="ti ti-arrow-back-up" style={{ fontSize: 18, color: vermelho, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: vermelho, marginBottom: 5 }}>
+              OS voltou do Teste com {os.teste_falhas.length} {os.teste_falhas.length === 1 ? 'falha' : 'falhas'} pra corrigir:
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: T.textSecondary, lineHeight: 1.5 }}>
+              {os.teste_falhas.map((f, i) => (
+                <li key={i}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {/* === RELATÓRIO COMPLETO DO DIAGNÓSTICO === */}
       {!orcamentoVazio && <RelatorioDiagnostico T={T} dark={dark} os={os} />}
 
