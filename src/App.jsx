@@ -92,6 +92,13 @@ function PainelPorPerfil({ T, dark, user }) {
   return <PainelFuncionario T={T} dark={dark} funcId={getRole(user)} />
 }
 
+// Bloqueia o acesso direto via URL às páginas adminOnly — redireciona pro Painel.
+// A Sidebar/BottomNav já escondem o link, mas digitar a URL na mão burlava.
+function AdminOnly({ user, children }) {
+  if (!isAdmin(user)) return <Navigate to="/" replace />
+  return children
+}
+
 function RoutesDesktop({ T, dark, user }) {
   return (
     <Routes>
@@ -99,9 +106,9 @@ function RoutesDesktop({ T, dark, user }) {
       <Route path="/os"          element={<Kanban T={T} dark={dark} user={user} />} />
       <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
       <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
-      <Route path="/estoque"     element={<Estoque T={T} dark={dark} />} />
-      <Route path="/financeiro"  element={<Financeiro T={T} dark={dark} />} />
-      <Route path="/relatorios"  element={<Relatorios T={T} dark={dark} />} />
+      <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
+      <Route path="/financeiro"  element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/relatorios"  element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
       <Route path="/painel-func" element={<PainelFuncionario T={T} dark={dark} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -116,7 +123,7 @@ function RoutesMobile({ T, dark, user }) {
         <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
         <Route path="/os"          element={<OSMobile T={T} dark={dark} user={user} />} />
         <Route path="/estoque"     element={<EmConstrucao nome="Estoque"    T={T} />} />
-        <Route path="/financeiro"  element={<EmConstrucao nome="Financeiro" T={T} />} />
+        <Route path="/financeiro"  element={<AdminOnly user={user}><EmConstrucao nome="Financeiro" T={T} /></AdminOnly>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </PullToRefresh>

@@ -7,11 +7,15 @@
 import React, { useState, useMemo } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
+import { isAdmin } from '../utils/osHelpers'
 import {
   Card, Button, Badge, Input, Tabs,
   EmptyState, PageHeader, SectionHeader,
   useToast,
 } from '../components/ui'
+import PecaDetalheModal from '../components/estoque/PecaDetalheModal'
+import MaquinaDetalheModal from '../components/estoque/MaquinaDetalheModal'
+import NovaPecaModal from '../components/estoque/NovaPecaModal'
 
 // Mocks — futuro: lê de `peca` e `maquina` no Supabase
 const PECAS_MOCK = [
@@ -79,13 +83,26 @@ function pctLucro(custo, venda) {
   return Math.round(((venda - custo) / custo) * 100)
 }
 
-export default function Estoque({ T, dark }) {
+export default function Estoque({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
+  // Funcionário não enxerga valores financeiros (custo, lucro, capital).
+  // Só vê preço de venda + quantidade. Toggle único usado em todos os blocos.
+  const mostraValores = isAdmin(user)
   const [aba, setAba] = useState('pecas')
   const [busca, setBusca] = useState('')
-  const [pecas] = useState(PECAS_MOCK)
+  const [pecas, setPecas] = useState(PECAS_MOCK)
   const [maquinas] = useState(MAQUINAS_MOCK)
+  const [pecaAberta, setPecaAberta] = useState(null)
+  const [maquinaAberta, setMaquinaAberta] = useState(null)
+  const [novaPecaAberta, setNovaPecaAberta] = useState(false)
+
+  function adicionarPeca(nova) {
+    setPecas(prev => [
+      { id: Math.max(0, ...prev.map(p => p.id)) + 1, ...nova },
+      ...prev,
+    ])
+  }
 
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
@@ -130,13 +147,15 @@ export default function Estoque({ T, dark }) {
     ? [
         { label: 'Itens em estoque', value: totalPecas,    color: azul },
         { label: 'Estoque baixo',    value: pecasBaixas,   color: pecasBaixas > 0 ? amarelo : T.textDim },
-        { label: 'Valor em peças',   value: fmtBRL(valorPecas), color: corHero(dark) },
-      ]
+        // Valor em peças = custo × quantidade — só pro dono
+        mostraValores && { label: 'Valor em peças', value: fmtBRL(valorPecas), color: corHero(dark) },
+      ].filter(Boolean)
     : [
         { label: 'Disponíveis',  value: disponiveis,            color: disponiveis > 0 ? verde : T.textDim },
         { label: 'Em revisão',   value: emRevisao,              color: emRevisao > 0 ? amarelo : T.textDim },
-        { label: 'Capital parado', value: fmtBRL(valorMaquinas), color: corHero(dark) },
-      ]
+        // Capital parado = soma dos custos das máquinas disponíveis/revisão — só pro dono
+        mostraValores && { label: 'Capital parado', value: fmtBRL(valorMaquinas), color: corHero(dark) },
+      ].filter(Boolean)
 
   function placeholder(msg) {
     notify('info', msg || 'Em breve — Módulo 06 do plano')
@@ -162,7 +181,9 @@ export default function Estoque({ T, dark }) {
               Por NF
             </Button>
             <Button variant="primary" iconLeft="ti-plus"
-              onClick={() => placeholder(onPecas ? 'Cadastro de peça em breve' : 'Cadastro de máquina em breve')}>
+              onClick={() => onPecas
+                ? setNovaPecaAberta(true)
+                : placeholder('Cadastro de máquina em breve')}>
               {onPecas ? 'Nova peça' : 'Nova máquina'}
             </Button>
           </div>
@@ -192,9 +213,31 @@ export default function Estoque({ T, dark }) {
 
       {onPecas
         ? <ListaPecas T={T} dark={dark} itens={pecasFiltradas} todos={pecas} busca={busca}
-            onAbrir={() => placeholder('Detalhe da peça em breve')} />
+            mostraValores={mostraValores}
+            onAbrir={(p) => setPecaAberta(p)} />
         : <ListaMaquinas T={T} dark={dark} itens={maquinasFiltradas} todos={maquinas} busca={busca}
-            onAbrir={() => placeholder('Detalhe da máquina em breve')} />}
+            mostraValores={mostraValores}
+            onAbrir={(m) => setMaquinaAberta(m)} />}
+
+      {pecaAberta && (
+        <PecaDetalheModal T={T} dark={dark}
+          peca={pecaAberta}
+          mostraValores={mostraValores}
+          onClose={() => setPecaAberta(null)} />
+      )}
+
+      {maquinaAberta && (
+        <MaquinaDetalheModal T={T} dark={dark}
+          maquina={maquinaAberta}
+          mostraValores={mostraValores}
+          onClose={() => setMaquinaAberta(null)} />
+      )}
+
+      {novaPecaAberta && (
+        <NovaPecaModal T={T} dark={dark}
+          onClose={() => setNovaPecaAberta(false)}
+          onSalvar={adicionarPeca} />
+      )}
     </div>
   )
 }
@@ -202,9 +245,14 @@ export default function Estoque({ T, dark }) {
 // =============================================================================
 // PEÇAS
 // =============================================================================
-function ListaPecas({ T, dark, itens, todos, busca, onAbrir }) {
+function ListaPecas({ T, dark, itens, todos, busca, onAbrir, mostraValores = true }) {
   const azul = corEtapa('blue', dark)
   const cor = (d, c) => dark ? d : c
+
+  // Grid muda conforme o papel: dono vê 6 colunas, funcionário 4 (sem Custo + Lucro)
+  const gridCols = mostraValores
+    ? '1fr 90px 110px 110px 90px 90px'
+    : '1fr 90px 110px 90px'
 
   if (itens.length === 0) {
     return (
@@ -234,7 +282,7 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir }) {
       {/* Cabeçalho da "tabela" */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 90px 110px 110px 90px 90px',
+        gridTemplateColumns: gridCols,
         gap: 10, alignItems: 'center',
         padding: '8px 16px',
         borderTop: `1px solid ${T.border}`,
@@ -244,9 +292,9 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir }) {
       }}>
         <div>Item</div>
         <div style={{ textAlign: 'right' }}>Qtd</div>
-        <div style={{ textAlign: 'right' }}>Custo</div>
+        {mostraValores && <div style={{ textAlign: 'right' }}>Custo</div>}
         <div style={{ textAlign: 'right' }}>Venda</div>
-        <div style={{ textAlign: 'right' }}>Lucro</div>
+        {mostraValores && <div style={{ textAlign: 'right' }}>Lucro</div>}
         <div style={{ textAlign: 'right' }}>Status</div>
       </div>
 
@@ -259,7 +307,7 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir }) {
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(p) } }}
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 90px 110px 110px 90px 90px',
+              gridTemplateColumns: gridCols,
               gap: 10, alignItems: 'center',
               padding: '12px 16px',
               borderTop: `1px solid ${T.border}`,
@@ -296,13 +344,15 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir }) {
               <span style={{ color: T.textDim, fontWeight: 400, fontSize: 11 }}> / {p.qtdMinima}</span>
             </div>
 
-            <div style={{
-              textAlign: 'right', fontSize: 12.5,
-              color: T.textSecondary,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {fmtBRL(p.custoAtual)}
-            </div>
+            {mostraValores && (
+              <div style={{
+                textAlign: 'right', fontSize: 12.5,
+                color: T.textSecondary,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {fmtBRL(p.custoAtual)}
+              </div>
+            )}
 
             <div style={{
               textAlign: 'right', fontSize: 13, fontWeight: 600,
@@ -312,13 +362,15 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir }) {
               {fmtBRL(p.precoVenda)}
             </div>
 
-            <div style={{
-              textAlign: 'right', fontSize: 12, fontWeight: 600,
-              color: lucro > 100 ? corEtapa('blue', dark) : T.textSecondary,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {lucro}%
-            </div>
+            {mostraValores && (
+              <div style={{
+                textAlign: 'right', fontSize: 12, fontWeight: 600,
+                color: lucro > 100 ? corEtapa('blue', dark) : T.textSecondary,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {lucro}%
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <NivelBadge qtd={p.qtdAtual} min={p.qtdMinima} dark={dark} />
@@ -333,7 +385,7 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir }) {
 // =============================================================================
 // MÁQUINAS
 // =============================================================================
-function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir }) {
+function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = true }) {
   const azul = corEtapa('blue', dark)
   const cor = (d, c) => dark ? d : c
 

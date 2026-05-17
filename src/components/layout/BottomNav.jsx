@@ -2,9 +2,16 @@
 import React from 'react'
 import { P } from '../../theme'
 import { MENUS, MENUS_MOBILE } from '../../utils/osData'
+import { isAdmin } from '../../utils/osHelpers'
 
-export default function BottomNav({ pagina, setPagina, sair, T, dark }) {
-  const items = MENUS.filter(m => MENUS_MOBILE.includes(m.id))
+// Itens visíveis só pro dono (mesma lista da Sidebar)
+const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios']
+
+export default function BottomNav({ pagina, setPagina, sair, user, T, dark }) {
+  const idsPermitidos = isAdmin(user)
+    ? MENUS_MOBILE
+    : MENUS_MOBILE.filter(id => !MENUS_ADMIN_ONLY.includes(id))
+  const items = MENUS.filter(m => idsPermitidos.includes(m.id))
   const activeClr = dark ? P.blue : P.blueDark
   return (
     <div style={{

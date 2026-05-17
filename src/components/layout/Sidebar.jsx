@@ -1,14 +1,24 @@
 // idemaq-src/components/layout/Sidebar.jsx
 // Sidebar desktop com 2 seções (Principal / Operação), botão de collapse e user block embaixo.
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import { P } from '../../theme'
 import { MENUS } from '../../utils/osData'
+import { isAdmin } from '../../utils/osHelpers'
 import NavItem from './NavItem'
+
+// Itens que só o dono enxerga (RLS no banco bloqueia funcionário de fato).
+const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios']
 
 export default function Sidebar({ pagina, setPagina, user, sair, collapsed, setCollapsed, T, dark }) {
   const initials = user?.email?.substring(0, 2).toUpperCase() || 'US'
   const w = collapsed ? 56 : 210
+
+  // Funcionário não vê Financeiro nem Relatórios no menu
+  const menusVisiveis = useMemo(() => {
+    if (isAdmin(user)) return MENUS
+    return MENUS.filter(m => !MENUS_ADMIN_ONLY.includes(m.id))
+  }, [user])
   return (
     <div style={{
       width: w, minWidth: w,
@@ -58,7 +68,7 @@ export default function Sidebar({ pagina, setPagina, user, sair, collapsed, setC
           }}>Principal</div>
         )}
         <div style={{ padding: '0 6px' }}>
-          {MENUS.filter(m => m.section === 'principal').map(m =>
+          {menusVisiveis.filter(m => m.section === 'principal').map(m =>
             <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={collapsed} T={T} dark={dark} />
           )}
         </div>
@@ -69,7 +79,7 @@ export default function Sidebar({ pagina, setPagina, user, sair, collapsed, setC
           }}>Operação</div>
         )}
         <div style={{ padding: '0 6px' }}>
-          {MENUS.filter(m => m.section === 'operacao').map(m =>
+          {menusVisiveis.filter(m => m.section === 'operacao').map(m =>
             <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={collapsed} T={T} dark={dark} />
           )}
         </div>
@@ -94,7 +104,7 @@ export default function Sidebar({ pagina, setPagina, user, sair, collapsed, setC
                 fontSize: 12, color: T.textSecondary, fontWeight: 500,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{user?.email || 'Usuário'}</div>
-              <div style={{ fontSize: 10, color: T.textMuted }}>Administrador</div>
+              <div style={{ fontSize: 10, color: T.textMuted }}>{isAdmin(user) ? 'Administrador' : 'Funcionário'}</div>
             </div>
             <button onClick={sair}
               style={{ background: 'transparent', border: 'none', color: T.textMuted, cursor: 'pointer', padding: 4, borderRadius: 5, flexShrink: 0 }}

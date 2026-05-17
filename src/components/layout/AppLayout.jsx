@@ -62,7 +62,7 @@ export default function AppLayout({
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           {children}
         </div>
-        <BottomNav pagina={pagina} setPagina={setPagina} sair={sair} T={T} dark={dark} />
+        <BottomNav pagina={pagina} setPagina={setPagina} sair={sair} user={user} T={T} dark={dark} />
       </div>
     )
   }

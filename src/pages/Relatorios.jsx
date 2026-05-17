@@ -37,11 +37,49 @@ const PERIODOS = [
 const FAT_12M = [13800, 14200, 15100, 15600, 14900, 16200, 17000, 17500, 16800, 17900, 18200, 17500]
 const OS_12M  = [42, 45, 47, 48, 46, 50, 51, 50, 49, 52, 53, 50]
 
+const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+
+function fmtDataBR(iso) {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y}`
+}
+
+function fmtMesBR(yyyymm) {
+  if (!yyyymm) return ''
+  const [y, m] = yyyymm.split('-')
+  return `${MESES_PT[Number(m) - 1] || ''}/${y}`
+}
+
 // === Página ===
 export default function Relatorios({ T, dark }) {
   const notify = useToast()
   const [relAtivo, setRelAtivo] = useState(null) // null = hub
   const [periodo, setPeriodo] = useState('mes')
+  const [mesEsp, setMesEsp]   = useState('') // 'YYYY-MM'
+  const [dataIni, setDataIni] = useState('') // 'YYYY-MM-DD'
+  const [dataFim, setDataFim] = useState('') // 'YYYY-MM-DD'
+
+  const temCustom = !!(mesEsp || dataIni || dataFim)
+
+  function escolherPreset(p) {
+    setPeriodo(p)
+    setMesEsp(''); setDataIni(''); setDataFim('')
+  }
+  function mudarMesEsp(v) {
+    setMesEsp(v); setDataIni(''); setDataFim('')
+  }
+  function mudarDataIni(v) { setDataIni(v); setMesEsp('') }
+  function mudarDataFim(v) { setDataFim(v); setMesEsp('') }
+  function limparCustom()  { setMesEsp(''); setDataIni(''); setDataFim('') }
+
+  function labelPeriodo() {
+    if (mesEsp) return fmtMesBR(mesEsp)
+    if (dataIni && dataFim) return `${fmtDataBR(dataIni)} → ${fmtDataBR(dataFim)}`
+    if (dataIni) return `a partir de ${fmtDataBR(dataIni)}`
+    if (dataFim) return `até ${fmtDataBR(dataFim)}`
+    return PERIODOS.find(p => p.id === periodo)?.label.toLowerCase() || ''
+  }
 
   function placeholder(msg) {
     notify('info', msg || 'Em breve — Módulo 08 do plano')
@@ -55,7 +93,7 @@ export default function Relatorios({ T, dark }) {
       <PageHeader T={T} dark={dark}
         title="Relatórios"
         subtitle={relAtivo
-          ? `${RELATORIOS.find(r => r.id === relAtivo)?.label} · período ${PERIODOS.find(p => p.id === periodo)?.label.toLowerCase()}`
+          ? `${RELATORIOS.find(r => r.id === relAtivo)?.label} · período ${labelPeriodo()}`
           : 'Escolha um relatório pra ver os números'}
         stats={!relAtivo ? [
           { label: '6 relatórios', value: 6, color: corEtapa('blue', dark) },
@@ -79,17 +117,26 @@ export default function Relatorios({ T, dark }) {
 
       {relAtivo && (
         <Card T={T} dark={dark}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Tabs T={T} dark={dark}
-              options={PERIODOS}
-              value={periodo}
-              onChange={setPeriodo}
-              variant="segmented"
-            />
-            <div style={{ flex: 1, fontSize: 11, color: T.textMuted, textAlign: 'right' }}>
-              <i className="ti ti-info-circle" style={{ marginRight: 4 }} aria-hidden="true" />
-              Dados de exemplo — integração com Supabase virá nos próximos chats
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Tabs T={T} dark={dark}
+                options={PERIODOS}
+                value={temCustom ? '' : periodo}
+                onChange={escolherPreset}
+                variant="segmented"
+              />
+              <div style={{ flex: 1, fontSize: 11, color: T.textMuted, textAlign: 'right' }}>
+                <i className="ti ti-info-circle" style={{ marginRight: 4 }} aria-hidden="true" />
+                Dados de exemplo — integração com Supabase virá nos próximos chats
+              </div>
             </div>
+
+            <CalendarioPeriodo T={T} dark={dark}
+              mesEsp={mesEsp}   onMesEsp={mudarMesEsp}
+              dataIni={dataIni} onDataIni={mudarDataIni}
+              dataFim={dataFim} onDataFim={mudarDataFim}
+              temCustom={temCustom} onLimpar={limparCustom}
+            />
           </div>
         </Card>
       )}
@@ -482,6 +529,106 @@ function RelatorioFuncionarios({ T, dark, periodo }) {
 
       <InsightIA T={T} dark={dark} disponivel={false}
         previewTexto="Aqui virá análise individual por funcionário (pontos fortes, etapas que demoram mais, sugestões de treinamento) gerada pela IA a partir do histórico de os_historico." />
+    </div>
+  )
+}
+
+// =============================================================================
+// CALENDÁRIO (mês específico OU intervalo de datas)
+// =============================================================================
+function CalendarioPeriodo({
+  T, dark,
+  mesEsp, onMesEsp,
+  dataIni, onDataIni,
+  dataFim, onDataFim,
+  temCustom, onLimpar,
+}) {
+  const azul = corEtapa('blue', dark)
+
+  const baseInput = {
+    height: 32,
+    padding: '0 10px',
+    fontSize: 12.5,
+    color: T.textPrimary,
+    background: T.card,
+    border: `1px solid ${T.border}`,
+    borderRadius: 8,
+    outline: 'none',
+    fontFamily: 'inherit',
+    boxShadow: T.shadow,
+    colorScheme: dark ? 'dark' : 'light',
+    transition: 'border-color .12s, box-shadow .12s',
+  }
+
+  function focar(e) {
+    e.currentTarget.style.borderColor = azul
+    e.currentTarget.style.boxShadow = `0 0 0 3px ${azul}22`
+  }
+  function desfocar(e) {
+    e.currentTarget.style.borderColor = T.border
+    e.currentTarget.style.boxShadow = T.shadow
+  }
+
+  const labelMini = {
+    fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+    textTransform: 'uppercase', letterSpacing: '0.04em',
+  }
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+      paddingTop: 10, borderTop: `1px solid ${T.border}`,
+    }}>
+      <span style={{ ...labelMini, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <i className="ti ti-calendar-event" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+        Ou escolha:
+      </span>
+
+      {/* Mês específico */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11.5, color: T.textSecondary }}>Mês</span>
+        <input type="month"
+          value={mesEsp}
+          onChange={(e) => onMesEsp(e.target.value)}
+          onFocus={focar} onBlur={desfocar}
+          style={baseInput}
+          aria-label="Selecionar mês específico"
+        />
+      </label>
+
+      <span style={{ fontSize: 11, color: T.textDim }}>ou</span>
+
+      {/* Intervalo */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11.5, color: T.textSecondary }}>De</span>
+        <input type="date"
+          value={dataIni}
+          max={dataFim || undefined}
+          onChange={(e) => onDataIni(e.target.value)}
+          onFocus={focar} onBlur={desfocar}
+          style={baseInput}
+          aria-label="Data inicial do período"
+        />
+      </label>
+      <i className="ti ti-arrow-right" style={{ fontSize: 14, color: T.textDim }} aria-hidden="true" />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11.5, color: T.textSecondary }}>Até</span>
+        <input type="date"
+          value={dataFim}
+          min={dataIni || undefined}
+          onChange={(e) => onDataFim(e.target.value)}
+          onFocus={focar} onBlur={desfocar}
+          style={baseInput}
+          aria-label="Data final do período"
+        />
+      </label>
+
+      {temCustom && (
+        <Button T={T} dark={dark} variant="ghost" size="sm" iconLeft="ti-x"
+          onClick={onLimpar}>
+          Limpar
+        </Button>
+      )}
     </div>
   )
 }

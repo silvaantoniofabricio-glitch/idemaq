@@ -4,7 +4,6 @@
 // Detalhe completo (ficha) fica pro Módulo 02 — botão "Abrir" toasta por enquanto.
 
 import React, { useState, useMemo } from 'react'
-import { P } from '../theme'
 import { corEtapa, corHero } from '../utils/colors'
 import { CLIENTES_MOCK } from '../utils/osData'
 import {
