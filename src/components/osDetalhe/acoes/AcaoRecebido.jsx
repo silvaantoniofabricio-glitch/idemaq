@@ -4,7 +4,7 @@
 // cada um com opção Ok / Defeito / Barulho + textarea de observações.
 // Botão "Concluir pré-diagnóstico" → avança pra Diagnóstico.
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
@@ -33,6 +33,25 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
     TESTES.reduce((acc, t) => ({ ...acc, [t.id]: salvo[t.id] || null }), {})
   )
   const [obsPreDiag, setObsPreDiag] = useState(salvo.observacoes || '')
+  // Foto da coleta — placeholder local (base64 preview). Quando Storage entrar,
+  // upload pra idemaq-privado/os/{os.id}/coleta/. Hoje só state local pra UX.
+  const [fotoBase64, setFotoBase64] = useState(salvo.foto || null)
+  const inputFotoRef = useRef(null)
+
+  function escolherFoto(file) {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Selecione uma imagem (JPG/PNG).')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setFotoBase64(reader.result)
+    reader.readAsDataURL(file)
+  }
+  function removerFoto() {
+    setFotoBase64(null)
+    if (inputFotoRef.current) inputFotoRef.current.value = ''
+  }
 
   function selecionar(testeId, valor) {
     setTestes(prev => ({
@@ -43,7 +62,11 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
 
   function concluir() {
     onUpdateOS(os.numero, {
-      pre_diagnostico: { ...testes, observacoes: obsPreDiag },
+      pre_diagnostico: {
+        ...testes,
+        observacoes: obsPreDiag,
+        foto: fotoBase64,  // futuro: trocar por URL do Storage
+      },
     })
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'diagnostico')
     if (proxima) onMoverOS(os.numero, proxima.id)
@@ -183,23 +206,87 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
         />
       </div>
 
-      {/* Ações */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          disabled
-          title="Coleta de foto vem em outra etapa do fluxo"
-          style={{
-            padding: '8px 14px', borderRadius: 7,
-            border: `1px dashed ${T.border}`,
-            background: 'transparent', color: T.textDim,
-            fontSize: 12, fontWeight: 500, cursor: 'not-allowed',
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-          }}>
-          <i className="ti ti-camera" style={{ fontSize: 14 }} aria-hidden="true" />
-          Foto da coleta (em breve)
-        </button>
+      {/* Foto da coleta — preview local (futuro: Supabase Storage privado) */}
+      <div>
+        <label style={{
+          display: 'block',
+          fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+          marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.3px',
+        }}>
+          Foto da coleta
+          <span style={{ fontSize: 10, color: T.textDim, fontWeight: 400, textTransform: 'none', letterSpacing: 'normal', marginLeft: 6 }}>
+            · opcional (regra futura: obrigatória pra sair da zona Externa)
+          </span>
+        </label>
 
+        <input
+          ref={inputFotoRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => escolherFoto(e.target.files?.[0])}
+          style={{ display: 'none' }}
+        />
+
+        {fotoBase64 ? (
+          <div style={{
+            position: 'relative',
+            border: `1px solid ${T.border}`,
+            borderRadius: 8, overflow: 'hidden',
+            maxWidth: 280,
+          }}>
+            <img src={fotoBase64} alt="Foto da coleta"
+              style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 220, objectFit: 'cover' }} />
+            <div style={{
+              position: 'absolute', top: 6, right: 6,
+              display: 'flex', gap: 4,
+            }}>
+              <button
+                type="button"
+                onClick={() => inputFotoRef.current?.click()}
+                title="Trocar foto"
+                style={{
+                  width: 28, height: 28, borderRadius: 6,
+                  background: 'rgba(0,0,0,0.6)', color: '#fff',
+                  border: 'none', cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                <i className="ti ti-camera" style={{ fontSize: 14 }} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={removerFoto}
+                title="Remover foto"
+                style={{
+                  width: 28, height: 28, borderRadius: 6,
+                  background: 'rgba(0,0,0,0.6)', color: '#fff',
+                  border: 'none', cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => inputFotoRef.current?.click()}
+            style={{
+              padding: '10px 14px', borderRadius: 7,
+              border: `1px dashed ${T.border}`,
+              background: 'transparent', color: T.textSecondary,
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+            <i className="ti ti-camera-plus" style={{ fontSize: 15 }} aria-hidden="true" />
+            Adicionar foto da coleta
+          </button>
+        )}
+      </div>
+
+      {/* Ações */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
         <button
           onClick={concluir}
           style={{
