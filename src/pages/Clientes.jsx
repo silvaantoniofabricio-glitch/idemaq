@@ -13,6 +13,7 @@ import {
   useToast,
 } from '../components/ui'
 import { NovoClienteModalCompleto } from '../_legacy/desktopKanbanModals'
+import ClienteDetalheModal from '../components/clientes/ClienteDetalheModal'
 
 // Adapta o mock antigo (endereco: string) pro formato novo (enderecos: array).
 // Idêntico ao adaptador do desktopKanbanModals — replicado aqui pra não importar
@@ -41,6 +42,7 @@ export default function Clientes({ T, dark }) {
   const [clientes, setClientes] = useState(() => adaptarClientes(CLIENTES_MOCK))
   const [busca, setBusca] = useState('')
   const [modalNovo, setModalNovo] = useState(false)
+  const [clienteAberto, setClienteAberto] = useState(null)
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -58,7 +60,13 @@ export default function Clientes({ T, dark }) {
   }
 
   function abrirFicha(c) {
-    notify('info', `Ficha do ${c.nome.split(' ')[0]} — em breve (Módulo 02)`)
+    setClienteAberto(c)
+  }
+
+  function salvarCliente(atualizado) {
+    setClientes(prev => prev.map(c => c.id === atualizado.id ? atualizado : c))
+    setClienteAberto(null)
+    notify('ok', 'Cliente atualizado')
   }
 
   const azul = corEtapa('blue', dark)
@@ -122,23 +130,29 @@ export default function Clientes({ T, dark }) {
             >Lista</SectionHeader>
           </div>
 
-          {filtrados.map((c, i) => {
+          {filtrados.map((c) => {
             const endereco = c.enderecos[0] || '—'
             const extraEnd = c.enderecos.length > 1 ? `+${c.enderecos.length - 1}` : null
             return (
               <div key={c.id}
                 onClick={() => abrirFicha(c)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirFicha(c) } }}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'auto 1fr auto auto',
+                  gridTemplateColumns: 'auto 1fr auto',
                   gap: 14, alignItems: 'center',
                   padding: '12px 16px',
                   borderTop: `1px solid ${T.border}`,
                   cursor: 'pointer',
                   transition: 'background .12s',
+                  outline: 'none',
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onFocus={e => e.currentTarget.style.background = T.cardAlt}
+                onBlur={e => e.currentTarget.style.background = 'transparent'}
               >
                 {/* Avatar com iniciais */}
                 <div style={{
@@ -177,22 +191,20 @@ export default function Clientes({ T, dark }) {
                   </div>
                 </div>
 
-                {/* Telefone (WhatsApp) */}
-                <div style={{
-                  fontSize: 12, color: T.textSecondary,
-                  fontVariantNumeric: 'tabular-nums',
-                  display: 'flex', alignItems: 'center', gap: 5,
-                }}>
-                  <i className="ti ti-brand-whatsapp"
-                     style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-                  {c.fone || '—'}
+                {/* Telefone (WhatsApp) + chevron sutil */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    fontSize: 12, color: T.textSecondary,
+                    fontVariantNumeric: 'tabular-nums',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}>
+                    <i className="ti ti-brand-whatsapp"
+                       style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+                    {c.fone || '—'}
+                  </div>
+                  <i className="ti ti-chevron-right"
+                     style={{ fontSize: 16, color: T.textDim }} aria-hidden="true" />
                 </div>
-
-                {/* Ação */}
-                <Button variant="ghost" size="sm" iconRight="ti-chevron-right"
-                  onClick={(e) => { e.stopPropagation(); abrirFicha(c) }}>
-                  Abrir
-                </Button>
               </div>
             )
           })}
@@ -205,6 +217,15 @@ export default function Clientes({ T, dark }) {
           nomeInicial={busca.trim()}
           onClose={() => setModalNovo(false)}
           onSalvar={clienteCadastrado}
+        />
+      )}
+
+      {clienteAberto && (
+        <ClienteDetalheModal
+          T={T} dark={dark}
+          cliente={clienteAberto}
+          onClose={() => setClienteAberto(null)}
+          onSalvar={salvarCliente}
         />
       )}
     </div>
