@@ -49,6 +49,7 @@ export function useOS(buscando = false) {
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
           prazo, data_conclusao, criado_em,
+          pre_diagnostico,
           cliente:cliente_id(id, nome, telefone),
           historico:os_historico(id, etapa_de, etapa_para, funcionario_id, criado_em)
         `)
@@ -95,6 +96,8 @@ export function useOS(buscando = false) {
           // Flags
           recusada: os.recusada || false,
           aguardando_peca: os.aguardando_peca || false,
+          // Pré-diagnóstico (JSONB no banco)
+          pre_diagnostico: os.pre_diagnostico || null,
           // Datas convertidas para Cuiabá
           prazo: os.prazo ? toCuiaba(os.prazo) : null,
           data_conclusao: os.data_conclusao || null,
