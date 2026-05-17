@@ -27,7 +27,7 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
   const valorPago = os.valor_pago || 0
   const aPagar = Math.max(0, total - valorPago)
 
-  function handleConfirmar({ valor, forma, modo }) {
+  function handleConfirmar({ valor, forma, modo, parcelas: parcelasAPrazo }) {
     const novoValorPago = valorPago + valor
     let novoDesconto = descontoAtual
     let novoPago = 'total'
@@ -36,12 +36,24 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
     } else if (modo === 'desconto') {
       novoDesconto = descontoAtual + (aPagar - valor)
     }
+    // Anexa parcelas a prazo nas observações
+    let novasObs = os.observacoes
+    if (parcelasAPrazo && parcelasAPrazo.length > 0) {
+      const txt = parcelasAPrazo
+        .map((p, i) => `${i + 1}ª · ${p.data} · ${fmtBRL(p.valor, { fr: true })}`)
+        .join('\n')
+      novasObs = [
+        os.observacoes,
+        `— A prazo (${parcelasAPrazo.length} ${parcelasAPrazo.length === 1 ? 'parcela' : 'parcelas'}) —\n${txt}`,
+      ].filter(Boolean).join('\n\n')
+    }
     onUpdateOS(os.numero, {
       valor: subtotal,
       desconto: novoDesconto,
       valor_pago: novoValorPago,
       pago: novoPago,
       forma_pagamento: forma,
+      ...(novasObs !== os.observacoes ? { observacoes: novasObs } : {}),
     })
     // Estamos na etapa Pagamento, então quitar fecha pra Concluído
     if (novoPago === 'total') {

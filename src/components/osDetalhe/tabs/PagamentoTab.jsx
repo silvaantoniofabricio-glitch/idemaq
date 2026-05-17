@@ -87,7 +87,8 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
   //   'total'    → quita totalmente (valor === saldo)
   //   'parcial'  → registra parcial, OS continua aberta
   //   'desconto' → quita aplicando desconto pelo restante
-  function handleConfirmarPagamento({ valor, forma, modo }) {
+  // parcelas:    → quando forma === aprazo, array de { data, valor }
+  function handleConfirmarPagamento({ valor, forma, modo, parcelas: parcelasAPrazo }) {
     const novoValorPago = valorPago + valor
     let novoDesconto = desconto
     let novoPago = 'total'
@@ -96,12 +97,25 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
     } else if (modo === 'desconto') {
       novoDesconto = desconto + (aPagar - valor)
     }
+    // Anexa as parcelas a prazo nas observações (Módulo 07 cria tabela
+    // `lancamento_financeiro` própria — por enquanto vive em texto).
+    let novasObs = os.observacoes
+    if (parcelasAPrazo && parcelasAPrazo.length > 0) {
+      const txt = parcelasAPrazo
+        .map((p, i) => `${i + 1}ª · ${p.data} · ${fmtBRL(p.valor, { fr: true })}`)
+        .join('\n')
+      novasObs = [
+        os.observacoes,
+        `— A prazo (${parcelasAPrazo.length} ${parcelasAPrazo.length === 1 ? 'parcela' : 'parcelas'}) —\n${txt}`,
+      ].filter(Boolean).join('\n\n')
+    }
     onUpdateOS(os.numero, {
       valor: subtotal,
       desconto: novoDesconto,
       valor_pago: novoValorPago,
       pago: novoPago,
       forma_pagamento: forma,
+      ...(novasObs !== os.observacoes ? { observacoes: novasObs } : {}),
     })
     OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i }))
     // Só move pra Concluído quando o recebimento total acontece DENTRO da

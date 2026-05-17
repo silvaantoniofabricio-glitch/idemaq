@@ -68,9 +68,10 @@ export default function FormRecebimento({
   const notify = useToast()
 
   const [valor, setValor] = useState(saldo)
-  const [forma, setForma] = useState('pix')          // 'pix' | 'cartao'
+  const [forma, setForma] = useState('pix')          // 'pix' | 'cartao' | 'dinheiro' | 'aprazo'
   const [subCartao, setSubCartao] = useState(null)   // null antes de escolher
   const [parcelas, setParcelas] = useState(1)        // 1x a 12x (crédito e link)
+  const [parcelasAPrazo, setParcelasAPrazo] = useState([])  // [{ data, valor }]
   const [partialDialog, setPartialDialog] = useState(false)
 
   // Re-sincroniza valor quando saldo mudar (ex: depois de uma baixa parcial)
@@ -81,11 +82,18 @@ export default function FormRecebimento({
     if (forma === 'cartao' && !subCartao) setSubCartao('debito')
   }, [forma, subCartao])
 
+  // Quando troca pra "A prazo" pela primeira vez, cria 1 parcela default (+30d com o valor total)
+  useEffect(() => {
+    if (forma === 'aprazo' && parcelasAPrazo.length === 0) {
+      setParcelasAPrazo([{ data: dataMaisDiasISO(30), valor: valor || saldo }])
+    }
+  }, [forma, parcelasAPrazo.length, valor, saldo])
+
   // ─── Cálculos
   function formaIdFinal() {
     if (forma === 'pix') return 'pix'
     if (forma === 'dinheiro') return 'dinheiro'
-    if (forma === 'aprazo') return 'aprazo'
+    if (forma === 'aprazo') return `aprazo_${parcelasAPrazo.length}x`
     const sub = SUB_CARTAO.find(s => s.id === subCartao)
     if (!sub) return 'debito'
     if (sub.parcelado) return `${sub.id}_${parcelas}x`
@@ -99,16 +107,52 @@ export default function FormRecebimento({
     if (sub.getTaxa) return sub.getTaxa(parcelas)
     return 0
   }
+
+  // Total das parcelas a prazo (precisa bater com o valor de recebimento)
+  const totalParcelasAPrazo = parcelasAPrazo.reduce((s, p) => s + (Number(p.valor) || 0), 0)
+  const parcelasAPrazoOk = forma !== 'aprazo' || (
+    parcelasAPrazo.length > 0 &&
+    parcelasAPrazo.every(p => p.data && Number(p.valor) > 0) &&
+    Math.abs(totalParcelasAPrazo - valor) < 0.01
+  )
   const taxa = taxaAtual()
   const liquido = taxa > 0 ? valor - (valor * taxa / 100) : valor
   const isParcial = valor < saldo - 0.01
   const isExcedente = valor > saldo + 0.01
-  const formaOk = forma === 'pix' || forma === 'dinheiro' || forma === 'aprazo' || (forma === 'cartao' && !!subCartao)
+  const formaOk = (
+    forma === 'pix' || forma === 'dinheiro' ||
+    (forma === 'aprazo' && parcelasAPrazoOk) ||
+    (forma === 'cartao' && !!subCartao)
+  )
   const valorOk = valor > 0 && !isExcedente
+
+  // ─── CRUD das parcelas a prazo
+  function addParcelaAPrazo() {
+    setParcelasAPrazo(prev => {
+      const totalAnterior = prev.reduce((s, p) => s + (Number(p.valor) || 0), 0)
+      const restante = Math.max(0, valor - totalAnterior)
+      const ultimaData = prev.length > 0 ? prev[prev.length - 1].data : dataMaisDiasISO(0)
+      return [...prev, { data: addDiasISO(ultimaData, 30), valor: restante }]
+    })
+  }
+  function updateParcelaAPrazo(i, field, v) {
+    setParcelasAPrazo(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: v } : p))
+  }
+  function removeParcelaAPrazo(i) {
+    setParcelasAPrazo(prev => prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i))
+  }
 
   // ─── Ações
   function clickConfirmar() {
     if (!formaOk || !valorOk) return
+    // A prazo: confirma direto com parcelas no payload, sem dialog parcial
+    if (forma === 'aprazo') {
+      onConfirmar({
+        valor, forma: formaIdFinal(), modo: 'total',
+        parcelas: parcelasAPrazo.map(p => ({ ...p, valor: Number(p.valor) || 0 })),
+      })
+      return
+    }
     if (isParcial) {
       setPartialDialog(true)
     } else {
@@ -241,6 +285,20 @@ export default function FormRecebimento({
         </div>
       )}
 
+      {/* Calendário de parcelas a prazo (só visível quando forma === 'aprazo') */}
+      {forma === 'aprazo' && (
+        <ParcelasAPrazoPanel
+          T={T} dark={dark}
+          valor={valor}
+          parcelas={parcelasAPrazo}
+          total={totalParcelasAPrazo}
+          ok={parcelasAPrazoOk}
+          onAdd={addParcelaAPrazo}
+          onUpdate={updateParcelaAPrazo}
+          onRemove={removeParcelaAPrazo}
+        />
+      )}
+
       {/* Líquido (se taxa > 0) */}
       {taxa > 0 && valor > 0 && (
         <div style={{
@@ -346,6 +404,151 @@ function Chip({ T, dark, onClick, children }) {
         fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
         fontFamily: 'inherit',
       }}>{children}</button>
+  )
+}
+
+// ─── Helpers de data ────────────────────────────────────────────────────────
+function dataMaisDiasISO(n) {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+}
+function addDiasISO(iso, n) {
+  if (!iso) return dataMaisDiasISO(n)
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+function fmtDataPtBr(iso) {
+  if (!iso) return ''
+  const d = new Date(iso + 'T00:00:00')
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
+}
+
+// ─── Painel: agenda de parcelas a prazo ────────────────────────────────────
+function ParcelasAPrazoPanel({ T, dark, valor, parcelas, total, ok, onAdd, onUpdate, onRemove }) {
+  const cor = (d, c) => dark ? d : c
+  const azul = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const verde = corEtapa('green', dark)
+  const vermelho = corEtapa('red', dark)
+  const diff = valor - total
+
+  return (
+    <div style={{
+      padding: '10px 12px', borderRadius: 8,
+      background: cor('#0d2035', '#e6f1fb'),
+      border: `1px solid ${azul}44`,
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <i className="ti ti-calendar-event" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+          <span style={{
+            fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '.4px',
+          }}>Agenda de parcelas</span>
+        </div>
+        <span style={{
+          fontSize: 10.5, color: T.textMuted,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{parcelas.length} {parcelas.length === 1 ? 'parcela' : 'parcelas'}</span>
+      </div>
+
+      {/* Linhas de parcelas */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {parcelas.map((p, i) => (
+          <div key={i} style={{
+            display: 'grid', gridTemplateColumns: '60px 1fr 110px auto', gap: 6,
+            alignItems: 'center',
+          }}>
+            <span style={{
+              fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+              textAlign: 'right',
+            }}>{i + 1}ª</span>
+            <input
+              type="date"
+              value={p.data || ''}
+              onChange={(e) => onUpdate(i, 'data', e.target.value)}
+              style={{
+                padding: '6px 8px', borderRadius: 5,
+                border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                fontSize: 11.5, outline: 'none', fontFamily: 'inherit',
+                colorScheme: dark ? 'dark' : 'light',
+                minWidth: 0,
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600 }}>R$</span>
+              <input
+                type="number" min="0" step="0.01"
+                value={p.valor}
+                onChange={(e) => onUpdate(i, 'valor', Number(e.target.value) || 0)}
+                style={{
+                  flex: 1, padding: '6px 8px', borderRadius: 5,
+                  border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                  fontSize: 11.5, outline: 'none', textAlign: 'right',
+                  fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums',
+                  minWidth: 0, boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <button
+              onClick={() => onRemove(i)}
+              disabled={parcelas.length <= 1}
+              aria-label="Remover parcela"
+              style={{
+                padding: '5px 6px', borderRadius: 5,
+                border: 'none', background: 'transparent',
+                color: parcelas.length <= 1 ? T.textDim : T.textMuted,
+                cursor: parcelas.length <= 1 ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+              }}>
+              <i className="ti ti-x" style={{ fontSize: 13 }} aria-hidden="true" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Adicionar parcela */}
+      <button
+        onClick={onAdd}
+        style={{
+          padding: '6px 10px', borderRadius: 6,
+          border: `1px dashed ${azul}66`, background: 'transparent',
+          color: azul, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          fontFamily: 'inherit',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+        }}>
+        <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
+        adicionar parcela
+      </button>
+
+      {/* Validação: soma deve igualar valor */}
+      <div style={{
+        fontSize: 11, color: ok ? verde : amarelo,
+        fontWeight: 600, textAlign: 'center',
+        paddingTop: 4, borderTop: `1px dashed ${T.border}`,
+        fontVariantNumeric: 'tabular-nums',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+      }}>
+        {ok ? (
+          <>
+            <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
+            Total {fmtBRL(total, { fr: true })} — bate com o valor
+          </>
+        ) : (
+          <>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} aria-hidden="true" />
+            Total {fmtBRL(total, { fr: true })} — {diff > 0
+              ? `falta ${fmtBRL(diff, { fr: true })}`
+              : `${fmtBRL(-diff, { fr: true })} a mais`}
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 
