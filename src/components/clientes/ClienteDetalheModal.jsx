@@ -7,6 +7,26 @@ import React, { useState, useMemo } from 'react'
 import { P } from '../../theme'
 import { corEtapa, corHero } from '../../utils/colors'
 import { Modal, Input, Button } from '../ui'
+import { OS_MOCK } from '../../_mocks/os'
+import { TIPOS_OS } from '../../utils/osData'
+import { dentroGarantia } from '../../utils/osHelpers'
+import { fmtBRL, fmtPrazoCurto } from '../../utils/fmt'
+
+// Dias restantes de garantia (somente OS concluídas com entrega registrada).
+function diasGarantiaRestantes(os) {
+  if (!os || os.etapa !== 'concluido') return 0
+  const dias = os.garantia_dias || 90
+  const reg = (os.historico || []).find(h => h.etapa === 'entrega' || h.etapa === 'entregue')
+  if (!reg) return 0
+  const limite = new Date(new Date(reg.data).getTime() + dias * 86400000)
+  return Math.max(0, Math.round((limite - new Date()) / 86400000))
+}
+
+function labelEtapa(os) {
+  const cfg = TIPOS_OS[os.tipo]
+  const e = cfg?.etapas?.find(x => x.id === os.etapa) || cfg?.lateral
+  return e?.curto || e?.label || os.etapa
+}
 
 function iniciais(nome) {
   return (nome || '')
@@ -268,22 +288,8 @@ export default function ClienteDetalheModal({ T, dark, cliente, onClose, onSalva
 
         <div style={{ height: 1, background: T.border, margin: '18px 0 14px' }} />
 
-        {/* Histórico — placeholder do Módulo 02 */}
-        <div style={{
-          background: T.cardAlt, border: `1px dashed ${T.border}`,
-          borderRadius: 9, padding: '12px 14px',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <i className="ti ti-history" style={{ fontSize: 18, color: T.textMuted }} aria-hidden="true" />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: T.textSecondary }}>
-              Histórico de OS deste cliente
-            </div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-              Em breve no Módulo 02 — lista de OS, total gasto, garantias ativas.
-            </div>
-          </div>
-        </div>
+        {/* Histórico de OS */}
+        <HistoricoOS T={T} dark={dark} cor={cor} clienteNome={cliente.nome} />
       </div>
 
       {/* Rodapé */}
@@ -301,5 +307,189 @@ export default function ClienteDetalheModal({ T, dark, cliente, onClose, onSalva
         </Button>
       </div>
     </Modal>
+  )
+}
+
+// ─── Histórico de OS deste cliente ────────────────────────────────────────
+// Filtra OS_MOCK pelo nome do cliente (a ligação ainda é por nome — o
+// Módulo 02 introduz cliente_id no Supabase e troca o filtro pra FK).
+function HistoricoOS({ T, dark, cor, clienteNome }) {
+  const osCliente = useMemo(() => {
+    return OS_MOCK
+      .filter(o => o.cliente === clienteNome && !o.deleted_at)
+      .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
+  }, [clienteNome])
+
+  const azul = corEtapa('blue', dark)
+
+  const sectionLabel = {
+    fontSize: 11, color: T.textMuted, fontWeight: 600,
+    letterSpacing: '.4px', textTransform: 'uppercase',
+  }
+
+  if (osCliente.length === 0) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <i className="ti ti-history" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+          <span style={sectionLabel}>Histórico de OS</span>
+        </div>
+        <div style={{
+          background: T.cardAlt, border: `1px dashed ${T.border}`,
+          borderRadius: 9, padding: '14px 16px',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <i className="ti ti-clipboard-off" style={{ fontSize: 18, color: T.textMuted }} aria-hidden="true" />
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: T.textSecondary }}>
+              Sem OS registrada
+            </div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
+              Este cliente ainda não passou pela oficina.
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const totalPago = osCliente.reduce((s, o) => s + (o.valor_pago || 0), 0)
+  const emAndamento = osCliente.filter(o => o.etapa !== 'concluido' && o.etapa !== 'recusado').length
+  const garantiasAtivas = osCliente.filter(o => dentroGarantia(o)).length
+
+  const resumoPills = []
+  resumoPills.push(`${osCliente.length} OS`)
+  if (totalPago > 0) resumoPills.push(`${fmtBRL(totalPago)} pago`)
+  if (garantiasAtivas > 0) resumoPills.push(`${garantiasAtivas} garantia${garantiasAtivas > 1 ? 's' : ''} ativa${garantiasAtivas > 1 ? 's' : ''}`)
+  if (emAndamento > 0) resumoPills.push(`${emAndamento} em andamento`)
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <i className="ti ti-history" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+        <span style={sectionLabel}>Histórico de OS</span>
+        <span style={{
+          fontSize: 10.5, color: T.textMuted,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{resumoPills.join(' · ')}</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {osCliente.map(os => (
+          <OSHistRow key={os.numero} os={os} T={T} dark={dark} cor={cor} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OSHistRow({ os, T, dark, cor }) {
+  const isConcluido = os.etapa === 'concluido'
+  const isRecusado = os.etapa === 'recusado'
+  const isAndamento = !isConcluido && !isRecusado
+  const cfg = TIPOS_OS[os.tipo]
+  const etapaCfg = cfg?.etapas?.find(e => e.id === os.etapa) || cfg?.lateral
+  const etapaCorKey = etapaCfg?.cor || 'neutro'
+  const etapaCor = corEtapa(etapaCorKey, dark)
+  const diasGar = diasGarantiaRestantes(os)
+  const garantiaAtiva = diasGar > 0
+  const totalLiq = (os.valor || 0) - (os.desconto || 0)
+  const pagoTotal = os.pago === 'total' || (totalLiq > 0 && (os.valor_pago || 0) >= totalLiq)
+
+  return (
+    <div style={{
+      background: T.cardAlt,
+      border: `1px solid ${T.border}`,
+      borderRadius: 9,
+      padding: '10px 12px',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 8, marginBottom: 5, flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+            fontVariantNumeric: 'tabular-nums',
+          }}>OS #{os.numero}</span>
+          <span style={{
+            fontSize: 9.5, fontWeight: 700,
+            padding: '2px 7px', borderRadius: 4,
+            background: etapaCor + '22', color: etapaCor,
+            textTransform: 'uppercase', letterSpacing: '.3px',
+          }}>{labelEtapa(os)}</span>
+          {os.garantia && (
+            <span style={{
+              fontSize: 9.5, fontWeight: 700,
+              padding: '2px 7px', borderRadius: 4,
+              background: cor('#0d2035', '#e6f1fb'),
+              color: cor(P.blue, P.blueDark),
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              textTransform: 'uppercase', letterSpacing: '.3px',
+            }}>
+              <i className="ti ti-shield-check" style={{ fontSize: 11 }} aria-hidden="true" />
+              retorno
+            </span>
+          )}
+        </div>
+        <span style={{
+          fontSize: 11, color: T.textMuted,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{fmtPrazoCurto(os.criado_em)}</span>
+      </div>
+
+      <div style={{
+        fontSize: 11.5, color: T.textSecondary,
+        lineHeight: 1.4, marginBottom: 6,
+      }}>{os.defeito || '—'}</div>
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        fontSize: 11, color: T.textMuted,
+      }}>
+        {os.valor > 0 ? (
+          <span style={{
+            fontVariantNumeric: 'tabular-nums', fontWeight: 700,
+            color: pagoTotal ? corEtapa('green', dark) : T.textSecondary,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}>
+            {pagoTotal && <i className="ti ti-check" style={{ fontSize: 12 }} aria-hidden="true" />}
+            {fmtBRL(totalLiq)}{pagoTotal && ' · pago'}
+          </span>
+        ) : (
+          <span style={{ fontStyle: 'italic' }}>sem orçamento ainda</span>
+        )}
+
+        {garantiaAtiva && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            color: corEtapa('green', dark), fontWeight: 600,
+          }}>
+            <i className="ti ti-shield-check" style={{ fontSize: 12 }} aria-hidden="true" />
+            Garantia ativa · {diasGar} dia{diasGar !== 1 ? 's' : ''}
+          </span>
+        )}
+
+        {isAndamento && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            color: corEtapa('yellow', dark), fontWeight: 600,
+          }}>
+            <i className="ti ti-clock" style={{ fontSize: 12 }} aria-hidden="true" />
+            Em andamento
+          </span>
+        )}
+
+        {isRecusado && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            color: corEtapa('red', dark), fontWeight: 600,
+          }}>
+            <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+            Recusada
+          </span>
+        )}
+      </div>
+    </div>
   )
 }
