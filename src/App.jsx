@@ -36,6 +36,7 @@ import Kanban       from './pages/Kanban'
 import Clientes     from './pages/Clientes'
 import Logistica    from './pages/Logistica'
 import Estoque      from './pages/Estoque'
+import Financeiro   from './pages/Financeiro'
 import EmConstrucao from './pages/EmConstrucao'
 
 // Mobile (legacy — futuro: pages/mobile/Painel.jsx, OSMobile.jsx refatoradas)
@@ -86,7 +87,7 @@ function RoutesDesktop({ T, dark, user }) {
       <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
       <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
       <Route path="/estoque"     element={<Estoque T={T} dark={dark} />} />
-      <Route path="/financeiro"  element={<EmConstrucao nome="Financeiro"  T={T} />} />
+      <Route path="/financeiro"  element={<Financeiro T={T} dark={dark} />} />
       <Route path="/relatorios"  element={<EmConstrucao nome="Relatórios"  T={T} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
