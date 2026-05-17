@@ -85,11 +85,31 @@ export default function AcaoDiagnostico({ T, dark, os, onUpdateOS, onMoverOS }) 
   // checklist: { item_id: { man: bool, troca: bool } }
   const [check, setCheck] = useState(() => salvo.checklist || {})
 
+  // Busca no checklist
+  const [busca, setBusca] = useState('')
+  const buscaNorm = busca.trim().toLowerCase()
+
   // Grupos abertos/fechados — todos fechados por padrão
   const [abertos, setAbertos] = useState({})
 
   function toggleGrupo(id) {
     setAbertos(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  // Quando há busca: grupo está "aberto" se tiver resultados
+  function grupoVisivel(grupo) {
+    if (!buscaNorm) return true
+    return grupo.itens.some(i => i.label.toLowerCase().includes(buscaNorm))
+  }
+
+  function itensFiltrados(grupo) {
+    if (!buscaNorm) return grupo.itens
+    return grupo.itens.filter(i => i.label.toLowerCase().includes(buscaNorm))
+  }
+
+  function grupoAberto(grupo) {
+    if (buscaNorm) return true   // busca ativa → sempre aberto se tiver resultado
+    return !!abertos[grupo.id]
   }
 
   function toggleFlag(itemId, flag) {
@@ -155,14 +175,47 @@ export default function AcaoDiagnostico({ T, dark, os, onUpdateOS, onMoverOS }) 
           )}
         </div>
 
+        {/* Campo de busca */}
+        <div style={{ position: 'relative', marginBottom: 6 }}>
+          <i className="ti ti-search" style={{
+            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+            fontSize: 13, color: T.textMuted, pointerEvents: 'none',
+          }} aria-hidden="true" />
+          <input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar componente…"
+            style={{
+              ...inputStyle(T),
+              paddingLeft: 30,
+              paddingRight: busca ? 28 : 12,
+            }}
+          />
+          {busca && (
+            <button
+              type="button"
+              onClick={() => setBusca('')}
+              style={{
+                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: T.textMuted, display: 'flex', alignItems: 'center', padding: 2,
+              }}
+              aria-label="Limpar busca"
+            >
+              <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: 8,
         }}>
-          {GRUPOS.map(grupo => {
-            const aberto   = !!abertos[grupo.id]
+          {GRUPOS.filter(grupoVisivel).map(grupo => {
+            const aberto   = grupoAberto(grupo)
             const marcados = contaMarcados(grupo)
+            const itens    = itensFiltrados(grupo)
             return (
               <GrupoCard
                 key={grupo.id}
@@ -170,11 +223,13 @@ export default function AcaoDiagnostico({ T, dark, os, onUpdateOS, onMoverOS }) 
                 grupo={grupo}
                 aberto={aberto}
                 marcados={marcados}
+                itens={itens}
                 check={check}
                 amarelo={amarelo}
                 azul={azul}
-                onToggle={() => toggleGrupo(grupo.id)}
+                onToggle={() => !buscaNorm && toggleGrupo(grupo.id)}
                 onToggleFlag={toggleFlag}
+                buscaAtiva={!!buscaNorm}
               />
             )
           })}
@@ -205,7 +260,7 @@ export default function AcaoDiagnostico({ T, dark, os, onUpdateOS, onMoverOS }) 
 }
 
 // ─── Card colapsável de grupo ────────────────────────────────────────────────
-function GrupoCard({ T, dark, grupo, aberto, marcados, check, amarelo, azul, onToggle, onToggleFlag }) {
+function GrupoCard({ T, dark, grupo, aberto, marcados, itens, check, amarelo, azul, onToggle, onToggleFlag, buscaAtiva }) {
   const cor = (d, c) => dark ? d : c
 
   return (
@@ -226,7 +281,7 @@ function GrupoCard({ T, dark, grupo, aberto, marcados, check, amarelo, azul, onT
           background: marcados > 0
             ? cor(`${azul}18`, `${azul}10`)
             : dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-          border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+          border: 'none', cursor: buscaAtiva ? 'default' : 'pointer', fontFamily: 'inherit',
           borderBottom: aberto ? `1px solid ${T.border}` : 'none',
           transition: 'background .15s',
         }}
@@ -260,7 +315,7 @@ function GrupoCard({ T, dark, grupo, aberto, marcados, check, amarelo, azul, onT
       {/* Lista de itens */}
       {aberto && (
         <div>
-          {grupo.itens.map((item, idx) => {
+          {itens.map((item, idx) => {
             const c     = check[item.id] || {}
             const manAtivo   = !!c.man
             const trocaAtivo = !!c.troca
