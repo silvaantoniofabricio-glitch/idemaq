@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react'
 import { P } from '../../theme'
 import { corEtapa, corHero } from '../../utils/colors'
-import { Modal, Input, Button } from '../ui'
+import { Modal, Input, Button, useToast } from '../ui'
 import { OS_MOCK } from '../../_mocks/os'
 import { TIPOS_OS } from '../../utils/osData'
 import { dentroGarantia } from '../../utils/osHelpers'
@@ -314,11 +314,47 @@ export default function ClienteDetalheModal({ T, dark, cliente, onClose, onSalva
 // Filtra OS_MOCK pelo nome do cliente (a ligação ainda é por nome — o
 // Módulo 02 introduz cliente_id no Supabase e troca o filtro pra FK).
 function HistoricoOS({ T, dark, cor, clienteNome }) {
+  const notify = useToast()
+  // Retornos de garantia acionados nesta sessão do modal (mock — Módulo 02
+  // grava no Supabase). Some quando fecha/reabre o modal.
+  const [retornos, setRetornos] = useState([])
+
   const osCliente = useMemo(() => {
-    return OS_MOCK
-      .filter(o => o.cliente === clienteNome && !o.deleted_at)
+    const base = OS_MOCK.filter(o => o.cliente === clienteNome && !o.deleted_at)
+    return [...base, ...retornos]
       .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
-  }, [clienteNome])
+  }, [clienteNome, retornos])
+
+  function ativarGarantia(osOrigem) {
+    const proxNumero = Math.max(...osCliente.map(o => o.numero), 1099) + 1
+    const agora = new Date().toISOString().slice(0, 16).replace('T', ' ')
+    const nova = {
+      id: 'gar-' + Date.now(),
+      numero: proxNumero,
+      tipo: 'atendimento',
+      etapa: 'ag_agendamento',
+      cliente: osOrigem.cliente,
+      fone: osOrigem.fone,
+      endereco: osOrigem.endereco,
+      equipamento: osOrigem.equipamento,
+      marca: osOrigem.marca,
+      modelo: osOrigem.modelo,
+      serie: osOrigem.serie,
+      defeito: `Retorno em garantia da OS #${osOrigem.numero} — agendar diagnóstico`,
+      prazo: null,
+      valor: 0, desconto: 0, pago: 'nao', valor_pago: 0, fotos: 0,
+      limpeza: null, manutencao: null, aguardando_peca: false,
+      garantia: true,
+      os_origem_id: osOrigem.numero,
+      garantia_dias: 90,
+      observacoes: `Acionado em ${agora} a partir da ficha do cliente.`,
+      historico: [{ etapa: 'ag_agendamento', funcionario: 'func1', data: agora }],
+      criado_em: agora,
+      deleted_at: null,
+    }
+    setRetornos(prev => [...prev, nova])
+    notify('ok', `OS #${proxNumero} criada — retorno em garantia da #${osOrigem.numero}`)
+  }
 
   const azul = corEtapa('blue', dark)
 
@@ -376,14 +412,17 @@ function HistoricoOS({ T, dark, cor, clienteNome }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {osCliente.map(os => (
-          <OSHistRow key={os.numero} os={os} T={T} dark={dark} cor={cor} />
+          <OSHistRow key={os.numero} os={os}
+            T={T} dark={dark} cor={cor}
+            todasOS={osCliente}
+            onAtivarGarantia={ativarGarantia} />
         ))}
       </div>
     </div>
   )
 }
 
-function OSHistRow({ os, T, dark, cor }) {
+function OSHistRow({ os, T, dark, cor, todasOS, onAtivarGarantia }) {
   const isConcluido = os.etapa === 'concluido'
   const isRecusado = os.etapa === 'recusado'
   const isAndamento = !isConcluido && !isRecusado
@@ -444,51 +483,83 @@ function OSHistRow({ os, T, dark, cor }) {
       }}>{os.defeito || '—'}</div>
 
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        fontSize: 11, color: T.textMuted,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 12, flexWrap: 'wrap',
       }}>
-        {os.valor > 0 ? (
-          <span style={{
-            fontVariantNumeric: 'tabular-nums', fontWeight: 700,
-            color: pagoTotal ? corEtapa('green', dark) : T.textSecondary,
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-          }}>
-            {pagoTotal && <i className="ti ti-check" style={{ fontSize: 12 }} aria-hidden="true" />}
-            {fmtBRL(totalLiq)}{pagoTotal && ' · pago'}
-          </span>
-        ) : (
-          <span style={{ fontStyle: 'italic' }}>sem orçamento ainda</span>
-        )}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+          fontSize: 11, color: T.textMuted,
+        }}>
+          {os.valor > 0 ? (
+            <span style={{
+              fontVariantNumeric: 'tabular-nums', fontWeight: 700,
+              color: pagoTotal ? corEtapa('green', dark) : T.textSecondary,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              {pagoTotal && <i className="ti ti-check" style={{ fontSize: 12 }} aria-hidden="true" />}
+              {fmtBRL(totalLiq)}{pagoTotal && ' · pago'}
+            </span>
+          ) : (
+            <span style={{ fontStyle: 'italic' }}>sem orçamento ainda</span>
+          )}
 
-        {garantiaAtiva && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            color: corEtapa('green', dark), fontWeight: 600,
-          }}>
-            <i className="ti ti-shield-check" style={{ fontSize: 12 }} aria-hidden="true" />
-            Garantia ativa · {diasGar} dia{diasGar !== 1 ? 's' : ''}
-          </span>
-        )}
+          {garantiaAtiva && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              color: corEtapa('green', dark), fontWeight: 600,
+            }}>
+              <i className="ti ti-shield-check" style={{ fontSize: 12 }} aria-hidden="true" />
+              Garantia ativa · {diasGar} dia{diasGar !== 1 ? 's' : ''}
+            </span>
+          )}
 
-        {isAndamento && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            color: corEtapa('yellow', dark), fontWeight: 600,
-          }}>
-            <i className="ti ti-clock" style={{ fontSize: 12 }} aria-hidden="true" />
-            Em andamento
-          </span>
-        )}
+          {isAndamento && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              color: corEtapa('yellow', dark), fontWeight: 600,
+            }}>
+              <i className="ti ti-clock" style={{ fontSize: 12 }} aria-hidden="true" />
+              Em andamento
+            </span>
+          )}
 
-        {isRecusado && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            color: corEtapa('red', dark), fontWeight: 600,
-          }}>
-            <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
-            Recusada
-          </span>
-        )}
+          {isRecusado && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              color: corEtapa('red', dark), fontWeight: 600,
+            }}>
+              <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+              Recusada
+            </span>
+          )}
+        </div>
+
+        {/* Botão "Ativar garantia" — só em OS concluída que NÃO seja já um retorno */}
+        {isConcluido && !os.garantia && (() => {
+          const jaTemRetorno = todasOS.some(o => o.os_origem_id === os.numero && o.garantia)
+          const expirada = diasGar === 0
+          const podeAtivar = !jaTemRetorno && !expirada
+          const label = jaTemRetorno ? 'Garantia acionada'
+            : expirada ? 'Garantia expirada'
+            : 'Ativar garantia'
+          const titulo = jaTemRetorno
+            ? `Já existe um retorno em garantia para a OS #${os.numero}`
+            : expirada
+              ? 'Passaram-se mais de 90 dias desde a entrega — fora do prazo de garantia'
+              : `Criar OS de retorno em garantia (válida por ${diasGar} dia${diasGar !== 1 ? 's' : ''})`
+          return (
+            <Button
+              T={T} dark={dark}
+              variant="secondary" size="sm"
+              iconLeft={jaTemRetorno ? 'ti-shield-check' : 'ti-shield-plus'}
+              disabled={!podeAtivar}
+              onClick={() => onAtivarGarantia(os)}
+              title={titulo}
+            >
+              {label}
+            </Button>
+          )
+        })()}
       </div>
     </div>
   )
