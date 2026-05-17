@@ -19,27 +19,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { P } from '../../../theme'
-import { ETAPAS_TODOS, funcPorId } from '../../../utils/osData'
+import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import { OS_ITENS_MOCK } from '../../../_mocks/os'
 import BlocoAcao from './BlocoAcao'
-
-// === Labels do checklist do diagnóstico (espelha AcaoDiagnostico) ============
-const ITENS_DIAG = {
-  motor_principal: 'Motor principal', correia: 'Correia', polia_motor: 'Polia do motor',
-  mecanismo: 'Mecanismo', embreagem: 'Embreagem', polia_mecanismo: 'Polia do mecanismo',
-  catraca: 'Catraca / engaste', rolamentos_cesto: 'Rolamentos do cesto',
-  rolamento_eixo: 'Rolamento do eixo', rolamentos_motor: 'Rolamentos do motor',
-  bomba_drenagem: 'Bomba de drenagem', valvula_entrada: 'Válvula de entrada',
-  mangueira_entrada: 'Mangueira de entrada', mangueira_saida: 'Mangueira de saída',
-  mangueira_interna: 'Mangueira interna', pressostato: 'Pressostato',
-  borracha_porta: 'Borracha da porta', placa_potencia: 'Placa de potência',
-  placa_interface: 'Placa interface', timer_mecanico: 'Timer mecânico',
-  capacitor: 'Capacitor', sensor_temperatura: 'Sensor de temperatura',
-  sensor_tampa: 'Sensor da tampa', trava_porta: 'Trava da porta',
-  cesto: 'Cesto', agitador: 'Agitador', suporte_cesto: 'Suporte do cesto',
-  suspensao: 'Suspensão', tirantes: 'Tirantes da suspensão', pe_nivelador: 'Pé nivelador',
-}
+import RelatorioDiagnostico, { itensMarcadosDoDiag } from '../RelatorioDiagnostico'
 
 const STATUS_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', concluido: 'Concluído' }
 function deriveStatus(m, t) {
@@ -69,23 +53,7 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
   const ambosTipos = temLimpeza && temManutencao
 
   // === DIAGNÓSTICO (REFERÊNCIA) — usado como checklist do "Serviço" ===
-  const diag = os.diagnostico || {}
-  const causa = diag.causa || ''
-  const checklistDiag = diag.checklist || {}
-  const itensDiag = useMemo(() => {
-    return Object.entries(checklistDiag)
-      .filter(([, v]) => v?.man || v?.troca)
-      .flatMap(([id, v]) => {
-        const label = ITENS_DIAG[id] || id
-        const out = []
-        if (v.troca) out.push({ key: id + '-troca', label, tipo: 'troca' })
-        if (v.man)   out.push({ key: id + '-man',   label, tipo: 'man' })
-        return out
-      })
-  }, [checklistDiag])
-
-  const regDiag = [...(os.historico || [])].reverse().find(h => h.etapa === 'diagnostico')
-  const funcDiag = regDiag && funcPorId(regDiag.funcionario)
+  const itensDiag = useMemo(() => itensMarcadosDoDiag(os), [os])
 
   // === ESTADO ===
   // 3 etapas sincronizáveis: desmontagem e montagem são compartilhadas.
@@ -97,16 +65,12 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
   const [servicoCheck, setServicoCheck] = useState(() => exec.servico || {})
   const [pecasPendentes, setPecasPendentes] = useState(() => exec.pecas_pendentes || {})
 
-  // Quando NÃO há itens no diagnóstico, o "Serviço" da manutenção é um único check.
-  const [servicoSimples, setServicoSimples] = useState(() => !!exec.servico_simples)
-  const usaChecklistServico = itensDiag.length > 0
-
+  // Serviço da Manutenção é SEMPRE o checklist do diagnóstico
+  // (mangueira troca, placa manutenção, etc). Se diagnóstico vazio mas
+  // orçamento tem manutenção, mostra aviso pra completar o diagnóstico.
+  const temItensDiag = itensDiag.length > 0
   const marcadosServico = itensDiag.filter(it => servicoCheck[it.key]).length
-  const servicoCompleto = temManutencao && (
-    usaChecklistServico
-      ? marcadosServico === itensDiag.length
-      : servicoSimples
-  )
+  const servicoCompleto = temManutencao && temItensDiag && marcadosServico === itensDiag.length
 
   // === STATUS DERIVADO POR LADO ===
   // Limpeza: 3 etapas (desmontagem, limpeza, montagem)
@@ -132,12 +96,11 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
       oficina_execucao: {
         desmontagem, montagem, limpeza: limpezaFeita,
         servico: servicoCheck,
-        servico_simples: servicoSimples,
         pecas_pendentes: pecasPendentes,
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusLimpeza, statusManut, desmontagem, montagem, limpezaFeita, servicoSimples,
+  }, [statusLimpeza, statusManut, desmontagem, montagem, limpezaFeita,
       JSON.stringify(servicoCheck), JSON.stringify(pecasPendentes)])
 
   // === REGRAS DE BLOQUEIO DA MONTAGEM ===
@@ -209,48 +172,8 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
         </div>
       )}
 
-      {/* === RESUMO DO DIAGNÓSTICO === */}
-      {!orcamentoVazio && (causa || itensDiag.length > 0) && (
-        <div style={{
-          padding: '10px 12px',
-          background: cor('rgba(184,204,228,0.06)', 'rgba(26,106,170,0.06)'),
-          border: `1px solid ${azulClaro}44`,
-          borderRadius: 8,
-          fontSize: 12, color: T.textSecondary,
-        }}>
-          <div style={{
-            fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-            marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.3px',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <i className="ti ti-stethoscope" style={{ fontSize: 12 }} aria-hidden="true" />
-              Diagnóstico (referência)
-            </span>
-            {funcDiag && (
-              <span style={{
-                fontSize: 9.5, color: funcDiag.cor, fontWeight: 700,
-                padding: '1px 6px', borderRadius: 8,
-                background: funcDiag.cor + '22', border: `1px solid ${funcDiag.cor}33`,
-              }}>
-                {funcDiag.apelido}
-              </span>
-            )}
-          </div>
-          {causa && <div style={{ marginBottom: itensDiag.length > 0 ? 4 : 0 }}>
-            <strong style={{ color: T.textMuted, fontSize: 11 }}>Causa:</strong> {causa}
-          </div>}
-          {itensDiag.length > 0 && (
-            <div style={{ fontSize: 11, color: T.textMuted }}>
-              {itensDiag.filter(i => i.tipo === 'troca').length}{' '}
-              <i className="ti ti-replace" style={{ fontSize: 11, color: azul, verticalAlign: 'middle' }} aria-hidden="true" />
-              {' '}trocas · {itensDiag.filter(i => i.tipo === 'man').length}{' '}
-              <i className="ti ti-wrench" style={{ fontSize: 11, color: amarelo, verticalAlign: 'middle' }} aria-hidden="true" />
-              {' '}manutenções
-            </div>
-          )}
-        </div>
-      )}
+      {/* === RELATÓRIO COMPLETO DO DIAGNÓSTICO === */}
+      {!orcamentoVazio && <RelatorioDiagnostico T={T} dark={dark} os={os} />}
 
       {/* === CARDS LIMPEZA + MANUTENÇÃO === */}
       {!orcamentoVazio && (
@@ -300,8 +223,8 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
               corAtivo={verde}
             />
 
-            {/* Serviço — com checklist do diagnóstico OU um único check */}
-            {usaChecklistServico ? (
+            {/* Serviço — checklist dos itens do diagnóstico (mangueira troca, placa man, etc) */}
+            {temItensDiag ? (
               <CheckServicoChecklist T={T} dark={dark} cor={cor}
                 itens={itensDiag}
                 servicoCheck={servicoCheck}
@@ -313,11 +236,20 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
                 marcados={marcadosServico} total={itensDiag.length}
               />
             ) : (
-              <CheckEtapa T={T} dark={dark} cor={cor}
-                ok={servicoSimples} icon="ti-tools" label="Serviço executado"
-                onToggle={() => setServicoSimples(v => !v)}
-                corAtivo={verde}
-              />
+              <div style={{
+                padding: '10px 12px', borderRadius: 6,
+                background: cor('#3a2200', '#fff4e0'),
+                border: `1px dashed ${laranja}55`,
+                fontSize: 11.5, color: laranja,
+                display: 'flex', alignItems: 'flex-start', gap: 7,
+              }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+                <div>
+                  <strong>Diagnóstico incompleto.</strong><br />
+                  Volte à etapa Diagnóstico e marque os itens (peças e manutenções)
+                  pra montar o checklist do serviço.
+                </div>
+              </div>
             )}
 
             <CheckEtapa T={T} dark={dark} cor={cor}

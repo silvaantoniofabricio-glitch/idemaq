@@ -12,28 +12,12 @@
 
 import React, { useState, useMemo } from 'react'
 import { P } from '../../../theme'
-import { ETAPAS_TODOS, funcPorId } from '../../../utils/osData'
+import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import { OS_ITENS_MOCK } from '../../../_mocks/os'
 import { fmtBRL } from '../../../utils/fmt'
 import BlocoAcao from './BlocoAcao'
-
-// === Mapa de labels do checklist do diagnóstico (espelha AcaoDiagnostico.jsx) ==
-const ITENS_DIAG = {
-  motor_principal: 'Motor principal', correia: 'Correia', polia_motor: 'Polia do motor',
-  mecanismo: 'Mecanismo', embreagem: 'Embreagem', polia_mecanismo: 'Polia do mecanismo',
-  catraca: 'Catraca / engaste', rolamentos_cesto: 'Rolamentos do cesto',
-  rolamento_eixo: 'Rolamento do eixo', rolamentos_motor: 'Rolamentos do motor',
-  bomba_drenagem: 'Bomba de drenagem', valvula_entrada: 'Válvula de entrada',
-  mangueira_entrada: 'Mangueira de entrada', mangueira_saida: 'Mangueira de saída',
-  mangueira_interna: 'Mangueira interna', pressostato: 'Pressostato',
-  borracha_porta: 'Borracha da porta', placa_potencia: 'Placa de potência',
-  placa_interface: 'Placa interface', timer_mecanico: 'Timer mecânico',
-  capacitor: 'Capacitor', sensor_temperatura: 'Sensor de temperatura',
-  sensor_tampa: 'Sensor da tampa', trava_porta: 'Trava da porta',
-  cesto: 'Cesto', agitador: 'Agitador', suporte_cesto: 'Suporte do cesto',
-  suspensao: 'Suspensão', tirantes: 'Tirantes da suspensão', pe_nivelador: 'Pé nivelador',
-}
+import RelatorioDiagnostico, { itensMarcadosDoDiag } from '../RelatorioDiagnostico'
 
 const ATALHOS = [
   { nome: 'Limpeza',             tipo: 'servico', valor: 185, icon: 'ti-droplet' },
@@ -50,21 +34,10 @@ export default function AcaoOrcamento({ T, dark, os, onMoverOS, onUpdateOS, setA
   const verde    = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
 
-  // === Diagnóstico (read-only, vem da etapa anterior) ===
+  // === Diagnóstico (referência) ===
   const diag = os.diagnostico || {}
   const causa = diag.causa || ''
-  const checklist = diag.checklist || {}
-  const itensMarcados = Object.entries(checklist)
-    .filter(([, v]) => v?.man || v?.troca)
-    .map(([id, v]) => ({
-      id,
-      label: ITENS_DIAG[id] || id,
-      man: !!v.man,
-      troca: !!v.troca,
-    }))
-  // Quem fez o diagnóstico
-  const regDiag = [...(os.historico || [])].reverse().find(h => h.etapa === 'diagnostico')
-  const funcDiag = regDiag && funcPorId(regDiag.funcionario)
+  const itensMarcados = itensMarcadosDoDiag(os)
 
   // === Estado local do orçamento ===
   const [itens, setItens] = useState(
@@ -150,7 +123,7 @@ export default function AcaoOrcamento({ T, dark, os, onMoverOS, onUpdateOS, setA
         <td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:right;font-variant-numeric:tabular-nums">${fmtBRL(i.valor * i.qtd, { fr: true })}</td>
       </tr>
     `).join('')
-    const causaHtml = causa ? `<div class="bloco"><div class="bloco-titulo">Diagnóstico técnico</div><div style="font-size:13px;line-height:1.5">${escapeHtml(causa)}</div>${itensMarcados.length > 0 ? `<div style="margin-top:10px;font-size:12px;color:#666">Itens identificados: ${itensMarcados.map(i => escapeHtml(i.label) + (i.troca ? ' (troca)' : ' (manutenção)')).join(' · ')}</div>` : ''}</div>` : ''
+    const causaHtml = causa ? `<div class="bloco"><div class="bloco-titulo">Diagnóstico técnico</div><div style="font-size:13px;line-height:1.5">${escapeHtml(causa)}</div>${itensMarcados.length > 0 ? `<div style="margin-top:10px;font-size:12px;color:#666">Itens identificados: ${itensMarcados.map(i => escapeHtml(i.label) + (i.tipo === 'troca' ? ' (troca)' : ' (manutenção)')).join(' · ')}</div>` : ''}</div>` : ''
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Orçamento OS #${os.numero}</title>
       <style>
         body { font-family: system-ui, sans-serif; padding: 32px; color: #1a1a1a; max-width: 720px; margin: 0 auto; }
@@ -231,111 +204,7 @@ Aguardo sua aprovação pra começar o serviço. Qualquer dúvida estou aqui!`
       descricao="Único lugar onde se mexe em preço. Edite os itens, gere PDF ou envie pro cliente."
     >
       {/* === RELATÓRIO DO DIAGNÓSTICO === */}
-      <div style={{
-        background: cor('rgba(184,204,228,0.06)', 'rgba(26,106,170,0.06)'),
-        border: `1px solid ${corEtapa('blueLight', dark)}44`,
-        borderRadius: 8, padding: '12px 14px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className="ti ti-stethoscope" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-            <span style={{
-              fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: '.4px',
-            }}>
-              Relatório do diagnóstico
-            </span>
-          </div>
-          {funcDiag && (
-            <span style={{
-              fontSize: 10, color: funcDiag.cor, fontWeight: 700,
-              padding: '2px 7px', borderRadius: 10,
-              background: funcDiag.cor + '22', border: `1px solid ${funcDiag.cor}33`,
-            }}>
-              Diag por {funcDiag.apelido}
-            </span>
-          )}
-        </div>
-
-        {/* Defeito relatado pelo cliente — vem do recebimento */}
-        <BlocoDiag T={T} dark={dark}
-          icon="ti-user-exclamation" label="Defeito relatado pelo cliente"
-          texto={os.defeito}
-          placeholder="Cliente não relatou defeito específico."
-        />
-
-        {/* Causa identificada — vem do diagnóstico técnico */}
-        <BlocoDiag T={T} dark={dark}
-          icon="ti-zoom-scan" label="Causa identificada (técnico)"
-          texto={causa}
-          placeholder="Diagnóstico sem causa registrada — voltar e completar?"
-          destaque
-        />
-
-        {/* Itens de troca ou manutenção — do checklist do diagnóstico */}
-        {itensMarcados.length > 0 ? (
-          <div style={{ marginTop: 10 }}>
-            <div style={{
-              fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-              marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.3px',
-              display: 'flex', alignItems: 'center', gap: 5,
-            }}>
-              <i className="ti ti-list-check" style={{ fontSize: 12 }} aria-hidden="true" />
-              {itensMarcados.length} {itensMarcados.length === 1 ? 'item identificado' : 'itens identificados'}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {itensMarcados.map(it => {
-                // Item pode ter ambos (man + troca), só man, ou só troca.
-                // Mostra um chip por flag pra deixar explícito.
-                const chips = []
-                if (it.troca) chips.push({ key: it.id + '-t', tipo: 'troca', label: it.label })
-                if (it.man)   chips.push({ key: it.id + '-m', tipo: 'man',   label: it.label })
-                return chips.map(c => (
-                  <span key={c.key} style={{
-                    fontSize: 11, fontWeight: 600,
-                    padding: '3px 8px 3px 6px', borderRadius: 12,
-                    background: c.tipo === 'troca' ? cor(`${azul}22`, `${azul}18`) : cor(`${amarelo}22`, `${amarelo}18`),
-                    color: c.tipo === 'troca' ? azul : amarelo,
-                    border: `1px solid ${(c.tipo === 'troca' ? azul : amarelo)}33`,
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                  }}>
-                    <i className={`ti ${c.tipo === 'troca' ? 'ti-replace' : 'ti-wrench'}`}
-                       style={{ fontSize: 11 }} aria-hidden="true" />
-                    {c.label}
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, opacity: 0.7,
-                      padding: '1px 5px', borderRadius: 8,
-                      background: cor('rgba(0,0,0,0.25)', 'rgba(255,255,255,0.4)'),
-                      textTransform: 'uppercase', letterSpacing: '.3px',
-                    }}>
-                      {c.tipo === 'troca' ? 'troca' : 'man'}
-                    </span>
-                  </span>
-                ))
-              })}
-            </div>
-            <div style={{
-              fontSize: 10.5, color: T.textDim, marginTop: 6,
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <i className="ti ti-replace" style={{ fontSize: 11, color: azul }} aria-hidden="true" />
-                troca de peça
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <i className="ti ti-wrench" style={{ fontSize: 11, color: amarelo }} aria-hidden="true" />
-                só manutenção
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div style={{
-            marginTop: 10, fontSize: 11, color: T.textMuted, fontStyle: 'italic',
-          }}>
-            Nenhum item marcado no checklist do diagnóstico.
-          </div>
-        )}
-      </div>
+      <RelatorioDiagnostico T={T} dark={dark} os={os} />
 
       {/* === ATALHOS RÁPIDOS === */}
       <div>
@@ -617,37 +486,6 @@ function Linha({ T, label, valor, cor: c }) {
   )
 }
 
-// ─── Bloco de texto do diagnóstico (defeito / causa) ────────────────────────
-function BlocoDiag({ T, dark, icon, label, texto, placeholder, destaque }) {
-  const cor = (d, c) => dark ? d : c
-  const tem = texto && String(texto).trim().length > 0
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{
-        fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-        marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.3px',
-        display: 'flex', alignItems: 'center', gap: 5,
-      }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-        {label}
-      </div>
-      <div style={{
-        fontSize: 13,
-        color: tem ? T.textPrimary : T.textMuted,
-        fontStyle: tem ? 'normal' : 'italic',
-        lineHeight: 1.5,
-        padding: '8px 10px',
-        background: T.bg,
-        borderRadius: 6,
-        border: `1px solid ${T.border}`,
-        borderLeft: destaque ? `3px solid ${corEtapa('blue', dark)}` : `1px solid ${T.border}`,
-        whiteSpace: 'pre-wrap',
-      }}>
-        {tem ? texto : placeholder}
-      </div>
-    </div>
-  )
-}
 
 // Escape simples pra evitar HTML injection no PDF gerado.
 function escapeHtml(s) {
