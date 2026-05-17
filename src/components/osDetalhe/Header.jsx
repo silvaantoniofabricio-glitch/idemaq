@@ -54,7 +54,7 @@ export default function Header({
     }}>
       {/* Linha 1 — badges + ícones */}
       <div style={{
-        padding: '14px 18px 8px',
+        padding: '13px 20px 6px',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
@@ -165,12 +165,14 @@ export default function Header({
         </div>
       </div>
 
-      {/* Bloco Cliente + Equipamento — SEMPRE visível, fora das abas (texto solto) */}
+      {/* Bloco Cliente + Equipamento — SEMPRE visível, fora das abas (texto solto).
+          Grid 3 colunas: 1fr | 1px (divisor sutil) | 1fr */}
       <div style={{
-        padding: '14px 20px 4px',
+        padding: '14px 20px 14px',
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 24,
+        gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
+        gap: 22,
+        alignItems: 'start',
       }}>
         <BlocoInfoTopo
           T={T} dark={dark}
@@ -182,6 +184,10 @@ export default function Header({
             { icon: 'ti-map-pin', text: os.endereco || '—' },
           ]}
           onClick={() => avisoEdicaoEmBreve('cliente')}
+        />
+        <div
+          aria-hidden="true"
+          style={{ width: 1, alignSelf: 'stretch', background: T.border, opacity: 0.6 }}
         />
         <BlocoInfoTopo
           T={T} dark={dark}
@@ -198,7 +204,7 @@ export default function Header({
 
       {/* Linha 4 — Timeline (não aparece em recusado) */}
       {!isRecusado && (
-        <div style={{ padding: '0 18px 4px' }}>
+        <div style={{ padding: '4px 20px 6px' }}>
           <Timeline T={T} dark={dark} os={os} config={config} admin={admin} mobile={mobile} />
         </div>
       )}
@@ -249,7 +255,7 @@ function Pill({ cor, bg, children }) {
 }
 
 // Bloco de info no topo do modal — texto solto, sem caixa.
-// Hover: nome destaca em azul + chip "editar" aparece. Click dispara onClick.
+// Hover: nome destaca em azul + chip "editar" aparece à direita do label.
 function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
@@ -265,23 +271,25 @@ function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
         userSelect: 'none',
       }}
     >
-      {/* Label uppercase + chip editar (no hover) */}
+      {/* Header da coluna: label uppercase + chip editar (no hover) */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 5,
-        fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '.4px',
-        marginBottom: 4,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+        marginBottom: 6,
       }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-        <span>{label}</span>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '.5px',
+        }}>
+          <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+          <span>{label}</span>
+        </div>
         {onClick && (
           <span style={{
             opacity: hover ? 1 : 0,
             transition: 'opacity .12s',
-            marginLeft: 4,
             fontSize: 10, color: azul, fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center', gap: 2,
-            textTransform: 'none', letterSpacing: 'normal',
+            display: 'inline-flex', alignItems: 'center', gap: 3,
           }}>
             <i className="ti ti-pencil" style={{ fontSize: 11 }} aria-hidden="true" />
             editar
@@ -291,28 +299,31 @@ function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
 
       {/* Nome / título principal — vira azul no hover */}
       <div style={{
-        fontSize: 14.5, fontWeight: 700,
+        fontSize: 15.5, fontWeight: 700, lineHeight: 1.25,
         color: hover && onClick ? azul : T.textPrimary,
-        marginBottom: 4,
+        marginBottom: 7,
         transition: 'color .12s',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{principal}</div>
 
-      {/* Linhas com ícone + texto */}
-      {linhas.map((l, i) => (
-        <div key={i} style={{
-          fontSize: 12, color: T.textMuted,
-          display: 'flex', alignItems: 'center', gap: 6,
-          marginTop: 2,
-          minWidth: 0,
-        }}>
-          <i className={`ti ${l.icon}`} style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
-          <span style={{
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      {/* Linhas com ícone + texto — ícone discreto, texto mais leve */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {linhas.map((l, i) => (
+          <div key={i} style={{
+            fontSize: 11.5, color: T.textMuted, lineHeight: 1.35,
+            display: 'flex', alignItems: 'center', gap: 7,
             minWidth: 0,
-          }}>{l.text}</span>
-        </div>
-      ))}
+          }}>
+            <i className={`ti ${l.icon}`}
+               style={{ fontSize: 12, color: T.textDim, flexShrink: 0 }}
+               aria-hidden="true" />
+            <span style={{
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}>{l.text}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
