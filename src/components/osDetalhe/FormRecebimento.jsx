@@ -16,17 +16,20 @@ import { corEtapa } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
 import { useToast } from '../ui'
 
-const TAXA_PARCELADO = {
-  2: 4.46, 3: 4.99, 4: 5.52, 5: 6.05, 6: 6.58,
+// Taxas InfinitePay Maxi 1 (1x a 12x). Aplicáveis ao Crédito.
+const TAXA_CREDITO = {
+  1: 3.15, 2: 4.46, 3: 4.99, 4: 5.52, 5: 6.05, 6: 6.58,
   7: 7.11, 8: 7.64, 9: 8.17, 10: 8.70, 11: 9.23, 12: 9.76,
 }
+// Link InfinitePay = taxa do crédito + 0,90% (ex: 12x maquininha 9,76% → link 10,66%)
+const LINK_ACRESCIMO = 0.90
+const taxaLink = (p) => (TAXA_CREDITO[p] || 0) + LINK_ACRESCIMO
 
 const SUB_CARTAO = [
-  { id: 'debito',    label: 'Débito',            taxa: 1.37, icon: 'ti-credit-card' },
-  { id: 'credito1x', label: 'Crédito à vista',   taxa: 3.15, icon: 'ti-credit-card', desc: '1x' },
-  { id: 'parcelado', label: 'Parcelado',         parcelado: true, icon: 'ti-calendar-event', desc: '2x a 12x' },
-  { id: 'link',      label: 'Link InfinitePay',  taxa: 4.20, icon: 'ti-link', desc: 'cai D+1' },
-  { id: 'aprazo',    label: 'A prazo',           taxa: 0,    icon: 'ti-clock', desc: 'fiado' },
+  { id: 'debito',  label: 'Débito',           fixed: 1.37,  icon: 'ti-credit-card' },
+  { id: 'credito', label: 'Crédito',          parcelado: true, getTaxa: (p) => TAXA_CREDITO[p] || 0, icon: 'ti-credit-card', desc: '1x a 12x' },
+  { id: 'link',    label: 'Link InfinitePay', parcelado: true, getTaxa: taxaLink, icon: 'ti-link', desc: '1x a 12x' },
+  { id: 'aprazo',  label: 'A prazo',          fixed: 0,     icon: 'ti-clock', desc: 'fiado' },
 ]
 
 // Converte o ID interno num label legível pro display em outras telas.
@@ -34,11 +37,17 @@ export function formaIdToLabel(id) {
   if (!id) return ''
   if (id === 'pix') return 'PIX'
   if (id === 'debito') return 'Débito'
-  if (id === 'credito1x') return 'Crédito 1x'
-  if (id === 'link') return 'Link D+1'
   if (id === 'aprazo') return 'A prazo'
-  const m = id.match?.(/^parcelado_(\d+)x$/)
-  if (m) return `Parcelado ${m[1]}x`
+  // Novos IDs: credito_Nx, link_Nx
+  let m = id.match?.(/^credito_(\d+)x$/)
+  if (m) return `Crédito ${m[1]}x`
+  m = id.match?.(/^link_(\d+)x$/)
+  if (m) return `Link ${m[1]}x`
+  // Legacy: credito1x, parcelado_Nx, link
+  if (id === 'credito1x') return 'Crédito 1x'
+  if (id === 'link') return 'Link'
+  m = id.match?.(/^parcelado_(\d+)x$/)
+  if (m) return `Crédito ${m[1]}x`
   return id
 }
 
@@ -60,7 +69,7 @@ export default function FormRecebimento({
   const [valor, setValor] = useState(saldo)
   const [forma, setForma] = useState('pix')          // 'pix' | 'cartao'
   const [subCartao, setSubCartao] = useState(null)   // null antes de escolher
-  const [parcelas, setParcelas] = useState(2)
+  const [parcelas, setParcelas] = useState(1)        // 1x a 12x (crédito e link)
   const [partialDialog, setPartialDialog] = useState(false)
 
   // Re-sincroniza valor quando saldo mudar (ex: depois de uma baixa parcial)
@@ -74,13 +83,18 @@ export default function FormRecebimento({
   // ─── Cálculos
   function formaIdFinal() {
     if (forma === 'pix') return 'pix'
-    if (subCartao === 'parcelado') return `parcelado_${parcelas}x`
-    return subCartao || 'debito'
+    const sub = SUB_CARTAO.find(s => s.id === subCartao)
+    if (!sub) return 'debito'
+    if (sub.parcelado) return `${sub.id}_${parcelas}x`
+    return sub.id
   }
   function taxaAtual() {
     if (forma === 'pix') return 0
-    if (subCartao === 'parcelado') return TAXA_PARCELADO[parcelas] || 0
-    return SUB_CARTAO.find(s => s.id === subCartao)?.taxa ?? 0
+    const sub = SUB_CARTAO.find(s => s.id === subCartao)
+    if (!sub) return 0
+    if (sub.fixed != null) return sub.fixed
+    if (sub.getTaxa) return sub.getTaxa(parcelas)
+    return 0
   }
   const taxa = taxaAtual()
   const liquido = taxa > 0 ? valor - (valor * taxa / 100) : valor
@@ -112,7 +126,7 @@ export default function FormRecebimento({
   function clickEnviarLink() {
     if (!valorOk) return
     onEnviarLink?.(valor)
-    notify('info', `Link InfinitePay D+1 pra ${fmtBRL(valor, { fr: true })} (mock) — envie pelo WhatsApp`)
+    notify('info', `Link InfinitePay pra ${fmtBRL(valor, { fr: true })} (mock) — envie pelo WhatsApp`)
   }
 
   // ─── Render
@@ -190,17 +204,20 @@ export default function FormRecebimento({
             textTransform: 'uppercase', letterSpacing: '.4px',
             marginBottom: 4,
           }}>Tipo de cartão</div>
-          {SUB_CARTAO.map(s => (
-            <SubCartaoBtn
-              key={s.id}
-              T={T} dark={dark} sub={s}
-              ativo={subCartao === s.id}
-              onClick={() => setSubCartao(s.id)}
-              parcelas={parcelas}
-              setParcelas={setParcelas}
-              taxaParcelado={TAXA_PARCELADO}
-            />
-          ))}
+          {SUB_CARTAO.map(s => {
+            const taxa = s.fixed != null ? s.fixed : (s.getTaxa ? s.getTaxa(parcelas) : null)
+            return (
+              <SubCartaoBtn
+                key={s.id}
+                T={T} dark={dark} sub={s}
+                ativo={subCartao === s.id}
+                onClick={() => setSubCartao(s.id)}
+                parcelas={parcelas}
+                setParcelas={setParcelas}
+                taxaAtual={taxa}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -262,7 +279,7 @@ export default function FormRecebimento({
                 lineHeight: 1.25,
               }}>
               <i className="ti ti-link" style={{ fontSize: 15 }} aria-hidden="true" />
-              Link D+1
+              Link
             </button>
           )}
         </div>
@@ -278,7 +295,7 @@ export default function FormRecebimento({
         }}>
           <i className="ti ti-info-circle" style={{ fontSize: 12, color: amarelo, flexShrink: 0 }} aria-hidden="true" />
           <span>
-            Link InfinitePay cai em D+1. Ton Black tem link de 30 dias —
+            Link sempre InfinitePay. Ton Black tem link de 30 dias —
             <strong style={{ color: T.textPrimary }}> nunca usar</strong>.
           </span>
         </div>
@@ -346,10 +363,9 @@ function FormaTopBtn({ T, dark, ativo, onClick, icon, label, sublabel }) {
   )
 }
 
-function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, taxaParcelado }) {
+function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, taxaAtual }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
-  const taxaParc = taxaParcelado[parcelas] || 0
   return (
     <div style={{
       padding: '7px 9px', borderRadius: 6,
@@ -384,21 +400,15 @@ function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, tax
             )}
           </div>
         </div>
-        {sub.taxa != null && (
+        {taxaAtual != null && (
           <span style={{
             fontSize: 10.5, color: T.textMuted, fontWeight: 600,
             fontVariantNumeric: 'tabular-nums',
-          }}>{sub.taxa.toFixed(2).replace('.', ',')}%</span>
-        )}
-        {sub.parcelado && (
-          <span style={{
-            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-            fontVariantNumeric: 'tabular-nums',
-          }}>{taxaParc.toFixed(2).replace('.', ',')}%</span>
+          }}>{taxaAtual.toFixed(2).replace('.', ',')}%</span>
         )}
       </button>
 
-      {/* Seletor de parcelas (só visível quando Parcelado está ativo) */}
+      {/* Seletor de parcelas 1x a 12x (visível quando sub parcelado está ativo) */}
       {sub.parcelado && ativo && (
         <div style={{ marginTop: 8, paddingLeft: 24 }}>
           <div style={{
@@ -408,7 +418,7 @@ function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, tax
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4,
           }}>
-            {Array.from({ length: 11 }, (_, i) => i + 2).map(p => {
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(p => {
               const ativoP = parcelas === p
               return (
                 <button
