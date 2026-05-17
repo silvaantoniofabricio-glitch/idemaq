@@ -1,11 +1,11 @@
 // src/components/osDetalhe/FormRecebimento.jsx
 // Form de recebimento reutilizável — usado pela aba Pagamento e pela
 // AcaoPagamento (etapa Pagamento). Encapsula:
-//   - Input de valor (com chips de atalho)
-//   - Forma de pagamento: PIX | Cartão (com sub-leque)
-//     • Débito · Crédito 1x · Parcelado 2x-12x · Link D+1 · A prazo
+//   - Input de valor (com atalho "receber tudo")
+//   - Forma de pagamento: PIX · Cartão · Dinheiro (3 top-level)
+//     • Cartão expande sub-leque: Débito · Crédito 1x-12x · Link 1x-12x · A prazo
 //   - Cálculo de líquido após taxa
-//   - Atalho "Enviar link InfinitePay D+1"
+//   - Atalhos rápidos: "Gerar PIX" e "Gerar link"
 //   - Dialog inline pra valor < saldo: parcial ou quitar com desconto
 //
 // Taxas via tabela InfinitePay Maxi 1 (Instruções do Projeto §Maquininha).
@@ -36,6 +36,7 @@ const SUB_CARTAO = [
 export function formaIdToLabel(id) {
   if (!id) return ''
   if (id === 'pix') return 'PIX'
+  if (id === 'dinheiro') return 'Dinheiro'
   if (id === 'debito') return 'Débito'
   if (id === 'aprazo') return 'A prazo'
   // Novos IDs: credito_Nx, link_Nx
@@ -55,8 +56,9 @@ export default function FormRecebimento({
   T, dark,
   saldo,                 // valor máximo a receber
   onConfirmar,           // ({ valor, forma, modo }) — modo: 'total'|'parcial'|'desconto'
-  onEnviarLink,          // (valor) — opcional, atalho link D+1
-  showLinkD1 = true,     // mostra botão "Link D+1" ao lado de confirmar
+  onEnviarLink,          // (valor) — opcional, atalho gerar link InfinitePay
+  onGerarPix,            // (valor) — opcional, atalho gerar QR PIX
+  showAtalhos = true,    // mostra botões "PIX" e "Link" ao lado de confirmar
   showAviso = true,      // mostra aviso InfinitePay vs Ton Black
 }) {
   const cor = (d, c) => dark ? d : c
@@ -83,13 +85,14 @@ export default function FormRecebimento({
   // ─── Cálculos
   function formaIdFinal() {
     if (forma === 'pix') return 'pix'
+    if (forma === 'dinheiro') return 'dinheiro'
     const sub = SUB_CARTAO.find(s => s.id === subCartao)
     if (!sub) return 'debito'
     if (sub.parcelado) return `${sub.id}_${parcelas}x`
     return sub.id
   }
   function taxaAtual() {
-    if (forma === 'pix') return 0
+    if (forma === 'pix' || forma === 'dinheiro') return 0
     const sub = SUB_CARTAO.find(s => s.id === subCartao)
     if (!sub) return 0
     if (sub.fixed != null) return sub.fixed
@@ -100,7 +103,7 @@ export default function FormRecebimento({
   const liquido = taxa > 0 ? valor - (valor * taxa / 100) : valor
   const isParcial = valor < saldo - 0.01
   const isExcedente = valor > saldo + 0.01
-  const formaOk = forma === 'pix' || (forma === 'cartao' && !!subCartao)
+  const formaOk = forma === 'pix' || forma === 'dinheiro' || (forma === 'cartao' && !!subCartao)
   const valorOk = valor > 0 && !isExcedente
 
   // ─── Ações
@@ -129,6 +132,12 @@ export default function FormRecebimento({
     notify('info', `Link InfinitePay pra ${fmtBRL(valor, { fr: true })} (mock) — envie pelo WhatsApp`)
   }
 
+  function clickGerarPix() {
+    if (!valorOk) return
+    onGerarPix?.(valor)
+    notify('info', `QR Code PIX pra ${fmtBRL(valor, { fr: true })} (mock) — mostre ao cliente`)
+  }
+
   // ─── Render
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -154,31 +163,26 @@ export default function FormRecebimento({
             }}
           />
         </div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-          {valor !== saldo && saldo > 0 && (
+        {valor !== saldo && saldo > 0 && (
+          <div style={{ marginTop: 6 }}>
             <Chip T={T} dark={dark} onClick={() => setValor(saldo)}>
               receber tudo ({fmtBRL(saldo, { fr: true })})
             </Chip>
-          )}
-          {saldo > 0 && Math.abs(valor - saldo / 2) > 0.01 && (
-            <Chip T={T} dark={dark} onClick={() => setValor(Math.round(saldo / 2 * 100) / 100)}>
-              metade ({fmtBRL(saldo / 2, { fr: true })})
-            </Chip>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Forma de pagamento — top: PIX | Cartão */}
+      {/* Forma de pagamento — top: PIX · Cartão · Dinheiro */}
       <div>
         <Label T={T}>Forma de pagamento</Label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           <FormaTopBtn
             T={T} dark={dark}
             ativo={forma === 'pix'}
             onClick={() => setForma('pix')}
             icon="ti-brand-pinterest"
             label="PIX"
-            sublabel="taxa 0%"
+            sublabel="0%"
           />
           <FormaTopBtn
             T={T} dark={dark}
@@ -186,7 +190,15 @@ export default function FormRecebimento({
             onClick={() => setForma('cartao')}
             icon="ti-credit-card"
             label="Cartão"
-            sublabel="débito · crédito · link · a prazo"
+            sublabel="débito · crédito · link"
+          />
+          <FormaTopBtn
+            T={T} dark={dark}
+            ativo={forma === 'dinheiro'}
+            onClick={() => setForma('dinheiro')}
+            icon="ti-coins"
+            label="Dinheiro"
+            sublabel="0%"
           />
         </div>
       </div>
@@ -243,11 +255,12 @@ export default function FormRecebimento({
           onCancelar={() => setPartialDialog(false)}
         />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: showLinkD1 ? '1.5fr 1fr' : '1fr', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
           <button
             onClick={clickConfirmar}
             disabled={!formaOk || !valorOk}
             style={{
+              flex: 1, minWidth: 0,
               padding: '12px 14px', borderRadius: 8, border: 'none',
               background: amarelo, color: '#0a0a0d',
               fontSize: 13, fontWeight: 700,
@@ -263,24 +276,22 @@ export default function FormRecebimento({
               {!isParcial && saldo > 0 && ' · concluir'}
             </span>
           </button>
-          {showLinkD1 && (
-            <button
-              onClick={clickEnviarLink}
-              disabled={!valorOk}
-              title="Gera link InfinitePay e exibe pra você enviar pelo WhatsApp"
-              style={{
-                padding: '12px 12px', borderRadius: 8,
-                border: `1px solid ${T.border}`, background: 'transparent',
-                color: T.textSecondary, fontSize: 12, fontWeight: 600,
-                cursor: valorOk ? 'pointer' : 'not-allowed',
-                opacity: valorOk ? 1 : 0.5,
-                fontFamily: 'inherit',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                lineHeight: 1.25,
-              }}>
-              <i className="ti ti-link" style={{ fontSize: 15 }} aria-hidden="true" />
-              Link
-            </button>
+
+          {showAtalhos && (
+            <>
+              <AtalhoBtn
+                T={T} valorOk={valorOk}
+                icon="ti-qrcode" label="PIX"
+                title="Gera QR Code PIX pra mostrar ao cliente"
+                onClick={clickGerarPix}
+              />
+              <AtalhoBtn
+                T={T} valorOk={valorOk}
+                icon="ti-link" label="Link"
+                title="Gera link InfinitePay pra mandar pelo WhatsApp"
+                onClick={clickEnviarLink}
+              />
+            </>
           )}
         </div>
       )}
@@ -327,6 +338,30 @@ function Chip({ T, dark, onClick, children }) {
         fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
         fontFamily: 'inherit',
       }}>{children}</button>
+  )
+}
+
+function AtalhoBtn({ T, valorOk, icon, label, title, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!valorOk}
+      title={title}
+      style={{
+        padding: '12px 11px', borderRadius: 8,
+        border: `1px solid ${T.border}`, background: 'transparent',
+        color: T.textSecondary, fontSize: 11, fontWeight: 600,
+        cursor: valorOk ? 'pointer' : 'not-allowed',
+        opacity: valorOk ? 1 : 0.5,
+        fontFamily: 'inherit', flexShrink: 0,
+        display: 'inline-flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 3,
+        minWidth: 56,
+        lineHeight: 1.1,
+      }}>
+      <i className={`ti ${icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
+      {label}
+    </button>
   )
 }
 

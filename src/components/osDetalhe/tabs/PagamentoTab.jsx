@@ -250,7 +250,8 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
             T={T} dark={dark}
             saldo={aPagar}
             onConfirmar={handleConfirmarPagamento}
-            onEnviarLink={() => {/* Módulo 03: gera link real via API */}}
+            onEnviarLink={() => {/* Módulo 03: gera link real via API InfinitePay */}}
+            onGerarPix={() => {/* Módulo 03: gera QR PIX dinâmico */}}
           />
         </>
       )}

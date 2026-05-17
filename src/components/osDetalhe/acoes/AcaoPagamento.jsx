@@ -102,7 +102,8 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
         T={T} dark={dark}
         saldo={aPagar}
         onConfirmar={handleConfirmar}
-        onEnviarLink={() => {/* Módulo 03: API real */}}
+        onEnviarLink={() => {/* Módulo 03: API InfinitePay */}}
+        onGerarPix={() => {/* Módulo 03: QR PIX dinâmico */}}
       />
     </BlocoAcao>
   )
