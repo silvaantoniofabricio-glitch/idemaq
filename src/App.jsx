@@ -26,6 +26,7 @@ class ErrorBoundary extends Component {
 }
 import { supabase } from './supabase'
 import { useTheme, useIsMobile } from './theme'
+import { isAdmin, getRole } from './utils/osHelpers'
 
 import AppLayout from './components/layout/AppLayout'
 import { ToastProvider } from './components/ui/Toast'
@@ -81,10 +82,20 @@ export default function App() {
   )
 }
 
+// Painel renderizado conforme papel do usuário logado:
+//   - Dono (Toni)         → Painel executivo com financeiro
+//   - Func (Alessandro/Guilherme) → PainelFuncionario sem financeiro + card de ponto
+function PainelPorPerfil({ T, dark, user }) {
+  if (isAdmin(user)) {
+    return <Painel T={T} dark={dark} />
+  }
+  return <PainelFuncionario T={T} dark={dark} funcId={getRole(user)} />
+}
+
 function RoutesDesktop({ T, dark, user }) {
   return (
     <Routes>
-      <Route path="/"            element={<Painel T={T} dark={dark} />} />
+      <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
       <Route path="/os"          element={<Kanban T={T} dark={dark} user={user} />} />
       <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
       <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
@@ -102,7 +113,7 @@ function RoutesMobile({ T, dark, user }) {
   return (
     <PullToRefresh T={T} dark={dark} onRefresh={() => Promise.resolve()}>
       <Routes>
-        <Route path="/"            element={<PainelMobile T={T} dark={dark} />} />
+        <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
         <Route path="/os"          element={<OSMobile T={T} dark={dark} user={user} />} />
         <Route path="/estoque"     element={<EmConstrucao nome="Estoque"    T={T} />} />
         <Route path="/financeiro"  element={<EmConstrucao nome="Financeiro" T={T} />} />
