@@ -271,13 +271,14 @@ function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
         userSelect: 'none',
       }}
     >
-      {/* Header da coluna: label uppercase + chip editar (no hover) */}
+      {/* Header da coluna: label centralizado + chip editar absolute à direita */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
-        marginBottom: 6,
+        position: 'relative',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 6, minHeight: 14,
       }}>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
           fontSize: 10.5, color: T.textMuted, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '.5px',
         }}>
@@ -286,10 +287,12 @@ function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
         </div>
         {onClick && (
           <span style={{
+            position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
             opacity: hover ? 1 : 0,
             transition: 'opacity .12s',
             fontSize: 10, color: azul, fontWeight: 600,
             display: 'inline-flex', alignItems: 'center', gap: 3,
+            pointerEvents: 'none',
           }}>
             <i className="ti ti-pencil" style={{ fontSize: 11 }} aria-hidden="true" />
             editar
@@ -297,21 +300,22 @@ function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
         )}
       </div>
 
-      {/* Nome / título principal — vira azul no hover */}
+      {/* Nome / título principal — centralizado, vira azul no hover */}
       <div style={{
         fontSize: 15.5, fontWeight: 700, lineHeight: 1.25,
         color: hover && onClick ? azul : T.textPrimary,
         marginBottom: 7,
         transition: 'color .12s',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        textAlign: 'center',
       }}>{principal}</div>
 
-      {/* Linhas com ícone + texto — ícone discreto, texto mais leve */}
+      {/* Linhas com ícone + texto — centralizadas, ícone discreto */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {linhas.map((l, i) => (
           <div key={i} style={{
             fontSize: 11.5, color: T.textMuted, lineHeight: 1.35,
-            display: 'flex', alignItems: 'center', gap: 7,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             minWidth: 0,
           }}>
             <i className={`ti ${l.icon}`}
