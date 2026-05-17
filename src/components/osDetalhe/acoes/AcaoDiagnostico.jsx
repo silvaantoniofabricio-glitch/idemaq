@@ -87,7 +87,8 @@ export default function AcaoDiagnostico({ T, dark, os, onUpdateOS, onMoverOS }) 
 
   // Busca no checklist
   const [busca, setBusca] = useState('')
-  const buscaNorm = busca.trim().toLowerCase()
+  const sem = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const buscaNorm = sem(busca.trim())
 
   // Grupos abertos/fechados — todos fechados por padrão
   const [abertos, setAbertos] = useState({})
@@ -99,12 +100,12 @@ export default function AcaoDiagnostico({ T, dark, os, onUpdateOS, onMoverOS }) 
   // Quando há busca: grupo está "aberto" se tiver resultados
   function grupoVisivel(grupo) {
     if (!buscaNorm) return true
-    return grupo.itens.some(i => i.label.toLowerCase().includes(buscaNorm))
+    return grupo.itens.some(i => sem(i.label).includes(buscaNorm))
   }
 
   function itensFiltrados(grupo) {
     if (!buscaNorm) return grupo.itens
-    return grupo.itens.filter(i => i.label.toLowerCase().includes(buscaNorm))
+    return grupo.itens.filter(i => sem(i.label).includes(buscaNorm))
   }
 
   function grupoAberto(grupo) {
