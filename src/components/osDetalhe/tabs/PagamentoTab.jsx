@@ -1,10 +1,18 @@
 // src/components/osDetalhe/tabs/PagamentoTab.jsx
-// Aba Pagamento — itens, total, status + fluxos da etapa Orçamento (editar+aprovar)
-// e da etapa Pagamento (forma de pagamento + confirmar recebimento).
+// Aba Pagamento — itens, total, status + recebimento.
 //
-// IMPORTANTE: persistência dos itens ainda é mock (OS_ITENS_MOCK). A edição dos
-// itens vive em estado local da aba e some ao fechar — Módulo 03 plugará no
-// Supabase. O `valor` e `desconto` da OS sobem via onUpdateOS.
+// SEMPRE editável em qualquer etapa: o cliente pode pedir orçamento e pagar
+// antes mesmo do agendamento (ex: limpeza pré-paga). A aba é o "painel
+// financeiro" da OS, independente da etapa atual no kanban.
+//
+// Regras especiais por etapa:
+// - ORÇAMENTO: aparecem os botões Aprovar (→ oficina) / Recusar (→ recusado)
+// - PAGAMENTO: ao confirmar recebimento total, move automaticamente pra Concluído
+// - Em qualquer outra etapa: ao confirmar pagamento, OS fica na etapa atual
+//   (sistema já redireciona Entrega→Concluído quando estiver paga, via podeMoverOS)
+//
+// IMPORTANTE: persistência dos itens ainda é mock (OS_ITENS_MOCK). A edição
+// vive em estado local + sobe via onUpdateOS — Módulo 03 plugará no Supabase.
 
 import React, { useState, useMemo } from 'react'
 import { P } from '../../../theme'
@@ -101,22 +109,26 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
       forma_pagamento: forma,
     })
     OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i }))
-    const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
-    if (concluido) onMoverOS(os.numero, concluido.id)
+    // Só move pra Concluído quando o recebimento acontece DENTRO da etapa
+    // Pagamento. Pagamentos adiantados (em agendamento, recebido, etc.)
+    // mantêm a OS na etapa atual — o sistema redireciona Entrega→Concluído
+    // automaticamente via podeMoverOS quando estiver paga.
+    if (isPagamento) {
+      const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
+      if (concluido) onMoverOS(os.numero, concluido.id)
+    }
   }
 
   return (
     <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Cabeçalho da aba */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <i className="ti ti-receipt" style={{ fontSize: 17, color: isOrcamento ? amarelo : azul }} aria-hidden="true" />
+        <i className="ti ti-receipt" style={{ fontSize: 17, color: azul }} aria-hidden="true" />
         <span style={{
-          fontSize: 11,
-          color: isOrcamento ? amarelo : T.textMuted,
+          fontSize: 11, color: T.textMuted,
           fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px',
         }}>
-          Orçamento da OS
-          {isOrcamento && <span style={{ marginLeft: 6, fontSize: 10, color: T.textMuted, fontWeight: 600 }}>· edição liberada</span>}
+          Itens · orçamento · recebimento
         </span>
       </div>
 
@@ -132,31 +144,29 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
         ) : itens.map((it, i) => (
           <ItemLinha
             key={i} item={it} T={T} dark={dark}
-            editavel={isOrcamento}
+            editavel={true}
             onChange={(patch) => updateItem(i, patch)}
             onRemove={() => removeItem(i)}
             primeiro={i === 0}
           />
         ))}
-        {isOrcamento && (
-          <button
-            onClick={addItem}
-            style={{
-              width: '100%', padding: '10px 12px',
-              background: 'transparent', color: cor(P.blue, P.blueDark),
-              border: 'none', borderTop: `1px dashed ${T.border}`,
-              fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}>
-            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-            adicionar item
-          </button>
-        )}
+        <button
+          onClick={addItem}
+          style={{
+            width: '100%', padding: '10px 12px',
+            background: 'transparent', color: cor(P.blue, P.blueDark),
+            border: 'none', borderTop: itens.length > 0 ? `1px dashed ${T.border}` : 'none',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+          <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
+          adicionar item
+        </button>
       </div>
 
-      {/* Desconto (só em Orçamento) */}
-      {isOrcamento && subtotal > 0 && (
+      {/* Desconto — sempre editável quando há itens */}
+      {subtotal > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <CampoDesconto T={T} label="Desconto R$" prefix="R$" valor={desconto} onChange={setDescontoBRL} />
           <CampoDesconto T={T} label="Desconto %" suffix="%" valor={descontoPct} onChange={setDescontoPct} />
@@ -234,10 +244,13 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
         </div>
       )}
 
-      {/* Forma de pagamento (só em Pagamento etapa) */}
-      {isPagamento && aPagar > 0 && (
+      {/* Forma de pagamento — sempre disponível quando há saldo a receber.
+          Cliente pode pagar adiantado em qualquer etapa (limpeza pré-paga, etc.) */}
+      {aPagar > 0 && (
         <>
-          <Separador T={T} cor={amarelo}>RECEBER PAGAMENTO</Separador>
+          <Separador T={T} cor={amarelo}>
+            {isPagamento ? 'RECEBER PAGAMENTO' : 'RECEBER (PAGAMENTO ADIANTADO)'}
+          </Separador>
 
           <div style={{
             background: dark ? 'rgba(255,217,102,0.06)' : 'rgba(255,217,102,0.12)',
@@ -322,16 +335,6 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
         </>
       )}
 
-      {/* Modo leitura (etapas que não são Orçamento nem Pagamento) */}
-      {!isOrcamento && !isPagamento && (
-        <div style={{
-          fontSize: 11, color: T.textMuted, textAlign: 'center',
-          padding: '6px 0',
-        }}>
-          <i className="ti ti-lock-open-off" style={{ fontSize: 12, marginRight: 4 }} aria-hidden="true" />
-          edição liberada apenas nas etapas Orçamento e Pagamento
-        </div>
-      )}
     </div>
   )
 }
