@@ -9,12 +9,14 @@ import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import BlocoAcao from './BlocoAcao'
 
-export default function AcaoTeste({ T, dark, os, onMoverOS }) {
+export default function AcaoTeste({ T, dark, os, onMoverOS, onUpdateOS }) {
   const cor = (d, c) => dark ? d : c
   const verde = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
 
-  const [falhas, setFalhas] = useState([])
+  // Inicializa com falhas anteriores (se houver) — quando OS volta pra oficina
+  // e depois pro teste de novo, o técnico vê o que já tinha registrado.
+  const [falhas, setFalhas] = useState(() => os.teste_falhas || [])
   const [novaFalha, setNovaFalha] = useState('')
 
   function adicionarFalha() {
@@ -28,10 +30,14 @@ export default function AcaoTeste({ T, dark, os, onMoverOS }) {
   }
 
   function aprovar() {
+    // Limpa falhas registradas — teste passou, não faz sentido manter
+    onUpdateOS?.(os.numero, { teste_falhas: [] })
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'entrega')
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
   function voltarOficina() {
+    // Persiste falhas pra técnico ver no AcaoOficina ao voltar
+    onUpdateOS?.(os.numero, { teste_falhas: falhas })
     const oficina = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')
     if (oficina) onMoverOS(os.numero, oficina.id)
   }

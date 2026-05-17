@@ -5,11 +5,14 @@
 import React, { useState } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS, FUNCIONARIOS } from '../../../utils/osData'
+import { corEtapa } from '../../../utils/colors'
+import { estaPagaTotal } from '../../../utils/osHelpers'
 import BlocoAcao from './BlocoAcao'
 
 export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
   const amarelo = cor(P.yellow, P.yellowDark)
+  const verde = corEtapa('green', dark)
 
   const agora = new Date().toISOString().slice(0, 16)
   const [dataHora, setDataHora] = useState(agora)
@@ -18,13 +21,18 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
   const [pessoalmente, setPessoalmente] = useState(true)
   const [obs, setObs] = useState('')
 
+  // Se OS já está paga (cliente pagou adiantado), entrega vai DIRETO pra Concluído.
+  // Senão, passa por Pagamento. Regra de negócio do CLAUDE.md.
+  const jaPaga = estaPagaTotal(os)
+
   function confirmar() {
     const novoObs = [
       os.observacoes,
       `— Entrega —\nData/hora: ${dataHora}\nResponsável: ${responsavel}\nPessoalmente: ${pessoalmente ? 'sim' : 'não'}${obs ? `\nObs: ${obs}` : ''}`,
     ].filter(Boolean).join('\n\n')
     onUpdateOS(os.numero, { observacoes: novoObs })
-    const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'pagamento')
+    const destino = jaPaga ? 'concluido' : 'pagamento'
+    const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === destino)
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
 
@@ -32,7 +40,10 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
     <BlocoAcao
       T={T} dark={dark} icon="ti-truck-delivery"
       etapa="Entrega"
-      descricao="Confirme a entrega da máquina ao cliente. Depois disso a etapa muda pra Pagamento."
+      descricao={jaPaga
+        ? 'OS já está paga — ao confirmar a entrega, vai direto pra Concluído.'
+        : 'Confirme a entrega da máquina ao cliente. Depois disso a etapa muda pra Pagamento.'}
+      tom={jaPaga ? 'verde' : 'amarelo'}
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Campo T={T} label="Data e hora">
@@ -82,13 +93,16 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
         onClick={confirmar}
         style={{
           padding: '11px 16px', borderRadius: 7, border: 'none',
-          background: amarelo, color: '#0a0a0d',
+          background: jaPaga ? verde : amarelo,
+          color: jaPaga ? '#fff' : '#0a0a0d',
           fontSize: 12.5, fontWeight: 700,
           cursor: 'pointer', fontFamily: 'inherit',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
         <i className="ti ti-check" style={{ fontSize: 16 }} aria-hidden="true" />
-        Confirmar entrega · ir pra Pagamento
+        {jaPaga
+          ? 'Confirmar entrega · concluir OS'
+          : 'Confirmar entrega · ir pra Pagamento'}
       </button>
     </BlocoAcao>
   )
