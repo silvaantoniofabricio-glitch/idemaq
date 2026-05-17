@@ -21,17 +21,7 @@ import { corEtapa } from '../../../utils/colors'
 import { OS_ITENS_MOCK } from '../../../_mocks/os'
 import { fmtBRL } from '../../../utils/fmt'
 import { estaPagaTotal, estaPagaParcial } from '../../../utils/osHelpers'
-
-// Taxas das formas de pagamento (CLAUDE.md §6: usar InfinitePay D+1; nunca Ton Black)
-const FORMAS = [
-  { id: 'pix',         label: 'PIX',                  taxa: 0,    icon: 'ti-brand-pinterest' },
-  { id: 'debito',      label: 'Débito',               taxa: 1.37, icon: 'ti-credit-card' },
-  { id: 'credito1x',   label: 'Cartão 1x',            taxa: 3.15, icon: 'ti-credit-card' },
-  { id: 'credito12x',  label: 'Cartão 12x',           taxa: 12.4, icon: 'ti-credit-card' },
-  { id: 'link',        label: 'Link InfinitePay D+1', taxa: 4.2,  icon: 'ti-link' },
-  { id: 'misto',       label: 'Misto (PIX + cartão)', taxa: null, icon: 'ti-arrows-shuffle', disabled: true },
-  { id: 'parcelado',   label: 'Parcelado interno',    taxa: null, icon: 'ti-calendar-event', disabled: true },
-]
+import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 
 export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
@@ -92,28 +82,33 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
     if (recusado) onMoverOS(os.numero, recusado.id)
   }
 
-  // ─── Pagamento (forma + confirmar)
-  const [forma, setForma] = useState('pix')
-  const formaCfg = FORMAS.find(f => f.id === forma)
-  const valorBrutoARecebido = formaCfg?.taxa != null
-    ? aPagar - (aPagar * formaCfg.taxa / 100)
-    : aPagar
-
-  function confirmarPagamento() {
-    const novoValorPago = valorPago + aPagar
+  // ─── Pagamento: callback do FormRecebimento
+  // modo:
+  //   'total'    → quita totalmente (valor === saldo)
+  //   'parcial'  → registra parcial, OS continua aberta
+  //   'desconto' → quita aplicando desconto pelo restante
+  function handleConfirmarPagamento({ valor, forma, modo }) {
+    const novoValorPago = valorPago + valor
+    let novoDesconto = desconto
+    let novoPago = 'total'
+    if (modo === 'parcial') {
+      novoPago = 'parcial'
+    } else if (modo === 'desconto') {
+      novoDesconto = desconto + (aPagar - valor)
+    }
     onUpdateOS(os.numero, {
-      valor: total,
-      desconto,
+      valor: subtotal,
+      desconto: novoDesconto,
       valor_pago: novoValorPago,
-      pago: 'total',
+      pago: novoPago,
       forma_pagamento: forma,
     })
     OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i }))
-    // Só move pra Concluído quando o recebimento acontece DENTRO da etapa
-    // Pagamento. Pagamentos adiantados (em agendamento, recebido, etc.)
+    // Só move pra Concluído quando o recebimento total acontece DENTRO da
+    // etapa Pagamento. Pagamentos adiantados (em agendamento, recebido…)
     // mantêm a OS na etapa atual — o sistema redireciona Entrega→Concluído
     // automaticamente via podeMoverOS quando estiver paga.
-    if (isPagamento) {
+    if (novoPago === 'total' && isPagamento) {
       const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
       if (concluido) onMoverOS(os.numero, concluido.id)
     }
@@ -206,7 +201,7 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
           <i className={`ti ${pagoTotal ? 'ti-circle-check' : pagoParcial ? 'ti-circle-half' : 'ti-circle-off'}`}
              style={{ fontSize: 16, color: pagoTotal ? verde : pagoParcial ? amarelo : T.textMuted }} aria-hidden="true" />
           <span style={{ flex: 1 }}>
-            {pagoTotal && <strong style={{ color: verde }}>Pago R$ {valorPago.toLocaleString('pt-BR')} via {os.forma_pagamento || 'não informado'}</strong>}
+            {pagoTotal && <strong style={{ color: verde }}>Pago R$ {valorPago.toLocaleString('pt-BR')} via {formaIdToLabel(os.forma_pagamento) || 'não informado'}</strong>}
             {pagoParcial && !pagoTotal && <strong style={{ color: amarelo }}>Parcial · R$ {valorPago.toLocaleString('pt-BR')} de R$ {total.toLocaleString('pt-BR')}</strong>}
           </span>
         </div>
@@ -251,87 +246,12 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
           <Separador T={T} cor={amarelo}>
             {isPagamento ? 'RECEBER PAGAMENTO' : 'RECEBER (PAGAMENTO ADIANTADO)'}
           </Separador>
-
-          <div style={{
-            background: dark ? 'rgba(255,217,102,0.06)' : 'rgba(255,217,102,0.12)',
-            border: `1.5px solid ${amarelo}66`,
-            borderRadius: 10, padding: '14px 16px',
-            display: 'flex', flexDirection: 'column', gap: 12,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <i className="ti ti-cash" style={{ fontSize: 18, color: amarelo }} aria-hidden="true" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>Forma de pagamento</span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-              {FORMAS.map(f => {
-                const ativo = forma === f.id
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => !f.disabled && setForma(f.id)}
-                    disabled={f.disabled}
-                    title={f.disabled ? 'Em breve no Módulo 03' : ''}
-                    style={{
-                      padding: '9px 11px', borderRadius: 7,
-                      border: `1.5px solid ${ativo ? amarelo : T.border}`,
-                      background: ativo ? cor('#2a2000', '#fdf6dc') : 'transparent',
-                      cursor: f.disabled ? 'not-allowed' : 'pointer',
-                      opacity: f.disabled ? 0.5 : 1,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      textAlign: 'left', fontFamily: 'inherit',
-                    }}>
-                    <div style={{
-                      width: 14, height: 14, borderRadius: '50%',
-                      border: `2px solid ${ativo ? amarelo : T.textDim}`,
-                      background: ativo ? amarelo : 'transparent',
-                      flexShrink: 0,
-                    }} />
-                    <i className={`ti ${f.icon}`} style={{ fontSize: 14, color: ativo ? amarelo : T.textMuted }} aria-hidden="true" />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 600, color: T.textPrimary }}>{f.label}</div>
-                      {f.taxa != null && (
-                        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
-                          taxa {f.taxa.toFixed(2).replace('.', ',')}%
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div style={{
-              background: T.cardAlt, border: `1px solid ${T.border}`,
-              borderRadius: 7, padding: '8px 10px',
-              fontSize: 11, color: T.textMuted,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <i className="ti ti-info-circle" style={{ fontSize: 13, color: amarelo }} aria-hidden="true" />
-              <span>Link InfinitePay cai em D+1. Ton Black tem link de 30 dias — <strong style={{ color: T.textPrimary }}>nunca usar</strong>.</span>
-            </div>
-
-            {formaCfg?.taxa != null && formaCfg.taxa > 0 && (
-              <div style={{ fontSize: 11.5, color: T.textMuted, textAlign: 'center' }}>
-                Após a taxa de {formaCfg.taxa.toFixed(2).replace('.', ',')}%, você recebe ~ <strong style={{ color: T.textPrimary }}>{fmtBRL(valorBrutoARecebido, { fr: true })}</strong>
-              </div>
-            )}
-
-            <button
-              onClick={confirmarPagamento}
-              disabled={formaCfg?.disabled}
-              style={{
-                padding: '14px 16px', borderRadius: 8, border: 'none',
-                background: amarelo, color: '#0a0a0d',
-                fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'inherit',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                opacity: formaCfg?.disabled ? 0.5 : 1,
-              }}>
-              <i className="ti ti-check" style={{ fontSize: 17 }} aria-hidden="true" />
-              Confirmar pagamento de {fmtBRL(aPagar, { fr: true })}
-            </button>
-          </div>
+          <FormRecebimento
+            T={T} dark={dark}
+            saldo={aPagar}
+            onConfirmar={handleConfirmarPagamento}
+            onEnviarLink={() => {/* Módulo 03: gera link real via API */}}
+          />
         </>
       )}
 
