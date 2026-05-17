@@ -257,48 +257,82 @@ Aguardo sua aprovação pra começar o serviço. Qualquer dúvida estou aqui!`
           )}
         </div>
 
-        {causa ? (
-          <div style={{
-            fontSize: 13, color: T.textPrimary, lineHeight: 1.5,
-            padding: '8px 10px', background: T.bg, borderRadius: 6,
-            border: `1px solid ${T.border}`,
-          }}>
-            <strong style={{ color: T.textMuted, fontSize: 11 }}>Causa:</strong> {causa}
+        {/* Defeito relatado pelo cliente — vem do recebimento */}
+        <BlocoDiag T={T} dark={dark}
+          icon="ti-user-exclamation" label="Defeito relatado pelo cliente"
+          texto={os.defeito}
+          placeholder="Cliente não relatou defeito específico."
+        />
+
+        {/* Causa identificada — vem do diagnóstico técnico */}
+        <BlocoDiag T={T} dark={dark}
+          icon="ti-zoom-scan" label="Causa identificada (técnico)"
+          texto={causa}
+          placeholder="Diagnóstico sem causa registrada — voltar e completar?"
+          destaque
+        />
+
+        {/* Itens de troca ou manutenção — do checklist do diagnóstico */}
+        {itensMarcados.length > 0 ? (
+          <div style={{ marginTop: 10 }}>
+            <div style={{
+              fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+              marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.3px',
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              <i className="ti ti-list-check" style={{ fontSize: 12 }} aria-hidden="true" />
+              {itensMarcados.length} {itensMarcados.length === 1 ? 'item identificado' : 'itens identificados'}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {itensMarcados.map(it => {
+                // Item pode ter ambos (man + troca), só man, ou só troca.
+                // Mostra um chip por flag pra deixar explícito.
+                const chips = []
+                if (it.troca) chips.push({ key: it.id + '-t', tipo: 'troca', label: it.label })
+                if (it.man)   chips.push({ key: it.id + '-m', tipo: 'man',   label: it.label })
+                return chips.map(c => (
+                  <span key={c.key} style={{
+                    fontSize: 11, fontWeight: 600,
+                    padding: '3px 8px 3px 6px', borderRadius: 12,
+                    background: c.tipo === 'troca' ? cor(`${azul}22`, `${azul}18`) : cor(`${amarelo}22`, `${amarelo}18`),
+                    color: c.tipo === 'troca' ? azul : amarelo,
+                    border: `1px solid ${(c.tipo === 'troca' ? azul : amarelo)}33`,
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <i className={`ti ${c.tipo === 'troca' ? 'ti-replace' : 'ti-wrench'}`}
+                       style={{ fontSize: 11 }} aria-hidden="true" />
+                    {c.label}
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, opacity: 0.7,
+                      padding: '1px 5px', borderRadius: 8,
+                      background: cor('rgba(0,0,0,0.25)', 'rgba(255,255,255,0.4)'),
+                      textTransform: 'uppercase', letterSpacing: '.3px',
+                    }}>
+                      {c.tipo === 'troca' ? 'troca' : 'man'}
+                    </span>
+                  </span>
+                ))
+              })}
+            </div>
+            <div style={{
+              fontSize: 10.5, color: T.textDim, marginTop: 6,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <i className="ti ti-replace" style={{ fontSize: 11, color: azul }} aria-hidden="true" />
+                troca de peça
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <i className="ti ti-wrench" style={{ fontSize: 11, color: amarelo }} aria-hidden="true" />
+                só manutenção
+              </span>
+            </div>
           </div>
         ) : (
           <div style={{
-            fontSize: 12, color: T.textMuted, fontStyle: 'italic',
-            padding: '6px 0',
+            marginTop: 10, fontSize: 11, color: T.textMuted, fontStyle: 'italic',
           }}>
-            Diagnóstico sem causa registrada — voltar e completar?
-          </div>
-        )}
-
-        {itensMarcados.length > 0 && (
-          <div style={{ marginTop: 10 }}>
-            <div style={{
-              fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-              marginBottom: 6,
-            }}>
-              {itensMarcados.length} {itensMarcados.length === 1 ? 'item identificado' : 'itens identificados'}:
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {itensMarcados.map(it => (
-                <span key={it.id} style={{
-                  fontSize: 11, fontWeight: 600,
-                  padding: '3px 8px', borderRadius: 12,
-                  background: it.troca ? cor(`${azul}22`, `${azul}18`) : cor(`${amarelo}22`, `${amarelo}18`),
-                  color: it.troca ? azul : amarelo,
-                  border: `1px solid ${(it.troca ? azul : amarelo)}33`,
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                }}>
-                  <i className={`ti ${it.troca ? 'ti-replace' : 'ti-wrench'}`}
-                     style={{ fontSize: 11 }} aria-hidden="true" />
-                  {it.label}
-                  {it.man && it.troca && <span style={{ opacity: 0.7 }}>· man+troca</span>}
-                </span>
-              ))}
-            </div>
+            Nenhum item marcado no checklist do diagnóstico.
           </div>
         )}
       </div>
@@ -579,6 +613,38 @@ function Linha({ T, label, valor, cor: c }) {
       }}>
         {valor}
       </span>
+    </div>
+  )
+}
+
+// ─── Bloco de texto do diagnóstico (defeito / causa) ────────────────────────
+function BlocoDiag({ T, dark, icon, label, texto, placeholder, destaque }) {
+  const cor = (d, c) => dark ? d : c
+  const tem = texto && String(texto).trim().length > 0
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{
+        fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+        marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.3px',
+        display: 'flex', alignItems: 'center', gap: 5,
+      }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+        {label}
+      </div>
+      <div style={{
+        fontSize: 13,
+        color: tem ? T.textPrimary : T.textMuted,
+        fontStyle: tem ? 'normal' : 'italic',
+        lineHeight: 1.5,
+        padding: '8px 10px',
+        background: T.bg,
+        borderRadius: 6,
+        border: `1px solid ${T.border}`,
+        borderLeft: destaque ? `3px solid ${corEtapa('blue', dark)}` : `1px solid ${T.border}`,
+        whiteSpace: 'pre-wrap',
+      }}>
+        {tem ? texto : placeholder}
+      </div>
     </div>
   )
 }
