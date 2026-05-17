@@ -1,0 +1,138 @@
+// src/components/osDetalhe/OSDetalhe.jsx
+// Modal centralizado de detalhe da OS (substitui o OSDrawer lateral no desktop).
+// Largura 780px no desktop, full-screen bottom-sheet no mobile.
+//
+// Estrutura:
+//   ┌──────────────────────────────────────────┐
+//   │ Header (badges, OS#, cliente, timeline,  │
+//   │         3 abas, ícone histórico)         │
+//   ├──────────────────────────────────────────┤
+//   │ Conteúdo scrollável da aba ativa         │
+//   ├──────────────────────────────────────────┤
+//   │ Footer (Voltar / Avançar etapa)          │
+//   └──────────────────────────────────────────┘
+//
+// PR1: shell completo + abas como placeholders. PR2/PR3 preenchem conteúdo.
+
+import React, { useState, useEffect } from 'react'
+import { isAdmin } from '../../utils/osHelpers'
+import Header from './Header'
+import Footer from './Footer'
+import HistoricoPanel from './HistoricoPanel'
+import ResumoTab from './tabs/ResumoTab'
+import FinanceiroTab from './tabs/FinanceiroTab'
+import EtapaTab from './tabs/EtapaTab'
+
+// Aba inicial conforme a etapa atual da OS.
+function abaInicial(etapa) {
+  if (etapa === 'orcamento' || etapa === 'pagamento') return 'financeiro'
+  return 'resumo'
+}
+
+export default function OSDetalhe({
+  T, dark,
+  os, user, osBase, usuarios,
+  onClose,
+  onToggleAgPeca,
+  onAbrirOS,
+  onMoverOS,
+  onUpdateOS,
+  mobile = false,
+}) {
+  const admin = isAdmin(user)
+  const [aba, setAba] = useState(() => abaInicial(os.etapa))
+  const [showHistorico, setShowHistorico] = useState(false)
+
+  // ESC fecha o modal (ignorado se o painel de histórico estiver aberto — ele tem seu próprio listener)
+  useEffect(() => {
+    function fn(e) {
+      if (e.key === 'Escape' && !showHistorico) onClose()
+    }
+    document.addEventListener('keydown', fn)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', fn)
+      document.body.style.overflow = prev
+    }
+  }, [onClose, showHistorico])
+
+  // Props comuns repassados às abas (PR2/PR3 vão usar mais conforme necessidade).
+  const tabProps = {
+    T, dark, os, user, osBase, usuarios, admin,
+    onAbrirOS, onToggleAgPeca, onMoverOS, onUpdateOS,
+    mobile,
+  }
+
+  return (
+    <>
+      {/* Overlay + container central */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(2px)',
+          display: 'flex',
+          alignItems: mobile ? 'flex-end' : 'center',
+          justifyContent: 'center',
+          padding: mobile ? 0 : '2rem',
+          animation: 'os-detalhe-fade .15s ease-out',
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="idemaq-card"
+          style={{
+            background: T.card,
+            color: T.textPrimary,
+            borderRadius: mobile ? '16px 16px 0 0' : 14,
+            width: '100%',
+            maxWidth: mobile ? '100%' : 780,
+            maxHeight: mobile ? '92vh' : 'calc(100vh - 4rem)',
+            border: `1px solid ${T.border}`,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'os-detalhe-in .2s ease-out',
+          }}
+        >
+          <Header
+            T={T} dark={dark} os={os} admin={admin}
+            aba={aba} setAba={setAba}
+            onShowHistorico={() => setShowHistorico(true)}
+            onClose={onClose}
+            mobile={mobile}
+          />
+
+          <div style={{
+            flex: 1, overflowY: 'auto',
+            background: T.bg,
+          }}>
+            {aba === 'resumo'     && <ResumoTab {...tabProps} />}
+            {aba === 'financeiro' && <FinanceiroTab {...tabProps} />}
+            {aba === 'etapa'      && <EtapaTab {...tabProps} />}
+          </div>
+
+          <Footer
+            T={T} dark={dark} os={os} admin={admin}
+            onMoverOS={onMoverOS}
+          />
+        </div>
+
+        <style>{`
+          @keyframes os-detalhe-fade { from { opacity: 0 } to { opacity: 1 } }
+          @keyframes os-detalhe-in   { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        `}</style>
+      </div>
+
+      {/* Painel de histórico (sobreposto, z-index maior) */}
+      {showHistorico && (
+        <HistoricoPanel
+          T={T} dark={dark} os={os} mobile={mobile}
+          onClose={() => setShowHistorico(false)}
+        />
+      )}
+    </>
+  )
+}

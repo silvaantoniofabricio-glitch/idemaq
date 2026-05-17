@@ -22,7 +22,7 @@ import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 // UI library
 import KanbanColumn from '../components/kanban/KanbanColumn'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
-import { OSDrawer } from '../components/os'
+import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 export default function Kanban({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
@@ -119,6 +119,14 @@ export default function Kanban({ T, dark, user }) {
       setOsList(osPrev)
       notify('erro', 'Erro ao mover OS — mudança revertida')
     }
+  }
+
+  // Atualização genérica de campos da OS — usada pelas ações do OSDetalhe
+  // (checkbox limpeza, diagnóstico, checklist oficina, etc.). PR1: estado local
+  // apenas, toast avisa que persistência real entra no Módulo 03.
+  function updateOS(numero, patch) {
+    setOsList(prev => prev.map(o => o.numero === numero ? { ...o, ...patch } : o))
+    notify('ok', 'Alteração salva localmente — persistência no Módulo 03')
   }
 
   async function toggleAgPecaOS(numero) {
@@ -373,11 +381,12 @@ export default function Kanban({ T, dark, user }) {
       </div>
 
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" />}
-      {osDetalheAtual && <OSDrawer T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList}
+      {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList} usuarios={usuarios}
         onClose={()=>setDetalhe(null)}
         onToggleAgPeca={()=>toggleAgPecaOS(osDetalheAtual.numero)}
         onAbrirOS={(num)=>{ const o = osList.find(x=>x.numero===num); if(o) setDetalhe(o) }}
-        onMoverOS={moverOS} />}
+        onMoverOS={moverOS}
+        onUpdateOS={updateOS} />}
     </>
   )
 }
