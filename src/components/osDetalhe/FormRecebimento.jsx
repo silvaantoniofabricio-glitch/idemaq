@@ -58,7 +58,6 @@ export default function FormRecebimento({
   onEnviarLink,          // (valor) — opcional, atalho gerar link InfinitePay
   onGerarPix,            // (valor) — opcional, atalho gerar QR PIX
   showAtalhos = true,    // mostra botões "PIX" e "Link" ao lado de confirmar
-  showAviso = true,      // mostra aviso InfinitePay vs Ton Black
 }) {
   const cor = (d, c) => dark ? d : c
   const amarelo = corEtapa('yellow', dark)
@@ -362,21 +361,6 @@ export default function FormRecebimento({
         </div>
       )}
 
-      {/* Aviso InfinitePay vs Ton Black */}
-      {showAviso && (
-        <div style={{
-          background: T.cardAlt, border: `1px solid ${T.border}`,
-          borderRadius: 7, padding: '8px 10px',
-          fontSize: 10.5, color: T.textMuted,
-          display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          <i className="ti ti-info-circle" style={{ fontSize: 12, color: amarelo, flexShrink: 0 }} aria-hidden="true" />
-          <span>
-            Link sempre InfinitePay. Ton Black tem link de 30 dias —
-            <strong style={{ color: T.textPrimary }}> nunca usar</strong>.
-          </span>
-        </div>
-      )}
     </div>
   )
 }
