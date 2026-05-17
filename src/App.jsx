@@ -33,6 +33,7 @@ import { ToastProvider } from './components/ui/Toast'
 import Login        from './pages/Login'
 import Painel       from './pages/Painel'
 import Kanban       from './pages/Kanban'
+import Clientes     from './pages/Clientes'
 import EmConstrucao from './pages/EmConstrucao'
 
 // Mobile (legacy — futuro: pages/mobile/Painel.jsx, OSMobile.jsx refatoradas)
@@ -80,7 +81,7 @@ function RoutesDesktop({ T, dark, user }) {
     <Routes>
       <Route path="/"            element={<Painel T={T} dark={dark} />} />
       <Route path="/os"          element={<Kanban T={T} dark={dark} user={user} />} />
-      <Route path="/clientes"    element={<EmConstrucao nome="Clientes"    T={T} />} />
+      <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
       <Route path="/logistica"   element={<EmConstrucao nome="Logística"   T={T} />} />
       <Route path="/estoque"     element={<EmConstrucao nome="Estoque"     T={T} />} />
       <Route path="/financeiro"  element={<EmConstrucao nome="Financeiro"  T={T} />} />
