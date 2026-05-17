@@ -2,8 +2,8 @@
 // Form de recebimento reutilizável — usado pela aba Pagamento e pela
 // AcaoPagamento (etapa Pagamento). Encapsula:
 //   - Input de valor (com atalho "receber tudo")
-//   - Forma de pagamento: PIX · Cartão · Dinheiro (3 top-level)
-//     • Cartão expande sub-leque: Débito · Crédito 1x-12x · Link 1x-12x · A prazo
+//   - Forma de pagamento: PIX · Cartão · Dinheiro · A prazo (4 top-level)
+//     • Cartão expande sub-leque: Débito · Crédito 1x-12x · Link 1x-12x
 //   - Cálculo de líquido após taxa
 //   - Atalhos rápidos: "Gerar PIX" e "Gerar link"
 //   - Dialog inline pra valor < saldo: parcial ou quitar com desconto
@@ -29,7 +29,6 @@ const SUB_CARTAO = [
   { id: 'debito',  label: 'Débito',           fixed: 1.37,  icon: 'ti-credit-card' },
   { id: 'credito', label: 'Crédito',          parcelado: true, getTaxa: (p) => TAXA_CREDITO[p] || 0, icon: 'ti-credit-card', desc: '1x a 12x' },
   { id: 'link',    label: 'Link InfinitePay', parcelado: true, getTaxa: taxaLink, icon: 'ti-link', desc: '1x a 12x' },
-  { id: 'aprazo',  label: 'A prazo',          fixed: 0,     icon: 'ti-clock', desc: 'fiado' },
 ]
 
 // Converte o ID interno num label legível pro display em outras telas.
@@ -86,13 +85,14 @@ export default function FormRecebimento({
   function formaIdFinal() {
     if (forma === 'pix') return 'pix'
     if (forma === 'dinheiro') return 'dinheiro'
+    if (forma === 'aprazo') return 'aprazo'
     const sub = SUB_CARTAO.find(s => s.id === subCartao)
     if (!sub) return 'debito'
     if (sub.parcelado) return `${sub.id}_${parcelas}x`
     return sub.id
   }
   function taxaAtual() {
-    if (forma === 'pix' || forma === 'dinheiro') return 0
+    if (forma === 'pix' || forma === 'dinheiro' || forma === 'aprazo') return 0
     const sub = SUB_CARTAO.find(s => s.id === subCartao)
     if (!sub) return 0
     if (sub.fixed != null) return sub.fixed
@@ -103,7 +103,7 @@ export default function FormRecebimento({
   const liquido = taxa > 0 ? valor - (valor * taxa / 100) : valor
   const isParcial = valor < saldo - 0.01
   const isExcedente = valor > saldo + 0.01
-  const formaOk = forma === 'pix' || forma === 'dinheiro' || (forma === 'cartao' && !!subCartao)
+  const formaOk = forma === 'pix' || forma === 'dinheiro' || forma === 'aprazo' || (forma === 'cartao' && !!subCartao)
   const valorOk = valor > 0 && !isExcedente
 
   // ─── Ações
@@ -172,10 +172,10 @@ export default function FormRecebimento({
         )}
       </div>
 
-      {/* Forma de pagamento — top: PIX · Cartão · Dinheiro */}
+      {/* Forma de pagamento — top: PIX · Cartão · Dinheiro · A prazo */}
       <div>
         <Label T={T}>Forma de pagamento</Label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
           <FormaTopBtn
             T={T} dark={dark}
             ativo={forma === 'pix'}
@@ -190,7 +190,7 @@ export default function FormRecebimento({
             onClick={() => setForma('cartao')}
             icon="ti-credit-card"
             label="Cartão"
-            sublabel="débito · crédito · link"
+            sublabel="débito·crédito·link"
           />
           <FormaTopBtn
             T={T} dark={dark}
@@ -199,6 +199,14 @@ export default function FormRecebimento({
             icon="ti-coins"
             label="Dinheiro"
             sublabel="0%"
+          />
+          <FormaTopBtn
+            T={T} dark={dark}
+            ativo={forma === 'aprazo'}
+            onClick={() => setForma('aprazo')}
+            icon="ti-clock"
+            label="A prazo"
+            sublabel="fiado"
           />
         </div>
       </div>
