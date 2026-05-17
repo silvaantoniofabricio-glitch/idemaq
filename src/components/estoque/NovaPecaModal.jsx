@@ -6,11 +6,13 @@
 import React, { useState, useMemo } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
-import { Modal, ModalHeader, Button, Input, useToast } from '../ui'
+import { Modal, ModalHeader, Button, Input, Select, useToast } from '../ui'
+import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../utils/categoriasPeca'
 
 const VAZIO = {
   nome: '',
   sku: '',
+  categoria: '',
   fornecedor: '',
   qtdAtual: '',
   qtdMinima: '',
@@ -18,6 +20,12 @@ const VAZIO = {
   custoAtual: '',
   precoVenda: '',
 }
+
+// Opções do select agrupadas por grupo (renderizadas como <optgroup>)
+const OPCOES_CATEGORIA_AGRUPADAS = Object.entries(GRUPOS_CATEGORIA).map(([gid, g]) => ({
+  grupo: g.label,
+  opcoes: CATEGORIAS_PECA.filter(c => c.grupo === gid).map(c => ({ value: c.id, label: c.label })),
+}))
 
 function toNum(v) {
   if (v === '' || v === null || v === undefined) return 0
@@ -43,6 +51,7 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
     const e = {}
     if (!form.nome.trim()) e.nome = 'Obrigatório'
     if (!form.sku.trim()) e.sku = 'Obrigatório'
+    if (!form.categoria) e.categoria = 'Selecione uma categoria'
     if (!form.fornecedor.trim()) e.fornecedor = 'Obrigatório'
     if (form.qtdAtual === '' || toNum(form.qtdAtual) < 0) e.qtdAtual = 'Inválido'
     if (form.qtdMinima === '' || toNum(form.qtdMinima) < 0) e.qtdMinima = 'Inválido'
@@ -63,6 +72,7 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
     const nova = {
       nome: form.nome.trim(),
       sku: form.sku.trim(),
+      categoria: form.categoria,
       fornecedor: form.fornecedor.trim(),
       qtdAtual: toNum(form.qtdAtual),
       qtdMinima: toNum(form.qtdMinima),
@@ -118,6 +128,37 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
                 />
               </CampoErro>
             </div>
+
+            {/* Categoria — agrupada por grupo (motor, água, elétrico, estrutura, externo, outros) */}
+            <CampoErro erro={erros.categoria} dark={dark}>
+              <label style={{ display: 'block', fontSize: 11, color: T.textMuted, fontWeight: 600, marginBottom: 4 }}>
+                Categoria <span style={{ color: corEtapa('red', dark) }}>*</span>
+              </label>
+              <select
+                value={form.categoria}
+                onChange={(e) => set('categoria')(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 10px',
+                  background: T.bg, color: T.textPrimary,
+                  border: `1px solid ${erros.categoria ? corEtapa('red', dark) : T.border}`,
+                  borderRadius: 7, fontSize: 13, fontFamily: 'inherit',
+                  outline: 'none', colorScheme: dark ? 'dark' : 'light',
+                }}
+              >
+                <option value="">— Selecione —</option>
+                {OPCOES_CATEGORIA_AGRUPADAS.map(g => (
+                  <optgroup key={g.grupo} label={g.grupo}>
+                    {g.opcoes.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <div style={{ fontSize: 10.5, color: T.textDim, marginTop: 4 }}>
+                A categoria espelha o checklist do diagnóstico — assim o técnico encontra
+                peças do tipo certo (válvula, eletrobomba, trava da porta, etc.).
+              </div>
+            </CampoErro>
           </div>
         </div>
 

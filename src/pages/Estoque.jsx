@@ -16,17 +16,18 @@ import {
 import PecaDetalheModal from '../components/estoque/PecaDetalheModal'
 import MaquinaDetalheModal from '../components/estoque/MaquinaDetalheModal'
 import NovaPecaModal from '../components/estoque/NovaPecaModal'
+import { CATEGORIAS_PECA, CATEGORIA_POR_ID, contarPorCategoria } from '../utils/categoriasPeca'
 
 // Mocks — futuro: lê de `peca` e `maquina` no Supabase
 const PECAS_MOCK = [
-  { id:1, nome:'Capa Brastemp 12kg',              sku:'CAP-BRA-12',  qtdAtual: 8, qtdMinima: 5, qtdMaxima: 20, custoAtual: 30, precoVenda: 85,  fornecedor:'ML' },
-  { id:2, nome:'Mangueira admissão Consul',       sku:'MAN-CON-01',  qtdAtual: 2, qtdMinima: 5, qtdMaxima: 15, custoAtual: 18, precoVenda: 45,  fornecedor:'ML' },
-  { id:3, nome:'Capacitor 8μF universal',         sku:'CAP-EL-08',   qtdAtual: 0, qtdMinima: 3, qtdMaxima: 12, custoAtual: 12, precoVenda: 35,  fornecedor:'ML' },
-  { id:4, nome:'Filtro pluma LG 11kg',            sku:'FIL-LG-11',   qtdAtual:15, qtdMinima: 5, qtdMaxima: 30, custoAtual: 22, precoVenda: 65,  fornecedor:'Atacado MS' },
-  { id:5, nome:'Correia transmissão Electrolux',  sku:'COR-ELE-01',  qtdAtual: 6, qtdMinima: 3, qtdMaxima: 12, custoAtual: 40, precoVenda: 110, fornecedor:'Atacado MS' },
-  { id:6, nome:'Termostato Brastemp 220V',        sku:'TER-BRA-220', qtdAtual: 1, qtdMinima: 2, qtdMaxima: 8,  custoAtual: 55, precoVenda: 145, fornecedor:'ML' },
-  { id:7, nome:'Bomba de drenagem Consul',        sku:'BOM-CON-01',  qtdAtual:12, qtdMinima: 4, qtdMaxima: 20, custoAtual: 65, precoVenda: 180, fornecedor:'Distribuidor SP' },
-  { id:8, nome:'Placa eletrônica LG WD-1014',     sku:'PLA-LG-WD',   qtdAtual: 3, qtdMinima: 2, qtdMaxima: 6,  custoAtual: 280,precoVenda: 580, fornecedor:'Distribuidor SP' },
+  { id:1, nome:'Capa Brastemp 12kg',              sku:'CAP-BRA-12',  categoria:'capa',          qtdAtual: 8, qtdMinima: 5, qtdMaxima: 20, custoAtual: 30, precoVenda: 85,  fornecedor:'ML' },
+  { id:2, nome:'Mangueira admissão Consul',       sku:'MAN-CON-01',  categoria:'mangueira',     qtdAtual: 2, qtdMinima: 5, qtdMaxima: 15, custoAtual: 18, precoVenda: 45,  fornecedor:'ML' },
+  { id:3, nome:'Capacitor 8μF universal',         sku:'CAP-EL-08',   categoria:'capacitor',     qtdAtual: 0, qtdMinima: 3, qtdMaxima: 12, custoAtual: 12, precoVenda: 35,  fornecedor:'ML' },
+  { id:4, nome:'Filtro pluma LG 11kg',            sku:'FIL-LG-11',   categoria:'filtro',        qtdAtual:15, qtdMinima: 5, qtdMaxima: 30, custoAtual: 22, precoVenda: 65,  fornecedor:'Atacado MS' },
+  { id:5, nome:'Correia transmissão Electrolux',  sku:'COR-ELE-01',  categoria:'correia',       qtdAtual: 6, qtdMinima: 3, qtdMaxima: 12, custoAtual: 40, precoVenda: 110, fornecedor:'Atacado MS' },
+  { id:6, nome:'Termostato Brastemp 220V',        sku:'TER-BRA-220', categoria:'termostato',    qtdAtual: 1, qtdMinima: 2, qtdMaxima: 8,  custoAtual: 55, precoVenda: 145, fornecedor:'ML' },
+  { id:7, nome:'Bomba de drenagem Consul',        sku:'BOM-CON-01',  categoria:'eletrobomba',   qtdAtual:12, qtdMinima: 4, qtdMaxima: 20, custoAtual: 65, precoVenda: 180, fornecedor:'Distribuidor SP' },
+  { id:8, nome:'Placa eletrônica LG WD-1014',     sku:'PLA-LG-WD',   categoria:'placa',         qtdAtual: 3, qtdMinima: 2, qtdMaxima: 6,  custoAtual: 280,precoVenda: 580, fornecedor:'Distribuidor SP' },
 ]
 
 const MAQUINAS_MOCK = [
@@ -91,6 +92,7 @@ export default function Estoque({ T, dark, user }) {
   const mostraValores = isAdmin(user)
   const [aba, setAba] = useState('pecas')
   const [busca, setBusca] = useState('')
+  const [categoriaSel, setCategoriaSel] = useState('todas') // 'todas' | id da categoria
   const [pecas, setPecas] = useState(PECAS_MOCK)
   const [maquinas] = useState(MAQUINAS_MOCK)
   const [pecaAberta, setPecaAberta] = useState(null)
@@ -109,16 +111,22 @@ export default function Estoque({ T, dark, user }) {
   const vermelho = corEtapa('red', dark)
   const verde = corEtapa('green', dark)
 
-  // Filtros
+  // Filtros — busca + categoria combinados
   const pecasFiltradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
-    if (!q) return pecas
-    return pecas.filter(p =>
-      p.nome.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q) ||
-      (p.fornecedor || '').toLowerCase().includes(q)
-    )
-  }, [pecas, busca])
+    return pecas.filter(p => {
+      if (categoriaSel !== 'todas' && (p.categoria || 'outros') !== categoriaSel) return false
+      if (q && !(
+        p.nome.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        (p.fornecedor || '').toLowerCase().includes(q)
+      )) return false
+      return true
+    })
+  }, [pecas, busca, categoriaSel])
+
+  // Contagem por categoria (só categorias com peças mostradas no filtro)
+  const contagemCat = useMemo(() => contarPorCategoria(pecas), [pecas])
 
   const maquinasFiltradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -195,7 +203,7 @@ export default function Estoque({ T, dark, user }) {
           <Tabs T={T} dark={dark}
             options={ABAS}
             value={aba}
-            onChange={(v) => { setAba(v); setBusca('') }}
+            onChange={(v) => { setAba(v); setBusca(''); setCategoriaSel('todas') }}
             variant="segmented"
           />
           <div style={{ width: 1, height: 24, background: T.border }} />
@@ -210,6 +218,17 @@ export default function Estoque({ T, dark, user }) {
           </div>
         </div>
       </Card>
+
+      {/* Chips de categoria — só na aba Peças. Espelha o checklist do diagnóstico
+          pra técnico achar peças por tipo (eletrobomba, válvula, trava da porta, etc.). */}
+      {onPecas && (
+        <FiltroCategorias T={T} dark={dark}
+          categoriaSel={categoriaSel}
+          onSelecionar={setCategoriaSel}
+          contagem={contagemCat}
+          total={pecas.length}
+        />
+      )}
 
       {onPecas
         ? <ListaPecas T={T} dark={dark} itens={pecasFiltradas} todos={pecas} busca={busca}
@@ -325,8 +344,22 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir, mostraValores = tru
                 fontSize: 13, fontWeight: 600,
                 color: corHero(dark),
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', gap: 6,
               }}>
                 {p.nome}
+                {p.categoria && CATEGORIA_POR_ID[p.categoria] && (
+                  <span style={{
+                    fontSize: 9.5, fontWeight: 700,
+                    padding: '1px 6px', borderRadius: 4,
+                    background: corEtapa('blue', dark) + '22',
+                    color: corEtapa('blue', dark),
+                    border: `1px solid ${corEtapa('blue', dark)}33`,
+                    textTransform: 'uppercase', letterSpacing: '.3px',
+                    flexShrink: 0,
+                  }}>
+                    {CATEGORIA_POR_ID[p.categoria].label}
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, display: 'flex', gap: 8 }}>
                 <span style={{ fontVariantNumeric: 'tabular-nums' }}>{p.sku}</span>
@@ -447,33 +480,35 @@ function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = 
               </Badge>
             </div>
 
-            {/* Bloco de números */}
+            {/* Bloco de números — funcionário vê só Venda; dono vê custo + margem */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              gridTemplateColumns: mostraValores ? '1fr 1fr' : '1fr',
               gap: 10,
               padding: '10px 12px',
               background: T.cardAlt,
               borderRadius: 8,
               border: `1px solid ${T.border}`,
             }}>
-              <div>
-                <div style={{
-                  fontSize: 10, color: T.textMuted, fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: '0.04em',
-                  marginBottom: 2,
-                }}>
-                  Custo total
+              {mostraValores && (
+                <div>
+                  <div style={{
+                    fontSize: 10, color: T.textMuted, fontWeight: 600,
+                    textTransform: 'uppercase', letterSpacing: '0.04em',
+                    marginBottom: 2,
+                  }}>
+                    Custo total
+                  </div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 700,
+                    color: corHero(dark),
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {custoTotal > 0 ? fmtBRL(custoTotal) : '—'}
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: 14, fontWeight: 700,
-                  color: corHero(dark),
-                  fontVariantNumeric: 'tabular-nums',
-                }}>
-                  {custoTotal > 0 ? fmtBRL(custoTotal) : '—'}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
+              )}
+              <div style={{ textAlign: mostraValores ? 'right' : 'left' }}>
                 <div style={{
                   fontSize: 10, color: T.textMuted, fontWeight: 600,
                   textTransform: 'uppercase', letterSpacing: '0.04em',
@@ -489,7 +524,7 @@ function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = 
                   {m.precoVenda > 0 ? fmtBRL(m.precoVenda) : '—'}
                 </div>
               </div>
-              {custoTotal > 0 && m.precoVenda > 0 && (
+              {mostraValores && custoTotal > 0 && m.precoVenda > 0 && (
                 <div style={{ gridColumn: '1 / -1', fontSize: 11, color: T.textMuted, paddingTop: 6, borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between' }}>
                   <span>Margem</span>
                   <span style={{ color: azul, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
@@ -502,5 +537,81 @@ function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = 
         )
       })}
     </div>
+  )
+}
+
+// =============================================================================
+// FILTRO DE CATEGORIAS — chips horizontais (scroll quando excede)
+// =============================================================================
+function FiltroCategorias({ T, dark, categoriaSel, onSelecionar, contagem, total }) {
+  const azul = corEtapa('blue', dark)
+  const bgAzul = corEtapa('blue', dark) + '22'
+
+  return (
+    <Card T={T} dark={dark} padding="10px 14px">
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        overflowX: 'auto', overflowY: 'hidden',
+        scrollbarWidth: 'thin',
+      }}>
+        <span style={{
+          fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+          flexShrink: 0, marginRight: 4,
+        }}>
+          <i className="ti ti-category" style={{ fontSize: 12, marginRight: 4, verticalAlign: 'middle' }} aria-hidden="true" />
+          Categoria
+        </span>
+
+        <ChipCategoria T={T} dark={dark}
+          label="Todas" count={total}
+          ativo={categoriaSel === 'todas'}
+          onClick={() => onSelecionar('todas')}
+        />
+
+        {CATEGORIAS_PECA.map(cat => {
+          const count = contagem[cat.id] || 0
+          if (count === 0) return null  // só mostra categorias com pelo menos 1 peça
+          return (
+            <ChipCategoria key={cat.id} T={T} dark={dark}
+              label={cat.label} count={count}
+              ativo={categoriaSel === cat.id}
+              onClick={() => onSelecionar(cat.id)}
+            />
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
+function ChipCategoria({ T, dark, label, count, ativo, onClick }) {
+  const azul = corEtapa('blue', dark)
+  const bg = ativo ? azul + '22' : 'transparent'
+  const corT = ativo ? azul : T.textMuted
+  const borderC = ativo ? azul + '55' : T.border
+
+  return (
+    <button onClick={onClick} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '5px 10px', borderRadius: 14,
+      background: bg, border: `1px solid ${borderC}`,
+      color: corT,
+      fontSize: 11.5, fontWeight: ativo ? 700 : 500,
+      cursor: 'pointer', fontFamily: 'inherit',
+      transition: 'all .12s',
+      whiteSpace: 'nowrap', flexShrink: 0,
+    }}>
+      {label}
+      <span style={{
+        fontSize: 10, fontWeight: 700,
+        padding: '1px 5px', borderRadius: 8,
+        background: ativo ? azul : T.cardAlt,
+        color: ativo ? '#fff' : T.textMuted,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {count}
+      </span>
+    </button>
   )
 }
