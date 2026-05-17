@@ -176,15 +176,52 @@ export default function Header({
         </div>
       </div>
 
-      {/* Bloco de contexto da OS — hierarquia: cliente (herói) → equip (subtitle) → defeito (callout) */}
-      <BlocoContextoOS
-        T={T} dark={dark}
-        os={os}
-        onAbrirCadastroCliente={() => avisoCadastroEmBreve('cliente')}
-        onAbrirCadastroEquipamento={() => avisoCadastroEmBreve('equipamento')}
-        onAbrirWhatsApp={() => abrirWhatsApp(os.fone)}
-        onAbrirMapa={() => abrirMapa(os.endereco)}
-      />
+      {/* Bloco Cliente + Equipamento — 2 colunas centralizadas com divisor,
+          em 2 linhas: principal + uma subline com info consolidada (chunks · separados) */}
+      <div style={{
+        padding: '12px 20px 14px',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
+        gap: 22,
+        alignItems: 'start',
+      }}>
+        <BlocoInfoTopo
+          T={T} dark={dark}
+          principal={{
+            text: os.cliente || '— sem cliente —',
+            onClick: () => avisoCadastroEmBreve('cliente'),
+            title: 'Abrir cadastro do cliente',
+          }}
+          subline={[
+            {
+              icon: 'ti-phone', text: os.fone || '—',
+              onClick: os.fone ? () => abrirWhatsApp(os.fone) : null,
+              title: os.fone ? 'Abrir conversa no WhatsApp' : null,
+            },
+            {
+              icon: 'ti-map-pin', text: os.endereco || '—',
+              onClick: os.endereco ? () => abrirMapa(os.endereco) : null,
+              title: os.endereco ? 'Abrir no Google Maps' : null,
+            },
+          ]}
+        />
+        <div
+          aria-hidden="true"
+          style={{ width: 1, alignSelf: 'stretch', background: T.border, opacity: 0.6 }}
+        />
+        <BlocoInfoTopo
+          T={T} dark={dark}
+          principal={{
+            text: [os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || '— sem equipamento —',
+            onClick: () => avisoCadastroEmBreve('equipamento'),
+            title: 'Abrir cadastro do equipamento',
+          }}
+          subline={[
+            { icon: 'ti-id',  text: os.serie ? `Nº ${os.serie}` : 'sem nº de série' },
+            { icon: 'ti-bug', text: os.defeito || 'sem defeito relatado' },
+          ]}
+        />
+      </div>
 
       {/* Linha 4 — Timeline (não aparece em recusado) */}
       {!isRecusado && (
@@ -238,165 +275,89 @@ function Pill({ cor, bg, children }) {
   )
 }
 
-// Bloco de contexto da OS — design assimétrico com hierarquia clara:
-//   1. Nome do cliente (H1, clicável → cadastro)
-//   2. Contato (telefone · endereço — texto plano, ações pelos ícones à direita)
-//   3. Equipamento (subtitle com ícone)
-//   4. Defeito (callout italic com borda lateral amarela — destaca o "porquê" da OS)
-//
-// Ações: 3 icon-buttons compactos na direita (WhatsApp, Maps, Equip cadastro).
-function BlocoContextoOS({
-  T, dark, os,
-  onAbrirCadastroCliente,
-  onAbrirCadastroEquipamento,
-  onAbrirWhatsApp,
-  onAbrirMapa,
-}) {
+// Bloco de info no topo do modal — 2 colunas centralizadas, sem labels.
+// 2 linhas por coluna: principal (nome / equip) + subline (chunks separados por •).
+// Cada chunk (incluindo o principal) tem ação própria opcional. Hover: cor vira azul.
+function BlocoInfoTopo({ T, dark, principal, subline }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
-  const amarelo = cor(P.yellow, P.yellowDark)
-  const [hoverNome, setHoverNome] = useState(false)
-  const [hoverEquip, setHoverEquip] = useState(false)
-
-  const tituloEquip = [os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento
-
   return (
-    <div style={{ padding: '14px 22px 14px' }}>
-      {/* Topo: Nome cliente + ações à direita */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-        gap: 14, marginBottom: 2,
-      }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          {/* Nome (clicável → cadastro do cliente) */}
-          <div
-            onClick={onAbrirCadastroCliente}
-            onMouseEnter={() => setHoverNome(true)}
-            onMouseLeave={() => setHoverNome(false)}
-            title="Abrir cadastro do cliente"
-            style={{
-              fontSize: 17, fontWeight: 700, lineHeight: 1.2,
-              color: hoverNome ? azul : T.textPrimary,
-              cursor: 'pointer',
-              transition: 'color .12s',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              marginBottom: 3,
-            }}
-          >{os.cliente || '— sem cliente —'}</div>
-
-          {/* Contato em UMA linha (telefone · endereço) */}
-          <div style={{
-            fontSize: 11.5, color: T.textMuted, lineHeight: 1.4,
-            wordBreak: 'break-word',
-          }}>
-            {os.fone || '—'}
-            {os.endereco && (
-              <>
-                <span style={{ opacity: 0.45, padding: '0 7px' }}>•</span>
-                {os.endereco}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Ações: 3 icon-buttons compactos */}
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <IconBtn
-            T={T} dark={dark}
-            icon="ti-brand-whatsapp"
-            title={os.fone ? `WhatsApp ${os.fone}` : 'Sem telefone cadastrado'}
-            onClick={onAbrirWhatsApp}
-            disabled={!os.fone}
-          />
-          <IconBtn
-            T={T} dark={dark}
-            icon="ti-map-pin"
-            title={os.endereco ? 'Abrir no Google Maps' : 'Sem endereço cadastrado'}
-            onClick={onAbrirMapa}
-            disabled={!os.endereco}
-          />
-          <IconBtn
-            T={T} dark={dark}
-            icon="ti-tool"
-            title="Abrir cadastro do equipamento"
-            onClick={onAbrirCadastroEquipamento}
-          />
-        </div>
-      </div>
-
-      {/* Equipamento subtitle (clicável → cadastro) */}
-      {tituloEquip && (
-        <div
-          onClick={onAbrirCadastroEquipamento}
-          onMouseEnter={() => setHoverEquip(true)}
-          onMouseLeave={() => setHoverEquip(false)}
-          title="Abrir cadastro do equipamento"
-          style={{
-            marginTop: 12,
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-            fontSize: 12, color: hoverEquip ? azul : T.textSecondary,
-            transition: 'color .12s',
-          }}
-        >
-          <i className="ti ti-device-washing-machine"
-             style={{ fontSize: 13.5, color: hoverEquip ? azul : T.textMuted, transition: 'color .12s' }}
-             aria-hidden="true" />
-          <span style={{ fontWeight: 600 }}>{tituloEquip}</span>
-          {os.serie && (
-            <>
-              <span style={{ opacity: 0.45 }}>·</span>
-              <span style={{ color: T.textMuted, fontSize: 11.5 }}>Nº {os.serie}</span>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Defeito como callout italic com borda lateral amarela */}
-      {os.defeito && (
-        <div style={{
-          marginTop: 10,
-          paddingLeft: 12,
-          borderLeft: `3px solid ${amarelo}55`,
-          fontSize: 12.5, fontStyle: 'italic',
-          color: T.textSecondary, lineHeight: 1.45,
-        }}>
-          “{os.defeito}”
-        </div>
-      )}
+    <div style={{ minWidth: 0, userSelect: 'none' }}>
+      <ItemPrincipal T={T} azul={azul} item={principal} />
+      <Subline T={T} azul={azul} items={subline} />
     </div>
   )
 }
 
-// Icon-button compacto pras ações rápidas (WhatsApp, Maps, Equip cadastro).
-function IconBtn({ T, dark, icon, title, onClick, disabled }) {
-  const cor = (d, c) => dark ? d : c
-  const azul = cor(P.blue, P.blueDark)
-  const azulBg = cor('#0d2035', '#e6f1fb')
+function ItemPrincipal({ T, azul, item }) {
   const [hover, setHover] = useState(false)
-  const active = !disabled && hover
+  const clickable = !!item.onClick
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      aria-label={title}
+    <div
+      onClick={item.onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      title={item.title}
       style={{
-        width: 32, height: 32, borderRadius: 8,
-        border: `1px solid ${active ? azul : T.border}`,
-        background: active ? azulBg : 'transparent',
-        color: disabled ? T.textDim : (active ? azul : T.textSecondary),
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'background .12s, border-color .12s, color .12s',
-        fontFamily: 'inherit',
-        flexShrink: 0,
+        fontSize: 14.5, fontWeight: 700, lineHeight: 1.25,
+        color: hover && clickable ? azul : T.textPrimary,
+        cursor: clickable ? 'pointer' : 'default',
+        transition: 'color .12s',
+        textAlign: 'center',
+        marginBottom: 5,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}
+    >{item.text}</div>
+  )
+}
+
+// Subline = single line with multiple chunks separated by • (centralizada, ellipsis no fim)
+function Subline({ T, azul, items }) {
+  return (
+    <div style={{
+      fontSize: 11, color: T.textMuted, lineHeight: 1.4,
+      textAlign: 'center',
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      minWidth: 0,
+    }}>
+      {items.map((it, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && (
+            <span style={{ opacity: 0.45, padding: '0 7px' }} aria-hidden="true">•</span>
+          )}
+          <Chunk T={T} azul={azul} item={it} />
+        </React.Fragment>
+      ))}
+    </div>
+  )
+}
+
+function Chunk({ T, azul, item }) {
+  const [hover, setHover] = useState(false)
+  const clickable = !!item.onClick
+  return (
+    <span
+      onClick={item.onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={item.title}
+      style={{
+        display: 'inline-block',
+        color: hover && clickable ? azul : 'inherit',
+        cursor: clickable ? 'pointer' : 'default',
+        transition: 'color .12s',
       }}
     >
-      <i className={`ti ${icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
-    </button>
+      <i className={`ti ${item.icon}`}
+         style={{
+           fontSize: 11.5,
+           color: hover && clickable ? azul : T.textDim,
+           marginRight: 4,
+           verticalAlign: '-1px',
+           transition: 'color .12s',
+         }}
+         aria-hidden="true" />
+      {item.text}
+    </span>
   )
 }
