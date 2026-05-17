@@ -274,8 +274,8 @@ function NovoClienteModalCompleto({ T, dark, onClose, onSalvar, nomeInicial, mob
 
 function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
   const cor = (d, c) => dark ? d : c
-  const [step, setStep] = useState(1)
   const [tipo, setTipo] = useState(tipoInicial || 'atendimento')
+  const [tipoMenuAberto, setTipoMenuAberto] = useState(false)
 
   // Lista local de clientes (adapta o mock global; novos cadastros entram aqui).
   const [clientes, setClientes] = useState(() => adaptarClientesMock(CLIENTES_MOCK))
@@ -284,7 +284,9 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
     cliente:'', clienteId:null, fone:'',
     enderecoSelecionado:'',   // endereço escolhido pra esta OS (string)
     enderecoIndex:0,          // índice do endereço selecionado (radio)
-    equipamentoTipo:'',       // dropdown
+    // Pré-selecionado pro Atendimento (tipo de máquina mais comum). Pros outros tipos,
+    // começa vazio e o select mantém a opção "Selecione…".
+    equipamentoTipo: (tipoInicial || 'atendimento') === 'atendimento' ? 'Máquina de Lavar' : '',
     equipamentoMarca:'',      // dropdown
     equipamentoMarcaOutros:'',// campo extra quando marca = "Outros"
     equipamentoModelo:'',
@@ -335,6 +337,29 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
   )
   const enderecosCliente = clienteSelecionado?.enderecos || []
 
+  // Fecha o dropdown de tipo ao clicar fora ou apertar Escape.
+  // Escape usa capture + stopPropagation pra não fechar o modal junto.
+  useEffect(() => {
+    if (!tipoMenuAberto) return
+    function onDocClick(e) {
+      if (!e.target.closest('[data-tipo-menu]')) setTipoMenuAberto(false)
+    }
+    function onEscape(e) {
+      if (e.key === 'Escape') { e.stopPropagation(); setTipoMenuAberto(false) }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onEscape, true)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onEscape, true)
+    }
+  }, [tipoMenuAberto])
+
+  function escolherTipo(novo) {
+    setTipo(novo)
+    setTipoMenuAberto(false)
+  }
+
   function salvar() {
     const marcaFinal = form.equipamentoMarca === 'Outros' ? form.equipamentoMarcaOutros : form.equipamentoMarca
     const eqTxt = [form.equipamentoTipo, marcaFinal, form.equipamentoModelo].filter(Boolean).join(' ')
@@ -347,8 +372,8 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
   const labelStyle = { fontSize:10.5, color:T.textMuted, display:'block', marginBottom:5, fontWeight:600, letterSpacing:'.3px' }
   const opcionalChip = <span style={{ fontSize:10, color:T.textDim, fontWeight:400 }}>opcional</span>
 
-  // Regras de obrigatórios POR TIPO (mudou: agora só Cliente é obrigatório no Atendimento)
-  const podeAvancar = step === 1 ? true :
+  // Regras de obrigatórios POR TIPO (só Cliente é obrigatório no Atendimento)
+  const podeAvancar =
     tipo === 'atendimento' ? !!form.cliente :
     tipo === 'fabricacao'  ? !!form.equipamentoTipo :
     tipo === 'venda'       ? !!(form.cliente && form.maquinaEstoque) : false
@@ -356,74 +381,101 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
   return (
     <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={720}>
       {/* Header */}
-      <div style={{ padding:'14px 20px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:38, height:38, borderRadius:10, background: step===1 ? `linear-gradient(135deg,${P.blue},#3a7bbf)` : `linear-gradient(135deg,${corTipo},${corTipo}dd)`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <i className={`ti ${step===1 ? 'ti-clipboard-plus' : TIPOS_OS[tipo].icon}`} style={{ fontSize:19, color:'#fff' }} aria-hidden="true" />
+      <div style={{ padding:'14px 20px 12px', borderBottom:`1px solid ${T.border}`, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, minWidth:0, flex:1 }}>
+          <div style={{ width:38, height:38, borderRadius:10, background:`linear-gradient(135deg,${corTipo},${corTipo}dd)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background .2s' }}>
+            <i className={`ti ${TIPOS_OS[tipo].icon}`} style={{ fontSize:19, color:'#fff' }} aria-hidden="true" />
           </div>
-          <div>
-            <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>
-              {step===1 ? 'Nova ordem de serviço' : `Nova OS — ${TIPOS_OS[tipo].label}`}
-            </div>
-            <div style={{ fontSize:11, color:T.textMuted, marginTop:2, display:'flex', alignItems:'center', gap:6 }}>
-              <span>Passo {step} de 2</span>
-              {step===2 && (
-                <>
-                  <span style={{ width:3, height:3, background:T.textMuted, borderRadius:'50%' }} />
-                  <span style={{ color: podeAvancar ? cor(P.blue, P.blueDark) : T.textMuted }}>
-                    {statusCamposFaltando(tipo, form)}
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:T.textPrimary }}>Nova ordem de serviço</div>
+
+            {/* Linha do tipo + status */}
+            <div style={{ marginTop:5, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              {/* Botão sutil de tipo + dropdown */}
+              <div data-tipo-menu style={{ position:'relative' }}>
+                <button onClick={()=>setTipoMenuAberto(v=>!v)}
+                  style={{
+                    background: tipoMenuAberto ? cor('#0d2035','#e6f1fb') : 'transparent',
+                    border:`1px solid ${tipoMenuAberto ? cor(P.blue, P.blueDark) : T.border}`,
+                    padding:'3px 9px 3px 7px', borderRadius:6,
+                    display:'flex', alignItems:'center', gap:5,
+                    cursor:'pointer', fontFamily:'inherit',
+                    transition:'background .15s, border-color .15s',
+                  }}>
+                  <i className={`ti ${TIPOS_OS[tipo].icon}`} style={{ fontSize:12, color:corTipo }} aria-hidden="true" />
+                  <span style={{ fontSize:11, fontWeight:500, color: tipoMenuAberto ? cor(P.blue, P.blueDark) : T.textSecondary }}>
+                    {TIPOS_OS[tipo].label}
                   </span>
-                </>
-              )}
+                  <i className={`ti ${tipoMenuAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
+                     style={{ fontSize:12, color: tipoMenuAberto ? cor(P.blue, P.blueDark) : T.textMuted }} aria-hidden="true" />
+                </button>
+
+                {tipoMenuAberto && (
+                  <div style={{
+                    position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:5,
+                    background:T.cardAlt, border:`1px solid ${T.border}`, borderRadius:9,
+                    padding:6, minWidth:240,
+                    boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,.12)',
+                  }}>
+                    {ORDEM_TIPOS_OS.map(id => {
+                      const cfg = TIPOS_OS[id]
+                      if (!cfg) return null
+                      const ativo = id === tipo
+                      const c = corEtapa(cfg.cor, dark)
+                      const descCurta =
+                        id === 'atendimento' ? 'Máquina do cliente' :
+                        id === 'venda'       ? 'Máquina do estoque' :
+                        id === 'fabricacao'  ? 'Máquina nova pro estoque' : ''
+                      return (
+                        <button key={id} onClick={()=>escolherTipo(id)}
+                          onMouseEnter={e => { if (!ativo) e.currentTarget.style.background = T.bg }}
+                          onMouseLeave={e => { if (!ativo) e.currentTarget.style.background = 'transparent' }}
+                          style={{
+                            width:'100%',
+                            padding:'9px 11px', borderRadius:6,
+                            display:'flex', alignItems:'center', gap:10,
+                            cursor:'pointer', textAlign:'left', fontFamily:'inherit',
+                            background: ativo ? cor('#0d2035','#e6f1fb') : 'transparent',
+                            border: ativo ? `1px solid ${cor(P.blue, P.blueDark)}` : '1px solid transparent',
+                            transition:'background .12s',
+                          }}>
+                          <div style={{ width:30, height:30, borderRadius:7, background:c+'2e', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <i className={`ti ${cfg.icon}`} style={{ fontSize:16, color:c }} aria-hidden="true" />
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12.5, fontWeight:600, color:T.textPrimary }}>{cfg.label}</div>
+                            <div style={{ fontSize:10.5, color:T.textMuted, marginTop:1 }}>{descCurta}</div>
+                          </div>
+                          {ativo && <i className="ti ti-check" style={{ fontSize:14, color:cor(P.blue, P.blueDark), flexShrink:0 }} aria-hidden="true" />}
+                        </button>
+                      )
+                    })}
+                    <div style={{ height:1, background:T.border, margin:'6px 0' }} />
+                    <div style={{ padding:'6px 11px', fontSize:10.5, color:T.textMuted, display:'flex', alignItems:'center', gap:6 }}>
+                      <i className="ti ti-alert-triangle" style={{ fontSize:12, color:corEtapa('yellow', dark), flexShrink:0 }} aria-hidden="true" />
+                      <span>Trocar o tipo pode pedir campos diferentes</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <span style={{ width:3, height:3, background:T.textMuted, borderRadius:'50%' }} />
+              <span style={{ fontSize:11, color: podeAvancar ? cor(P.blue, P.blueDark) : T.textMuted }}>
+                {statusCamposFaltando(tipo, form)}
+              </span>
             </div>
           </div>
         </div>
         <button onClick={onClose} aria-label="Fechar"
-          style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:6, borderRadius:6, fontSize:0, lineHeight:0 }}>
+          style={{ background:'transparent', border:'none', color:T.textMuted, cursor:'pointer', padding:6, borderRadius:6, fontSize:0, lineHeight:0, flexShrink:0 }}>
           <i className="ti ti-x" style={{ fontSize:20 }} aria-hidden="true" />
         </button>
       </div>
 
       <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
 
-        {/* ────── PASSO 1 — Escolha do tipo (Atendimento · Venda · Fabricação) ────── */}
-        {step === 1 && (
-          <>
-            <div style={{ fontSize:12.5, color:T.textSecondary, marginBottom:16, lineHeight:1.5 }}>
-              Cada tipo tem um fluxo próprio. Selecione o que melhor descreve a OS.
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(3, 1fr)', gap:12 }}>
-              {ORDEM_TIPOS_OS.map(id => {
-                const cfg = TIPOS_OS[id]
-                if (!cfg) return null
-                const ativo = id === tipo
-                const c = corEtapa(cfg.cor, dark)
-                const bg = bgEtapa(cfg.cor, dark)
-                return (
-                  <button key={id} onClick={()=>setTipo(id)}
-                    style={{ padding:'18px 14px', borderRadius:12, border:`2px solid ${ativo?c:T.border}`, background:ativo?bg:T.cardAlt, cursor:'pointer', textAlign:'left', display:'flex', flexDirection:'column', gap:6, transition:'border-color .15s, background .15s', fontFamily:'inherit' }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                      <div style={{ width:44, height:44, borderRadius:10, background:c+'2c', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        <i className={`ti ${cfg.icon}`} style={{ fontSize:24, color:c }} aria-hidden="true" />
-                      </div>
-                      {ativo && <i className="ti ti-circle-check-filled" style={{ fontSize:22, color:c }} aria-hidden="true" />}
-                    </div>
-                    <div style={{ fontSize:14.5, fontWeight:700, color:T.textPrimary, marginTop:6 }}>{cfg.label}</div>
-                    <div style={{ fontSize:11.5, color:T.textMuted, lineHeight:1.45 }}>{cfg.descricao}</div>
-                    <div style={{ marginTop:10, fontSize:10.5, color: ativo ? c : T.textDim, display:'flex', alignItems:'center', gap:4, fontWeight:ativo?600:500 }}>
-                      {ativo ? (
-                        <><i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> Selecionado</>
-                      ) : 'Clique para escolher'}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </>
-        )}
-
-        {/* ────── PASSO 2 — Atendimento ────── */}
-        {step === 2 && tipo === 'atendimento' && (
+        {/* ────── Atendimento ────── */}
+        {tipo === 'atendimento' && (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
             {/* CLIENTE */}
@@ -526,7 +578,6 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
                 <div>
                   <label style={labelStyle}>TIPO</label>
                   <select value={form.equipamentoTipo} onChange={e=>update('equipamentoTipo', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}}>
-                    <option value="">Selecione…</option>
                     {TIPOS_EQUIPAMENTO.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
@@ -605,8 +656,8 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
           </div>
         )}
 
-        {/* ────── PASSO 2 — Fabricação (mantém estrutura antiga, só ajustado o tipo dropdown) ────── */}
-        {step === 2 && tipo === 'fabricacao' && (
+        {/* ────── Fabricação (mantém estrutura antiga, só ajustado o tipo dropdown) ────── */}
+        {tipo === 'fabricacao' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ background:bgEtapa('yellow', dark), border:`1px solid ${corEtapa('yellow', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
               <i className="ti ti-info-circle" style={{ fontSize:14, color:corEtapa('yellow', dark), marginRight:6, verticalAlign:'middle' }} aria-hidden="true" />
@@ -627,8 +678,8 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
           </div>
         )}
 
-        {/* ────── PASSO 2 — Venda ────── */}
-        {step === 2 && tipo === 'venda' && (
+        {/* ────── Venda ────── */}
+        {tipo === 'venda' && (
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ background:bgEtapa('green', dark), border:`1px solid ${corEtapa('green', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
               <i className="ti ti-info-circle" style={{ fontSize:14, color:corEtapa('green', dark), marginRight:6, verticalAlign:'middle' }} aria-hidden="true" />
@@ -729,31 +780,15 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
       </div>
 
       {/* Rodapé */}
-      <div style={{ padding:'12px 20px', borderTop:`1px solid ${T.border}`, display:'flex', justifyContent:'space-between', gap:10, background:T.cardAlt, flexShrink:0 }}>
+      <div style={{ padding:'12px 20px', borderTop:`1px solid ${T.border}`, display:'flex', justifyContent:'flex-end', gap:8, background:T.cardAlt, flexShrink:0 }}>
         <button onClick={onClose}
           style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${T.border}`, background:'transparent', color:T.textSecondary, fontSize:12.5, cursor:'pointer', fontWeight:500 }}>
           Cancelar
         </button>
-        <div style={{ display:'flex', gap:8 }}>
-          {step > 1 && (
-            <button onClick={()=>setStep(s => s-1)}
-              style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${T.border}`, background:T.bg, color:T.textSecondary, fontSize:12.5, cursor:'pointer', fontWeight:500, display:'flex', alignItems:'center', gap:5 }}>
-              <i className="ti ti-arrow-left" style={{ fontSize:14 }} aria-hidden="true" /> Voltar
-            </button>
-          )}
-          {step === 1 && (
-            <button onClick={()=>setStep(2)}
-              style={{ padding:'9px 18px', borderRadius:8, border:'none', background:`linear-gradient(135deg,${P.blue},#3a7bbf)`, color:'#fff', fontSize:12.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:6 }}>
-              Continuar <i className="ti ti-arrow-right" style={{ fontSize:14 }} aria-hidden="true" />
-            </button>
-          )}
-          {step === 2 && (
-            <button onClick={salvar} disabled={!podeAvancar}
-              style={{ padding:'9px 18px', borderRadius:8, border:'none', background: podeAvancar?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: podeAvancar?'#fff':T.textDim, fontSize:12.5, cursor: podeAvancar?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:5, opacity: podeAvancar?1:.7 }}>
-              <i className="ti ti-check" style={{ fontSize:15 }} aria-hidden="true" /> Criar OS
-            </button>
-          )}
-        </div>
+        <button onClick={salvar} disabled={!podeAvancar}
+          style={{ padding:'9px 18px', borderRadius:8, border:'none', background: podeAvancar?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: podeAvancar?'#fff':T.textDim, fontSize:12.5, cursor: podeAvancar?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:5, opacity: podeAvancar?1:.7 }}>
+          <i className="ti ti-check" style={{ fontSize:15 }} aria-hidden="true" /> Criar OS
+        </button>
       </div>
 
       {/* Sub-modal: cadastrar novo cliente */}
