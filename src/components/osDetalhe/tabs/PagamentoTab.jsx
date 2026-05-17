@@ -1,0 +1,483 @@
+// src/components/osDetalhe/tabs/PagamentoTab.jsx
+// Aba Pagamento — itens, total, status + fluxos da etapa Orçamento (editar+aprovar)
+// e da etapa Pagamento (forma de pagamento + confirmar recebimento).
+//
+// IMPORTANTE: persistência dos itens ainda é mock (OS_ITENS_MOCK). A edição dos
+// itens vive em estado local da aba e some ao fechar — Módulo 03 plugará no
+// Supabase. O `valor` e `desconto` da OS sobem via onUpdateOS.
+
+import React, { useState, useMemo } from 'react'
+import { P } from '../../../theme'
+import { ETAPAS_TODOS } from '../../../utils/osData'
+import { corEtapa } from '../../../utils/colors'
+import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { fmtBRL } from '../../../utils/fmt'
+import { estaPagaTotal, estaPagaParcial } from '../../../utils/osHelpers'
+
+// Taxas das formas de pagamento (CLAUDE.md §6: usar InfinitePay D+1; nunca Ton Black)
+const FORMAS = [
+  { id: 'pix',         label: 'PIX',                  taxa: 0,    icon: 'ti-brand-pinterest' },
+  { id: 'debito',      label: 'Débito',               taxa: 1.37, icon: 'ti-credit-card' },
+  { id: 'credito1x',   label: 'Cartão 1x',            taxa: 3.15, icon: 'ti-credit-card' },
+  { id: 'credito12x',  label: 'Cartão 12x',           taxa: 12.4, icon: 'ti-credit-card' },
+  { id: 'link',        label: 'Link InfinitePay D+1', taxa: 4.2,  icon: 'ti-link' },
+  { id: 'misto',       label: 'Misto (PIX + cartão)', taxa: null, icon: 'ti-arrows-shuffle', disabled: true },
+  { id: 'parcelado',   label: 'Parcelado interno',    taxa: null, icon: 'ti-calendar-event', disabled: true },
+]
+
+export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
+  const cor = (d, c) => dark ? d : c
+  const azul = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const verde = corEtapa('green', dark)
+  const vermelho = corEtapa('red', dark)
+
+  const isOrcamento = os.etapa === 'orcamento'
+  const isPagamento = os.etapa === 'pagamento'
+
+  // Itens editáveis em estado local (origem: mock)
+  const [itens, setItens] = useState(() => (OS_ITENS_MOCK[os.numero] || []).map(i => ({ ...i })))
+  const [desconto, setDesconto] = useState(os.desconto || 0)
+
+  const subtotal = useMemo(() => itens.reduce((s, i) => s + i.valor * i.qtd, 0), [itens])
+  const total = Math.max(0, subtotal - desconto)
+  const valorPago = os.valor_pago || 0
+  const aPagar = Math.max(0, total - valorPago)
+  const pagoTotal = estaPagaTotal({ ...os, valor: total, desconto: 0, valor_pago: valorPago })
+  const pagoParcial = !pagoTotal && estaPagaParcial(os)
+
+  // Sincronização R$ ↔ %
+  const descontoPct = subtotal > 0 ? Math.round((desconto / subtotal) * 100) : 0
+  function setDescontoBRL(v) {
+    const n = Math.max(0, Math.min(subtotal, Number(v) || 0))
+    setDesconto(n)
+  }
+  function setDescontoPct(v) {
+    const p = Math.max(0, Math.min(100, Number(v) || 0))
+    setDesconto(Math.round(subtotal * p / 100))
+  }
+
+  // CRUD de itens (só ativo em Orçamento)
+  function addItem() {
+    setItens(prev => [...prev, { tipo: 'servico', nome: '', qtd: 1, valor: 0 }])
+  }
+  function removeItem(i) {
+    setItens(prev => prev.filter((_, idx) => idx !== i))
+  }
+  function updateItem(i, patch) {
+    setItens(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it))
+  }
+
+  function salvarOrcamento() {
+    onUpdateOS(os.numero, { valor: subtotal, desconto })
+    OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i })) // mutação do mock — Módulo 03 substitui
+  }
+
+  function aprovarOrcamento() {
+    salvarOrcamento()
+    const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')
+    if (proxima) onMoverOS(os.numero, proxima.id)
+  }
+  function recusarOrcamento() {
+    salvarOrcamento()
+    const recusado = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'recusado')
+    if (recusado) onMoverOS(os.numero, recusado.id)
+  }
+
+  // ─── Pagamento (forma + confirmar)
+  const [forma, setForma] = useState('pix')
+  const formaCfg = FORMAS.find(f => f.id === forma)
+  const valorBrutoARecebido = formaCfg?.taxa != null
+    ? aPagar - (aPagar * formaCfg.taxa / 100)
+    : aPagar
+
+  function confirmarPagamento() {
+    const novoValorPago = valorPago + aPagar
+    onUpdateOS(os.numero, {
+      valor: total,
+      desconto,
+      valor_pago: novoValorPago,
+      pago: 'total',
+      forma_pagamento: forma,
+    })
+    OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i }))
+    const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
+    if (concluido) onMoverOS(os.numero, concluido.id)
+  }
+
+  return (
+    <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Cabeçalho da aba */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <i className="ti ti-receipt" style={{ fontSize: 17, color: isOrcamento ? amarelo : azul }} aria-hidden="true" />
+        <span style={{
+          fontSize: 11,
+          color: isOrcamento ? amarelo : T.textMuted,
+          fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.4px',
+        }}>
+          Orçamento da OS
+          {isOrcamento && <span style={{ marginLeft: 6, fontSize: 10, color: T.textMuted, fontWeight: 600 }}>· edição liberada</span>}
+        </span>
+      </div>
+
+      {/* Lista de itens */}
+      <div className="idemaq-card" style={{
+        background: T.cardAlt, border: `1px solid ${T.border}`,
+        borderRadius: 9, padding: 0, overflow: 'hidden',
+      }}>
+        {itens.length === 0 ? (
+          <div style={{ padding: '18px 14px', textAlign: 'center', fontSize: 12, color: T.textMuted }}>
+            Sem itens — adicione abaixo
+          </div>
+        ) : itens.map((it, i) => (
+          <ItemLinha
+            key={i} item={it} T={T} dark={dark}
+            editavel={isOrcamento}
+            onChange={(patch) => updateItem(i, patch)}
+            onRemove={() => removeItem(i)}
+            primeiro={i === 0}
+          />
+        ))}
+        {isOrcamento && (
+          <button
+            onClick={addItem}
+            style={{
+              width: '100%', padding: '10px 12px',
+              background: 'transparent', color: cor(P.blue, P.blueDark),
+              border: 'none', borderTop: `1px dashed ${T.border}`,
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
+            adicionar item
+          </button>
+        )}
+      </div>
+
+      {/* Desconto (só em Orçamento) */}
+      {isOrcamento && subtotal > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <CampoDesconto T={T} label="Desconto R$" prefix="R$" valor={desconto} onChange={setDescontoBRL} />
+          <CampoDesconto T={T} label="Desconto %" suffix="%" valor={descontoPct} onChange={setDescontoPct} />
+        </div>
+      )}
+
+      {/* Bloco TOTAL */}
+      <div style={{
+        background: cor('#0d2035', '#e6f1fb'),
+        border: `1px solid ${azul}55`,
+        borderRadius: 9, padding: '12px 14px',
+      }}>
+        <LinhaTotal T={T} label="Subtotal" valor={fmtBRL(subtotal, { fr: true })} />
+        {desconto > 0 && (
+          <LinhaTotal T={T} label="Desconto" valor={`− ${fmtBRL(desconto, { fr: true })}`} cor={corEtapa('green', dark)} />
+        )}
+        <div style={{ height: 1, background: T.border, margin: '8px 0' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px' }}>Total</span>
+          <span style={{ fontSize: 22, fontWeight: 700, color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+            {fmtBRL(total, { fr: true })}
+          </span>
+        </div>
+      </div>
+
+      {/* Status de pagamento (visível quando há valor_pago) */}
+      {(pagoTotal || pagoParcial || valorPago > 0) && (
+        <div style={{
+          background: pagoTotal ? cor('#0f2a15', '#e8f5ec')
+                     : pagoParcial ? cor('#2a2000', '#fdf6dc')
+                     : T.cardAlt,
+          border: `1px solid ${pagoTotal ? verde + '55' : pagoParcial ? amarelo + '55' : T.border}`,
+          borderRadius: 8, padding: '10px 12px',
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontSize: 12, color: T.textSecondary,
+        }}>
+          <i className={`ti ${pagoTotal ? 'ti-circle-check' : pagoParcial ? 'ti-circle-half' : 'ti-circle-off'}`}
+             style={{ fontSize: 16, color: pagoTotal ? verde : pagoParcial ? amarelo : T.textMuted }} aria-hidden="true" />
+          <span style={{ flex: 1 }}>
+            {pagoTotal && <strong style={{ color: verde }}>Pago R$ {valorPago.toLocaleString('pt-BR')} via {os.forma_pagamento || 'não informado'}</strong>}
+            {pagoParcial && !pagoTotal && <strong style={{ color: amarelo }}>Parcial · R$ {valorPago.toLocaleString('pt-BR')} de R$ {total.toLocaleString('pt-BR')}</strong>}
+          </span>
+        </div>
+      )}
+
+      {/* Aprovar / Recusar (só em Orçamento) */}
+      {isOrcamento && (
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
+          <button
+            onClick={aprovarOrcamento}
+            style={{
+              padding: '12px 16px', borderRadius: 8, border: 'none',
+              background: verde, color: '#fff',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+            <i className="ti ti-check" style={{ fontSize: 17 }} aria-hidden="true" />
+            Aprovar orçamento · ir pra oficina
+          </button>
+          <button
+            onClick={recusarOrcamento}
+            style={{
+              padding: '12px 14px', borderRadius: 8,
+              border: `1px solid ${vermelho}55`,
+              background: cor('#2a1515', '#fde8e8'),
+              color: vermelho,
+              fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+            <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
+            Recusar
+          </button>
+        </div>
+      )}
+
+      {/* Forma de pagamento (só em Pagamento etapa) */}
+      {isPagamento && aPagar > 0 && (
+        <>
+          <Separador T={T} cor={amarelo}>RECEBER PAGAMENTO</Separador>
+
+          <div style={{
+            background: dark ? 'rgba(255,217,102,0.06)' : 'rgba(255,217,102,0.12)',
+            border: `1.5px solid ${amarelo}66`,
+            borderRadius: 10, padding: '14px 16px',
+            display: 'flex', flexDirection: 'column', gap: 12,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <i className="ti ti-cash" style={{ fontSize: 18, color: amarelo }} aria-hidden="true" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>Forma de pagamento</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+              {FORMAS.map(f => {
+                const ativo = forma === f.id
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => !f.disabled && setForma(f.id)}
+                    disabled={f.disabled}
+                    title={f.disabled ? 'Em breve no Módulo 03' : ''}
+                    style={{
+                      padding: '9px 11px', borderRadius: 7,
+                      border: `1.5px solid ${ativo ? amarelo : T.border}`,
+                      background: ativo ? cor('#2a2000', '#fdf6dc') : 'transparent',
+                      cursor: f.disabled ? 'not-allowed' : 'pointer',
+                      opacity: f.disabled ? 0.5 : 1,
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      textAlign: 'left', fontFamily: 'inherit',
+                    }}>
+                    <div style={{
+                      width: 14, height: 14, borderRadius: '50%',
+                      border: `2px solid ${ativo ? amarelo : T.textDim}`,
+                      background: ativo ? amarelo : 'transparent',
+                      flexShrink: 0,
+                    }} />
+                    <i className={`ti ${f.icon}`} style={{ fontSize: 14, color: ativo ? amarelo : T.textMuted }} aria-hidden="true" />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: T.textPrimary }}>{f.label}</div>
+                      {f.taxa != null && (
+                        <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>
+                          taxa {f.taxa.toFixed(2).replace('.', ',')}%
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div style={{
+              background: T.cardAlt, border: `1px solid ${T.border}`,
+              borderRadius: 7, padding: '8px 10px',
+              fontSize: 11, color: T.textMuted,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <i className="ti ti-info-circle" style={{ fontSize: 13, color: amarelo }} aria-hidden="true" />
+              <span>Link InfinitePay cai em D+1. Ton Black tem link de 30 dias — <strong style={{ color: T.textPrimary }}>nunca usar</strong>.</span>
+            </div>
+
+            {formaCfg?.taxa != null && formaCfg.taxa > 0 && (
+              <div style={{ fontSize: 11.5, color: T.textMuted, textAlign: 'center' }}>
+                Após a taxa de {formaCfg.taxa.toFixed(2).replace('.', ',')}%, você recebe ~ <strong style={{ color: T.textPrimary }}>{fmtBRL(valorBrutoARecebido, { fr: true })}</strong>
+              </div>
+            )}
+
+            <button
+              onClick={confirmarPagamento}
+              disabled={formaCfg?.disabled}
+              style={{
+                padding: '14px 16px', borderRadius: 8, border: 'none',
+                background: amarelo, color: '#0a0a0d',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                opacity: formaCfg?.disabled ? 0.5 : 1,
+              }}>
+              <i className="ti ti-check" style={{ fontSize: 17 }} aria-hidden="true" />
+              Confirmar pagamento de {fmtBRL(aPagar, { fr: true })}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Modo leitura (etapas que não são Orçamento nem Pagamento) */}
+      {!isOrcamento && !isPagamento && (
+        <div style={{
+          fontSize: 11, color: T.textMuted, textAlign: 'center',
+          padding: '6px 0',
+        }}>
+          <i className="ti ti-lock-open-off" style={{ fontSize: 12, marginRight: 4 }} aria-hidden="true" />
+          edição liberada apenas nas etapas Orçamento e Pagamento
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── helpers visuais ────────────────────────────────────────────────────────
+function ItemLinha({ item, T, dark, editavel, onChange, onRemove, primeiro }) {
+  const cor = (d, c) => dark ? d : c
+  const icone = item.tipo === 'peca' ? 'ti-package' : item.tipo === 'maquina' ? 'ti-device-washing-machine' : 'ti-tool'
+  const corIcone = item.tipo === 'peca' ? cor(P.yellow, P.yellowDark)
+                  : item.tipo === 'maquina' ? cor(P.green, P.greenDark)
+                  : cor(P.blue, P.blueDark)
+  const subtotal = item.valor * item.qtd
+
+  if (!editavel) {
+    return (
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10,
+        alignItems: 'center',
+        padding: '10px 12px',
+        borderTop: primeiro ? 'none' : `1px solid ${T.border}`,
+      }}>
+        <i className={`ti ${icone}`} style={{ fontSize: 15, color: corIcone }} aria-hidden="true" />
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontSize: 12.5, color: T.textPrimary, fontWeight: 500,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{item.nome}</div>
+          <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 1 }}>
+            ×{item.qtd} · {fmtBRL(item.valor, { fr: true })}
+          </div>
+        </div>
+        <span style={{
+          fontSize: 13, fontWeight: 700, color: cor(P.blue, P.blueDark),
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {fmtBRL(subtotal, { fr: true })}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '90px 1fr 60px 90px auto', gap: 8,
+      alignItems: 'center',
+      padding: '10px 12px',
+      borderTop: primeiro ? 'none' : `1px solid ${T.border}`,
+    }}>
+      <select
+        value={item.tipo}
+        onChange={(e) => onChange({ tipo: e.target.value })}
+        style={{
+          padding: '5px 6px', borderRadius: 5,
+          border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+          fontSize: 10.5, fontFamily: 'inherit',
+          colorScheme: dark ? 'dark' : 'light',
+        }}>
+        <option value="servico">serviço</option>
+        <option value="peca">peça</option>
+        <option value="maquina">máquina</option>
+      </select>
+      <input
+        value={item.nome}
+        onChange={(e) => onChange({ nome: e.target.value })}
+        placeholder="Nome do item"
+        style={inputStyle(T)}
+      />
+      <input
+        type="number" min="1"
+        value={item.qtd}
+        onChange={(e) => onChange({ qtd: Math.max(1, Number(e.target.value) || 1) })}
+        style={{ ...inputStyle(T), textAlign: 'center' }}
+      />
+      <input
+        type="number" min="0" step="0.01"
+        value={item.valor}
+        onChange={(e) => onChange({ valor: Math.max(0, Number(e.target.value) || 0) })}
+        style={{ ...inputStyle(T), textAlign: 'right' }}
+      />
+      <button
+        onClick={onRemove}
+        aria-label="Remover item"
+        style={{
+          padding: '6px 8px', borderRadius: 5,
+          border: 'none', background: 'transparent',
+          color: T.textMuted, cursor: 'pointer',
+        }}>
+        <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
+function CampoDesconto({ T, label, prefix, suffix, valor, onChange }) {
+  return (
+    <div>
+      <label style={{
+        display: 'block', fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+        marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.3px',
+      }}>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        {prefix && <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>{prefix}</span>}
+        <input
+          type="number" min="0"
+          value={valor}
+          onChange={(e) => onChange(e.target.value)}
+          style={{ ...inputStyle(T), flex: 1, textAlign: 'right' }}
+        />
+        {suffix && <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>{suffix}</span>}
+      </div>
+    </div>
+  )
+}
+
+function inputStyle(T) {
+  return {
+    padding: '6px 8px', borderRadius: 5,
+    border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+    fontSize: 11.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+    minWidth: 0,
+  }
+}
+
+function LinhaTotal({ T, label, valor, cor: c }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+      fontSize: 12, color: T.textMuted, marginBottom: 4,
+    }}>
+      <span>{label}</span>
+      <span style={{ fontWeight: 600, color: c || T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+        {valor}
+      </span>
+    </div>
+  )
+}
+
+function Separador({ T, cor, children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '6px 0' }}>
+      <div style={{ flex: 1, height: 1, background: T.border }} />
+      <span style={{
+        fontSize: 10, color: cor, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '.6px',
+      }}>{children}</span>
+      <div style={{ flex: 1, height: 1, background: T.border }} />
+    </div>
+  )
+}

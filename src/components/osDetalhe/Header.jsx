@@ -18,9 +18,9 @@ import {
 import Timeline from './Timeline'
 
 const ABAS = [
-  { id: 'resumo',     label: 'Resumo',     icon: 'ti-info-circle' },
-  { id: 'financeiro', label: 'Financeiro', icon: 'ti-receipt' },
-  { id: 'etapa',      label: 'Etapa',      icon: 'ti-checkup-list' },
+  { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
+  { id: 'resumo',    label: 'Resumo',    icon: 'ti-info-circle' },
+  { id: 'pagamento', label: 'Pagamento', icon: 'ti-cash-banknote' },
 ]
 
 export default function Header({

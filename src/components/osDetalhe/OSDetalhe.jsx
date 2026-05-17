@@ -20,13 +20,17 @@ import Header from './Header'
 import Footer from './Footer'
 import HistoricoPanel from './HistoricoPanel'
 import ResumoTab from './tabs/ResumoTab'
-import FinanceiroTab from './tabs/FinanceiroTab'
+import PagamentoTab from './tabs/PagamentoTab'
 import EtapaTab from './tabs/EtapaTab'
 
 // Aba inicial conforme a etapa atual da OS.
+// Etapa é a aba default — é onde a ação acontece pra etapa corrente.
+// Pagamento aparece como default só na etapa de Pagamento (onde a ação É receber).
+// Concluído/Recusado abrem em Resumo (não tem ação, só contexto).
 function abaInicial(etapa) {
-  if (etapa === 'orcamento' || etapa === 'pagamento') return 'financeiro'
-  return 'resumo'
+  if (etapa === 'pagamento') return 'pagamento'
+  if (etapa === 'concluido' || etapa === 'recusado') return 'resumo'
+  return 'etapa'
 }
 
 export default function OSDetalhe({
@@ -57,10 +61,11 @@ export default function OSDetalhe({
     }
   }, [onClose, showHistorico])
 
-  // Props comuns repassados às abas (PR2/PR3 vão usar mais conforme necessidade).
+  // Props comuns repassados às abas.
   const tabProps = {
     T, dark, os, user, osBase, usuarios, admin,
     onAbrirOS, onToggleAgPeca, onMoverOS, onUpdateOS,
+    setAba, // pra ações poderem redirecionar entre abas (ex: Orçamento → Pagamento)
     mobile,
   }
 
@@ -109,9 +114,9 @@ export default function OSDetalhe({
             flex: 1, overflowY: 'auto',
             background: T.bg,
           }}>
-            {aba === 'resumo'     && <ResumoTab {...tabProps} />}
-            {aba === 'financeiro' && <FinanceiroTab {...tabProps} />}
-            {aba === 'etapa'      && <EtapaTab {...tabProps} />}
+            {aba === 'etapa'     && <EtapaTab {...tabProps} />}
+            {aba === 'resumo'    && <ResumoTab {...tabProps} />}
+            {aba === 'pagamento' && <PagamentoTab {...tabProps} />}
           </div>
 
           <Footer
