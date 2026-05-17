@@ -63,3 +63,14 @@ html.idemaq-theme-claro .idemaq-card.idemaq-card-hover:hover {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
+
+/*
+ * Root do app — altura do viewport com fallback.
+ * 100vh no iOS Safari INCLUI a área da barra de URL mesmo quando ela aparece, o que
+ * empurra o BottomNav abaixo da área visível. 100dvh (dynamic viewport height)
+ * respeita a barra. Browsers antigos ignoram a 2ª declaração e usam 100vh.
+ */
+.idemaq-app-root {
+  height: 100vh;
+  height: 100dvh;
+}

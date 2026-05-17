@@ -53,9 +53,9 @@ export default function AppLayout({
 
   if (isMobile) {
     return (
-      <div className="app-mobile-root" style={{
+      <div className="app-mobile-root idemaq-app-root" style={{
         display: 'flex', flexDirection: 'column',
-        background: T.bg, width: '100%', height: '100vh',
+        background: T.bg, width: '100%',
         fontFamily: 'inherit', overflow: 'hidden',
       }}>
         <TopbarMobile pagina={pagina} dark={dark} toggleTheme={toggleTheme} T={T} />
@@ -68,9 +68,9 @@ export default function AppLayout({
   }
 
   return (
-    <div style={{
+    <div className="idemaq-app-root" style={{
       display: 'flex',
-      background: T.bg, width: '100%', height: '100vh',
+      background: T.bg, width: '100%',
       fontFamily: 'inherit', overflow: 'hidden',
     }}>
       <Sidebar pagina={pagina} setPagina={setPagina} user={user} sair={sair}
