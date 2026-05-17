@@ -116,14 +116,20 @@ function RoutesDesktop({ T, dark, user }) {
 }
 
 function RoutesMobile({ T, dark, user }) {
-  // Mobile usa PullToRefresh embrulhando o conteúdo
+  // Mobile usa PullToRefresh embrulhando o conteúdo.
+  // Telas Clientes/Logistica/Estoque/Financeiro/Relatorios já são responsivas
+  // (não precisam de versão mobile dedicada por enquanto) — usa as mesmas.
   return (
     <PullToRefresh T={T} dark={dark} onRefresh={() => Promise.resolve()}>
       <Routes>
         <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
         <Route path="/os"          element={<OSMobile T={T} dark={dark} user={user} />} />
-        <Route path="/estoque"     element={<EmConstrucao nome="Estoque"    T={T} />} />
-        <Route path="/financeiro"  element={<AdminOnly user={user}><EmConstrucao nome="Financeiro" T={T} /></AdminOnly>} />
+        <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
+        <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
+        <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
+        <Route path="/financeiro"  element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+        <Route path="/relatorios"  element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
+        <Route path="/painel-func" element={<PainelFuncionario T={T} dark={dark} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </PullToRefresh>
