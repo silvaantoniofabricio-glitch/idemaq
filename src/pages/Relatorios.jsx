@@ -13,8 +13,9 @@ import {
   Sparkline, DeltaPill,
   useToast,
 } from '../components/ui'
+import RelatorioPontoDono from '../components/ponto/RelatorioPontoDono'
 
-// === Catálogo dos 6 relatórios ===
+// === Catálogo dos 7 relatórios ===
 const RELATORIOS = [
   { id:'geral',         label:'Geral',           icon:'ti-chart-arcs',        desc:'Visão consolidada do negócio', cor:'blue' },
   { id:'operacional',   label:'OS Operacional',  icon:'ti-clipboard-list',    desc:'Tempos por etapa, gargalos, retrabalho', cor:'blue' },
@@ -22,6 +23,7 @@ const RELATORIOS = [
   { id:'vendas',        label:'Vendas',          icon:'ti-shopping-cart',     desc:'Funil, ticket médio, conversão', cor:'blue' },
   { id:'financeiro',    label:'Financeiro (DRE)', icon:'ti-cash-banknote',    desc:'DRE + análise com IA', cor:'blue', ia:true },
   { id:'funcionarios',  label:'Funcionários',    icon:'ti-users',             desc:'Performance individual + IA', cor:'blue', ia:true },
+  { id:'ponto',         label:'Relógio de Ponto', icon:'ti-clock-pin',        desc:'Equipe, espelhos, mapa, banco de horas', cor:'blue' },
 ]
 
 const PERIODOS = [
@@ -102,6 +104,7 @@ export default function Relatorios({ T, dark }) {
           {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} periodo={periodo} />}
           {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} periodo={periodo} />}
           {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} periodo={periodo} />}
+          {relAtivo === 'ponto'        && <RelatorioPontoDono    T={T} dark={dark} />}
         </>
       )}
     </div>

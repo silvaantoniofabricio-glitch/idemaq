@@ -38,6 +38,7 @@ import Logistica    from './pages/Logistica'
 import Estoque      from './pages/Estoque'
 import Financeiro   from './pages/Financeiro'
 import Relatorios   from './pages/Relatorios'
+import PainelFuncionario from './components/paineis/PainelFuncionario'
 import EmConstrucao from './pages/EmConstrucao'
 
 // Mobile (legacy — futuro: pages/mobile/Painel.jsx, OSMobile.jsx refatoradas)
@@ -90,6 +91,7 @@ function RoutesDesktop({ T, dark, user }) {
       <Route path="/estoque"     element={<Estoque T={T} dark={dark} />} />
       <Route path="/financeiro"  element={<Financeiro T={T} dark={dark} />} />
       <Route path="/relatorios"  element={<Relatorios T={T} dark={dark} />} />
+      <Route path="/painel-func" element={<PainelFuncionario T={T} dark={dark} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
