@@ -7,7 +7,7 @@
 //  4. Timeline compacta
 //  5. 3 abas (Resumo · Financeiro · Etapa)
 
-import React from 'react'
+import React, { useState } from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { corEtapa } from '../../utils/colors'
@@ -15,6 +15,7 @@ import {
   estaPagaTotal, estaPagaParcial,
   calcStatusPrazo, diasPrazo,
 } from '../../utils/osHelpers'
+import { useToast } from '../ui'
 import Timeline from './Timeline'
 
 const ABAS = [
@@ -32,6 +33,11 @@ export default function Header({
   const cor = (d, c) => dark ? d : c
   const config = TIPOS_OS[os.tipo]
   const tipoCor = corEtapa(config.cor, dark)
+  const notify = useToast()
+
+  function avisoEdicaoEmBreve(o) {
+    notify('info', `Edição de ${o} em breve — uso direto na ficha por enquanto`)
+  }
 
   const isRecusado = os.etapa === 'recusado'
   const status = calcStatusPrazo(os.prazo, os.etapa)
@@ -159,32 +165,35 @@ export default function Header({
         </div>
       </div>
 
-      {/* Linha 2 — Cliente em destaque */}
+      {/* Bloco Cliente + Equipamento — SEMPRE visível, fora das abas (texto solto) */}
       <div style={{
-        padding: '0 18px 4px',
-        fontSize: 16, fontWeight: 700, color: T.textPrimary,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{os.cliente || '— sem cliente —'}</div>
-
-      {/* Linha 3 — Equipamento + defeito (curto) */}
-      <div style={{
-        padding: '0 18px 10px',
-        fontSize: 11.5, color: T.textMuted,
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        padding: '14px 20px 4px',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 24,
       }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <i className="ti ti-device-washing-machine" style={{ fontSize: 12 }} aria-hidden="true" />
-          {[os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || '—'}
-        </span>
-        {os.defeito && (
-          <>
-            <span style={{ opacity: 0.5 }}>•</span>
-            <span style={{
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              maxWidth: 360,
-            }}>{os.defeito}</span>
-          </>
-        )}
+        <BlocoInfoTopo
+          T={T} dark={dark}
+          icon="ti-user"
+          label="Cliente"
+          principal={os.cliente || '— sem cliente —'}
+          linhas={[
+            { icon: 'ti-phone',   text: os.fone || '—' },
+            { icon: 'ti-map-pin', text: os.endereco || '—' },
+          ]}
+          onClick={() => avisoEdicaoEmBreve('cliente')}
+        />
+        <BlocoInfoTopo
+          T={T} dark={dark}
+          icon="ti-device-washing-machine"
+          label="Equipamento"
+          principal={[os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || '— sem equipamento —'}
+          linhas={[
+            { icon: 'ti-id',  text: os.serie ? `Nº série ${os.serie}` : 'sem nº de série' },
+            { icon: 'ti-bug', text: os.defeito || 'sem defeito relatado' },
+          ]}
+          onClick={() => avisoEdicaoEmBreve('equipamento')}
+        />
       </div>
 
       {/* Linha 4 — Timeline (não aparece em recusado) */}
@@ -236,5 +245,74 @@ function Pill({ cor, bg, children }) {
       display: 'inline-flex', alignItems: 'center', gap: 4,
       whiteSpace: 'nowrap',
     }}>{children}</span>
+  )
+}
+
+// Bloco de info no topo do modal — texto solto, sem caixa.
+// Hover: nome destaca em azul + chip "editar" aparece. Click dispara onClick.
+function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
+  const cor = (d, c) => dark ? d : c
+  const azul = cor(P.blue, P.blueDark)
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        cursor: onClick ? 'pointer' : 'default',
+        minWidth: 0,
+        userSelect: 'none',
+      }}
+    >
+      {/* Label uppercase + chip editar (no hover) */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '.4px',
+        marginBottom: 4,
+      }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+        <span>{label}</span>
+        {onClick && (
+          <span style={{
+            opacity: hover ? 1 : 0,
+            transition: 'opacity .12s',
+            marginLeft: 4,
+            fontSize: 10, color: azul, fontWeight: 600,
+            display: 'inline-flex', alignItems: 'center', gap: 2,
+            textTransform: 'none', letterSpacing: 'normal',
+          }}>
+            <i className="ti ti-pencil" style={{ fontSize: 11 }} aria-hidden="true" />
+            editar
+          </span>
+        )}
+      </div>
+
+      {/* Nome / título principal — vira azul no hover */}
+      <div style={{
+        fontSize: 14.5, fontWeight: 700,
+        color: hover && onClick ? azul : T.textPrimary,
+        marginBottom: 4,
+        transition: 'color .12s',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{principal}</div>
+
+      {/* Linhas com ícone + texto */}
+      {linhas.map((l, i) => (
+        <div key={i} style={{
+          fontSize: 12, color: T.textMuted,
+          display: 'flex', alignItems: 'center', gap: 6,
+          marginTop: 2,
+          minWidth: 0,
+        }}>
+          <i className={`ti ${l.icon}`} style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
+          <span style={{
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            minWidth: 0,
+          }}>{l.text}</span>
+        </div>
+      ))}
+    </div>
   )
 }

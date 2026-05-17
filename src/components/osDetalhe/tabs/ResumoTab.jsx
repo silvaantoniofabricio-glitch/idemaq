@@ -2,11 +2,11 @@
 // Aba Resumo — contexto do caso. Banners de garantia/recusada, cards Cliente e
 // Equipamento (clicáveis no hover), mini-cards de prazo, observações.
 
-import React, { useState } from 'react'
+import React from 'react'
 import { P } from '../../../theme'
 import { corEtapa, bgEtapa } from '../../../utils/colors'
 import { dentroGarantia, calcStatusPrazo, diasPrazo } from '../../../utils/osHelpers'
-import { fmtPrazoCurto, fmtDataHora } from '../../../utils/fmt'
+import { fmtPrazoCurto } from '../../../utils/fmt'
 
 export default function ResumoTab({ T, dark, os, osBase, onAbrirOS }) {
   const cor = (d, c) => dark ? d : c
@@ -57,37 +57,7 @@ export default function ResumoTab({ T, dark, os, osBase, onAbrirOS }) {
         />
       )}
 
-      {/* Cards Cliente + Equipamento */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <CardInfo
-          T={T} dark={dark}
-          icon="ti-user"
-          titulo="Cliente"
-          conteudo={
-            <>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: T.textPrimary, marginBottom: 4 }}>
-                {os.cliente || '—'}
-              </div>
-              <Linha T={T} icon="ti-phone" texto={os.fone || '—'} />
-              <Linha T={T} icon="ti-map-pin" texto={os.endereco || '—'} ellipsis />
-            </>
-          }
-        />
-        <CardInfo
-          T={T} dark={dark}
-          icon="ti-device-washing-machine"
-          titulo="Equipamento"
-          conteudo={
-            <>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: T.textPrimary, marginBottom: 4 }}>
-                {[os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || '—'}
-              </div>
-              {os.serie && <Linha T={T} icon="ti-barcode" texto={`Nº série ${os.serie}`} />}
-              {os.defeito && <Linha T={T} icon="ti-bug" texto={os.defeito} ellipsis />}
-            </>
-          }
-        />
-      </div>
+      {/* Cliente e Equipamento agora ficam no Header do modal (sempre visíveis) */}
 
       {/* Mini-cards: aberta em, prazo, dias na OS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -141,63 +111,6 @@ function Banner({ T, dark, cor, bg, icon, titulo, texto, chevron, onClick }) {
         <div style={{ lineHeight: 1.4 }}>{texto}</div>
       </div>
       {chevron && <i className="ti ti-chevron-right" style={{ fontSize: 18, color: T.textDim }} aria-hidden="true" />}
-    </div>
-  )
-}
-
-function CardInfo({ T, dark, icon, titulo, conteudo }) {
-  const [hover, setHover] = useState(false)
-  const cor = (d, c) => dark ? d : c
-  const azul = cor(P.blue, P.blueDark)
-  return (
-    <div
-      className="idemaq-card"
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onClick={() => {
-        if (typeof window !== 'undefined' && window?.alert) {
-          // PR3 vai abrir um form de edição sobreposto — por enquanto avisa.
-        }
-      }}
-      style={{
-        background: T.cardAlt,
-        border: `1px solid ${hover ? azul : T.border}`,
-        borderRadius: 9, padding: '12px 14px',
-        cursor: 'pointer',
-        transition: 'border-color .15s, background .15s',
-        position: 'relative',
-      }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <i className={`ti ${icon}`} style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
-          <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.3px' }}>
-            {titulo}
-          </span>
-        </div>
-        <span style={{
-          fontSize: 10.5, color: azul, fontWeight: 600,
-          opacity: hover ? 1 : 0,
-          transition: 'opacity .15s',
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-        }}>
-          <i className="ti ti-pencil" style={{ fontSize: 12 }} aria-hidden="true" />
-          editar
-        </span>
-      </div>
-      {conteudo}
-    </div>
-  )
-}
-
-function Linha({ T, icon, texto, ellipsis }) {
-  return (
-    <div style={{
-      fontSize: 11.5, color: T.textMuted, marginTop: 3,
-      display: 'flex', alignItems: 'center', gap: 5,
-      ...(ellipsis ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : {}),
-    }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 12, flexShrink: 0 }} aria-hidden="true" />
-      <span style={ellipsis ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : {}}>{texto}</span>
     </div>
   )
 }
