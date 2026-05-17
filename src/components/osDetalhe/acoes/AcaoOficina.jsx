@@ -1,18 +1,27 @@
 // src/components/osDetalhe/acoes/AcaoOficina.jsx
-// Etapa Em oficina — limpeza + manutenção rodam em paralelo.
-// O técnico tem 2 checklists ativos:
-//   - Limpeza: 6 passos típicos (desmontar/lavar/escovar/enxaguar/secar/remontar)
-//   - Manutenção: lista de itens vindos do checklist do Diagnóstico (troca + man)
-// Status (pendente/andamento/concluido) é DERIVADO dos checks marcados,
-// sincronizado em os.limpeza e os.manutencao via onUpdateOS.
+// Etapa Em oficina — limpeza + manutenção em paralelo.
 //
-// Avançar pra Teste final só libera quando ambos concluídos E não há
-// aguardando peça.
+// Estrutura:
+//   Limpeza  : Desmontagem ↔ · Limpeza      · Montagem ↔
+//   Manutenção: Desmontagem ↔ · Serviço (+ checklist do diag) · Montagem ↔
+//
+// Regras:
+//   • Card de Limpeza só ativa se o orçamento tem algum item com "limpeza" no nome
+//   • Card de Manutenção só ativa se o orçamento tem algum item que NÃO é limpeza
+//   • "Desmontagem" e "Montagem" são SINCRONIZADAS entre os dois cards (é o
+//     mesmo ato físico — máquina é uma só). Marcar num lado marca no outro.
+//   • Montagem é BLOQUEADA cruzadamente:
+//     - Pra montar do lado da Limpeza, o Serviço de Manutenção tem que estar
+//       100% concluído (e vice-versa)
+//     - Mensagem: "Aguardando Limpeza" ou "Aguardando Manutenção"
+//   • Avançar pra Teste só libera quando ambos os lados ativos estiverem
+//     concluídos e sem peças pendentes/ag.peça
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS, funcPorId } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
+import { OS_ITENS_MOCK } from '../../../_mocks/os'
 import BlocoAcao from './BlocoAcao'
 
 // === Labels do checklist do diagnóstico (espelha AcaoDiagnostico) ============
@@ -32,25 +41,13 @@ const ITENS_DIAG = {
   suspensao: 'Suspensão', tirantes: 'Tirantes da suspensão', pe_nivelador: 'Pé nivelador',
 }
 
-// Passos padrão da limpeza
-const PASSOS_LIMPEZA = [
-  { id: 'desmontar',  label: 'Desmontar gabinete e cesto', icon: 'ti-screw-loose' },
-  { id: 'lavar',      label: 'Lavar peças com detergente', icon: 'ti-bubble' },
-  { id: 'escovar',    label: 'Escovar incrustações',       icon: 'ti-brush' },
-  { id: 'enxaguar',   label: 'Enxaguar e remover sabão',   icon: 'ti-droplet' },
-  { id: 'secar',      label: 'Secar e inspecionar',        icon: 'ti-wind' },
-  { id: 'remontar',   label: 'Remontar pra teste',         icon: 'ti-tool' },
-]
-
-// Derivação de status a partir dos checks
-function deriveStatus(marcados, total) {
-  if (total === 0) return 'pendente'
-  if (marcados === 0) return 'pendente'
-  if (marcados === total) return 'concluido'
+const STATUS_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', concluido: 'Concluído' }
+function deriveStatus(m, t) {
+  if (t === 0) return 'pendente'
+  if (m === 0) return 'pendente'
+  if (m === t) return 'concluido'
   return 'andamento'
 }
-
-const STATUS_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', concluido: 'Concluído' }
 
 export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onToggleAgPeca }) {
   const cor = (d, c) => dark ? d : c
@@ -59,9 +56,19 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
   const amarelo    = corEtapa('yellow', dark)
   const verde      = corEtapa('green', dark)
   const vermelho   = corEtapa('red', dark)
-  const laranja    = '#ff9800'  // ag. peça — única cor especial fora da paleta padrão
+  const laranja    = '#ff9800'
 
-  // === Diagnóstico (referência) ===
+  // === O QUE TEM NO ORÇAMENTO ===
+  // Limpeza = item com /limpeza/i no nome (Limpeza, Limpeza combinada, etc.)
+  // Manutenção = qualquer outro item (peças, manutenção, mão de obra, taxa…)
+  const itensOrcamento = OS_ITENS_MOCK[os.numero] || []
+  const temLimpeza    = itensOrcamento.some(i => /limpeza/i.test(i.nome))
+  const itensNaoLimp  = itensOrcamento.filter(i => !/limpeza/i.test(i.nome))
+  const temManutencao = itensNaoLimp.length > 0
+  const orcamentoVazio = itensOrcamento.length === 0
+  const ambosTipos = temLimpeza && temManutencao
+
+  // === DIAGNÓSTICO (REFERÊNCIA) — usado como checklist do "Serviço" ===
   const diag = os.diagnostico || {}
   const causa = diag.causa || ''
   const checklistDiag = diag.checklist || {}
@@ -71,79 +78,109 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
       .flatMap(([id, v]) => {
         const label = ITENS_DIAG[id] || id
         const out = []
-        if (v.troca) out.push({ key: id + '-troca', baseId: id, label, tipo: 'troca' })
-        if (v.man)   out.push({ key: id + '-man',   baseId: id, label, tipo: 'man' })
+        if (v.troca) out.push({ key: id + '-troca', label, tipo: 'troca' })
+        if (v.man)   out.push({ key: id + '-man',   label, tipo: 'man' })
         return out
       })
   }, [checklistDiag])
 
-  // === Estado local: checklists de execução ===
-  // Carrega de os.oficina_execucao se já tiver (futuro Supabase) ou inicia vazio.
-  const exec = os.oficina_execucao || {}
-  const [limpezaCheck, setLimpezaCheck] = useState(() => exec.limpeza || {})
-  const [manutCheck,   setManutCheck]   = useState(() => exec.manutencao || {})
-  const [pecasPendentes, setPecasPendentes] = useState(() => exec.pecas_pendentes || {})
-
-  const marcadosLimp = PASSOS_LIMPEZA.filter(p => limpezaCheck[p.id]).length
-  const marcadosMan  = itensDiag.filter(it => manutCheck[it.key]).length
-
-  const statusLimpeza   = deriveStatus(marcadosLimp, PASSOS_LIMPEZA.length)
-  const statusManut     = deriveStatus(marcadosMan,  itensDiag.length)
-
-  // Sincroniza status derivado com a OS sempre que mudar
-  useEffect(() => {
-    if (os.limpeza !== statusLimpeza || os.manutencao !== statusManut) {
-      onUpdateOS?.(os.numero, {
-        limpeza: statusLimpeza,
-        manutencao: statusManut,
-        oficina_execucao: {
-          limpeza: limpezaCheck,
-          manutencao: manutCheck,
-          pecas_pendentes: pecasPendentes,
-        },
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusLimpeza, statusManut])
-
-  // Há itens marcados como "aguardando peça"
-  const algumaPecaPendente = Object.values(pecasPendentes).some(Boolean)
-  const ambosConcluidos = statusLimpeza === 'concluido' && statusManut === 'concluido'
-  const podeAvancar = ambosConcluidos && !os.aguardando_peca && !algumaPecaPendente
-
-  // Quem fez o diagnóstico
   const regDiag = [...(os.historico || [])].reverse().find(h => h.etapa === 'diagnostico')
   const funcDiag = regDiag && funcPorId(regDiag.funcionario)
 
-  function toggleLimp(id) {
-    setLimpezaCheck(prev => ({ ...prev, [id]: !prev[id] }))
+  // === ESTADO ===
+  // 3 etapas sincronizáveis: desmontagem e montagem são compartilhadas.
+  // limpeza e servico são individuais.
+  const exec = os.oficina_execucao || {}
+  const [desmontagem, setDesmontagem] = useState(() => !!exec.desmontagem)
+  const [montagem, setMontagem]       = useState(() => !!exec.montagem)
+  const [limpezaFeita, setLimpezaFeita] = useState(() => !!exec.limpeza)
+  const [servicoCheck, setServicoCheck] = useState(() => exec.servico || {})
+  const [pecasPendentes, setPecasPendentes] = useState(() => exec.pecas_pendentes || {})
+
+  // Quando NÃO há itens no diagnóstico, o "Serviço" da manutenção é um único check.
+  const [servicoSimples, setServicoSimples] = useState(() => !!exec.servico_simples)
+  const usaChecklistServico = itensDiag.length > 0
+
+  const marcadosServico = itensDiag.filter(it => servicoCheck[it.key]).length
+  const servicoCompleto = temManutencao && (
+    usaChecklistServico
+      ? marcadosServico === itensDiag.length
+      : servicoSimples
+  )
+
+  // === STATUS DERIVADO POR LADO ===
+  // Limpeza: 3 etapas (desmontagem, limpeza, montagem)
+  // Manutenção: 3 etapas (desmontagem, serviço, montagem)
+  const limpezaMarcados = (temLimpeza ? 0 : 0)
+    + (temLimpeza && desmontagem ? 1 : 0)
+    + (temLimpeza && limpezaFeita ? 1 : 0)
+    + (temLimpeza && montagem ? 1 : 0)
+  const limpezaTotal = temLimpeza ? 3 : 0
+  const statusLimpeza = deriveStatus(limpezaMarcados, limpezaTotal)
+
+  const manutMarcados = (temManutencao && desmontagem ? 1 : 0)
+    + (servicoCompleto ? 1 : 0)
+    + (temManutencao && montagem ? 1 : 0)
+  const manutTotal = temManutencao ? 3 : 0
+  const statusManut = deriveStatus(manutMarcados, manutTotal)
+
+  // === SINCRONIZA COM A OS ===
+  useEffect(() => {
+    onUpdateOS?.(os.numero, {
+      limpeza: temLimpeza ? statusLimpeza : null,
+      manutencao: temManutencao ? statusManut : null,
+      oficina_execucao: {
+        desmontagem, montagem, limpeza: limpezaFeita,
+        servico: servicoCheck,
+        servico_simples: servicoSimples,
+        pecas_pendentes: pecasPendentes,
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusLimpeza, statusManut, desmontagem, montagem, limpezaFeita, servicoSimples,
+      JSON.stringify(servicoCheck), JSON.stringify(pecasPendentes)])
+
+  // === REGRAS DE BLOQUEIO DA MONTAGEM ===
+  // Montagem só libera se O OUTRO LADO estiver com o serviço pronto.
+  // Se o lado oposto não existe (ex: só limpeza), libera direto.
+  const motivoBloqMontagem = (() => {
+    if (!ambosTipos) return null              // só um lado → sem bloqueio cruzado
+    if (!limpezaFeita) return 'Aguardando Limpeza'
+    if (!servicoCompleto) return 'Aguardando Manutenção'
+    return null
+  })()
+
+  // Bloqueio individual também: precisa ter feito a desmontagem antes
+  const podeMontar = desmontagem && !motivoBloqMontagem
+
+  function tentarToggleMontagem() {
+    if (!desmontagem) {
+      alert('Faça a desmontagem antes da montagem.')
+      return
+    }
+    if (motivoBloqMontagem) {
+      alert(`${motivoBloqMontagem} — não dá pra montar antes do outro lado terminar.`)
+      return
+    }
+    setMontagem(v => !v)
   }
-  function toggleMan(key) {
-    setManutCheck(prev => ({ ...prev, [key]: !prev[key] }))
+
+  function toggleServicoItem(key) {
+    setServicoCheck(prev => ({ ...prev, [key]: !prev[key] }))
   }
   function togglePecaPendente(key) {
     setPecasPendentes(prev => {
       const novo = { ...prev, [key]: !prev[key] }
-      // Se marcar como pendente, desmarca check
-      if (novo[key]) {
-        setManutCheck(p => ({ ...p, [key]: false }))
-      }
+      if (novo[key]) setServicoCheck(p => ({ ...p, [key]: false }))
       return novo
     })
   }
-  function marcarTodosLimp() {
-    setLimpezaCheck(Object.fromEntries(PASSOS_LIMPEZA.map(p => [p.id, true])))
-  }
-  function limparTodosLimp() {
-    setLimpezaCheck({})
-  }
-  function marcarTodosMan() {
-    setManutCheck(Object.fromEntries(itensDiag.map(it => [it.key, true])))
-    setPecasPendentes({})
-  }
-  function limparTodosMan() {
-    setManutCheck({})
-  }
+
+  const algumaPecaPendente = Object.values(pecasPendentes).some(Boolean)
+  const ladosOk =
+    (!temLimpeza || statusLimpeza === 'concluido') &&
+    (!temManutencao || statusManut === 'concluido')
+  const podeAvancar = ladosOk && !os.aguardando_peca && !algumaPecaPendente && !orcamentoVazio
 
   function avancarEtapa() {
     if (!podeAvancar) return
@@ -156,10 +193,24 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
     <BlocoAcao
       T={T} dark={dark} icon="ti-tool"
       etapa="Em oficina"
-      descricao="Limpeza e manutenção rodam em paralelo. Marca cada passo conforme executa — status atualiza sozinho."
+      descricao="Desmontagem e Montagem são compartilhadas — marcar num lado marca no outro."
     >
+      {/* === AVISO: orçamento vazio === */}
+      {orcamentoVazio && (
+        <div style={{
+          padding: '12px 14px', borderRadius: 8,
+          background: cor('#2a1515', '#fde8e8'),
+          border: `1px solid ${vermelho}55`,
+          color: vermelho, fontSize: 12, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 16 }} aria-hidden="true" />
+          Orçamento vazio — volte à etapa Orçamento e adicione itens antes de executar.
+        </div>
+      )}
+
       {/* === RESUMO DO DIAGNÓSTICO === */}
-      {(causa || itensDiag.length > 0) && (
+      {!orcamentoVazio && (causa || itensDiag.length > 0) && (
         <div style={{
           padding: '10px 12px',
           background: cor('rgba(184,204,228,0.06)', 'rgba(26,106,170,0.06)'),
@@ -186,116 +237,138 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
               </span>
             )}
           </div>
-          {causa && (
-            <div style={{ marginBottom: itensDiag.length > 0 ? 4 : 0 }}>
-              <strong style={{ color: T.textMuted, fontSize: 11 }}>Causa:</strong> {causa}
-            </div>
-          )}
+          {causa && <div style={{ marginBottom: itensDiag.length > 0 ? 4 : 0 }}>
+            <strong style={{ color: T.textMuted, fontSize: 11 }}>Causa:</strong> {causa}
+          </div>}
           {itensDiag.length > 0 && (
             <div style={{ fontSize: 11, color: T.textMuted }}>
-              {itensDiag.filter(i => i.tipo === 'troca').length} {' '}
+              {itensDiag.filter(i => i.tipo === 'troca').length}{' '}
               <i className="ti ti-replace" style={{ fontSize: 11, color: azul, verticalAlign: 'middle' }} aria-hidden="true" />
               {' '}trocas · {itensDiag.filter(i => i.tipo === 'man').length}{' '}
               <i className="ti ti-wrench" style={{ fontSize: 11, color: amarelo, verticalAlign: 'middle' }} aria-hidden="true" />
-              {' '}manutenções marcadas
+              {' '}manutenções
             </div>
           )}
         </div>
       )}
 
-      {/* === CHECKLIST 2 COLUNAS === */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {/* Limpeza */}
-        <CardChecklist
-          T={T} dark={dark} cor={cor}
-          icon="ti-bubble" titulo="Limpeza"
-          status={statusLimpeza}
-          marcados={marcadosLimp} total={PASSOS_LIMPEZA.length}
-          onMarcarTodos={marcarTodosLimp}
-          onLimpar={limparTodosLimp}
-        >
-          {PASSOS_LIMPEZA.map(p => {
-            const ok = !!limpezaCheck[p.id]
-            return (
-              <CheckItem key={p.id} T={T} dark={dark} cor={cor}
-                ok={ok} icon={p.icon} label={p.label}
-                onToggle={() => toggleLimp(p.id)}
-                corAtivo={verde}
-              />
-            )
-          })}
-        </CardChecklist>
+      {/* === CARDS LIMPEZA + MANUTENÇÃO === */}
+      {!orcamentoVazio && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
 
-        {/* Manutenção */}
-        <CardChecklist
-          T={T} dark={dark} cor={cor}
-          icon="ti-tools" titulo="Manutenção"
-          status={statusManut}
-          marcados={marcadosMan} total={itensDiag.length}
-          onMarcarTodos={itensDiag.length > 0 ? marcarTodosMan : null}
-          onLimpar={itensDiag.length > 0 ? limparTodosMan : null}
-        >
-          {itensDiag.length === 0 ? (
-            <div style={{
-              padding: '14px 10px', textAlign: 'center',
-              fontSize: 11, color: T.textMuted, fontStyle: 'italic',
-            }}>
-              Nenhum item marcado no diagnóstico.<br/>
-              Volte e complete o checklist técnico.
-            </div>
-          ) : itensDiag.map(it => {
-            const ok = !!manutCheck[it.key]
-            const pendente = !!pecasPendentes[it.key]
-            return (
-              <CheckItemManut key={it.key}
-                T={T} dark={dark} cor={cor}
-                item={it}
-                ok={ok} pendente={pendente}
-                onToggle={() => toggleMan(it.key)}
-                onTogglePendente={() => togglePecaPendente(it.key)}
-                corAtivo={verde}
-                corPendente={laranja}
+          {/* === LIMPEZA === */}
+          <CardLado T={T} dark={dark} cor={cor}
+            ativo={temLimpeza}
+            icon="ti-bubble" titulo="Limpeza"
+            status={statusLimpeza}
+            marcados={limpezaMarcados} total={limpezaTotal}
+            desativoLabel="Sem limpeza neste orçamento"
+          >
+            <CheckEtapa T={T} dark={dark} cor={cor}
+              ok={desmontagem} icon="ti-screw-loose" label="Desmontagem"
+              sincronizado={ambosTipos}
+              onToggle={() => setDesmontagem(v => !v)}
+              corAtivo={verde}
+            />
+            <CheckEtapa T={T} dark={dark} cor={cor}
+              ok={limpezaFeita} icon="ti-bubble" label="Limpeza"
+              onToggle={() => setLimpezaFeita(v => !v)}
+              corAtivo={verde}
+            />
+            <CheckEtapa T={T} dark={dark} cor={cor}
+              ok={montagem} icon="ti-tool" label="Montagem"
+              sincronizado={ambosTipos}
+              bloqueado={!desmontagem || !!motivoBloqMontagem}
+              motivoBloq={!desmontagem ? 'Faça a desmontagem primeiro' : motivoBloqMontagem}
+              onToggle={tentarToggleMontagem}
+              corAtivo={verde}
+            />
+          </CardLado>
+
+          {/* === MANUTENÇÃO === */}
+          <CardLado T={T} dark={dark} cor={cor}
+            ativo={temManutencao}
+            icon="ti-tools" titulo="Manutenção"
+            status={statusManut}
+            marcados={manutMarcados} total={manutTotal}
+            desativoLabel="Sem peças ou manutenção neste orçamento"
+          >
+            <CheckEtapa T={T} dark={dark} cor={cor}
+              ok={desmontagem} icon="ti-screw-loose" label="Desmontagem"
+              sincronizado={ambosTipos}
+              onToggle={() => setDesmontagem(v => !v)}
+              corAtivo={verde}
+            />
+
+            {/* Serviço — com checklist do diagnóstico OU um único check */}
+            {usaChecklistServico ? (
+              <CheckServicoChecklist T={T} dark={dark} cor={cor}
+                itens={itensDiag}
+                servicoCheck={servicoCheck}
+                pecasPendentes={pecasPendentes}
+                onToggleItem={toggleServicoItem}
+                onTogglePendente={togglePecaPendente}
+                corAtivo={verde} corPendente={laranja}
                 azul={azul} amarelo={amarelo}
+                marcados={marcadosServico} total={itensDiag.length}
               />
-            )
-          })}
-        </CardChecklist>
-      </div>
+            ) : (
+              <CheckEtapa T={T} dark={dark} cor={cor}
+                ok={servicoSimples} icon="ti-tools" label="Serviço executado"
+                onToggle={() => setServicoSimples(v => !v)}
+                corAtivo={verde}
+              />
+            )}
+
+            <CheckEtapa T={T} dark={dark} cor={cor}
+              ok={montagem} icon="ti-tool" label="Montagem"
+              sincronizado={ambosTipos}
+              bloqueado={!desmontagem || !!motivoBloqMontagem}
+              motivoBloq={!desmontagem ? 'Faça a desmontagem primeiro' : motivoBloqMontagem}
+              onToggle={tentarToggleMontagem}
+              corAtivo={verde}
+            />
+          </CardLado>
+        </div>
+      )}
 
       {/* === STATUS COMBINADO === */}
-      <div style={{
-        padding: '10px 12px',
-        background: ambosConcluidos
-          ? cor('#0f2a15', '#e8f5ec')
-          : T.cardAlt,
-        border: `1px solid ${(ambosConcluidos ? verde : T.border)}55`,
-        borderRadius: 8,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-        fontSize: 12,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: T.textSecondary }}>
-            <i className="ti ti-bubble" style={{ fontSize: 13, color: verde }} aria-hidden="true" />
-            Limpeza: <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{marcadosLimp}/{PASSOS_LIMPEZA.length}</strong>
-          </span>
-          <span style={{ color: T.border }}>·</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: T.textSecondary }}>
-            <i className="ti ti-tools" style={{ fontSize: 13, color: amarelo }} aria-hidden="true" />
-            Manutenção: <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{marcadosMan}/{itensDiag.length || 0}</strong>
-          </span>
+      {!orcamentoVazio && (
+        <div style={{
+          padding: '10px 12px',
+          background: ladosOk ? cor('#0f2a15', '#e8f5ec') : T.cardAlt,
+          border: `1px solid ${(ladosOk ? verde : T.border)}55`,
+          borderRadius: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          fontSize: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {temLimpeza && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: T.textSecondary }}>
+                <i className="ti ti-bubble" style={{ fontSize: 13, color: verde }} aria-hidden="true" />
+                Limpeza: <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{limpezaMarcados}/{limpezaTotal}</strong>
+              </span>
+            )}
+            {temLimpeza && temManutencao && <span style={{ color: T.border }}>·</span>}
+            {temManutencao && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: T.textSecondary }}>
+                <i className="ti ti-tools" style={{ fontSize: 13, color: amarelo }} aria-hidden="true" />
+                Manutenção: <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{manutMarcados}/{manutTotal}</strong>
+              </span>
+            )}
+          </div>
+          {ladosOk && (
+            <span style={{ color: verde, fontWeight: 700, fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <i className="ti ti-circle-check" style={{ fontSize: 14 }} aria-hidden="true" />
+              Pronto pra teste
+            </span>
+          )}
         </div>
-        {ambosConcluidos && (
-          <span style={{ color: verde, fontWeight: 700, fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <i className="ti ti-circle-check" style={{ fontSize: 14 }} aria-hidden="true" />
-            Pronto pra teste
-          </span>
-        )}
-      </div>
+      )}
 
       {/* === AGUARDANDO PEÇA === */}
-      <button
-        onClick={onToggleAgPeca}
-        style={{
+      {!orcamentoVazio && (
+        <button onClick={onToggleAgPeca} style={{
           padding: '10px 12px', borderRadius: 7,
           border: `1px solid ${os.aguardando_peca ? laranja : T.border}`,
           background: os.aguardando_peca ? cor('#3a2200', '#fff4e0') : T.bg,
@@ -304,23 +377,23 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
           cursor: 'pointer', fontFamily: 'inherit',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-          <i className={`ti ${os.aguardando_peca ? 'ti-package' : 'ti-package-off'}`}
-             style={{ fontSize: 15 }} aria-hidden="true" />
-          {os.aguardando_peca ? 'OS marcada como aguardando peça' : 'Marcar OS como aguardando peça'}
-        </span>
-        <span style={{ fontSize: 10.5, color: os.aguardando_peca ? laranja : T.textDim, fontWeight: 500 }}>
-          {os.aguardando_peca ? 'clique pra desmarcar' : 'opcional'}
-        </span>
-      </button>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <i className={`ti ${os.aguardando_peca ? 'ti-package' : 'ti-package-off'}`}
+               style={{ fontSize: 15 }} aria-hidden="true" />
+            {os.aguardando_peca ? 'OS marcada como aguardando peça' : 'Marcar OS como aguardando peça'}
+          </span>
+          <span style={{ fontSize: 10.5, color: os.aguardando_peca ? laranja : T.textDim, fontWeight: 500 }}>
+            {os.aguardando_peca ? 'clique pra desmarcar' : 'opcional'}
+          </span>
+        </button>
+      )}
 
       {algumaPecaPendente && !os.aguardando_peca && (
         <div style={{
           padding: '8px 12px',
           background: cor('#3a2200', '#fff4e0'),
           border: `1px dashed ${laranja}66`,
-          borderRadius: 7,
-          fontSize: 11.5, color: laranja,
+          borderRadius: 7, fontSize: 11.5, color: laranja,
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} aria-hidden="true" />
@@ -331,62 +404,74 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
       )}
 
       {/* === AVANÇAR === */}
-      <button
-        onClick={avancarEtapa}
-        disabled={!podeAvancar}
-        title={
-          podeAvancar ? 'Avança pra Teste final'
-          : !ambosConcluidos ? 'Conclua Limpeza e Manutenção antes'
-          : 'Desmarque "aguardando peça" antes de avançar'
-        }
-        style={{
-          padding: '12px 16px', borderRadius: 8, border: 'none',
-          background: podeAvancar
-            ? `linear-gradient(135deg, ${amarelo}, ${amarelo}dd)`
-            : T.cardAlt,
-          color: podeAvancar ? '#0a0a0d' : T.textDim,
-          fontSize: 13, fontWeight: 700,
-          cursor: podeAvancar ? 'pointer' : 'not-allowed',
-          opacity: podeAvancar ? 1 : 0.55,
-          fontFamily: 'inherit',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-          boxShadow: podeAvancar ? `0 2px 8px ${amarelo}44` : 'none',
-        }}>
-        {podeAvancar ? (
-          <>
-            <i className="ti ti-arrow-right" style={{ fontSize: 17 }} aria-hidden="true" />
-            Concluir oficina · ir pra Teste final
-          </>
-        ) : (
-          <>
-            <i className="ti ti-lock" style={{ fontSize: 15 }} aria-hidden="true" />
-            {!ambosConcluidos
-              ? 'Conclua Limpeza e Manutenção'
-              : 'Resolva peças pendentes'}
-          </>
-        )}
-      </button>
+      {!orcamentoVazio && (
+        <button onClick={avancarEtapa} disabled={!podeAvancar}
+          title={
+            podeAvancar ? 'Avança pra Teste final'
+            : !ladosOk ? 'Conclua os dois lados primeiro'
+            : os.aguardando_peca ? 'Desmarque "aguardando peça" antes'
+            : 'Resolva peças pendentes'
+          }
+          style={{
+            padding: '12px 16px', borderRadius: 8, border: 'none',
+            background: podeAvancar ? `linear-gradient(135deg, ${amarelo}, ${amarelo}dd)` : T.cardAlt,
+            color: podeAvancar ? '#0a0a0d' : T.textDim,
+            fontSize: 13, fontWeight: 700,
+            cursor: podeAvancar ? 'pointer' : 'not-allowed',
+            opacity: podeAvancar ? 1 : 0.55,
+            fontFamily: 'inherit',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            boxShadow: podeAvancar ? `0 2px 8px ${amarelo}44` : 'none',
+          }}>
+          {podeAvancar
+            ? <><i className="ti ti-arrow-right" style={{ fontSize: 17 }} aria-hidden="true" />Concluir oficina · ir pra Teste final</>
+            : <><i className="ti ti-lock" style={{ fontSize: 15 }} aria-hidden="true" />
+                {!ladosOk
+                  ? (motivoBloqMontagem || 'Conclua os dois lados primeiro')
+                  : os.aguardando_peca ? 'Desmarque "aguardando peça"'
+                  : 'Resolva peças pendentes'}
+              </>
+          }
+        </button>
+      )}
     </BlocoAcao>
   )
 }
 
-// ─── Card que contém um checklist (Limpeza ou Manutenção) ───────────────────
-function CardChecklist({ T, dark, cor, icon, titulo, status, marcados, total, onMarcarTodos, onLimpar, children }) {
+// ─── Card de um lado (Limpeza ou Manutenção) ────────────────────────────────
+function CardLado({ T, dark, cor, ativo, icon, titulo, status, marcados, total, desativoLabel, children }) {
   const verde   = corEtapa('green', dark)
   const amarelo = corEtapa('yellow', dark)
   const corStatus = status === 'concluido' ? verde : status === 'andamento' ? amarelo : T.textMuted
-  const bgStatus  = status === 'concluido' ? cor('#0f2a15', '#e8f5ec')
+  const bgStatus  = !ativo ? cor('rgba(255,255,255,0.02)', 'rgba(0,0,0,0.02)')
+                  : status === 'concluido' ? cor('#0f2a15', '#e8f5ec')
                   : status === 'andamento' ? cor('#2a2000', '#fdf6dc')
                   : T.cardAlt
+  const borderColor = !ativo ? T.border : corStatus + '44'
+
+  if (!ativo) {
+    return (
+      <div style={{
+        background: bgStatus, border: `1px dashed ${borderColor}`,
+        borderRadius: 9, padding: '14px 14px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        textAlign: 'center', gap: 8, minHeight: 180,
+      }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 24, color: T.textDim, opacity: 0.5 }} aria-hidden="true" />
+        <div style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>{titulo}</div>
+        <div style={{ fontSize: 11, color: T.textDim, fontStyle: 'italic', lineHeight: 1.4 }}>
+          {desativoLabel}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{
-      background: bgStatus,
-      border: `1px solid ${corStatus}44`,
+      background: bgStatus, border: `1px solid ${borderColor}`,
       borderRadius: 9, padding: '12px 12px',
       display: 'flex', flexDirection: 'column', gap: 8,
     }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           <i className={`ti ${icon}`} style={{ fontSize: 16, color: corStatus, flexShrink: 0 }} aria-hidden="true" />
@@ -396,66 +481,54 @@ function CardChecklist({ T, dark, cor, icon, titulo, status, marcados, total, on
           fontSize: 10, color: corStatus, fontWeight: 700,
           padding: '2px 7px', borderRadius: 10,
           background: corStatus + '22', border: `1px solid ${corStatus}33`,
-          fontVariantNumeric: 'tabular-nums',
-          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
         }}>
-          {marcados}/{total || 0}
+          {marcados}/{total}
         </span>
       </div>
-
-      {/* Status label */}
       <div style={{
         fontSize: 10, color: corStatus, fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: '.4px',
       }}>
         {STATUS_LABEL[status]}
       </div>
-
-      {/* Lista de itens */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {children}
       </div>
-
-      {/* Atalhos */}
-      {(onMarcarTodos || onLimpar) && (
-        <div style={{ display: 'flex', gap: 5, marginTop: 2 }}>
-          {onMarcarTodos && (
-            <button onClick={onMarcarTodos} style={miniBtn(T, dark)}>
-              <i className="ti ti-checks" style={{ fontSize: 11 }} aria-hidden="true" />
-              Marcar todos
-            </button>
-          )}
-          {onLimpar && marcados > 0 && (
-            <button onClick={onLimpar} style={miniBtn(T, dark)}>
-              <i className="ti ti-rotate" style={{ fontSize: 11 }} aria-hidden="true" />
-              Limpar
-            </button>
-          )}
-        </div>
-      )}
     </div>
   )
 }
 
-// ─── Item simples de checklist (Limpeza) ────────────────────────────────────
-function CheckItem({ T, dark, cor, ok, icon, label, onToggle, corAtivo }) {
+// ─── Etapa simples (Desmontagem / Limpeza / Montagem / Serviço simples) ─────
+function CheckEtapa({ T, dark, cor, ok, icon, label, sincronizado, bloqueado, motivoBloq, onToggle, corAtivo }) {
   return (
-    <button onClick={onToggle} style={{
-      display: 'flex', alignItems: 'center', gap: 7,
-      padding: '6px 8px', borderRadius: 6,
-      background: ok ? cor(`${corAtivo}18`, `${corAtivo}12`) : 'transparent',
-      border: `1px solid ${ok ? corAtivo + '33' : 'transparent'}`,
-      color: ok ? T.textPrimary : T.textSecondary,
-      fontSize: 11.5, fontWeight: ok ? 600 : 500,
-      cursor: 'pointer', fontFamily: 'inherit',
-      textAlign: 'left', width: '100%',
-      transition: 'all .12s',
-    }}
-      onMouseEnter={e => { if (!ok) e.currentTarget.style.background = T.bg }}
-      onMouseLeave={e => { if (!ok) e.currentTarget.style.background = 'transparent' }}
-    >
-      <i className={`ti ${ok ? 'ti-square-check-filled' : 'ti-square'}`}
-         style={{ fontSize: 16, color: ok ? corAtivo : T.textDim, flexShrink: 0 }} aria-hidden="true" />
+    <button onClick={onToggle}
+      disabled={bloqueado && !ok}
+      title={bloqueado && !ok ? motivoBloq : ''}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 7,
+        padding: '7px 8px', borderRadius: 6,
+        background: bloqueado && !ok
+          ? cor('rgba(255,255,255,0.02)', 'rgba(0,0,0,0.025)')
+          : ok ? cor(`${corAtivo}18`, `${corAtivo}12`) : 'transparent',
+        border: `1px solid ${ok ? corAtivo + '33' : bloqueado && !ok ? T.border : 'transparent'}`,
+        color: bloqueado && !ok ? T.textDim
+              : ok ? T.textPrimary : T.textSecondary,
+        fontSize: 12, fontWeight: ok ? 600 : 500,
+        cursor: bloqueado && !ok ? 'not-allowed' : 'pointer',
+        fontFamily: 'inherit',
+        textAlign: 'left', width: '100%',
+        transition: 'all .12s',
+        opacity: bloqueado && !ok ? 0.75 : 1,
+      }}>
+      <i className={`ti ${
+        bloqueado && !ok ? 'ti-lock'
+        : ok ? 'ti-square-check-filled'
+        : 'ti-square'
+      }`} style={{
+        fontSize: 16, flexShrink: 0,
+        color: ok ? corAtivo : bloqueado && !ok ? T.textDim : T.textDim,
+      }} aria-hidden="true" />
       <i className={`ti ${icon}`} style={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
       <span style={{
         flex: 1, lineHeight: 1.3,
@@ -464,92 +537,139 @@ function CheckItem({ T, dark, cor, ok, icon, label, onToggle, corAtivo }) {
       }}>
         {label}
       </span>
+      {sincronizado && (
+        <i className="ti ti-arrows-left-right"
+           title="Sincronizado com o outro lado"
+           style={{ fontSize: 11, color: T.textDim, opacity: 0.6, flexShrink: 0 }} aria-hidden="true" />
+      )}
+      {bloqueado && !ok && motivoBloq && (
+        <span style={{
+          fontSize: 9, fontWeight: 700, color: T.textMuted,
+          padding: '1px 5px', borderRadius: 6,
+          background: cor('rgba(255,255,255,0.04)', 'rgba(0,0,0,0.04)'),
+          textTransform: 'uppercase', letterSpacing: '.2px', flexShrink: 0,
+          maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {motivoBloq}
+        </span>
+      )}
     </button>
   )
 }
 
-// ─── Item de manutenção (com toggle "ag. peça") ─────────────────────────────
-function CheckItemManut({ T, dark, cor, item, ok, pendente, onToggle, onTogglePendente, corAtivo, corPendente, azul, amarelo }) {
-  const tipoCor = item.tipo === 'troca' ? azul : amarelo
-  const tipoIcon = item.tipo === 'troca' ? 'ti-replace' : 'ti-wrench'
-  const tipoLabel = item.tipo === 'troca' ? 'troca' : 'man'
+// ─── Etapa "Serviço" da manutenção com sub-checklist do diagnóstico ─────────
+function CheckServicoChecklist({ T, dark, cor, itens, servicoCheck, pecasPendentes, onToggleItem, onTogglePendente, corAtivo, corPendente, azul, amarelo, marcados, total }) {
+  const completo = marcados === total
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 6,
-      padding: '6px 8px', borderRadius: 6,
-      background: ok ? cor(`${corAtivo}18`, `${corAtivo}12`)
-                : pendente ? cor(`${corPendente}18`, `${corPendente}14`)
-                : 'transparent',
-      border: `1px solid ${
-        ok ? corAtivo + '33'
-        : pendente ? corPendente + '44'
-        : 'transparent'
-      }`,
+      borderRadius: 6,
+      background: completo ? cor(`${corAtivo}18`, `${corAtivo}12`) : T.bg,
+      border: `1px solid ${completo ? corAtivo + '33' : T.border}`,
+      padding: '6px 8px 4px',
     }}>
-      {/* Check principal */}
-      <button onClick={onToggle}
-        disabled={pendente}
-        title={pendente ? 'Desmarcar "ag. peça" antes' : ok ? 'Desmarcar' : 'Marcar como executado'}
-        style={{
-          background: 'transparent', border: 'none',
-          cursor: pendente ? 'not-allowed' : 'pointer',
-          padding: 0, flexShrink: 0, display: 'flex',
-          opacity: pendente ? 0.4 : 1,
+      {/* Header do "Serviço" */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 7, padding: '2px 0 6px',
+      }}>
+        <i className={`ti ${completo ? 'ti-square-check-filled' : 'ti-square'}`}
+           style={{ fontSize: 16, color: completo ? corAtivo : T.textDim, flexShrink: 0 }} aria-hidden="true" />
+        <i className="ti ti-tools" style={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
+        <span style={{
+          flex: 1, fontSize: 12, fontWeight: completo ? 600 : 500,
+          color: completo ? T.textPrimary : T.textSecondary,
+          textDecoration: completo ? 'line-through' : 'none',
+          textDecorationColor: corAtivo + '88',
         }}>
-        <i className={`ti ${ok ? 'ti-square-check-filled' : 'ti-square'}`}
-           style={{ fontSize: 16, color: ok ? corAtivo : T.textDim }} aria-hidden="true" />
-      </button>
+          Serviço
+        </span>
+        <span style={{
+          fontSize: 9.5, fontWeight: 700, color: completo ? corAtivo : T.textMuted,
+          padding: '1px 6px', borderRadius: 8,
+          background: completo ? corAtivo + '22' : cor('rgba(255,255,255,0.04)', 'rgba(0,0,0,0.04)'),
+          fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+        }}>
+          {marcados}/{total}
+        </span>
+      </div>
 
-      <i className={`ti ${tipoIcon}`} style={{ fontSize: 12, color: tipoCor, flexShrink: 0 }} aria-hidden="true" />
-
-      <span style={{
-        flex: 1, fontSize: 11.5, lineHeight: 1.3,
-        color: ok ? T.textPrimary : pendente ? corPendente : T.textSecondary,
-        fontWeight: ok ? 600 : 500,
-        textDecoration: ok ? 'line-through' : 'none',
-        textDecorationColor: corAtivo + '88',
-        minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      {/* Sub-itens */}
+      <div style={{
+        paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 2,
+        borderLeft: `1px dashed ${T.border}`, marginLeft: 7, marginTop: 2,
       }}>
-        {item.label}
-      </span>
+        {itens.map(it => {
+          const ok = !!servicoCheck[it.key]
+          const pendente = !!pecasPendentes[it.key]
+          const tipoCor = it.tipo === 'troca' ? azul : amarelo
+          const tipoIcon = it.tipo === 'troca' ? 'ti-replace' : 'ti-wrench'
+          const tipoLabel = it.tipo === 'troca' ? 'troca' : 'man'
 
-      {/* Mini-tag tipo */}
-      <span style={{
-        fontSize: 9, fontWeight: 700, color: tipoCor,
-        padding: '1px 5px', borderRadius: 6,
-        background: tipoCor + '22', border: `1px solid ${tipoCor}33`,
-        textTransform: 'uppercase', letterSpacing: '.2px', flexShrink: 0,
-      }}>
-        {tipoLabel}
-      </span>
+          return (
+            <div key={it.key} style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '4px 6px', borderRadius: 5,
+              background: ok ? cor(`${corAtivo}10`, `${corAtivo}08`)
+                       : pendente ? cor(`${corPendente}14`, `${corPendente}10`)
+                       : 'transparent',
+              border: `1px solid ${
+                ok ? corAtivo + '22'
+                : pendente ? corPendente + '33'
+                : 'transparent'
+              }`,
+            }}>
+              <button onClick={() => onToggleItem(it.key)}
+                disabled={pendente}
+                title={pendente ? 'Desmarcar "ag. peça" antes' : ok ? 'Desmarcar' : 'Marcar como feito'}
+                style={{
+                  background: 'transparent', border: 'none',
+                  cursor: pendente ? 'not-allowed' : 'pointer',
+                  padding: 0, flexShrink: 0, display: 'flex',
+                  opacity: pendente ? 0.4 : 1,
+                }}>
+                <i className={`ti ${ok ? 'ti-square-check-filled' : 'ti-square'}`}
+                   style={{ fontSize: 13, color: ok ? corAtivo : T.textDim }} aria-hidden="true" />
+              </button>
 
-      {/* Toggle "ag. peça" — só faz sentido pra trocas */}
-      {item.tipo === 'troca' && (
-        <button onClick={onTogglePendente}
-          title={pendente ? 'Peça chegou — pode marcar como feito' : 'Marcar como aguardando peça'}
-          style={{
-            background: 'transparent', border: 'none',
-            cursor: 'pointer', padding: 2, flexShrink: 0,
-            color: pendente ? corPendente : T.textDim,
-            display: 'flex',
-          }}>
-          <i className={`ti ${pendente ? 'ti-package' : 'ti-package-off'}`}
-             style={{ fontSize: 13 }} aria-hidden="true" />
-        </button>
-      )}
+              <i className={`ti ${tipoIcon}`}
+                 style={{ fontSize: 10.5, color: tipoCor, flexShrink: 0 }} aria-hidden="true" />
+
+              <span style={{
+                flex: 1, fontSize: 10.5, lineHeight: 1.25,
+                color: ok ? T.textPrimary : pendente ? corPendente : T.textSecondary,
+                fontWeight: ok ? 600 : 500,
+                textDecoration: ok ? 'line-through' : 'none',
+                textDecorationColor: corAtivo + '88',
+                minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {it.label}
+              </span>
+
+              <span style={{
+                fontSize: 8, fontWeight: 700, color: tipoCor,
+                padding: '1px 4px', borderRadius: 4,
+                background: tipoCor + '22', border: `1px solid ${tipoCor}33`,
+                textTransform: 'uppercase', letterSpacing: '.2px', flexShrink: 0,
+              }}>
+                {tipoLabel}
+              </span>
+
+              {it.tipo === 'troca' && (
+                <button onClick={() => onTogglePendente(it.key)}
+                  title={pendente ? 'Peça chegou' : 'Marcar como ag. peça'}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    cursor: 'pointer', padding: 1, flexShrink: 0,
+                    color: pendente ? corPendente : T.textDim, display: 'flex',
+                  }}>
+                  <i className={`ti ${pendente ? 'ti-package' : 'ti-package-off'}`}
+                     style={{ fontSize: 11 }} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
-}
-
-function miniBtn(T, dark) {
-  return {
-    flex: 1,
-    padding: '5px 8px', borderRadius: 5,
-    background: 'transparent', border: `1px solid ${T.border}`,
-    color: T.textMuted,
-    fontSize: 10.5, fontWeight: 600,
-    cursor: 'pointer', fontFamily: 'inherit',
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-  }
 }
