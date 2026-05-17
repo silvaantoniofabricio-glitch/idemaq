@@ -35,8 +35,19 @@ export default function Header({
   const tipoCor = corEtapa(config.cor, dark)
   const notify = useToast()
 
-  function avisoEdicaoEmBreve(o) {
-    notify('info', `Edição de ${o} em breve — uso direto na ficha por enquanto`)
+  function avisoCadastroEmBreve(o) {
+    notify('info', `Cadastro de ${o} em breve`)
+  }
+  function abrirWhatsApp(fone) {
+    const digits = (fone || '').replace(/\D/g, '')
+    if (!digits) return
+    const numero = digits.startsWith('55') ? digits : '55' + digits
+    window.open(`https://wa.me/${numero}`, '_blank', 'noopener,noreferrer')
+  }
+  function abrirMapa(endereco) {
+    if (!endereco) return
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const isRecusado = os.etapa === 'recusado'
@@ -165,10 +176,9 @@ export default function Header({
         </div>
       </div>
 
-      {/* Bloco Cliente + Equipamento — SEMPRE visível, fora das abas (texto solto).
-          Grid 3 colunas: 1fr | 1px (divisor sutil) | 1fr */}
+      {/* Bloco Cliente + Equipamento — sem labels, cada linha tem ação própria */}
       <div style={{
-        padding: '14px 20px 14px',
+        padding: '10px 20px 12px',
         display: 'grid',
         gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
         gap: 22,
@@ -176,14 +186,23 @@ export default function Header({
       }}>
         <BlocoInfoTopo
           T={T} dark={dark}
-          icon="ti-user"
-          label="Cliente"
-          principal={os.cliente || '— sem cliente —'}
+          principal={{
+            text: os.cliente || '— sem cliente —',
+            onClick: () => avisoCadastroEmBreve('cliente'),
+            title: 'Abrir cadastro do cliente',
+          }}
           linhas={[
-            { icon: 'ti-phone',   text: os.fone || '—' },
-            { icon: 'ti-map-pin', text: os.endereco || '—' },
+            {
+              icon: 'ti-phone', text: os.fone || '—',
+              onClick: os.fone ? () => abrirWhatsApp(os.fone) : null,
+              title: os.fone ? 'Abrir conversa no WhatsApp' : null,
+            },
+            {
+              icon: 'ti-map-pin', text: os.endereco || '—',
+              onClick: os.endereco ? () => abrirMapa(os.endereco) : null,
+              title: os.endereco ? 'Abrir no Google Maps' : null,
+            },
           ]}
-          onClick={() => avisoEdicaoEmBreve('cliente')}
         />
         <div
           aria-hidden="true"
@@ -191,14 +210,15 @@ export default function Header({
         />
         <BlocoInfoTopo
           T={T} dark={dark}
-          icon="ti-device-washing-machine"
-          label="Equipamento"
-          principal={[os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || '— sem equipamento —'}
+          principal={{
+            text: [os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || '— sem equipamento —',
+            onClick: () => avisoCadastroEmBreve('equipamento'),
+            title: 'Abrir cadastro do equipamento',
+          }}
           linhas={[
             { icon: 'ti-id',  text: os.serie ? `Nº série ${os.serie}` : 'sem nº de série' },
             { icon: 'ti-bug', text: os.defeito || 'sem defeito relatado' },
           ]}
-          onClick={() => avisoEdicaoEmBreve('equipamento')}
         />
       </div>
 
@@ -254,80 +274,77 @@ function Pill({ cor, bg, children }) {
   )
 }
 
-// Bloco de info no topo do modal — texto solto, sem caixa.
-// Hover: nome destaca em azul + chip "editar" aparece à direita do label.
-function BlocoInfoTopo({ T, dark, icon, label, principal, linhas, onClick }) {
+// Bloco de info no topo do modal — texto solto, sem labels.
+// Cada item (principal e cada linha) tem ação própria opcional.
+// Hover em item clicável: cor vira azul. Sem chip, sem affordance extra.
+function BlocoInfoTopo({ T, dark, principal, linhas }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
-  const [hover, setHover] = useState(false)
   return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        cursor: onClick ? 'pointer' : 'default',
-        minWidth: 0,
-        userSelect: 'none',
-      }}
-    >
-      {/* Header da coluna: label centralizado + chip editar absolute à direita */}
-      <div style={{
-        position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        marginBottom: 6, minHeight: 14,
-      }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: '.5px',
-        }}>
-          <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-          <span>{label}</span>
-        </div>
-        {onClick && (
-          <span style={{
-            position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
-            opacity: hover ? 1 : 0,
-            transition: 'opacity .12s',
-            fontSize: 10, color: azul, fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center', gap: 3,
-            pointerEvents: 'none',
-          }}>
-            <i className="ti ti-pencil" style={{ fontSize: 11 }} aria-hidden="true" />
-            editar
-          </span>
-        )}
-      </div>
-
-      {/* Nome / título principal — centralizado, vira azul no hover */}
-      <div style={{
-        fontSize: 15.5, fontWeight: 700, lineHeight: 1.25,
-        color: hover && onClick ? azul : T.textPrimary,
-        marginBottom: 7,
-        transition: 'color .12s',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        textAlign: 'center',
-      }}>{principal}</div>
-
-      {/* Linhas com ícone + texto — centralizadas, ícone discreto */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div style={{ minWidth: 0, userSelect: 'none' }}>
+      <ItemPrincipal T={T} azul={azul} item={principal} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
         {linhas.map((l, i) => (
-          <div key={i} style={{
-            fontSize: 11.5, color: T.textMuted, lineHeight: 1.35,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            minWidth: 0,
-          }}>
-            <i className={`ti ${l.icon}`}
-               style={{ fontSize: 12, color: T.textDim, flexShrink: 0 }}
-               aria-hidden="true" />
-            <span style={{
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              minWidth: 0,
-            }}>{l.text}</span>
-          </div>
+          <ItemLinha key={i} T={T} azul={azul} item={l} />
         ))}
       </div>
+    </div>
+  )
+}
+
+function ItemPrincipal({ T, azul, item }) {
+  const [hover, setHover] = useState(false)
+  const clickable = !!item.onClick
+  return (
+    <div
+      onClick={item.onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={item.title}
+      style={{
+        fontSize: 14, fontWeight: 700, lineHeight: 1.25,
+        color: hover && clickable ? azul : T.textPrimary,
+        cursor: clickable ? 'pointer' : 'default',
+        transition: 'color .12s',
+        textAlign: 'center',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}
+    >{item.text}</div>
+  )
+}
+
+function ItemLinha({ T, azul, item }) {
+  const [hover, setHover] = useState(false)
+  const clickable = !!item.onClick
+  return (
+    <div
+      onClick={item.onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={item.title}
+      style={{
+        fontSize: 11, lineHeight: 1.35,
+        color: hover && clickable ? azul : T.textMuted,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        cursor: clickable ? 'pointer' : 'default',
+        transition: 'color .12s',
+        minWidth: 0,
+      }}
+    >
+      <i
+        className={`ti ${item.icon}`}
+        style={{
+          fontSize: 11.5,
+          color: hover && clickable ? azul : T.textDim,
+          flexShrink: 0,
+          transition: 'color .12s',
+        }}
+        aria-hidden="true"
+      />
+      <span style={{
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        minWidth: 0,
+      }}>{item.text}</span>
     </div>
   )
 }
