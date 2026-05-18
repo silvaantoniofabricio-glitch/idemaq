@@ -28,13 +28,14 @@
   - **Diagnóstico**: checklist técnico 2×2 colapsável + busca + campo Causa
   - **Orçamento**: editor completo + atalhos rápidos + desconto bidirecional + 4 ações (Gerar PDF, Enviar WhatsApp, Aprovar→Oficina, Recusar)
   - **Em oficina**: 3 etapas por lado (Limpeza · Manutenção) com Desmontagem/Montagem sincronizadas + segurança cruzada + banner de falhas vindas do Teste
-  - **Teste final**: lista de falhas registráveis, persiste em `os.teste_falhas`, sem falhas vai pra Entrega, com falhas volta pra Oficina mostrando o que corrigir
-  - **Entrega**: confirmação + responsável + pessoalmente. Já-paga detecta e vai direto pra Concluído (verde) em vez de Pagamento
+  - **Teste final**: MESMO checklist do Pré-diag (4 testes × OK/Defeito/Barulho) + Acabamento condicional (polimento/limpeza/enceramento) que aparece só se há limpeza no orçamento. Falhas geradas auto vão pro `os.teste_falhas`, banner aparece no AcaoOficina ao voltar
+  - **Entrega**: 2 fases — Aguardando agendar entrega (form data/hora/responsável) → Entrega agendada (card resumo + botão WhatsApp pro cliente + Confirmar entrega + Reagendar). Já-paga vai direto Concluído (verde)
   - **Pagamento**: FormRecebimento real (PIX/Cartão/Misto/A prazo/Dinheiro), pagamento adiantado em qualquer etapa
   - **Concluído**: resumo final (cliente/equipamento/itens/tempo total/R$) + botão OS de garantia + reabrir
   - **Recusada**: 3 decisões (Converter Fabricação · Cobrar taxa R$30 → Pagamento · Devolver máquina → Entrega)
   - **Agendamento**: confirma data/hora + responsável (já existia)
-- **Componente compartilhado**: `RelatorioDiagnostico` (defeito do cliente + causa do técnico + chips dos itens marcados) usado em Orçamento e Em oficina
+- **Componente compartilhado**: `RelatorioDiagnostico` (defeito do cliente + causa do técnico + chips dos itens marcados) usado em **Orçamento, Em oficina E Resumo do OSDetalhe** (unificado 18/05/2026)
+- **Header do OSDetalhe redesenhado (18/05/2026)**: foto 72x72 da máquina (lê `os.pre_diagnostico.foto`, clique abre `FotoAmpliadaModal` tela cheia) + nome do cliente em destaque (17px) + linha de contato (telefone WhatsApp · endereço Maps) + linha de equipamento (marca/modelo + série + defeito). Aba Resumo completa com banners, mini-cards de prazo, RelatorioDiagnostico, orçamento admin-only, histórico recente, observações.
 - **Telas mock visuais prontas (17/05/2026)**: Clientes · Logística · Estoque · Financeiro · Relatórios (hub com 6 relatórios)
 - **Estoque com modais de detalhe (17/05/2026)**: `PecaDetalheModal` (barra estoque mín/atual/máx + custos/preço/margem + histórico de movimentações) e `MaquinaDetalheModal` (breakdown de custo Compra/Itens/Serviço + itens da reforma + timeline). Flag `mostraValores` esconde preços pra papéis não-dono.
 - **Financeiro reformulado Bling-style (17/05/2026 · commit `227af93`)**: barra de filtros horizontal (período com 5 presets + custom · chips de status · busca · categoria · conta bancária · Limpar), KPI strip compacta (Total/Vencidas/Hoje/Pago), tabela real com colunas ordenáveis + checkbox por linha + menu ⋯ (Receber/Pagar · Editar · Duplicar · Excluir), bulk action bar flutuante pra recebimento/pagamento em lote, Caixa com saldo running por linha. Tabs com badge contador. Mantém `LancamentoDetalheModal` e Visão geral.

@@ -161,7 +161,7 @@ O modal `OSDetalhe` tem 3 abas (Etapa / Resumo / Pagamento). A aba **Etapa** del
 |---|---|---|
 | Painel | ✅ Refatorado | — |
 | Kanban (OS) | ✅ UI pronta | Persistir drag-and-drop (Módulo 00c) |
-| OSDetalhe + 10 Ações | ✅ Diagnostico (checklist 2x2), Orcamento (editor + PDF + WhatsApp), Oficina (3 etapas sincronizadas + bloqueio cruzado + banner falhas do teste), Teste (persiste falhas em `os.teste_falhas`), Entrega (já-paga → vai direto Concluído), Concluido (resumo final + botão OS de garantia), Recusada (3 decisões), Pagamento (FormRecebimento real) | Save real no Supabase (Módulo 03) |
+| OSDetalhe + 10 Ações | ✅ **Header redesenhado** (foto 72x72 + nome cliente big + contato + equipamento); Diagnostico (checklist 2x2), Orcamento (editor + PDF + WhatsApp), Oficina (3 etapas sincronizadas + bloqueio cruzado + banner falhas do teste), **Teste (checklist 4 testes × OK/Defeito/Barulho + Acabamento condicional polimento/limpeza/enceramento se há limpeza no orçamento)**, **Entrega (2 fases: aguardando agendar → agendada com WhatsApp pro cliente)**, Concluido (resumo final + botão OS de garantia), Recusada (3 decisões), Pagamento (FormRecebimento real). **Resumo Tab completa**: banners contextuais, mini-cards de prazo, RelatorioDiagnostico compartilhado (defeito+causa+chips), orçamento admin-only, histórico recente, observações. | Save real no Supabase (Módulo 03) |
 | Clientes | 🟡 Mock visual | Conectar à tabela `cliente` |
 | Logística | 🟡 Mock visual | Google Maps Places API + tabela `rota` |
 | Estoque | 🟡 Mock + NovaPecaModal (validação + preview de margem) + gate `mostraValores = isAdmin(user)` end-to-end + **filtro por categoria** (chips horizontais espelhando o checklist do diagnóstico — válvula/eletrobomba/trava da porta/etc., agrupados em 6 grupos em `utils/categoriasPeca.js`) + badge da categoria inline na linha da peça | Conectar a `peca` e `maquina`, baixa automática |
@@ -190,7 +190,32 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Defesa em 3 c
 
 ### Categorias de peça (Estoque)
 
-Lista canônica em `src/utils/categoriasPeca.js` — espelha o checklist do AcaoDiagnostico pra técnico encontrar peças do tipo certo. 6 grupos: motor, água, elétrico, estrutura, externo (capa/filtro/tampa — não estão no diag), outros. Ao adicionar categoria, refletir também em `RelatorioDiagnostico.jsx` (`ITENS_DIAG`) e `AcaoDiagnostico.jsx` (`GRUPOS`). Cadastro de peça (`NovaPecaModal`) tem campo obrigatório de categoria com `<optgroup>` por grupo.
+Lista canônica em `src/utils/categoriasPeca.js` — espelha o checklist do AcaoDiagnostico pra técnico encontrar peças do tipo certo. 6 grupos: motor, água, elétrico, estrutura, externo (capa/filtro/tampa — não estão no diag), outros. Ao adicionar categoria, refletir também em `RelatorioDiagnostico.jsx` (`ITENS_DIAG`) e `AcaoDiagnostico.jsx` (`GRUPOS`). Cadastro de peça (`NovaPecaModal`) tem campo obrigatório de categoria com `<optgroup>` por grupo. SKU e quantidades agora são opcionais (default 0, qtdMaxima auto = min × 3).
+
+### Header do OSDetalhe (18/05/2026)
+
+Linha 2 do header redesenhada — foto da máquina + bloco info estruturado:
+
+- **Foto 72x72** à esquerda. Lê de `os.pre_diagnostico.foto` (base64 do AcaoRecebido). Click numa foto existente → abre `FotoAmpliadaModal` (overlay rgba(0,0,0,0.85), Esc/click-fora fecham). Click no placeholder vazio → abre input file pra escolher imagem (mesma lógica do AcaoRecebido). Salva via `onUpdateOS`.
+- **Bloco info** à direita (3 linhas):
+  1. Nome cliente grande (17px, fonte 700) — clique abre toast "Cadastro do cliente em breve" (TODO trocar por modal quando `FormClienteEdit` for criado)
+  2. Contato 11.5px cinza — `ti-phone` + telefone (click WhatsApp) · `ti-map-pin` + endereço (click Maps). Chunks individuais clicáveis.
+  3. Equipamento 12px — `ti-device-washing-machine` azul + Marca·Modelo (strong) + (série) cinza + · defeito. Click abre toast (TODO `FormEquipamentoEdit`).
+- Timeline com `border-top` separando do bloco novo.
+
+### Tabs do OSDetalhe
+
+- **Etapa**: delega pra `acoes/AcaoXxx.jsx` baseado em `os.etapa` (10 Ações registradas em `EtapaTab.MAP`)
+- **Resumo**: contexto do caso (não duplica Cliente/Equipamento que já vivem no Header). Usa `RelatorioDiagnostico` compartilhado pro bloco de diagnóstico. Orçamento admin-only.
+- **Pagamento**: itens + recebimento (FormRecebimento real)
+
+### Etapas com formulário estruturado
+
+**Recebido (Pré-diagnóstico)**: 4 testes × OK/Defeito/Barulho + textarea obs + **foto da coleta** (input file → base64 → preview com botão trocar/remover, salva em `os.pre_diagnostico.foto`).
+
+**Teste final**: MESMO checklist do Recebido (4 testes × OK/Defeito/Barulho) + **Acabamento condicional** (3 toggles: Polimento · Limpeza final · Enceramento) que aparece SÓ se orçamento tem limpeza. Aprovar só libera com todos os testes OK E (se aplicável) todo acabamento marcado. Falhas (defeito/barulho) geram `os.teste_falhas` automaticamente.
+
+**Entrega**: 2 fases — (1) Aguardando agendar entrega com form data/hora/responsável/obs salvando em `os.entrega_data` etc; (2) Entrega agendada com card resumo + botão WhatsApp pro cliente + botão Confirmar entrega (vai pra Pagamento ou direto Concluído se já paga) + Reagendar.
 
 ### Exemplo completo: tela de Clientes
 

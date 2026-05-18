@@ -489,10 +489,12 @@ O coração operacional do sistema. A **tela de detalhe da OS** já existe (linh
   - PIX (gerar QR), Cartão (todas as bandeiras), Misto (PIX+Cartão), A prazo (calendário de parcelas), Dinheiro
   - Pagamento adiantado em qualquer etapa, redireciona Entrega→Concluído se total pago
 - ✅ **AcaoRecebido (Pré-diagnóstico)** — 4 testes (Entrada água/Saída água/Agitação/Centrifugação) × OK/Defeito/Barulho + textarea de observações. Salva em `os.pre_diagnostico`. Avança pra Diagnóstico.
-- ✅ **AcaoTeste (Teste final)** — registro de falhas (input + lista). Sem falhas → botão verde "Aprovar teste · Entrega". Com falhas → botão vermelho "Voltar pra oficina". **Persiste em `os.teste_falhas`** pra técnico ver banner no AcaoOficina ao voltar.
-- ✅ **AcaoEntrega** — confirma data/hora + responsável + checkbox "Cliente recebeu pessoalmente" + obs. **Detecta se já está paga** (`estaPagaTotal`): vai DIRETO pra Concluído (verde) ou pra Pagamento (amarelo).
+- ✅ **AcaoTeste (Teste final)** — checklist estruturado igual ao AcaoRecebido: 4 testes (Entrada água, Saída água, Agitação, Centrifugação) × OK/Defeito/Barulho + **Acabamento condicional** (3 toggles polimento/limpeza final/enceramento) que aparece SÓ se há item /limpeza/i no orçamento. Aprovar só libera com todos testes OK E (se aplicável) todo acabamento. Falhas viram `os.teste_falhas` auto → banner vermelho no AcaoOficina ao voltar.
+- ✅ **AcaoEntrega** — 2 fases tipo "Aguardando agendamento ↔ Agendado" da coleta: (1) Aguardando agendar entrega com form data/hora/responsável/obs salvando em `os.entrega_data` etc; (2) Entrega agendada com card resumo + botão WhatsApp pra avisar cliente + Confirmar entrega + Reagendar. **Detecta se já está paga** (`estaPagaTotal`): vai DIRETO pra Concluído (verde) ou pra Pagamento (amarelo).
 - ✅ **AcaoConcluido** — resumo final (cliente, equipamento, qtd itens, tempo total em dias, total R$), card de garantia ativa com dias restantes, botão "Abrir OS de garantia" (placeholder funcional) + botão Reabrir OS.
 - ✅ **AcaoRecusada** — 3 decisões: Converter em Fabricação (disabled, placeholder Módulo 03), Cobrar taxa diagnóstico R$ 30 → Pagamento, Devolver máquina → Entrega.
+- ✅ **Header OSDetalhe redesenhado (18/05)** — foto 72x72 da máquina (`os.pre_diagnostico.foto`, click abre FotoAmpliadaModal ou input file) + nome cliente big 17px + contato pequeno (WhatsApp/Maps clicáveis) + equipamento com marca/modelo/série/defeito.
+- ✅ **Aba Resumo completa (18/05)** — banners contextuais (garantia/recusada), 3 mini-cards (aberta em/prazo/dias na OS), RelatorioDiagnostico compartilhado (unificado com Orçamento e Oficina), bloco Orçamento admin-only (itens + Total/Pago/Saldo + badge status), histórico recente das últimas 3 mudanças, observações.
 
 ### ❌ O que ainda FALTA fazer
 - ❌ **Save real no Supabase** — hoje tudo é mock local + OS_ITENS_MOCK / onUpdateOS
