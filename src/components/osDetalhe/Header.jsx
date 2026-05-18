@@ -1,13 +1,16 @@
 // src/components/osDetalhe/Header.jsx
-// Header do OSDetalhe centralizado.
+// Header do OSDetalhe — redesenhado 18/05/2026 (foto da máquina + nome cliente em destaque).
 // Linhas:
-//  1. badges (tipo + OS# + status) à esquerda · ícones (histórico+badge, fechar) à direita
-//  2. nome do cliente em destaque
-//  3. marca · modelo · defeito (resumo)
-//  4. Timeline compacta
-//  5. 3 abas (Resumo · Financeiro · Etapa)
+//  1. badges (tipo + OS# + status) à esquerda · ícones (histórico+badge, ⋯, X) à direita
+//  2. FOTO 72x72 + bloco info (nome cliente big, contato pequeno, equipamento)
+//  3. Timeline compacta (com border-top sutil)
+//  4. 3 abas (Etapa · Resumo · Pagamento)
+//
+// Foto lê de os.pre_diagnostico.foto (base64 do AcaoRecebido). Click no
+// placeholder vazio abre input file pra escolher imagem (mesma lógica do
+// AcaoRecebido). Click numa foto existente abre FotoAmpliadaModal.
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { corEtapa } from '../../utils/colors'
@@ -17,6 +20,7 @@ import {
 } from '../../utils/osHelpers'
 import { useToast } from '../ui'
 import Timeline from './Timeline'
+import FotoAmpliadaModal from './FotoAmpliadaModal'
 
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
@@ -28,15 +32,54 @@ export default function Header({
   T, dark, os, admin,
   aba, setAba,
   onShowHistorico, onClose,
+  onUpdateOS,
   mobile = false,
 }) {
   const cor = (d, c) => dark ? d : c
   const config = TIPOS_OS[os.tipo]
   const tipoCor = corEtapa(config.cor, dark)
+  const azul = cor(P.blue, P.blueDark)
   const notify = useToast()
 
-  function avisoCadastroEmBreve(o) {
-    notify('info', `Cadastro de ${o} em breve`)
+  // === Foto ===
+  const fotoUrl = os.pre_diagnostico?.foto || os.foto || null
+  const [fotoAmpliada, setFotoAmpliada] = useState(false)
+  const [fotoHover, setFotoHover] = useState(false)
+  const inputFotoRef = useRef(null)
+
+  function escolherFoto(file) {
+    if (!file) return
+    if (!file.type?.startsWith('image/')) {
+      notify('erro', 'Selecione uma imagem (JPG/PNG).')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result
+      // Salva em pre_diagnostico.foto (mesmo lugar usado pelo AcaoRecebido).
+      // Futuro: quando Storage entrar, fazer upload pra idemaq-privado/os/{id}/coleta/
+      // e salvar URL assinada em vez do base64.
+      onUpdateOS?.(os.numero, {
+        pre_diagnostico: { ...(os.pre_diagnostico || {}), foto: base64 },
+      })
+      notify('ok', 'Foto adicionada')
+    }
+    reader.readAsDataURL(file)
+  }
+  function clicarFoto() {
+    if (fotoUrl) setFotoAmpliada(true)
+    else inputFotoRef.current?.click()
+  }
+
+  // === Cliques placeholder de cadastro ===
+  // FormClienteEdit / FormEquipamentoEdit não existem ainda — mantém toast
+  // ("recomendação A" da resposta anterior). Quando esses modais forem criados,
+  // trocar `notify(...)` por `setModalAberto(...)`.
+  function abrirCadastroCliente() {
+    notify('info', 'Cadastro do cliente em breve')
+  }
+  function abrirCadastroEquipamento() {
+    notify('info', 'Cadastro do equipamento em breve')
   }
   function abrirWhatsApp(fone) {
     const digits = (fone || '').replace(/\D/g, '')
@@ -46,8 +89,8 @@ export default function Header({
   }
   function abrirMapa(endereco) {
     if (!endereco) return
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`
-    window.open(url, '_blank', 'noopener,noreferrer')
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`,
+      '_blank', 'noopener,noreferrer')
   }
 
   const isRecusado = os.etapa === 'recusado'
@@ -57,13 +100,15 @@ export default function Header({
   const pagoParcial = !pagoTotal && estaPagaParcial(os)
   const historicoCount = (os.historico || []).length
 
+  const equipamentoLabel = [os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento
+
   return (
     <div style={{
       flexShrink: 0,
       borderBottom: `1px solid ${T.border}`,
       background: tipoCor + '08',
     }}>
-      {/* Linha 1 — badges + ícones */}
+      {/* === LINHA 1 — badges + ícones === */}
       <div style={{
         padding: '13px 20px 6px',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10,
@@ -80,14 +125,13 @@ export default function Header({
             <i className={`ti ${config.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
             {config.label}
           </span>
-          {/* OS # */}
           <span style={{
             fontSize: 15, fontWeight: 700, color: T.textPrimary,
             fontVariantNumeric: 'tabular-nums',
           }}>OS #{os.numero}</span>
-          {/* Pills de status */}
+
           {os.garantia && (
-            <Pill cor={cor(P.blue, P.blueDark)} bg={cor('#0d2035', '#e6f1fb')}>
+            <Pill cor={azul} bg={cor('#0d2035', '#e6f1fb')}>
               <i className="ti ti-shield-check" style={{ fontSize: 11 }} aria-hidden="true" /> Garantia
             </Pill>
           )}
@@ -121,7 +165,6 @@ export default function Header({
         </div>
 
         <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-          {/* Ícone histórico com badge */}
           <button
             onClick={onShowHistorico}
             title={`Histórico (${historicoCount} ${historicoCount === 1 ? 'evento' : 'eventos'})`}
@@ -139,7 +182,7 @@ export default function Header({
                 position: 'absolute', top: -5, right: -5,
                 minWidth: 16, height: 16, padding: '0 4px',
                 borderRadius: 8,
-                background: cor(P.blue, P.blueDark), color: '#fff',
+                background: azul, color: '#fff',
                 fontSize: 9.5, fontWeight: 700,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 lineHeight: 1, border: `1.5px solid ${T.card}`,
@@ -147,12 +190,8 @@ export default function Header({
               }}>{historicoCount > 99 ? '99+' : historicoCount}</span>
             )}
           </button>
-
-          {/* Placeholder menu (sem ação) */}
           <button
-            title="Mais ações"
-            aria-label="Mais ações"
-            disabled
+            title="Mais ações" aria-label="Mais ações" disabled
             style={{
               background: 'transparent', border: `1px solid ${T.border}`,
               cursor: 'not-allowed', opacity: 0.4,
@@ -161,11 +200,8 @@ export default function Header({
             }}>
             <i className="ti ti-dots-vertical" style={{ fontSize: 16 }} aria-hidden="true" />
           </button>
-
-          {/* Fechar */}
           <button
-            onClick={onClose}
-            aria-label="Fechar"
+            onClick={onClose} aria-label="Fechar"
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
               color: T.textMuted, padding: '6px 6px', borderRadius: 6,
@@ -176,65 +212,99 @@ export default function Header({
         </div>
       </div>
 
-      {/* Bloco Cliente + Equipamento — 2 colunas centralizadas com divisor,
-          em 2 linhas: principal + uma subline com info consolidada (chunks · separados) */}
+      {/* === LINHA 2 — Foto + bloco info === */}
       <div style={{
-        padding: '12px 20px 14px',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) 1px minmax(0, 1fr)',
-        gap: 22,
-        alignItems: 'start',
+        padding: '8px 20px 14px',
+        display: 'flex', alignItems: 'center', gap: 14,
       }}>
-        <BlocoInfoTopo
-          T={T} dark={dark}
-          principal={{
-            text: os.cliente || '— sem cliente —',
-            onClick: () => avisoCadastroEmBreve('cliente'),
-            title: 'Abrir cadastro do cliente',
-          }}
-          subline={[
-            {
-              icon: 'ti-phone', text: os.fone || '—',
-              onClick: os.fone ? () => abrirWhatsApp(os.fone) : null,
-              title: os.fone ? 'Abrir conversa no WhatsApp' : null,
-            },
-            {
-              icon: 'ti-map-pin', text: os.endereco || '—',
-              onClick: os.endereco ? () => abrirMapa(os.endereco) : null,
-              title: os.endereco ? 'Abrir no Google Maps' : null,
-            },
-          ]}
-        />
+        {/* Foto */}
         <div
-          aria-hidden="true"
-          style={{ width: 1, alignSelf: 'stretch', background: T.border, opacity: 0.6 }}
-        />
-        <BlocoInfoTopo
-          T={T} dark={dark}
-          principal={{
-            text: [os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || '— sem equipamento —',
-            onClick: () => avisoCadastroEmBreve('equipamento'),
-            title: 'Abrir cadastro do equipamento',
+          onClick={clicarFoto}
+          onMouseEnter={() => setFotoHover(true)}
+          onMouseLeave={() => setFotoHover(false)}
+          title={fotoUrl ? 'Ver foto ampliada' : 'Adicionar foto'}
+          style={{
+            position: 'relative',
+            width: 72, height: 72, flexShrink: 0,
+            borderRadius: 8,
+            border: `1px solid ${fotoHover ? azul : T.border}`,
+            background: fotoUrl
+              ? `url(${fotoUrl}) center/cover no-repeat`
+              : 'linear-gradient(135deg, #2c4257, #3a5a7a)',
+            cursor: 'pointer',
+            transition: 'border-color .15s',
+            overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
-          subline={[
-            { icon: 'ti-id',  text: os.serie ? `Nº ${os.serie}` : 'sem nº de série' },
-            { icon: 'ti-bug', text: os.defeito || 'sem defeito relatado' },
-          ]}
-        />
+        >
+          {!fotoUrl && (
+            <i className={`ti ${fotoHover ? 'ti-camera-plus' : 'ti-photo'}`}
+              style={{ fontSize: 28, color: '#5B9BD5', opacity: 0.6 }}
+              aria-hidden="true" />
+          )}
+          {fotoUrl && (
+            <div style={{
+              position: 'absolute', bottom: 4, right: 4,
+              width: 18, height: 18, borderRadius: 4,
+              background: 'rgba(0,0,0,0.7)', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <i className="ti ti-arrows-maximize" style={{ fontSize: 10 }} aria-hidden="true" />
+            </div>
+          )}
+
+          <input
+            ref={inputFotoRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => escolherFoto(e.target.files?.[0])}
+            style={{ display: 'none' }}
+          />
+        </div>
+
+        {/* Bloco info */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0,
+        }}>
+          {/* Linha 1 — Nome cliente em destaque */}
+          <NomeCliente T={T} azul={azul}
+            nome={os.cliente}
+            onClick={abrirCadastroCliente}
+          />
+
+          {/* Linha 2 — Contato (telefone + endereço) */}
+          <LinhaContato T={T} azul={azul}
+            fone={os.fone}
+            endereco={os.endereco}
+            onWhats={() => abrirWhatsApp(os.fone)}
+            onMapa={() => abrirMapa(os.endereco)}
+          />
+
+          {/* Linha 3 — Equipamento */}
+          <LinhaEquipamento T={T} azul={azul}
+            equipamento={equipamentoLabel}
+            serie={os.serie}
+            defeito={os.defeito}
+            onClick={abrirCadastroEquipamento}
+          />
+        </div>
       </div>
 
-      {/* Linha 4 — Timeline (não aparece em recusado) */}
+      {/* === LINHA 3 — Timeline (com border-top) === */}
       {!isRecusado && (
-        <div style={{ padding: '4px 20px 6px' }}>
+        <div style={{
+          padding: '14px 20px 14px',
+          borderTop: `1px solid ${T.border}`,
+        }}>
           <Timeline T={T} dark={dark} os={os} config={config} admin={admin} mobile={mobile} />
         </div>
       )}
 
-      {/* Linha 5 — Abas */}
+      {/* === LINHA 4 — Abas === */}
       <div style={{ display: 'flex', padding: '0 8px', marginTop: 4 }}>
         {ABAS.map(a => {
           const ativo = aba === a.id
-          const azul = cor(P.blue, P.blueDark)
           const azulBg = cor('#0d2035', '#e6f1fb')
           return (
             <button
@@ -259,10 +329,20 @@ export default function Header({
           )
         })}
       </div>
+
+      {/* Modal de foto ampliada */}
+      {fotoAmpliada && fotoUrl && (
+        <FotoAmpliadaModal
+          src={fotoUrl}
+          alt={`Foto da OS #${os.numero}`}
+          onClose={() => setFotoAmpliada(false)}
+        />
+      )}
     </div>
   )
 }
 
+// ─── Sub-componentes ─────────────────────────────────────────────────────────
 function Pill({ cor, bg, children }) {
   return (
     <span style={{
@@ -275,89 +355,148 @@ function Pill({ cor, bg, children }) {
   )
 }
 
-// Bloco de info no topo do modal — 2 colunas centralizadas, sem labels.
-// 2 linhas por coluna: principal (nome / equip) + subline (chunks separados por •).
-// Cada chunk (incluindo o principal) tem ação própria opcional. Hover: cor vira azul.
-function BlocoInfoTopo({ T, dark, principal, subline }) {
-  const cor = (d, c) => dark ? d : c
-  const azul = cor(P.blue, P.blueDark)
-  return (
-    <div style={{ minWidth: 0, userSelect: 'none' }}>
-      <ItemPrincipal T={T} azul={azul} item={principal} />
-      <Subline T={T} azul={azul} items={subline} />
-    </div>
-  )
-}
-
-function ItemPrincipal({ T, azul, item }) {
+function NomeCliente({ T, azul, nome, onClick }) {
   const [hover, setHover] = useState(false)
-  const clickable = !!item.onClick
+  const vazio = !nome
   return (
     <div
-      onClick={item.onClick}
+      onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={item.title}
+      title="Abrir cadastro do cliente"
       style={{
-        fontSize: 14.5, fontWeight: 700, lineHeight: 1.25,
-        color: hover && clickable ? azul : T.textPrimary,
-        cursor: clickable ? 'pointer' : 'default',
-        transition: 'color .12s',
-        textAlign: 'center',
-        marginBottom: 5,
+        fontSize: 17, fontWeight: 700, lineHeight: 1.2,
+        color: vazio ? T.textMuted : (hover ? azul : T.textPrimary),
+        fontStyle: vazio ? 'italic' : 'normal',
+        cursor: 'pointer', transition: 'color .12s',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}
-    >{item.text}</div>
-  )
-}
-
-// Subline = single line with multiple chunks separated by • (centralizada, ellipsis no fim)
-function Subline({ T, azul, items }) {
-  return (
-    <div style={{
-      fontSize: 11, color: T.textMuted, lineHeight: 1.4,
-      textAlign: 'center',
-      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      minWidth: 0,
-    }}>
-      {items.map((it, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && (
-            <span style={{ opacity: 0.45, padding: '0 7px' }} aria-hidden="true">•</span>
-          )}
-          <Chunk T={T} azul={azul} item={it} />
-        </React.Fragment>
-      ))}
+    >
+      {nome || 'Cliente não definido'}
     </div>
   )
 }
 
-function Chunk({ T, azul, item }) {
-  const [hover, setHover] = useState(false)
-  const clickable = !!item.onClick
+function LinhaContato({ T, azul, fone, endereco, onWhats, onMapa }) {
+  if (!fone && !endereco) {
+    return (
+      <div style={{ fontSize: 11.5, color: T.textDim, fontStyle: 'italic' }}>
+        Sem contato cadastrado
+      </div>
+    )
+  }
   return (
-    <span
-      onClick={item.onClick}
+    <div style={{
+      fontSize: 11.5, color: T.textMuted,
+      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+    }}>
+      {fone && (
+        <ChunkClicavel T={T} azul={azul}
+          icon="ti-phone" texto={fone}
+          onClick={onWhats} title="Abrir conversa no WhatsApp"
+        />
+      )}
+      {fone && endereco && <SeparadorPonto />}
+      {endereco && (
+        <ChunkClicavel T={T} azul={azul}
+          icon="ti-map-pin" texto={endereco}
+          onClick={onMapa} title="Abrir no Google Maps"
+          truncar
+        />
+      )}
+    </div>
+  )
+}
+
+function LinhaEquipamento({ T, azul, equipamento, serie, defeito, onClick }) {
+  const [hover, setHover] = useState(false)
+  const vazio = !equipamento
+  return (
+    <div
+      onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      title={item.title}
+      title="Abrir cadastro do equipamento"
       style={{
-        display: 'inline-block',
-        color: hover && clickable ? azul : 'inherit',
-        cursor: clickable ? 'pointer' : 'default',
-        transition: 'color .12s',
+        marginTop: 4,
+        fontSize: 12, color: T.textSecondary,
+        display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+        cursor: 'pointer', transition: 'color .12s',
       }}
     >
-      <i className={`ti ${item.icon}`}
-         style={{
-           fontSize: 11.5,
-           color: hover && clickable ? azul : T.textDim,
-           marginRight: 4,
-           verticalAlign: '-1px',
-           transition: 'color .12s',
-         }}
-         aria-hidden="true" />
-      {item.text}
+      <i className="ti ti-device-washing-machine"
+        style={{ fontSize: 13, color: azul, flexShrink: 0 }} aria-hidden="true" />
+      {vazio ? (
+        <span style={{
+          color: hover ? azul : T.textMuted,
+          fontStyle: 'italic',
+        }}>
+          Equipamento não preenchido — clique pra adicionar
+        </span>
+      ) : (
+        <>
+          <strong style={{
+            color: hover ? azul : T.textPrimary,
+            fontWeight: 700,
+          }}>
+            {equipamento}
+          </strong>
+          {serie && (
+            <span style={{ color: '#6a6a70', fontSize: 11 }}>
+              ({serie})
+            </span>
+          )}
+          {defeito && (
+            <>
+              <SeparadorPonto />
+              <span style={{
+                color: T.textMuted,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                minWidth: 0, flex: '0 1 auto',
+              }}>
+                {defeito}
+              </span>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function ChunkClicavel({ T, azul, icon, texto, onClick, title, truncar }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <span
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick() } : undefined}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={title}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        color: hover && onClick ? azul : 'inherit',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'color .12s',
+        ...(truncar ? {
+          maxWidth: 260,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        } : {}),
+      }}
+    >
+      <i className={`ti ${icon}`}
+        style={{
+          fontSize: 11,
+          color: hover && onClick ? azul : T.textDim,
+          flexShrink: 0,
+          transition: 'color .12s',
+        }} aria-hidden="true" />
+      <span style={{
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{texto}</span>
     </span>
   )
+}
+
+function SeparadorPonto() {
+  return <span style={{ color: '#4a4a50', opacity: 0.7 }} aria-hidden="true">·</span>
 }

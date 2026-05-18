@@ -107,6 +107,7 @@ export default function OSDetalhe({
             aba={aba} setAba={setAba}
             onShowHistorico={() => setShowHistorico(true)}
             onClose={onClose}
+            onUpdateOS={onUpdateOS}
             mobile={mobile}
           />
 
