@@ -41,7 +41,7 @@ function pctLucro(custo, venda) {
   return Math.round(((venda - custo) / custo) * 100)
 }
 
-export default function PecaDetalheModal({ T, dark, peca, onClose, mobile }) {
+export default function PecaDetalheModal({ T, dark, peca, onClose, mobile, mostraValores = true }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
   const azul = corEtapa('blue', dark)
@@ -186,23 +186,28 @@ export default function PecaDetalheModal({ T, dark, peca, onClose, mobile }) {
 
         <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
 
-        {/* Custos & preços */}
+        {/* Preço de venda — funcionário vê só venda; dono vê custo + margem */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <i className="ti ti-cash" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-            <span style={sectionLabel}>Custos & preço</span>
+            <span style={sectionLabel}>{mostraValores ? 'Custos & preço' : 'Preço de venda'}</span>
           </div>
           <div style={{
-            display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(3, 1fr)',
+            display: 'grid',
+            gridTemplateColumns: mostraValores ? (mobile ? '1fr' : 'repeat(3, 1fr)') : '1fr',
             gap: 10,
           }}>
-            <BlocoValor T={T} label="Custo atual" valor={fmtBRL(peca.custoAtual)}
-              corValor={T.textSecondary} dark={dark} />
+            {mostraValores && (
+              <BlocoValor T={T} label="Custo atual" valor={fmtBRL(peca.custoAtual)}
+                corValor={T.textSecondary} dark={dark} />
+            )}
             <BlocoValor T={T} label="Preço venda" valor={fmtBRL(peca.precoVenda)}
               corValor={corHero(dark)} dark={dark} destaque />
-            <BlocoValor T={T} label="Margem"
-              valor={`${lucro}% · ${fmtBRL(margemRS)}`}
-              corValor={azul} dark={dark} />
+            {mostraValores && (
+              <BlocoValor T={T} label="Margem"
+                valor={`${lucro}% · ${fmtBRL(margemRS)}`}
+                corValor={azul} dark={dark} />
+            )}
           </div>
         </div>
 

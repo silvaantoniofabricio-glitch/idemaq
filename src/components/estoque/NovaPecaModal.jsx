@@ -50,12 +50,12 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
   const erros = useMemo(() => {
     const e = {}
     if (!form.nome.trim()) e.nome = 'Obrigatório'
-    if (!form.sku.trim()) e.sku = 'Obrigatório'
+    // SKU e quantidades são opcionais — quando vazias, default 0 / auto na hora de salvar
     if (!form.categoria) e.categoria = 'Selecione uma categoria'
     if (!form.fornecedor.trim()) e.fornecedor = 'Obrigatório'
-    if (form.qtdAtual === '' || toNum(form.qtdAtual) < 0) e.qtdAtual = 'Inválido'
-    if (form.qtdMinima === '' || toNum(form.qtdMinima) < 0) e.qtdMinima = 'Inválido'
-    if (form.qtdMaxima !== '' && toNum(form.qtdMaxima) < toNum(form.qtdMinima)) e.qtdMaxima = 'Menor que mínimo'
+    if (form.qtdAtual !== '' && toNum(form.qtdAtual) < 0) e.qtdAtual = 'Inválido'
+    if (form.qtdMinima !== '' && toNum(form.qtdMinima) < 0) e.qtdMinima = 'Inválido'
+    if (form.qtdMaxima !== '' && form.qtdMinima !== '' && toNum(form.qtdMaxima) < toNum(form.qtdMinima)) e.qtdMaxima = 'Menor que mínimo'
     if (toNum(form.custoAtual) <= 0) e.custoAtual = 'Obrigatório'
     if (toNum(form.precoVenda) <= 0) e.precoVenda = 'Obrigatório'
     if (margemValida && venda < custo) e.precoVenda = 'Venda < custo'
@@ -92,7 +92,7 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
 
   return (
     <Modal T={T} dark={dark} onClose={onClose} maxWidth={560}>
-      <ModalHeader T={T} title="Nova peça" subtitle="Cadastro manual"
+      <ModalHeader T={T} title="Cadastro de Peças" subtitle="Cadastro manual"
         icon="ti-puzzle" onClose={onClose} />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
@@ -114,9 +114,9 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <CampoErro erro={erros.sku} dark={dark}>
-                <Input T={T} dark={dark} label="SKU / Código" required
+                <Input T={T} dark={dark} label="SKU / Código"
                   value={form.sku} onChange={set('sku')}
-                  placeholder="Ex: CAP-BRA-12"
+                  placeholder="Ex: CAP-BRA-12 (opcional)"
                   icon="ti-barcode"
                 />
               </CampoErro>
@@ -173,14 +173,14 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
             <CampoErro erro={erros.qtdAtual} dark={dark}>
-              <Input T={T} dark={dark} label="Qtd. atual" required
+              <Input T={T} dark={dark} label="Qtd. atual"
                 type="number" min="0" step="1"
                 value={form.qtdAtual} onChange={set('qtdAtual')}
                 placeholder="0"
               />
             </CampoErro>
             <CampoErro erro={erros.qtdMinima} dark={dark}>
-              <Input T={T} dark={dark} label="Mínimo" required
+              <Input T={T} dark={dark} label="Mínimo"
                 type="number" min="0" step="1"
                 value={form.qtdMinima} onChange={set('qtdMinima')}
                 placeholder="0"
@@ -195,7 +195,7 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
             </CampoErro>
           </div>
           <div style={{ fontSize: 10.5, color: T.textDim, marginTop: 6 }}>
-            Quando a quantidade cair até o mínimo, o item aparece com alerta no estoque.
+            Campos opcionais — quando preenchidos, o item aparece com alerta no estoque ao cair até o mínimo.
           </div>
         </div>
 

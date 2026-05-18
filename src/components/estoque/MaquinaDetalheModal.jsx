@@ -61,7 +61,7 @@ function pctLucro(custo, venda) {
   return Math.round(((venda - custo) / custo) * 100)
 }
 
-export default function MaquinaDetalheModal({ T, dark, maquina, onClose, mobile }) {
+export default function MaquinaDetalheModal({ T, dark, maquina, onClose, mobile, mostraValores = true }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
   const azul = corEtapa('blue', dark)
@@ -159,36 +159,44 @@ export default function MaquinaDetalheModal({ T, dark, maquina, onClose, mobile 
           </div>
         ) : (
           <>
-            {/* Custos breakdown */}
+            {/* Bloco financeiro — funcionário vê só preço de venda */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <i className="ti ti-cash" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-                <span style={sectionLabel}>Composição do custo</span>
+                <span style={sectionLabel}>
+                  {mostraValores ? 'Composição do custo' : 'Preço de venda'}
+                </span>
               </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: mobile ? '1fr' : 'repeat(3, 1fr)',
-                gap: 10, marginBottom: 10,
-              }}>
-                <BlocoCusto T={T} dark={dark} label="Compra"  icon="ti-shopping-bag" valor={maquina.custoCompra} />
-                <BlocoCusto T={T} dark={dark} label="Itens"   icon="ti-puzzle"      valor={maquina.custoItens} />
-                <BlocoCusto T={T} dark={dark} label="Serviço" icon="ti-tools"       valor={maquina.custoServico} />
-              </div>
+              {mostraValores && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: mobile ? '1fr' : 'repeat(3, 1fr)',
+                  gap: 10, marginBottom: 10,
+                }}>
+                  <BlocoCusto T={T} dark={dark} label="Compra"  icon="ti-shopping-bag" valor={maquina.custoCompra} />
+                  <BlocoCusto T={T} dark={dark} label="Itens"   icon="ti-puzzle"      valor={maquina.custoItens} />
+                  <BlocoCusto T={T} dark={dark} label="Serviço" icon="ti-tools"       valor={maquina.custoServico} />
+                </div>
+              )}
 
               <div style={{
                 padding: '12px 14px', borderRadius: 9,
                 background: T.cardAlt, border: `1px solid ${T.border}`,
-                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, alignItems: 'center',
+                display: 'grid',
+                gridTemplateColumns: mostraValores ? '1fr 1fr 1fr' : '1fr',
+                gap: 12, alignItems: 'center',
               }}>
-                <div>
-                  <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2 }}>
-                    Custo total
+                {mostraValores && (
+                  <div>
+                    <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2 }}>
+                      Custo total
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtBRL(custoTotal)}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
-                    {fmtBRL(custoTotal)}
-                  </div>
-                </div>
+                )}
                 <div>
                   <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2 }}>
                     Preço venda
@@ -197,16 +205,18 @@ export default function MaquinaDetalheModal({ T, dark, maquina, onClose, mobile 
                     {maquina.precoVenda > 0 ? fmtBRL(maquina.precoVenda) : '—'}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2 }}>
-                    Margem
+                {mostraValores && (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2 }}>
+                      Margem
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: azul, fontVariantNumeric: 'tabular-nums' }}>
+                      {custoTotal > 0 && maquina.precoVenda > 0
+                        ? `${lucro}% · ${fmtBRL(margemRS)}`
+                        : '—'}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: azul, fontVariantNumeric: 'tabular-nums' }}>
-                    {custoTotal > 0 && maquina.precoVenda > 0
-                      ? `${lucro}% · ${fmtBRL(margemRS)}`
-                      : '—'}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -235,9 +245,10 @@ export default function MaquinaDetalheModal({ T, dark, maquina, onClose, mobile 
                   background: T.cardAlt, border: `1px solid ${T.border}`,
                   borderRadius: 9, overflow: 'hidden',
                 }}>
-                  {/* Cabecalho */}
+                  {/* Cabecalho — funcionário não vê Custo un. nem Total */}
                   <div style={{
-                    display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px',
+                    display: 'grid',
+                    gridTemplateColumns: mostraValores ? '1fr 60px 90px 90px' : '1fr 60px',
                     gap: 10, padding: '8px 12px',
                     fontSize: 10.5, color: T.textMuted, fontWeight: 600,
                     textTransform: 'uppercase', letterSpacing: '.04em',
@@ -245,12 +256,13 @@ export default function MaquinaDetalheModal({ T, dark, maquina, onClose, mobile 
                   }}>
                     <div>Item</div>
                     <div style={{ textAlign: 'right' }}>Qtd</div>
-                    <div style={{ textAlign: 'right' }}>Custo un.</div>
-                    <div style={{ textAlign: 'right' }}>Total</div>
+                    {mostraValores && <div style={{ textAlign: 'right' }}>Custo un.</div>}
+                    {mostraValores && <div style={{ textAlign: 'right' }}>Total</div>}
                   </div>
                   {itens.map((it, i) => (
                     <div key={it.id} style={{
-                      display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px',
+                      display: 'grid',
+                      gridTemplateColumns: mostraValores ? '1fr 60px 90px 90px' : '1fr 60px',
                       gap: 10, padding: '8px 12px',
                       borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
                       fontSize: 12, color: T.textPrimary,
@@ -259,22 +271,24 @@ export default function MaquinaDetalheModal({ T, dark, maquina, onClose, mobile 
                         {it.nome}
                       </div>
                       <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{it.qtd}</div>
-                      <div style={{ textAlign: 'right', color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(it.custoUnit)}</div>
-                      <div style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(it.total)}</div>
+                      {mostraValores && <div style={{ textAlign: 'right', color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(it.custoUnit)}</div>}
+                      {mostraValores && <div style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(it.total)}</div>}
                     </div>
                   ))}
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px',
-                    gap: 10, padding: '8px 12px',
-                    borderTop: `1px solid ${T.border}`,
-                    background: cor('#0d2035', '#e6f1fb'),
-                    fontSize: 12, fontWeight: 700, color: corHero(dark),
-                  }}>
-                    <div style={{ gridColumn: '1 / 4', textAlign: 'right' }}>Subtotal itens</div>
-                    <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {fmtBRL(itens.reduce((s, i) => s + i.total, 0))}
+                  {mostraValores && (
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: '1fr 60px 90px 90px',
+                      gap: 10, padding: '8px 12px',
+                      borderTop: `1px solid ${T.border}`,
+                      background: cor('#0d2035', '#e6f1fb'),
+                      fontSize: 12, fontWeight: 700, color: corHero(dark),
+                    }}>
+                      <div style={{ gridColumn: '1 / 4', textAlign: 'right' }}>Subtotal itens</div>
+                      <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmtBRL(itens.reduce((s, i) => s + i.total, 0))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

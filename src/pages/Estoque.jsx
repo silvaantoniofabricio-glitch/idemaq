@@ -192,7 +192,7 @@ export default function Estoque({ T, dark, user }) {
               onClick={() => onPecas
                 ? setNovaPecaAberta(true)
                 : placeholder('Cadastro de máquina em breve')}>
-              {onPecas ? 'Nova peça' : 'Nova máquina'}
+              {onPecas ? 'Cadastro de Peças' : 'Nova máquina'}
             </Button>
           </div>
         }
