@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../supabase'
 
 // Cor por papel — alinhada com a paleta Deutan do projeto
@@ -11,6 +11,7 @@ const COR_PAPEL = {
 export function useUsuarios() {
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     supabase
@@ -18,8 +19,10 @@ export function useUsuarios() {
       .select('id, email, apelido, papel')
       .eq('ativo', true)
       .order('apelido')
-      .then(({ data, error }) => {
-        if (!error && data) {
+      .then(({ data, error: err }) => {
+        if (err) {
+          setError(err)
+        } else if (data) {
           setUsuarios(
             data.map(u => ({
               id:      u.id,
@@ -35,5 +38,15 @@ export function useUsuarios() {
       })
   }, [])
 
-  return { usuarios, loading }
+  // Helpers — substituem a constante FUNCIONARIOS do mock em `utils/osData.js`.
+  // Memoizados pra não recriar a cada render do consumidor.
+  const helpers = useMemo(() => ({
+    funcPorId: (id) => usuarios.find(u => u.id === id) || null,
+    apelidoDe: (id) => usuarios.find(u => u.id === id)?.apelido || 'desconhecido',
+    papelDe:   (id) => usuarios.find(u => u.id === id)?.papel || null,
+    porPapel:  (papel) => usuarios.filter(u => u.papel === papel),
+    dono:      () => usuarios.find(u => u.papel === 'dono') || null,
+  }), [usuarios])
+
+  return { usuarios, loading, error, ...helpers }
 }
