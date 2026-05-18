@@ -11,6 +11,7 @@ import { dentroGarantia, calcStatusPrazo, diasPrazo, totalAPagar, estaPagaTotal 
 import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
 import { funcPorId, TIPOS_OS } from '../../../utils/osData'
 import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import RelatorioDiagnostico from '../RelatorioDiagnostico'
 
 export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
   const cor = (d, c) => dark ? d : c
@@ -77,8 +78,13 @@ export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
         <MiniCard T={T} label="Dias na OS" valor={`${diasNaOS}d`} icon="ti-hourglass" />
       </div>
 
-      {/* Diagnóstico (defeito + causa) */}
-      <DiagnosticoBloco T={T} dark={dark} os={os} />
+      {/* Diagnóstico — componente compartilhado com AcaoOrcamento e AcaoOficina.
+          Mostra defeito do cliente + causa do técnico + chips dos itens marcados
+          (troca/manutenção) + badge "Diag por XX". Esconde se OS ainda nem
+          chegou no Diagnóstico. */}
+      {(os.defeito || os.diagnostico?.causa || os.diagnostico?.checklist) && (
+        <RelatorioDiagnostico T={T} dark={dark} os={os} />
+      )}
 
       {/* Orçamento — só admin (regra: funcionário não vê valores financeiros) */}
       {admin && temItens && (
@@ -102,54 +108,6 @@ export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
           }}>{os.observacoes}</div>
         </div>
       )}
-    </div>
-  )
-}
-
-// ─── Diagnóstico (defeito relatado + causa identificada) ────────────────────
-function DiagnosticoBloco({ T, dark, os }) {
-  const defeito = os.defeito
-  const causa = os.diag_causa || os.causa
-  if (!defeito && !causa) return null
-
-  const azul = corEtapa('blue', dark)
-
-  return (
-    <div className="idemaq-card" style={{
-      background: T.cardAlt, border: `1px solid ${T.border}`,
-      borderRadius: 9, padding: '12px 14px',
-    }}>
-      <SectionLabel T={T} icon="ti-stethoscope" label="Diagnóstico" />
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-        {defeito && (
-          <SubBloco T={T} dark={dark} iconCor={azul}
-            tag="Defeito relatado pelo cliente"
-            texto={defeito} />
-        )}
-        {causa && (
-          <SubBloco T={T} dark={dark} iconCor={azul}
-            tag="Causa identificada pelo técnico"
-            texto={causa} />
-        )}
-      </div>
-    </div>
-  )
-}
-
-function SubBloco({ T, dark, iconCor, tag, texto }) {
-  return (
-    <div style={{
-      paddingLeft: 10, borderLeft: `2px solid ${iconCor}55`,
-    }}>
-      <div style={{
-        fontSize: 10, color: T.textMuted, fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 3,
-      }}>{tag}</div>
-      <div style={{
-        fontSize: 12.5, color: T.textPrimary, lineHeight: 1.45,
-        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-      }}>{texto}</div>
     </div>
   )
 }
