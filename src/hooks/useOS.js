@@ -63,12 +63,31 @@ export function useOS(buscando = false) {
 
       if (err) throw err
 
+      // [DEBUG temporário 18/05] — diagnóstico do bug "Kanban vazio com 200 OK"
+      // Remover depois que confirmar que tá tudo carregando certo.
+      console.group('[useOS] query Supabase')
+      console.log('Total bruto retornado:', (data || []).length)
+      if ((data || []).length > 0) {
+        console.table((data || []).map(o => ({
+          numero: o.numero, tipo: o.tipo, etapa_db: o.etapa,
+          cliente: o.cliente?.nome || '(sem cliente)',
+          historico_count: (o.os_historico || []).length,
+          data_conclusao: o.data_conclusao,
+        })))
+      } else {
+        console.warn('Nenhuma OS retornada. Possível causa: RLS bloqueando ou tabela vazia.')
+      }
+      console.groupEnd()
+
       const limite24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
       const mapped = (data || [])
         .filter(os => {
           // Ocultar concluídas há mais de 24h (busca escapa esse filtro)
-          if (!buscando && os.data_conclusao && new Date(os.data_conclusao) < limite24h) return false
+          if (!buscando && os.data_conclusao && new Date(os.data_conclusao) < limite24h) {
+            console.warn(`[useOS] OS #${os.numero} ocultada (concluída há mais de 24h)`)
+            return false
+          }
           return true
         })
         .map(os => ({
@@ -122,8 +141,21 @@ export function useOS(buscando = false) {
             })),
         }))
 
+      // [DEBUG temporário] — confere o que sai do map (etapa traduzida pra UI)
+      console.group('[useOS] depois do map')
+      console.log('Total após filtro 24h:', mapped.length)
+      if (mapped.length > 0) {
+        console.table(mapped.map(o => ({
+          numero: o.numero, tipo: o.tipo,
+          etapa_ui: o.etapa, // <- esse é o que o Kanban procura
+          cliente: o.cliente,
+        })))
+      }
+      console.groupEnd()
+
       setOsList(mapped)
     } catch (e) {
+      console.error('[useOS] erro na query:', e)
       setError(e?.message || 'Erro ao carregar OS')
     } finally {
       setLoading(false)
