@@ -1,14 +1,18 @@
 // src/components/osDetalhe/tabs/ResumoTab.jsx
-// Aba Resumo — contexto do caso. Banners de garantia/recusada, cards Cliente e
-// Equipamento (clicáveis no hover), mini-cards de prazo, observações.
+// Aba Resumo — contexto do caso. Banners de garantia/recusada, mini-cards de
+// prazo, diagnóstico (defeito + causa), orçamento (admin-only com totais),
+// histórico recente das últimas 3 mudanças de etapa, observações.
+// Cliente/equipamento já vivem no Header do modal (sempre visíveis).
 
 import React from 'react'
 import { P } from '../../../theme'
 import { corEtapa, bgEtapa } from '../../../utils/colors'
-import { dentroGarantia, calcStatusPrazo, diasPrazo } from '../../../utils/osHelpers'
-import { fmtPrazoCurto } from '../../../utils/fmt'
+import { dentroGarantia, calcStatusPrazo, diasPrazo, totalAPagar, estaPagaTotal } from '../../../utils/osHelpers'
+import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
+import { funcPorId, TIPOS_OS } from '../../../utils/osData'
+import { OS_ITENS_MOCK } from '../../../_mocks/os'
 
-export default function ResumoTab({ T, dark, os, osBase, onAbrirOS }) {
+export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
   const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
 
@@ -23,6 +27,9 @@ export default function ResumoTab({ T, dark, os, osBase, onAbrirOS }) {
     const inicio = new Date(os.criado_em || os.historico?.[0]?.data || Date.now())
     return Math.max(0, Math.round((new Date() - inicio) / 86400000))
   })()
+
+  const itens = OS_ITENS_MOCK[os.numero] || []
+  const temItens = itens.length > 0
 
   return (
     <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -57,8 +64,6 @@ export default function ResumoTab({ T, dark, os, osBase, onAbrirOS }) {
         />
       )}
 
-      {/* Cliente e Equipamento agora ficam no Header do modal (sempre visíveis) */}
-
       {/* Mini-cards: aberta em, prazo, dias na OS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
         <MiniCard T={T} label="Aberta em" valor={fmtPrazoCurto(os.criado_em) || '—'} icon="ti-calendar-plus" />
@@ -72,24 +77,297 @@ export default function ResumoTab({ T, dark, os, osBase, onAbrirOS }) {
         <MiniCard T={T} label="Dias na OS" valor={`${diasNaOS}d`} icon="ti-hourglass" />
       </div>
 
+      {/* Diagnóstico (defeito + causa) */}
+      <DiagnosticoBloco T={T} dark={dark} os={os} />
+
+      {/* Orçamento — só admin (regra: funcionário não vê valores financeiros) */}
+      {admin && temItens && (
+        <OrcamentoBloco T={T} dark={dark} os={os} itens={itens} />
+      )}
+
+      {/* Histórico recente — últimas 3 mudanças */}
+      <HistoricoRecenteBloco T={T} dark={dark} os={os} />
+
       {/* Observações */}
       {os.observacoes && (
         <div className="idemaq-card" style={{
           background: T.cardAlt, border: `1px solid ${T.border}`,
           borderRadius: 9, padding: '12px 14px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <i className="ti ti-notes" style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
-            <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.3px' }}>
-              Observações
-            </span>
-          </div>
+          <SectionLabel T={T} icon="ti-notes" label="Observações" />
           <div style={{
             fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
             whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+            marginTop: 8,
           }}>{os.observacoes}</div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Diagnóstico (defeito relatado + causa identificada) ────────────────────
+function DiagnosticoBloco({ T, dark, os }) {
+  const defeito = os.defeito
+  const causa = os.diag_causa || os.causa
+  if (!defeito && !causa) return null
+
+  const azul = corEtapa('blue', dark)
+
+  return (
+    <div className="idemaq-card" style={{
+      background: T.cardAlt, border: `1px solid ${T.border}`,
+      borderRadius: 9, padding: '12px 14px',
+    }}>
+      <SectionLabel T={T} icon="ti-stethoscope" label="Diagnóstico" />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+        {defeito && (
+          <SubBloco T={T} dark={dark} iconCor={azul}
+            tag="Defeito relatado pelo cliente"
+            texto={defeito} />
+        )}
+        {causa && (
+          <SubBloco T={T} dark={dark} iconCor={azul}
+            tag="Causa identificada pelo técnico"
+            texto={causa} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SubBloco({ T, dark, iconCor, tag, texto }) {
+  return (
+    <div style={{
+      paddingLeft: 10, borderLeft: `2px solid ${iconCor}55`,
+    }}>
+      <div style={{
+        fontSize: 10, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 3,
+      }}>{tag}</div>
+      <div style={{
+        fontSize: 12.5, color: T.textPrimary, lineHeight: 1.45,
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+      }}>{texto}</div>
+    </div>
+  )
+}
+
+// ─── Orçamento (admin-only) — itens + Total/Pago/Saldo ──────────────────────
+function OrcamentoBloco({ T, dark, os, itens }) {
+  const cor = (d, c) => dark ? d : c
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+  const amarelo = corEtapa('yellow', dark)
+
+  const subtotal = itens.reduce((s, i) => s + (i.valor || 0) * (i.qtd || 1), 0)
+  const desconto = os.desconto || 0
+  const total = Math.max(0, subtotal - desconto)
+  const pago = os.valor_pago || 0
+  const saldo = Math.max(0, total - pago)
+  const pct = total > 0 ? Math.round((pago / total) * 100) : 0
+  const pagaTotal = estaPagaTotal(os)
+  const pagaParcial = !pagaTotal && pago > 0
+
+  const statusPag = pagaTotal
+    ? { label: 'Pago', cor: verde, icon: 'ti-circle-check', bg: bgEtapa('green', dark) }
+    : pagaParcial
+      ? { label: 'Pago parcial', cor: amarelo, icon: 'ti-clock-hour-3', bg: bgEtapa('yellow', dark) }
+      : { label: 'Não pago', cor: T.textMuted, icon: 'ti-circle-dashed', bg: T.cardAlt }
+
+  return (
+    <div className="idemaq-card" style={{
+      background: T.cardAlt, border: `1px solid ${T.border}`,
+      borderRadius: 9, padding: '12px 14px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <SectionLabel T={T} icon="ti-receipt" label={`Orçamento · ${itens.length} ${itens.length === 1 ? 'item' : 'itens'}`} />
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          fontSize: 10.5, fontWeight: 700,
+          padding: '2px 8px', borderRadius: 12,
+          background: statusPag.bg, color: statusPag.cor,
+          border: `1px solid ${statusPag.cor}33`,
+        }}>
+          <i className={`ti ${statusPag.icon}`} aria-hidden="true" />
+          {statusPag.label}
+        </span>
+      </div>
+
+      {/* Lista compacta de itens */}
+      <div style={{
+        background: T.card, border: `1px solid ${T.border}`,
+        borderRadius: 7, overflow: 'hidden',
+      }}>
+        {itens.map((it, i) => (
+          <div key={i} style={{
+            display: 'grid', gridTemplateColumns: '1fr auto auto',
+            gap: 10, alignItems: 'center',
+            padding: '7px 10px',
+            borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+            fontSize: 12,
+          }}>
+            <div style={{
+              color: T.textPrimary,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              <i className={`ti ${tipoIcone(it.tipo)}`} style={{
+                fontSize: 12, color: T.textMuted, marginRight: 5,
+              }} aria-hidden="true" />
+              {it.nome || '(sem nome)'}
+            </div>
+            <span style={{
+              fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}>
+              {it.qtd}× {fmtBRL(it.valor || 0)}
+            </span>
+            <span style={{
+              fontSize: 12, fontWeight: 600, color: T.textPrimary,
+              fontVariantNumeric: 'tabular-nums',
+              minWidth: 70, textAlign: 'right',
+            }}>
+              {fmtBRL((it.valor || 0) * (it.qtd || 1))}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Totais em 3 colunas */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+        marginTop: 10,
+      }}>
+        <TotalCard T={T} label="Total" valor={fmtBRL(total)} cor={T.textPrimary}
+          sub={desconto > 0 ? `subtotal ${fmtBRL(subtotal)} · desc ${fmtBRL(desconto)}` : null} />
+        <TotalCard T={T} label="Pago" valor={fmtBRL(pago)} cor={pago > 0 ? verde : T.textMuted}
+          sub={total > 0 ? `${pct}% do total` : null} />
+        <TotalCard T={T} label="Saldo" valor={fmtBRL(saldo)}
+          cor={saldo > 0 ? amarelo : verde}
+          sub={saldo === 0 ? 'quitado' : os.forma_pagamento ? `via ${os.forma_pagamento}` : null} />
+      </div>
+    </div>
+  )
+}
+
+function TotalCard({ T, label, valor, cor, sub }) {
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 7, padding: '8px 10px',
+    }}>
+      <div style={{
+        fontSize: 10, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 3,
+      }}>{label}</div>
+      <div style={{
+        fontSize: 14, fontWeight: 700, color: cor,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{valor}</div>
+      {sub && (
+        <div style={{
+          fontSize: 10, color: T.textMuted, marginTop: 2,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{sub}</div>
+      )}
+    </div>
+  )
+}
+
+function tipoIcone(tipo) {
+  if (tipo === 'servico') return 'ti-tool'
+  if (tipo === 'peca') return 'ti-puzzle'
+  if (tipo === 'maquina') return 'ti-device-washing-machine'
+  return 'ti-circle'
+}
+
+// ─── Histórico recente — últimas 3 mudanças de etapa ────────────────────────
+function HistoricoRecenteBloco({ T, dark, os }) {
+  const historico = os.historico || []
+  if (historico.length === 0) return null
+
+  const azul = corEtapa('blue', dark)
+
+  // Pega as últimas 3 entradas (já vem cronológico, então slice no final)
+  const ultimas = historico.slice(-3).reverse()
+  const cfgTipo = TIPOS_OS[os.tipo]
+  const todasEtapas = [...(cfgTipo?.etapas || []), cfgTipo?.lateral].filter(Boolean)
+
+  function labelEtapa(id) {
+    const e = todasEtapas.find(x => x.id === id)
+    return e?.curto || e?.label || id
+  }
+
+  return (
+    <div className="idemaq-card" style={{
+      background: T.cardAlt, border: `1px solid ${T.border}`,
+      borderRadius: 9, padding: '12px 14px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <SectionLabel T={T} icon="ti-history" label="Histórico recente" />
+        <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+          {historico.length} {historico.length === 1 ? 'evento' : 'eventos'} · ver tudo no ícone do header
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {ultimas.map((h, i) => {
+          const f = funcPorId(h.funcionario)
+          const etapaLabel = labelEtapa(h.etapa)
+          return (
+            <div key={i} style={{
+              display: 'grid', gridTemplateColumns: 'auto 1fr auto',
+              gap: 10, alignItems: 'center',
+              padding: '7px 10px',
+              background: T.card, border: `1px solid ${T.border}`,
+              borderRadius: 7,
+            }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: 6,
+                background: bgEtapa('blue', dark),
+                color: azul,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13,
+              }} aria-hidden="true">
+                <i className="ti ti-arrow-right" />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{
+                  fontSize: 12.5, fontWeight: 600, color: T.textPrimary,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  → {etapaLabel}
+                </div>
+                {f && (
+                  <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 1 }}>
+                    por {f.nome}
+                  </div>
+                )}
+              </div>
+              <span style={{
+                fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}>
+                {fmtPrazoCurto(h.data)}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Helpers visuais compartilhados ──────────────────────────────────────────
+function SectionLabel({ T, icon, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <i className={`ti ${icon}`} style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
+      <span style={{
+        fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '.3px',
+      }}>{label}</span>
     </div>
   )
 }
