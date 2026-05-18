@@ -10,7 +10,7 @@ import { corEtapa, bgEtapa } from '../../../utils/colors'
 import { dentroGarantia, calcStatusPrazo, diasPrazo, totalAPagar, estaPagaTotal } from '../../../utils/osHelpers'
 import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
 import { funcPorId, TIPOS_OS } from '../../../utils/osData'
-import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { useOSItens } from '../../../hooks/useOSItens'
 import RelatorioDiagnostico from '../RelatorioDiagnostico'
 
 export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
@@ -29,7 +29,9 @@ export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
     return Math.max(0, Math.round((new Date() - inicio) / 86400000))
   })()
 
-  const itens = OS_ITENS_MOCK[os.numero] || []
+  // Itens reais da OS (Módulo 00c — Lote 1) — substituiu OS_ITENS_MOCK.
+  // Quando os.id não existe (rascunho/novo), retorna [] sem buscar.
+  const { itens, loading: itensLoading } = useOSItens(os?.id)
   const temItens = itens.length > 0
 
   return (
@@ -87,8 +89,29 @@ export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
       )}
 
       {/* Orçamento — só admin (regra: funcionário não vê valores financeiros) */}
-      {admin && temItens && (
+      {admin && itensLoading && (
+        <div className="idemaq-card" style={{
+          background: T.cardAlt, border: `1px solid ${T.border}`,
+          borderRadius: 9, padding: '14px',
+          fontSize: 12, color: T.textMuted, textAlign: 'center',
+        }}>
+          <i className="ti ti-loader" style={{ fontSize: 14, marginRight: 6, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
+          Carregando itens…
+        </div>
+      )}
+      {admin && !itensLoading && temItens && (
         <OrcamentoBloco T={T} dark={dark} os={os} itens={itens} />
+      )}
+      {admin && !itensLoading && !temItens && (
+        <div className="idemaq-card" style={{
+          background: T.cardAlt, border: `1px dashed ${T.border}`,
+          borderRadius: 9, padding: '12px 14px',
+          fontSize: 12, color: T.textMuted, fontStyle: 'italic',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <i className="ti ti-receipt-off" style={{ fontSize: 14 }} aria-hidden="true" />
+          Nenhum item lançado nesta OS.
+        </div>
       )}
 
       {/* Histórico recente — últimas 3 mudanças */}
@@ -119,12 +142,16 @@ function OrcamentoBloco({ T, dark, os, itens }) {
   const verde = corEtapa('green', dark)
   const amarelo = corEtapa('yellow', dark)
 
-  const subtotal = itens.reduce((s, i) => s + (i.valor || 0) * (i.qtd || 1), 0)
+  // Aceita ambos os formatos: tabela `os_item` real (valor_unitario + valor_total)
+  // e mock legado (valor). Prefere valor_total quando vier do banco.
+  function unit(i)  { return i.valor_unitario ?? i.valor ?? 0 }
+  function total(i) { return i.valor_total ?? unit(i) * (i.qtd ?? 1) }
+  const subtotal = itens.reduce((s, i) => s + total(i), 0)
   const desconto = os.desconto || 0
-  const total = Math.max(0, subtotal - desconto)
+  const totalLiq = Math.max(0, subtotal - desconto)
   const pago = os.valor_pago || 0
-  const saldo = Math.max(0, total - pago)
-  const pct = total > 0 ? Math.round((pago / total) * 100) : 0
+  const saldo = Math.max(0, totalLiq - pago)
+  const pct = totalLiq > 0 ? Math.round((pago / totalLiq) * 100) : 0
   const pagaTotal = estaPagaTotal(os)
   const pagaParcial = !pagaTotal && pago > 0
 
@@ -179,14 +206,14 @@ function OrcamentoBloco({ T, dark, os, itens }) {
               fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
               whiteSpace: 'nowrap',
             }}>
-              {it.qtd}× {fmtBRL(it.valor || 0)}
+              {it.qtd}× {fmtBRL(unit(it))}
             </span>
             <span style={{
               fontSize: 12, fontWeight: 600, color: T.textPrimary,
               fontVariantNumeric: 'tabular-nums',
               minWidth: 70, textAlign: 'right',
             }}>
-              {fmtBRL((it.valor || 0) * (it.qtd || 1))}
+              {fmtBRL(total(it))}
             </span>
           </div>
         ))}
@@ -197,10 +224,10 @@ function OrcamentoBloco({ T, dark, os, itens }) {
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
         marginTop: 10,
       }}>
-        <TotalCard T={T} label="Total" valor={fmtBRL(total)} cor={T.textPrimary}
+        <TotalCard T={T} label="Total" valor={fmtBRL(totalLiq)} cor={T.textPrimary}
           sub={desconto > 0 ? `subtotal ${fmtBRL(subtotal)} · desc ${fmtBRL(desconto)}` : null} />
         <TotalCard T={T} label="Pago" valor={fmtBRL(pago)} cor={pago > 0 ? verde : T.textMuted}
-          sub={total > 0 ? `${pct}% do total` : null} />
+          sub={totalLiq > 0 ? `${pct}% do total` : null} />
         <TotalCard T={T} label="Saldo" valor={fmtBRL(saldo)}
           cor={saldo > 0 ? amarelo : verde}
           sub={saldo === 0 ? 'quitado' : os.forma_pagamento ? `via ${os.forma_pagamento}` : null} />
