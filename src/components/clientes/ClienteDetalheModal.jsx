@@ -1,32 +1,22 @@
 // idemaq-src/components/clientes/ClienteDetalheModal.jsx
-// Detalhe do cliente — visualização + edição inline.
-// Reaproveita Modal + Input + Button da lib. Mostra avatar de iniciais no header.
-// Histórico de OS fica pro Módulo 02 — placeholder no rodapé do corpo.
+// Detalhe do cliente — visualização + edição inline + lista de OS dele.
+// Lote 1 do Módulo 00c:
+//  - Dados do cliente vêm do prop (já vem do Supabase via useClientes)
+//  - Lista de OS vem de SELECT na tabela `os` filtrando cliente_id
+//  - Editar chama prop onSalvar (que executa hook.atualizar no parent)
+//  - Excluir chama prop onExcluir (parent confirma + executa hook.excluir)
+//
+// Schema da tabela `cliente` (apenas estes campos existem):
+//   nome, fone, endereco, cidade, uf, cep, email, obs
+// Sem cpfCnpj, foneSecundario ou multi-endereços. Se precisar desses campos,
+// PARE e peça pro Toni decidir.
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { supabase } from '../../supabase'
 import { P } from '../../theme'
 import { corEtapa, corHero } from '../../utils/colors'
-import { Modal, Input, Button, useToast } from '../ui'
-import { OS_MOCK } from '../../_mocks/os'
 import { TIPOS_OS } from '../../utils/osData'
-import { dentroGarantia } from '../../utils/osHelpers'
-import { fmtBRL, fmtPrazoCurto } from '../../utils/fmt'
-
-// Dias restantes de garantia (somente OS concluídas com entrega registrada).
-function diasGarantiaRestantes(os) {
-  if (!os || os.etapa !== 'concluido') return 0
-  const dias = os.garantia_dias || 90
-  const reg = (os.historico || []).find(h => h.etapa === 'entrega' || h.etapa === 'entregue')
-  if (!reg) return 0
-  const limite = new Date(new Date(reg.data).getTime() + dias * 86400000)
-  return Math.max(0, Math.round((limite - new Date()) / 86400000))
-}
-
-function labelEtapa(os) {
-  const cfg = TIPOS_OS[os.tipo]
-  const e = cfg?.etapas?.find(x => x.id === os.etapa) || cfg?.lateral
-  return e?.curto || e?.label || os.etapa
-}
+import { Modal, Input, Textarea, Button } from '../ui'
 
 function iniciais(nome) {
   return (nome || '')
@@ -37,71 +27,67 @@ function iniciais(nome) {
     .join('') || '?'
 }
 
-// Normaliza o cliente em form: enderecos sempre array com pelo menos 1 entrada.
+function labelEtapa(os) {
+  const cfg = TIPOS_OS[os.tipo]
+  const e = cfg?.etapas?.find(x => x.id === os.etapa) || cfg?.lateral
+  return e?.curto || e?.label || os.etapa
+}
+
+function fmtDataCurta(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d)) return '—'
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 function clienteParaForm(c) {
-  const enderecos = c.enderecos && Array.isArray(c.enderecos) && c.enderecos.length > 0
-    ? c.enderecos
-    : (c.endereco ? [c.endereco] : [''])
   return {
-    nome: c.nome || '',
-    cpfCnpj: c.cpfCnpj || '',
-    email: c.email || '',
-    fone: c.fone || '',
-    foneSecundario: c.foneSecundario || '',
-    enderecos: [...enderecos],
+    nome:     c.nome     || '',
+    fone:     c.fone     || '',
+    endereco: c.endereco || '',
+    cidade:   c.cidade   || 'Naviraí',
+    uf:       c.uf       || 'MS',
+    cep:      c.cep      || '',
+    email:    c.email    || '',
+    obs:      c.obs      || '',
   }
 }
 
-export default function ClienteDetalheModal({ T, dark, cliente, onClose, onSalvar, mobile }) {
+export default function ClienteDetalheModal({
+  T, dark, cliente, mobile,
+  onClose,
+  onSalvar,    // (cliente) => Promise<void>  · com .id incluso
+  onExcluir,   // () => Promise<void>  · parent trata confirmação
+}) {
   const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
   const initial = useMemo(() => clienteParaForm(cliente), [cliente])
   const [form, setForm] = useState(initial)
+  const [salvando, setSalvando] = useState(false)
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const updateEnd = (i, v) => setForm(f => {
-    const novos = [...f.enderecos]
-    novos[i] = v
-    return { ...f, enderecos: novos }
-  })
-  const addEndereco = () => setForm(f =>
-    f.enderecos.length >= 3 ? f : ({ ...f, enderecos: [...f.enderecos, ''] })
-  )
-  const removerEndereco = (i) => setForm(f =>
-    f.enderecos.length <= 1 ? f : ({ ...f, enderecos: f.enderecos.filter((_, idx) => idx !== i) })
-  )
 
-  // Validação dos obrigatórios + detecção de alteração
-  const obrigatoriosOk = !!(form.nome.trim() && form.fone.trim() && form.enderecos[0]?.trim())
+  const obrigatoriosOk = !!form.nome.trim() && !!form.fone.trim()
   const alterado = useMemo(() => {
-    if (form.nome !== initial.nome) return true
-    if (form.cpfCnpj !== initial.cpfCnpj) return true
-    if (form.email !== initial.email) return true
-    if (form.fone !== initial.fone) return true
-    if (form.foneSecundario !== initial.foneSecundario) return true
-    if (form.enderecos.length !== initial.enderecos.length) return true
-    for (let i = 0; i < form.enderecos.length; i++) {
-      if (form.enderecos[i] !== initial.enderecos[i]) return true
-    }
-    return false
+    return Object.keys(initial).some(k => (form[k] || '') !== (initial[k] || ''))
   }, [form, initial])
+  const podeSalvar = obrigatoriosOk && alterado && !salvando
 
-  const podeSalvar = obrigatoriosOk && alterado
-
-  function salvar() {
+  async function salvar() {
     if (!podeSalvar) return
-    const enderecosLimpos = form.enderecos.map(e => e.trim()).filter(Boolean)
-    const atualizado = {
-      ...cliente,
-      nome: form.nome.trim(),
-      cpfCnpj: form.cpfCnpj.trim(),
-      email: form.email.trim(),
-      fone: form.fone.trim(),
-      foneSecundario: form.foneSecundario.trim(),
-      enderecos: enderecosLimpos,
-      endereco: enderecosLimpos[0] || '', // compat com mock antigo
-    }
-    onSalvar?.(atualizado)
+    setSalvando(true)
+    await onSalvar?.({
+      id:       cliente.id,
+      nome:     form.nome.trim(),
+      fone:     form.fone.trim() || null,
+      endereco: form.endereco.trim() || null,
+      cidade:   form.cidade.trim() || null,
+      uf:       form.uf.trim() || null,
+      cep:      form.cep.trim() || null,
+      email:    form.email.trim() || null,
+      obs:      form.obs.trim() || null,
+    })
+    setSalvando(false)
   }
 
   const sectionLabel = {
@@ -111,7 +97,7 @@ export default function ClienteDetalheModal({ T, dark, cliente, onClose, onSalva
 
   return (
     <Modal T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={620}>
-      {/* Header com avatar + nome + identidade */}
+      {/* Header com avatar + nome */}
       <div style={{
         padding: '14px 20px 14px',
         borderBottom: `1px solid ${T.border}`,
@@ -138,8 +124,8 @@ export default function ClienteDetalheModal({ T, dark, cliente, onClose, onSalva
               fontSize: 11, color: T.textMuted, marginTop: 3,
               display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
             }}>
-              <i className="ti ti-id-badge-2" style={{ fontSize: 12 }} aria-hidden="true" />
-              <span>ID #{cliente.id}</span>
+              <i className="ti ti-brand-whatsapp" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
+              <span>{form.fone || cliente.fone || '—'}</span>
               {alterado && (
                 <>
                   <span style={{ width: 3, height: 3, background: T.textMuted, borderRadius: '50%' }} />
@@ -173,203 +159,169 @@ export default function ClienteDetalheModal({ T, dark, cliente, onClose, onSalva
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
             <Input T={T} dark={dark} label="Nome completo *"
               value={form.nome} onChange={v => update('nome', v)}
-              placeholder="Ex: Maria Silva" autoFocus />
+              placeholder="Ex: Maria Silva" />
             <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-              <Input T={T} dark={dark} label="CPF / CNPJ"
-                value={form.cpfCnpj} onChange={v => update('cpfCnpj', v)}
-                placeholder="000.000.000-00" />
-              <Input T={T} dark={dark} label="E-mail" type="email"
-                value={form.email} onChange={v => update('email', v)}
-                placeholder="maria@email.com" />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
-
-        {/* Contato */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <i className="ti ti-phone" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-            <span style={sectionLabel}>Contato</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-            <div>
-              <Input T={T} dark={dark} label="Telefone principal *" type="tel"
+              <Input T={T} dark={dark} label="Telefone *" type="tel"
                 value={form.fone} onChange={v => update('fone', v)}
                 icon="ti-brand-whatsapp"
                 placeholder="(67) 9 0000-0000" />
-              <div style={{ fontSize: 10.5, color: azul, marginTop: 4 }}>
-                WhatsApp principal
-              </div>
-            </div>
-            <div>
-              <Input T={T} dark={dark} label="Telefone secundário" type="tel"
-                value={form.foneSecundario} onChange={v => update('foneSecundario', v)}
-                placeholder="(67) 9 0000-0000" />
-              <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 4 }}>
-                Esposo(a), parente, recado
-              </div>
+              <Input T={T} dark={dark} label="E-mail" type="email"
+                value={form.email} onChange={v => update('email', v)}
+                icon="ti-mail"
+                placeholder="cliente@email.com" />
             </div>
           </div>
         </div>
 
         <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
 
-        {/* Endereços */}
-        <div>
+        {/* Endereço */}
+        <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <i className="ti ti-map-pin" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-            <span style={sectionLabel}>Endereços</span>
-            <span style={{ fontSize: 10, color: T.textMuted }}>
-              até 3 — útil pra casa e comércio
-            </span>
+            <span style={sectionLabel}>Endereço</span>
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Input T={T} dark={dark}
+              value={form.endereco} onChange={v => update('endereco', v)}
+              icon="ti-map-pin"
+              placeholder="Rua, número, bairro" />
+            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '2fr 1fr 1fr', gap: 10 }}>
+              <Input T={T} dark={dark} label="Cidade"
+                value={form.cidade} onChange={v => update('cidade', v)}
+                placeholder="Naviraí" />
+              <Input T={T} dark={dark} label="UF"
+                value={form.uf} onChange={v => update('uf', v)}
+                placeholder="MS" />
+              <Input T={T} dark={dark} label="CEP"
+                value={form.cep} onChange={v => update('cep', v)}
+                placeholder="79950-000" />
+            </div>
+          </div>
+        </div>
 
-          {/* Endereço principal (sempre presente) */}
-          <Input T={T} dark={dark} label="Endereço principal *"
-            value={form.enderecos[0] || ''}
-            onChange={v => updateEnd(0, v)}
-            icon="ti-map-pin"
-            placeholder="Rua, número, bairro — cidade/UF" />
+        <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
 
-          {/* Endereços extras */}
-          {form.enderecos.slice(1).map((end, idx) => {
-            const realIdx = idx + 1
-            return (
-              <div key={realIdx} style={{
-                marginTop: 12, padding: 12,
-                background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 9,
-              }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  marginBottom: 8,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <i className="ti ti-map-pin" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-                    <span style={{ ...sectionLabel, fontSize: 10.5 }}>
-                      Endereço {realIdx + 1}
-                    </span>
-                  </div>
-                  <button onClick={() => removerEndereco(realIdx)}
-                    style={{
-                      background: 'transparent', border: 'none', cursor: 'pointer',
-                      color: T.textMuted, padding: 4,
-                      display: 'flex', alignItems: 'center', gap: 4, fontSize: 11,
-                      fontFamily: 'inherit',
-                    }}>
-                    <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" />
-                    Remover
-                  </button>
-                </div>
-                <Input T={T} dark={dark}
-                  value={end} onChange={v => updateEnd(realIdx, v)}
-                  placeholder="Rua, número, bairro — cidade/UF" />
-              </div>
-            )
-          })}
-
-          {form.enderecos.length < 3 && (
-            <button onClick={addEndereco}
-              style={{
-                marginTop: 12, width: '100%',
-                background: 'transparent', color: azul,
-                border: `1px dashed ${T.border}`,
-                padding: '11px 12px', borderRadius: 8,
-                fontSize: 12.5, fontWeight: 500,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}>
-              <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-              Adicionar outro endereço
-            </button>
-          )}
+        {/* Observações */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <i className="ti ti-notes" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+            <span style={sectionLabel}>Observações</span>
+          </div>
+          <Textarea T={T} dark={dark}
+            value={form.obs} onChange={v => update('obs', v)}
+            placeholder="Ex: cliente recorrente, prefere atendimento pela manhã…"
+            rows={3} />
         </div>
 
         <div style={{ height: 1, background: T.border, margin: '18px 0 14px' }} />
 
-        {/* Histórico de OS */}
-        <HistoricoOS T={T} dark={dark} cor={cor} clienteNome={cliente.nome} />
+        {/* Histórico de OS — query real ao Supabase */}
+        <HistoricoOS T={T} dark={dark} clienteId={cliente.id} />
       </div>
 
       {/* Rodapé */}
       <div style={{
         padding: '12px 20px', borderTop: `1px solid ${T.border}`,
-        display: 'flex', justifyContent: 'flex-end', gap: 8,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
         background: T.cardAlt, flexShrink: 0,
       }}>
-        <Button T={T} dark={dark} variant="secondary" onClick={onClose}>
-          {alterado ? 'Cancelar' : 'Fechar'}
+        <Button T={T} dark={dark} variant="ghost" iconLeft="ti-trash"
+          onClick={onExcluir} disabled={salvando}>
+          Excluir cliente
         </Button>
-        <Button variant="primary" iconLeft="ti-check"
-          disabled={!podeSalvar} onClick={salvar}>
-          Salvar alterações
-        </Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button T={T} dark={dark} variant="secondary" onClick={onClose} disabled={salvando}>
+            {alterado ? 'Cancelar' : 'Fechar'}
+          </Button>
+          <Button variant="primary"
+            iconLeft={salvando ? 'ti-loader-2' : 'ti-check'}
+            disabled={!podeSalvar} onClick={salvar}>
+            {salvando ? 'Salvando…' : 'Salvar alterações'}
+          </Button>
+        </div>
       </div>
     </Modal>
   )
 }
 
 // ─── Histórico de OS deste cliente ────────────────────────────────────────
-// Filtra OS_MOCK pelo nome do cliente (a ligação ainda é por nome — o
-// Módulo 02 introduz cliente_id no Supabase e troca o filtro pra FK).
-function HistoricoOS({ T, dark, cor, clienteNome }) {
-  const notify = useToast()
-  // Retornos de garantia acionados nesta sessão do modal (mock — Módulo 02
-  // grava no Supabase). Some quando fecha/reabre o modal.
-  const [retornos, setRetornos] = useState([])
-
-  const osCliente = useMemo(() => {
-    const base = OS_MOCK.filter(o => o.cliente === clienteNome && !o.deleted_at)
-    return [...base, ...retornos]
-      .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
-  }, [clienteNome, retornos])
-
-  function ativarGarantia(osOrigem) {
-    const proxNumero = Math.max(...osCliente.map(o => o.numero), 1099) + 1
-    const agora = new Date().toISOString().slice(0, 16).replace('T', ' ')
-    const nova = {
-      id: 'gar-' + Date.now(),
-      numero: proxNumero,
-      tipo: 'atendimento',
-      etapa: 'ag_agendamento',
-      cliente: osOrigem.cliente,
-      fone: osOrigem.fone,
-      endereco: osOrigem.endereco,
-      equipamento: osOrigem.equipamento,
-      marca: osOrigem.marca,
-      modelo: osOrigem.modelo,
-      serie: osOrigem.serie,
-      defeito: `Retorno em garantia da OS #${osOrigem.numero} — agendar diagnóstico`,
-      prazo: null,
-      valor: 0, desconto: 0, pago: 'nao', valor_pago: 0, fotos: 0,
-      limpeza: null, manutencao: null, aguardando_peca: false,
-      garantia: true,
-      os_origem_id: osOrigem.numero,
-      garantia_dias: 90,
-      observacoes: `Acionado em ${agora} a partir da ficha do cliente.`,
-      historico: [{ etapa: 'ag_agendamento', funcionario: 'func1', data: agora }],
-      criado_em: agora,
-      deleted_at: null,
-    }
-    setRetornos(prev => [...prev, nova])
-    notify('ok', `OS #${proxNumero} criada — retorno em garantia da #${osOrigem.numero}`)
-  }
-
+// SELECT direto na tabela `os` filtrando pelo cliente_id real (FK).
+// Soft-delete filtrado.
+function HistoricoOS({ T, dark, clienteId }) {
   const azul = corEtapa('blue', dark)
+  const [osCliente, setOsCliente] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!clienteId) return
+    let cancelado = false
+    setLoading(true); setError(null)
+    supabase
+      .from('os')
+      .select('id, numero, tipo, etapa, criado_em, deleted_at')
+      .eq('cliente_id', clienteId)
+      .is('deleted_at', null)
+      .order('criado_em', { ascending: false })
+      .then(({ data, error: err }) => {
+        if (cancelado) return
+        if (err) {
+          setError(err)
+          setOsCliente([])
+        } else {
+          setOsCliente(data || [])
+        }
+        setLoading(false)
+      })
+    return () => { cancelado = true }
+  }, [clienteId])
 
   const sectionLabel = {
     fontSize: 11, color: T.textMuted, fontWeight: 600,
     letterSpacing: '.4px', textTransform: 'uppercase',
   }
 
-  if (osCliente.length === 0) {
-    return (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <i className="ti ti-history" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-          <span style={sectionLabel}>Histórico de OS</span>
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <i className="ti ti-history" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+        <span style={sectionLabel}>Histórico de OS</span>
+        {!loading && !error && (
+          <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+            {osCliente.length} {osCliente.length === 1 ? 'OS' : 'OS'}
+          </span>
+        )}
+      </div>
+
+      {loading && (
+        <div style={{
+          padding: '14px 16px', borderRadius: 9,
+          background: T.cardAlt, border: `1px dashed ${T.border}`,
+          fontSize: 12, color: T.textMuted, textAlign: 'center',
+        }}>
+          <i className="ti ti-loader-2" style={{
+            fontSize: 14, marginRight: 6,
+            animation: 'spin 1s linear infinite',
+          }} aria-hidden="true" />
+          Carregando histórico…
+          <style>{`@keyframes spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }`}</style>
         </div>
+      )}
+
+      {error && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 9,
+          background: T.cardAlt, border: `1px solid ${corEtapa('red', dark)}55`,
+          fontSize: 12, color: T.textSecondary,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 14, color: corEtapa('red', dark) }} aria-hidden="true" />
+          Erro ao carregar histórico: {error.message || 'desconhecido'}
+        </div>
+      )}
+
+      {!loading && !error && osCliente.length === 0 && (
         <div style={{
           background: T.cardAlt, border: `1px dashed ${T.border}`,
           borderRadius: 9, padding: '14px 16px',
@@ -385,182 +337,50 @@ function HistoricoOS({ T, dark, cor, clienteNome }) {
             </div>
           </div>
         </div>
-      </div>
-    )
-  }
+      )}
 
-  const totalPago = osCliente.reduce((s, o) => s + (o.valor_pago || 0), 0)
-  const emAndamento = osCliente.filter(o => o.etapa !== 'concluido' && o.etapa !== 'recusado').length
-  const garantiasAtivas = osCliente.filter(o => dentroGarantia(o)).length
-
-  const resumoPills = []
-  resumoPills.push(`${osCliente.length} OS`)
-  if (totalPago > 0) resumoPills.push(`${fmtBRL(totalPago)} pago`)
-  if (garantiasAtivas > 0) resumoPills.push(`${garantiasAtivas} garantia${garantiasAtivas > 1 ? 's' : ''} ativa${garantiasAtivas > 1 ? 's' : ''}`)
-  if (emAndamento > 0) resumoPills.push(`${emAndamento} em andamento`)
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        <i className="ti ti-history" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-        <span style={sectionLabel}>Histórico de OS</span>
-        <span style={{
-          fontSize: 10.5, color: T.textMuted,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{resumoPills.join(' · ')}</span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {osCliente.map(os => (
-          <OSHistRow key={os.numero} os={os}
-            T={T} dark={dark} cor={cor}
-            todasOS={osCliente}
-            onAtivarGarantia={ativarGarantia} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function OSHistRow({ os, T, dark, cor, todasOS, onAtivarGarantia }) {
-  const isConcluido = os.etapa === 'concluido'
-  const isRecusado = os.etapa === 'recusado'
-  const isAndamento = !isConcluido && !isRecusado
-  const cfg = TIPOS_OS[os.tipo]
-  const etapaCfg = cfg?.etapas?.find(e => e.id === os.etapa) || cfg?.lateral
-  const etapaCorKey = etapaCfg?.cor || 'neutro'
-  const etapaCor = corEtapa(etapaCorKey, dark)
-  const diasGar = diasGarantiaRestantes(os)
-  const garantiaAtiva = diasGar > 0
-  const totalLiq = (os.valor || 0) - (os.desconto || 0)
-  const pagoTotal = os.pago === 'total' || (totalLiq > 0 && (os.valor_pago || 0) >= totalLiq)
-
-  return (
-    <div style={{
-      background: T.cardAlt,
-      border: `1px solid ${T.border}`,
-      borderRadius: 9,
-      padding: '10px 12px',
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 8, marginBottom: 5, flexWrap: 'wrap',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{
-            fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
-            fontVariantNumeric: 'tabular-nums',
-          }}>OS #{os.numero}</span>
-          <span style={{
-            fontSize: 9.5, fontWeight: 700,
-            padding: '2px 7px', borderRadius: 4,
-            background: etapaCor + '22', color: etapaCor,
-            textTransform: 'uppercase', letterSpacing: '.3px',
-          }}>{labelEtapa(os)}</span>
-          {os.garantia && (
-            <span style={{
-              fontSize: 9.5, fontWeight: 700,
-              padding: '2px 7px', borderRadius: 4,
-              background: cor('#0d2035', '#e6f1fb'),
-              color: cor(P.blue, P.blueDark),
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-              textTransform: 'uppercase', letterSpacing: '.3px',
-            }}>
-              <i className="ti ti-shield-check" style={{ fontSize: 11 }} aria-hidden="true" />
-              retorno
-            </span>
-          )}
+      {!loading && !error && osCliente.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {osCliente.map(os => {
+            const cfg = TIPOS_OS[os.tipo]
+            const etapaCfg = cfg?.etapas?.find(e => e.id === os.etapa) || cfg?.lateral
+            const etapaCor = corEtapa(etapaCfg?.cor || 'neutro', dark)
+            return (
+              <div key={os.id} style={{
+                background: T.cardAlt,
+                border: `1px solid ${T.border}`,
+                borderRadius: 9,
+                padding: '10px 12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 10, flexWrap: 'wrap',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+                  <span style={{
+                    fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>OS #{os.numero}</span>
+                  <span style={{ fontSize: 11, color: T.textMuted }}>·</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, color: T.textSecondary,
+                    textTransform: 'capitalize',
+                  }}>{cfg?.label || os.tipo}</span>
+                  <span style={{ fontSize: 11, color: T.textMuted }}>·</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700,
+                    padding: '2px 7px', borderRadius: 4,
+                    background: etapaCor + '22', color: etapaCor,
+                    textTransform: 'uppercase', letterSpacing: '.3px',
+                  }}>{labelEtapa(os)}</span>
+                </div>
+                <span style={{
+                  fontSize: 11, color: T.textMuted,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>{fmtDataCurta(os.criado_em)}</span>
+              </div>
+            )
+          })}
         </div>
-        <span style={{
-          fontSize: 11, color: T.textMuted,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{fmtPrazoCurto(os.criado_em)}</span>
-      </div>
-
-      <div style={{
-        fontSize: 11.5, color: T.textSecondary,
-        lineHeight: 1.4, marginBottom: 6,
-      }}>{os.defeito || '—'}</div>
-
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 12, flexWrap: 'wrap',
-      }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-          fontSize: 11, color: T.textMuted,
-        }}>
-          {os.valor > 0 ? (
-            <span style={{
-              fontVariantNumeric: 'tabular-nums', fontWeight: 700,
-              color: pagoTotal ? corEtapa('green', dark) : T.textSecondary,
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-            }}>
-              {pagoTotal && <i className="ti ti-check" style={{ fontSize: 12 }} aria-hidden="true" />}
-              {fmtBRL(totalLiq)}{pagoTotal && ' · pago'}
-            </span>
-          ) : (
-            <span style={{ fontStyle: 'italic' }}>sem orçamento ainda</span>
-          )}
-
-          {garantiaAtiva && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              color: corEtapa('green', dark), fontWeight: 600,
-            }}>
-              <i className="ti ti-shield-check" style={{ fontSize: 12 }} aria-hidden="true" />
-              Garantia ativa · {diasGar} dia{diasGar !== 1 ? 's' : ''}
-            </span>
-          )}
-
-          {isAndamento && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              color: corEtapa('yellow', dark), fontWeight: 600,
-            }}>
-              <i className="ti ti-clock" style={{ fontSize: 12 }} aria-hidden="true" />
-              Em andamento
-            </span>
-          )}
-
-          {isRecusado && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              color: corEtapa('red', dark), fontWeight: 600,
-            }}>
-              <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
-              Recusada
-            </span>
-          )}
-        </div>
-
-        {/* Botão "Ativar garantia" — só em OS concluída que NÃO seja já um retorno */}
-        {isConcluido && !os.garantia && (() => {
-          const jaTemRetorno = todasOS.some(o => o.os_origem_id === os.numero && o.garantia)
-          const expirada = diasGar === 0
-          const podeAtivar = !jaTemRetorno && !expirada
-          const label = jaTemRetorno ? 'Garantia acionada'
-            : expirada ? 'Garantia expirada'
-            : 'Ativar garantia'
-          const titulo = jaTemRetorno
-            ? `Já existe um retorno em garantia para a OS #${os.numero}`
-            : expirada
-              ? 'Passaram-se mais de 90 dias desde a entrega — fora do prazo de garantia'
-              : `Criar OS de retorno em garantia (válida por ${diasGar} dia${diasGar !== 1 ? 's' : ''})`
-          return (
-            <Button
-              T={T} dark={dark}
-              variant="secondary" size="sm"
-              iconLeft={jaTemRetorno ? 'ti-shield-check' : 'ti-shield-plus'}
-              disabled={!podeAtivar}
-              onClick={() => onAtivarGarantia(os)}
-              title={titulo}
-            >
-              {label}
-            </Button>
-          )
-        })()}
-      </div>
+      )}
     </div>
   )
 }
