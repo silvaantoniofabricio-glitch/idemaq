@@ -55,7 +55,7 @@ export function useOS(buscando = false) {
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
           prazo, data_conclusao, criado_em,
-          cliente:cliente_id(id, nome, telefone),
+          cliente:cliente_id(id, nome, fone),
           os_historico(id, etapa_de, etapa_para, funcionario_id, criado_em)
         `)
         .is('deleted_at', null)
@@ -77,7 +77,7 @@ export function useOS(buscando = false) {
           tipo: os.tipo,
           etapa: dbEtapaToUI(os.tipo, os.etapa),
           cliente: os.cliente?.nome || '',
-          fone: os.cliente?.telefone || '',
+          fone: os.cliente?.fone || '',
           cliente_id: os.cliente?.id || null,
           // Campos não existentes no schema v1 — preenchidos quando maquina_id for adicionado
           equipamento: '',
