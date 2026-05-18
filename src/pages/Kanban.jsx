@@ -11,7 +11,7 @@ import {
   TIPOS_OS, ETAPAS_TODOS, ZONAS,
 } from '../utils/osData'
 import {
-  isAdmin, getRole, responsavelAtual, totalAPagar,
+  isAdmin, getRole, totalAPagar,
   estaPagaTotal, estaPagaParcial,
   podeMoverOS, ordenarColuna, dentroMesCorrente,
   calcStatusPrazo, diasPrazo,
@@ -47,7 +47,6 @@ export default function Kanban({ T, dark, user }) {
   const [busca, setBusca] = useState('')
   // Sincroniza buscaAtiva para que useOS saiba se deve mostrar concluídas >24h
   useEffect(() => { setBuscaAtiva(busca.trim().length > 0) }, [busca])
-  const [funcionario, setFuncionario] = useState('todos')
   const [statusF, setStatusF]         = useState('todos')
   const [verRecusados, setVerRecusados] = useState(false)
   const [verAgPeca, setVerAgPeca]       = useState(false)
@@ -169,11 +168,6 @@ export default function Kanban({ T, dark, user }) {
     .filter(o => verRecusados ? true : o.etapa !== 'recusado')
     .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
     .filter(o => {
-      if (funcionario === 'todos') return true
-      const resp = responsavelAtual(o)
-      return resp === funcionario || (o.historico||[]).some(h => h.funcionario === funcionario)
-    })
-    .filter(o => {
       if (statusF === 'todos') return true
       const s = calcStatusPrazo(o.prazo, o.etapa)
       if (statusF === 'vencido') return s === 'vencido'
@@ -294,18 +288,6 @@ export default function Kanban({ T, dark, user }) {
             <i className="ti ti-search" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:14, color:T.textDim }} aria-hidden="true" />
             <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar nº, cliente, marca, modelo ou nº série…"
               style={{ width:'100%', padding:'8px 10px 8px 32px', borderRadius:7, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:12.5, outline:'none', boxSizing:'border-box' }} />
-          </div>
-          <div style={{ display:'flex', gap:5 }}>
-            <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Resp.</span>
-            {[{id:'todos', apelido:'Todos'}, ...usuarios].map(u => {
-              const ativo = funcionario === u.id
-              const azul = cor(P.blue, P.blueDark)
-              const azulBg = cor('#0d2035', '#e6f1fb')
-              return (
-                <button key={u.id} onClick={()=>setFuncionario(u.id)}
-                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500 }}>{u.apelido}</button>
-              )
-            })}
           </div>
           <div style={{ display:'flex', gap:5 }}>
             <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Prazo</span>
