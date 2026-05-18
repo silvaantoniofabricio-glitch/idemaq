@@ -28,7 +28,7 @@ const isoMaisDias = (d) => {
 }
 
 const CATEGORIAS_RECEITA = ['Limpeza', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros']
-const CATEGORIAS_DESPESA = ['Funcionários', 'Peças ML', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento']
+const CATEGORIAS_DESPESA = ['Funcionários', 'Peças', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento']
 const CONTAS = ['Cresol', 'Bradesco', 'Bradesco PJ', 'Mercado Pago', 'InfinitePay D+1', 'Cartão Inter PJ']
 const FORMAS = ['PIX', 'Dinheiro', 'Cartão 1x', 'Cartão 2x', 'Cartão 3x', 'Boleto', 'Link InfinitePay']
 
@@ -50,12 +50,12 @@ const A_PAGAR_MOCK = [
   { id:1, descricao:'Salário Alessandro',   fornecedor:'Folha',           categoria:'Funcionários', conta:'Cresol',     valor:1650, vencimento:isoMaisDias(2),  forma:'PIX',        recorrente:true,  status:'aberto' },
   { id:2, descricao:'Salário Guilherme',    fornecedor:'Folha',           categoria:'Funcionários', conta:'Cresol',     valor:1650, vencimento:isoMaisDias(2),  forma:'PIX',        recorrente:true,  status:'aberto' },
   { id:3, descricao:'Tráfego pago Meta',    fornecedor:'Meta',            categoria:'Marketing',    conta:'Bradesco PJ',valor:500,  vencimento:isoMaisDias(5),  forma:'Cartão 1x',  recorrente:true,  status:'aberto' },
-  { id:4, descricao:'Compra de peças ML',   fornecedor:'Mercado Livre',   categoria:'Peças ML',     conta:'Bradesco PJ',valor:820,  vencimento:isoMaisDias(-2), forma:'Boleto',     recorrente:false, status:'aberto' },
+  { id:4, descricao:'Compra de peças ML',   fornecedor:'Mercado Livre',   categoria:'Peças',     conta:'Bradesco PJ',valor:820,  vencimento:isoMaisDias(-2), forma:'Boleto',     recorrente:false, status:'aberto' },
   { id:5, descricao:'Energia elétrica',     fornecedor:'Energisa',        categoria:'Utilidades',   conta:'Cresol',     valor:310,  vencimento:isoMaisDias(8),  forma:'Boleto',     recorrente:true,  status:'aberto' },
   { id:6, descricao:'Internet + telefone',  fornecedor:'Vivo',            categoria:'Utilidades',   conta:'Bradesco',   valor:180,  vencimento:isoMaisDias(10), forma:'Boleto',     recorrente:true,  status:'aberto' },
   { id:7, descricao:'Combustível',          fornecedor:'Posto Shell',     categoria:'Combustível',  conta:'Cartão Inter PJ', valor:420, vencimento:isoMaisDias(0), forma:'Cartão 1x', recorrente:false, status:'aberto' },
   { id:8, descricao:'Material de limpeza',  fornecedor:'Atacado MS',      categoria:'Materiais',    conta:'Cresol',     valor:145,  vencimento:isoMaisDias(12), forma:'PIX',        recorrente:false, status:'aberto' },
-  { id:9, descricao:'Peças ML — abril',     fornecedor:'Mercado Livre',   categoria:'Peças ML',     conta:'Bradesco PJ',valor:620,  vencimento:isoMaisDias(-3), forma:'Boleto',     recorrente:false, status:'pago', dataPag:isoMaisDias(-3) },
+  { id:9, descricao:'Peças ML — abril',     fornecedor:'Mercado Livre',   categoria:'Peças',     conta:'Bradesco PJ',valor:620,  vencimento:isoMaisDias(-3), forma:'Boleto',     recorrente:false, status:'pago', dataPag:isoMaisDias(-3) },
 ]
 
 const CAIXA_MOCK = [
@@ -63,7 +63,7 @@ const CAIXA_MOCK = [
   { id:2,  tipo:'despesa', descricao:'Combustível semana',         categoria:'Combustível', valor:180, data:isoMaisDias(-1), conta:'Cartão Inter PJ',  forma:'Cartão 1x' },
   { id:3,  tipo:'receita', descricao:'OS #240 — Pedro Alves',     categoria:'Manutenção',  valor:350, data:isoMaisDias(-2), conta:'Cresol',           forma:'PIX' },
   { id:4,  tipo:'receita', descricao:'OS #238 — Ana Reis',        categoria:'Manutenção',  valor:480, data:isoMaisDias(-3), conta:'InfinitePay D+1', forma:'Cartão 2x' },
-  { id:5,  tipo:'despesa', descricao:'Peças ML — abril',           categoria:'Peças ML',    valor:620, data:isoMaisDias(-3), conta:'Bradesco PJ',     forma:'Boleto' },
+  { id:5,  tipo:'despesa', descricao:'Peças ML — abril',           categoria:'Peças',    valor:620, data:isoMaisDias(-3), conta:'Bradesco PJ',     forma:'Boleto' },
   { id:6,  tipo:'receita', descricao:'OS #237 — João Costa',      categoria:'Limpeza',     valor:185, data:isoMaisDias(-4), conta:'Bradesco',         forma:'PIX' },
   { id:7,  tipo:'receita', descricao:'Venda M-201 — Carlos Lima', categoria:'Venda de máquina', valor:650, data:isoMaisDias(-5), conta:'InfinitePay D+1', forma:'Cartão 3x' },
   { id:8,  tipo:'despesa', descricao:'Pró-labore parcial',         categoria:'Funcionários',valor:800, data:isoMaisDias(-6), conta:'Cresol',           forma:'PIX' },
