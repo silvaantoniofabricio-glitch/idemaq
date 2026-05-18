@@ -55,9 +55,8 @@ export function useOS(buscando = false) {
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
           prazo, data_conclusao, criado_em,
-          pre_diagnostico,
           cliente:cliente_id(id, nome, telefone),
-          historico:os_historico(id, etapa_de, etapa_para, funcionario_id, criado_em)
+          os_historico(id, etapa_de, etapa_para, funcionario_id, criado_em)
         `)
         .is('deleted_at', null)
         .order('criado_em', { ascending: false })
@@ -102,15 +101,18 @@ export function useOS(buscando = false) {
           // Flags
           recusada: os.recusada || false,
           aguardando_peca: os.aguardando_peca || false,
-          // Pré-diagnóstico (JSONB no banco)
-          pre_diagnostico: os.pre_diagnostico || null,
+          // Pré-diagnóstico: removido do select (não é coluna direta da `os`,
+          // vive na pre_diagnostico ou jsonb que ainda não está mapeado).
+          // Componentes que leem `os.pre_diagnostico` recebem null por enquanto.
+          pre_diagnostico: null,
           // Datas convertidas para Cuiabá
           prazo: os.prazo ? toCuiaba(os.prazo) : null,
           data_conclusao: os.data_conclusao || null,
           abertura: toCuiaba(os.criado_em),
           // Histórico legado em memória (campo os.historico) pra Header/Timeline.
           // HistoricoPanel e ResumoTab usam hooks reais (useOSHistorico/useOSItens).
-          historico: (os.historico || [])
+          // PostgREST sem alias retorna o nome da tabela: os_historico (array).
+          historico: (os.os_historico || [])
             .slice()
             .sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em))
             .map(h => ({
