@@ -55,39 +55,20 @@ export function useOS(buscando = false) {
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
           prazo, data_conclusao, criado_em,
-          cliente:cliente_id(id, nome, fone),
-          os_historico(id, etapa_de, etapa_para, funcionario_id, criado_em)
+          cliente:cliente_id(id, nome, telefone),
+          os_historico(id, etapa_de, etapa_para, funcionario_id, data)
         `)
         .is('deleted_at', null)
         .order('criado_em', { ascending: false })
 
       if (err) throw err
 
-      // [DEBUG temporário 18/05] — diagnóstico do bug "Kanban vazio com 200 OK"
-      // Remover depois que confirmar que tá tudo carregando certo.
-      console.group('[useOS] query Supabase')
-      console.log('Total bruto retornado:', (data || []).length)
-      if ((data || []).length > 0) {
-        console.table((data || []).map(o => ({
-          numero: o.numero, tipo: o.tipo, etapa_db: o.etapa,
-          cliente: o.cliente?.nome || '(sem cliente)',
-          historico_count: (o.os_historico || []).length,
-          data_conclusao: o.data_conclusao,
-        })))
-      } else {
-        console.warn('Nenhuma OS retornada. Possível causa: RLS bloqueando ou tabela vazia.')
-      }
-      console.groupEnd()
-
       const limite24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
       const mapped = (data || [])
         .filter(os => {
           // Ocultar concluídas há mais de 24h (busca escapa esse filtro)
-          if (!buscando && os.data_conclusao && new Date(os.data_conclusao) < limite24h) {
-            console.warn(`[useOS] OS #${os.numero} ocultada (concluída há mais de 24h)`)
-            return false
-          }
+          if (!buscando && os.data_conclusao && new Date(os.data_conclusao) < limite24h) return false
           return true
         })
         .map(os => ({
@@ -96,7 +77,7 @@ export function useOS(buscando = false) {
           tipo: os.tipo,
           etapa: dbEtapaToUI(os.tipo, os.etapa),
           cliente: os.cliente?.nome || '',
-          fone: os.cliente?.fone || '',
+          fone: os.cliente?.telefone || '',
           cliente_id: os.cliente?.id || null,
           // Campos não existentes no schema v1 — preenchidos quando maquina_id for adicionado
           equipamento: '',
@@ -120,9 +101,7 @@ export function useOS(buscando = false) {
           // Flags
           recusada: os.recusada || false,
           aguardando_peca: os.aguardando_peca || false,
-          // Pré-diagnóstico: removido do select (não é coluna direta da `os`,
-          // vive na pre_diagnostico ou jsonb que ainda não está mapeado).
-          // Componentes que leem `os.pre_diagnostico` recebem null por enquanto.
+          // Pré-diagnóstico: removido do select (não é coluna direta da `os`).
           pre_diagnostico: null,
           // Datas convertidas para Cuiabá
           prazo: os.prazo ? toCuiaba(os.prazo) : null,
@@ -130,32 +109,20 @@ export function useOS(buscando = false) {
           abertura: toCuiaba(os.criado_em),
           // Histórico legado em memória (campo os.historico) pra Header/Timeline.
           // HistoricoPanel e ResumoTab usam hooks reais (useOSHistorico/useOSItens).
-          // PostgREST sem alias retorna o nome da tabela: os_historico (array).
+          // PostgREST sem alias retorna pelo nome da tabela (os_historico, array).
+          // Campo de data na os_historico é `data` (não `criado_em`).
           historico: (os.os_historico || [])
             .slice()
-            .sort((a, b) => new Date(a.criado_em) - new Date(b.criado_em))
+            .sort((a, b) => new Date(a.data) - new Date(b.data))
             .map(h => ({
               etapa: dbEtapaToUI(os.tipo, h.etapa_para),
               funcionario: h.funcionario_id,
-              data: toCuiaba(h.criado_em),
+              data: toCuiaba(h.data),
             })),
         }))
 
-      // [DEBUG temporário] — confere o que sai do map (etapa traduzida pra UI)
-      console.group('[useOS] depois do map')
-      console.log('Total após filtro 24h:', mapped.length)
-      if (mapped.length > 0) {
-        console.table(mapped.map(o => ({
-          numero: o.numero, tipo: o.tipo,
-          etapa_ui: o.etapa, // <- esse é o que o Kanban procura
-          cliente: o.cliente,
-        })))
-      }
-      console.groupEnd()
-
       setOsList(mapped)
     } catch (e) {
-      console.error('[useOS] erro na query:', e)
       setError(e?.message || 'Erro ao carregar OS')
     } finally {
       setLoading(false)
