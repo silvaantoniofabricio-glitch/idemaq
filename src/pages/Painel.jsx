@@ -3,7 +3,8 @@
 // Usa componentes do design system (idemaq-src/components/painel/*).
 // Dados derivados de useOS + useUsuarios (Módulo 00c — Lote 1, terminal `painel`).
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Bar } from 'react-chartjs-2'
 import { Chart as ChartJS, registerables } from 'chart.js'
 import { P } from '../theme'
@@ -13,6 +14,7 @@ import { calcStatusPrazo, diasPrazo } from '../utils/osHelpers'
 import { ETAPAS_TODOS } from '../utils/osData'
 import { useOS } from '../hooks/useOS'
 import { useUsuarios } from '../hooks/useUsuarios'
+import { supabase } from '../supabase'
 
 import Card from '../components/ui/Card'
 import SectionHeader from '../components/ui/SectionHeader'
@@ -39,8 +41,13 @@ function dataPagamento(os) {
 function mesmoMes(d, ref) {
   return d && d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth()
 }
+// Saudação por hora local de Cuiabá (fuso da operação).
+// Pega a hora via Intl em vez de getHours() pra evitar deslocamento de
+// servidor/sessão que esteja em outro timezone.
 function saudacao() {
-  const h = new Date().getHours()
+  const h = parseInt(new Date().toLocaleString('en-US', {
+    hour: '2-digit', hour12: false, timeZone: 'America/Cuiaba',
+  }), 10)
   if (h < 12) return 'Bom dia'
   if (h < 18) return 'Boa tarde'
   return 'Boa noite'
@@ -51,10 +58,20 @@ function iniciais(nome) {
 
 export default function Painel({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
+  const navigate = useNavigate()
   const { osList } = useOS(false)
   const { apelidoDe } = useUsuarios()
 
-  const apelido = (user?.id && apelidoDe(user.id)) || 'parceiro'
+  // Fallback robusto: prop user pode vir undefined (ex: PainelPorPerfil em
+  // App.jsx não está repassando). Busca via supabase.auth como backup.
+  const [authUser, setAuthUser] = useState(null)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setAuthUser(data?.user || null))
+  }, [])
+  const idUsuario = user?.id || authUser?.id
+  const ap = idUsuario ? apelidoDe(idUsuario) : null
+  // apelidoDe retorna 'desconhecido' quando array ainda não carregou — trata como fallback
+  const apelido = (ap && ap !== 'desconhecido') ? ap : 'parceiro'
   const hojeData = new Date()
 
   // ─── Agregações principais derivadas de osList ────────────────────────────
@@ -70,6 +87,9 @@ export default function Painel({ T, dark, user }) {
     let aguardPeca = 0
     let naOficina = 0
     let osConcluidasMes = 0
+    let osConcluidasMesAnt = 0
+    let osCriadasMes = 0
+    let osCriadasMesAnt = 0
     const spark30d = Array(30).fill(0)
 
     for (const os of osList || []) {
@@ -86,6 +106,15 @@ export default function Painel({ T, dark, user }) {
         if (diff >= 0 && diff < 30) spark30d[29 - diff] += os.valor_pago
       }
 
+      // OS criadas no mês (proxy: abertura como "YYYY-MM-DD HH:mm" Cuiabá)
+      if (os.abertura) {
+        const dtAb = new Date(os.abertura)
+        if (!isNaN(dtAb)) {
+          if (mesmoMes(dtAb, refMesAtual)) osCriadasMes++
+          else if (mesmoMes(dtAb, refMesAnt)) osCriadasMesAnt++
+        }
+      }
+
       if (os.etapa !== 'concluido' && os.etapa !== 'recusado') {
         osAbertas++
         if (os.prazo && calcStatusPrazo(os.prazo, os.etapa) === 'vencido') osAtrasadas++
@@ -93,20 +122,32 @@ export default function Painel({ T, dark, user }) {
         if (os.etapa === 'oficina') naOficina++
       } else if (os.etapa === 'concluido') {
         const cReg = (os.historico || []).find(h => h.etapa === 'concluido')
-        if (cReg && mesmoMes(new Date(cReg.data), refMesAtual)) osConcluidasMes++
+        if (cReg) {
+          const cData = new Date(cReg.data)
+          if (mesmoMes(cData, refMesAtual)) osConcluidasMes++
+          else if (mesmoMes(cData, refMesAnt)) osConcluidasMesAnt++
+        }
       }
     }
 
     const ticketMedio = osConcluidasMes > 0 ? Math.round(faturamentoMes / osConcluidasMes) : 0
-    const deltaPct = faturamentoAnt > 0
-      ? Math.round(((faturamentoMes - faturamentoAnt) / faturamentoAnt) * 100)
-      : 0
+    const ticketAnt   = osConcluidasMesAnt > 0 ? Math.round(faturamentoAnt / osConcluidasMesAnt) : 0
+
+    // Helper: variação % vs base. Retorna null se base = 0 (evita "Infinity%").
+    const varPct = (atual, base) =>
+      base > 0 ? Math.round(((atual - base) / base) * 100) : null
 
     return {
       faturamentoMes, faturamentoAnt,
       osAbertas, osAtrasadas, aguardPeca, naOficina,
-      osConcluidasMes, ticketMedio, deltaPct,
+      osConcluidasMes, osConcluidasMesAnt,
+      osCriadasMes, osCriadasMesAnt,
+      ticketMedio, ticketAnt,
+      deltaPct:     varPct(faturamentoMes, faturamentoAnt),
+      deltaTicket:  varPct(ticketMedio,    ticketAnt),
+      deltaCriadas: varPct(osCriadasMes,   osCriadasMesAnt),
       spark30d,
+      labelMesAnt: MESES_CURTO[refMesAnt.getMonth()],
     }
   }, [osList, hojeData])
 
@@ -123,44 +164,63 @@ export default function Painel({ T, dark, user }) {
     [osList]
   )
 
-  // ─── Alertas críticos (top 3, prioriza vencidos) ──────────────────────────
+  // ─── Alertas com 3 níveis (crítico / atenção / info) ──────────────────────
+  // Lógica de classificação documentada em painel-noite.md (Tarefa 3).
+  // `prio` numérica ordena dentro da lista: menor = mais urgente.
   const criticos = useMemo(() => {
     const list = []
     for (const os of osList || []) {
       if (os.deleted_at) continue
       if (os.etapa === 'concluido' || os.etapa === 'recusado') continue
 
-      // OS vencida
-      if (os.prazo && calcStatusPrazo(os.prazo, os.etapa) === 'vencido') {
-        const dias = Math.abs(diasPrazo(os.prazo))
-        list.push({
-          icon: 'ti-calendar-x',
-          msg: `OS #${os.numero} · ${os.cliente || os.equipamento || 'Fabricação'}`,
-          sub: `Prazo atrasado em ${dias} dia${dias !== 1 ? 's' : ''}`,
-          acao: 'Abrir',
-          prio: 1,
-        })
+      const dias = os.prazo ? diasPrazo(os.prazo) : null  // signed: <0 atrasado, 0 hoje, 1 amanhã
+      const status = os.prazo ? calcStatusPrazo(os.prazo, os.etapa) : null
+      const ultMov = (os.historico || []).slice(-1)[0]?.data
+      const diasParado = ultMov
+        ? Math.round((Date.now() - new Date(ultMov).getTime()) / 86400000)
+        : null
+
+      const base = {
+        osNumero: os.numero,
+        msg: `OS #${os.numero} · ${os.cliente || os.equipamento || 'Fabricação'}`,
+      }
+
+      // ── CRÍTICO ────────────────────────────────────────
+      if (dias != null && dias < -5) {
+        list.push({ ...base, nivel: 'critico', icon: 'ti-calendar-x',
+          sub: `Vencida há ${Math.abs(dias)} dias`, prio: 0 })
+        continue
+      }
+      if (diasParado != null && diasParado >= 7) {
+        list.push({ ...base, nivel: 'critico', icon: 'ti-flame',
+          sub: `Sem movimento há ${diasParado} dias`, prio: 1 })
+        continue
+      }
+      if (status === 'vencido' && dias != null && dias < 0) {
+        list.push({ ...base, nivel: 'critico', icon: 'ti-calendar-x',
+          sub: `Vencida há ${Math.abs(dias)} dia${Math.abs(dias) !== 1 ? 's' : ''}`, prio: 2 })
         continue
       }
 
-      // Aguardando peça há +3 dias (usa último registro do histórico como proxy)
-      if (os.aguardando_peca) {
-        const ult = (os.historico || []).slice(-1)[0]
-        if (ult) {
-          const dias = Math.round((Date.now() - new Date(ult.data).getTime()) / 86400000)
-          if (dias >= 3) {
-            list.push({
-              icon: 'ti-package-off',
-              msg: `OS #${os.numero} · ${os.cliente || os.equipamento || 'Fabricação'}`,
-              sub: `Aguardando peça há ${dias} dia${dias !== 1 ? 's' : ''}`,
-              acao: 'Abrir',
-              prio: 2,
-            })
-          }
-        }
+      // ── ATENÇÃO ────────────────────────────────────────
+      if (dias === 0) {
+        list.push({ ...base, nivel: 'atencao', icon: 'ti-alarm',
+          sub: 'Vence hoje', prio: 10 })
+        continue
+      }
+      if (os.aguardando_peca && diasParado != null && diasParado >= 3) {
+        list.push({ ...base, nivel: 'atencao', icon: 'ti-package-off',
+          sub: `Aguardando peça há ${diasParado} dia${diasParado !== 1 ? 's' : ''}`, prio: 11 })
+        continue
+      }
+
+      // ── INFO ───────────────────────────────────────────
+      if (dias === 1) {
+        list.push({ ...base, nivel: 'info', icon: 'ti-clock',
+          sub: 'Vence amanhã', prio: 20 })
       }
     }
-    return list.sort((a, b) => a.prio - b.prio).slice(0, 3)
+    return list.sort((a, b) => a.prio - b.prio).slice(0, 6)
   }, [osList])
 
   // ─── Próximas paradas (próximos 7 dias com prazo, qualquer etapa ativa) ───
@@ -225,10 +285,14 @@ export default function Painel({ T, dark, user }) {
   }, [osList, dados.osAbertas, proximas])
 
   // ─── KPIs operacionais ────────────────────────────────────────────────────
+  // Variações com base no mês anterior. `delta == null` = sem base — esconde a
+  // pill e deixa só o texto auxiliar.
+  const lblAnt = `vs ${dados.labelMesAnt}`
   const kpis = [
     {
       id: 'abertas', label: 'OS abertas', icon: 'ti-clipboard-list',
       valor: dados.osAbertas, corKey: 'blue', formatoCru: true,
+      delta: dados.deltaCriadas, deltaLbl: lblAnt,
       deltaTxt: `${dados.naOficina} em oficina · ${dados.aguardPeca} aguard. peça`,
     },
     {
@@ -239,12 +303,13 @@ export default function Painel({ T, dark, user }) {
     {
       id: 'faturamento', label: 'Faturamento do mês', icon: 'ti-cash',
       valor: dados.faturamentoMes, corKey: 'blue',
-      delta: dados.deltaPct, deltaLbl: 'vs mês ant.',
+      delta: dados.deltaPct, deltaLbl: lblAnt,
       spark: dados.spark30d,
     },
     {
       id: 'ticket', label: 'Ticket médio', icon: 'ti-receipt',
       valor: dados.ticketMedio, corKey: 'yellow',
+      delta: dados.deltaTicket, deltaLbl: lblAnt,
       deltaTxt: `${dados.osConcluidasMes} OS concluídas`,
     },
   ]
@@ -312,9 +377,9 @@ export default function Painel({ T, dark, user }) {
         {kpis.map(k => <KPICard key={k.id} k={k} T={T} dark={dark} />)}
       </div>
 
-      {criticos.length > 0 && (
-        <AlertasCriticos T={T} dark={dark} criticos={criticos} />
-      )}
+      <AlertasCriticos T={T} dark={dark} criticos={criticos}
+        onAbrirOS={(numero) => navigate(`/os?os=${numero}`)} />
+
 
       <PipelineOS T={T} dark={dark} etapas={pipeline} />
 
