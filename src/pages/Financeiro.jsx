@@ -14,6 +14,52 @@ import {
   useToast,
 } from '../components/ui'
 import LancamentoDetalheModal from '../components/financeiro/LancamentoDetalheModal'
+import { useFinanceiro } from '../hooks/useFinanceiro'
+
+// ============================================================================
+// ADAPTADOR de shape: banco real → UI atual (que veio do mock Bling-style)
+// ============================================================================
+// O hook traz colunas snake_case + joins (categoria/conta como objetos). A UI
+// foi desenhada com o shape dos mocks (camelCase + strings). Esse adapter mapeia.
+// Quando o schema parte 2 for aplicado e dados reais existirem, a tela usa esse
+// shape via useEffect que popula os states locais.
+// Forma de pagamento da UI ("PIX", "Cartão 1x", "Boleto", ...) → enum do banco
+const MAPA_FORMA_UI_BANCO = {
+  'pix':'pix', 'dinheiro':'dinheiro', 'débito':'debito', 'debito':'debito',
+  'cartão 1x':'credito_1x', 'cartao 1x':'credito_1x',
+  'cartão 2x':'credito_parcelado', 'cartão 3x':'credito_parcelado',
+  'cartao 2x':'credito_parcelado', 'cartao 3x':'credito_parcelado',
+  'link infinitepay':'link_pagamento', 'link pagamento':'link_pagamento',
+  'boleto':'boleto', 'transferência':'transferencia', 'transferencia':'transferencia',
+  'a prazo':'a_prazo',
+}
+function mapearFormaUIparaEnum(formaUI) {
+  if (!formaUI) return null
+  const k = String(formaUI).toLowerCase().trim()
+  return MAPA_FORMA_UI_BANCO[k] || 'pix' // fallback seguro
+}
+
+function adaptarBancoParaUI(lanc) {
+  const ehReceita = lanc.tipo === 'receita'
+  const pago = lanc.status === 'pago'
+  return {
+    id: lanc.id,
+    // OS vinculada: o banco guarda os_id (uuid), não o numero. Resolve no chat 6.
+    osNum: null,
+    cliente: ehReceita ? (lanc.descricao || '').split('—')[0]?.trim() : null,
+    descricao: lanc.descricao || '',
+    fornecedor: !ehReceita ? null : undefined,
+    categoria: lanc.categoria?.nome || 'Outros',
+    conta: lanc.conta?.nome || '',
+    valor: Number(lanc.valor) || 0,
+    vencimento: lanc.data_vencimento,
+    forma: lanc.forma_pagamento || '',
+    status: pago ? 'pago' : 'aberto',
+    dataPag: lanc.data_pagamento || null,
+    recorrente: lanc.natureza === 'recorrente',
+    tipo: lanc.tipo,
+  }
+}
 
 // ============================================================================
 // CENÁRIO + MOCKS
@@ -172,6 +218,28 @@ export default function Financeiro({ T, dark }) {
   const [caixa, setCaixa]     = useState(CAIXA_MOCK)
   const [selecionado, setSelecionado] = useState(null)
 
+  // Hook real do Supabase. Schema parte 2 (`lancamento_financeiro`) ainda
+  // pode não existir — o hook trata graciosamente via `tabelaAusente`.
+  // Quando ausente: continua com os mocks (modo demo). Quando presente: dados reais.
+  const {
+    lancamentos: lancsReal, loading: loadingHook, tabelaAusente,
+    darBaixa, excluir: excluirReal, refetch,
+  } = useFinanceiro()
+  const usandoBanco = !tabelaAusente
+
+  // Sincroniza states locais com dados reais quando o hook conecta com sucesso.
+  // Mantém a estrutura por aba (receber/pagar/caixa) que a UI já espera.
+  useEffect(() => {
+    if (tabelaAusente || loadingHook) return
+    const reais = lancsReal.map(adaptarBancoParaUI)
+    setReceber(reais.filter(r => r.tipo === 'receita' && r.status !== 'pago'))
+    setPagar(reais.filter(r => r.tipo === 'despesa' && r.status !== 'pago'))
+    setCaixa(reais.filter(r => r.status === 'pago').map(r => ({
+      ...r,
+      data: r.dataPag || r.vencimento,
+    })))
+  }, [lancsReal, loadingHook, tabelaAusente])
+
   const azul     = corEtapa('blue', dark)
   const amarelo  = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
@@ -191,7 +259,20 @@ export default function Financeiro({ T, dark }) {
   function placeholder(msg) { notify('info', msg || 'Em breve — Módulo 07 do plano') }
 
   // ─── Ações comuns ────────────────────────────────────────────────────────
-  function baixarReceber(item) {
+  // Quando `usandoBanco`: chamam hook real (darBaixa/excluirReal) e o refetch
+  // sincroniza a UI. Quando em modo demo: comportamento in-memory de sempre.
+  async function baixarReceber(item) {
+    if (usandoBanco) {
+      const { error } = await darBaixa(item.id, {
+        valor_pago: item.valor,
+        forma_pagamento: mapearFormaUIparaEnum(item.forma),
+      })
+      if (error) { notify('erro', `Não foi possível baixar: ${error.message}`); return }
+      notify('ok', `Recebimento de ${fmtBRL(item.valor)} confirmado`)
+      setSelecionado(null)
+      return
+    }
+    // Demo (mock in-memory) — usado enquanto schema parte 2 não está aplicado
     setReceber(prev => prev.map(r => r.id === item.id ? { ...r, status:'pago', dataPag:isoMaisDias(0) } : r))
     setCaixa(prev => [{
       id:`r-${Date.now()}-${item.id}`, tipo:'receita',
@@ -203,7 +284,17 @@ export default function Financeiro({ T, dark }) {
     setSelecionado(null)
   }
 
-  function baixarPagar(item) {
+  async function baixarPagar(item) {
+    if (usandoBanco) {
+      const { error } = await darBaixa(item.id, {
+        valor_pago: item.valor,
+        forma_pagamento: mapearFormaUIparaEnum(item.forma),
+      })
+      if (error) { notify('erro', `Não foi possível pagar: ${error.message}`); return }
+      notify('ok', `Pagamento de ${fmtBRL(item.valor)} registrado`)
+      setSelecionado(null)
+      return
+    }
     setPagar(prev => prev.map(p => p.id === item.id ? { ...p, status:'pago', dataPag:isoMaisDias(0) } : p))
     setCaixa(prev => [{
       id:`p-${Date.now()}-${item.id}`, tipo:'despesa',
@@ -214,7 +305,14 @@ export default function Financeiro({ T, dark }) {
     setSelecionado(null)
   }
 
-  function excluirLancamento(item, tipo) {
+  async function excluirLancamento(item, tipo) {
+    if (usandoBanco) {
+      const { error } = await excluirReal(item.id)
+      if (error) { notify('erro', `Não foi possível excluir: ${error.message}`); return }
+      notify('ok', 'Lançamento excluído')
+      setSelecionado(null)
+      return
+    }
     if (tipo === 'receber') setReceber(prev => prev.filter(r => r.id !== item.id))
     else if (tipo === 'pagar') setPagar(prev => prev.filter(p => p.id !== item.id))
     else if (tipo === 'caixa') setCaixa(prev => prev.filter(m => m.id !== item.id))
@@ -270,6 +368,26 @@ export default function Financeiro({ T, dark }) {
           </div>
         }
       />
+
+      {/* Banner sutil quando schema parte 2 ainda não foi aplicado no banco.
+          Toni roda o SQL de sql/01-lancamento-financeiro.sql e isso some sozinho. */}
+      {tabelaAusente && (
+        <Card T={T} dark={dark} accent={amarelo}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <i className="ti ti-database-off" style={{ fontSize:18, color:amarelo }} aria-hidden="true" />
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:12.5, fontWeight:700, color:corHero(dark) }}>
+                Schema parte 2 ainda não aplicado
+              </div>
+              <div style={{ fontSize:11, color:T.textMuted, marginTop:2, lineHeight:1.4 }}>
+                Exibindo dados de demonstração. Quando o SQL de
+                {' '}<code style={{ background:T.cardAlt, padding:'1px 5px', borderRadius:4, fontSize:10.5 }}>sql/01-lancamento-financeiro.sql</code>
+                {' '}for aplicado no Supabase, esta tela passa a ler/escrever dados reais.
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card T={T} dark={dark} padding="6px 8px">
         <TabsComContador T={T} dark={dark} abas={abasComContador} value={aba} onChange={setAba} />
