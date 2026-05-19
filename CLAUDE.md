@@ -7,7 +7,7 @@
 
 ## 1. Contexto do projeto
 
-> **Workflow**: Toni trabalha com **múltiplos terminais Claude Code em paralelo** (atalhos `.lnk` no Desktop, 1 por feature). Antes de mexer em arquivos compartilhados (App.jsx, osData.js, theme.js, índices), checar `git status` pra evitar conflito com outra sessão em curso. Os 5 docs canônicos vivem em `CONTEXTO PROJETO ATUALIZADO/` — atualizar lá ao fim de cada bloco relevante.
+> **Workflow**: Toni trabalha com **múltiplos terminais Claude Code em paralelo** (atalhos `.lnk` em `TERMINAIS/` na raiz do projeto, 1 por feature — movidos do Desktop em 18/05/2026). Antes de mexer em arquivos compartilhados (App.jsx, osData.js, theme.js, índices), checar `git status` pra evitar conflito com outra sessão em curso. Os 5 docs canônicos vivem em `CONTEXTO PROJETO ATUALIZADO/` — atualizar lá ao fim de cada bloco relevante.
 >
 > **Terminais dedicados** (identificar via env var `IDEMAQ_TERMINAL` no início da sessão — rode `echo $env:IDEMAQ_TERMINAL` na primeira oportunidade pra saber em qual terminal está):
 > - `painel` → "Painel Idemaq" · foco em `src/pages/Painel.jsx` e `src/components/painel/*` (Hero, KPICard, Pipeline, AlertasCriticos, etc.) — **painel do DONO (Toni)**: dashboard executivo, métricas, alertas críticos.
@@ -19,7 +19,7 @@
 > - `financeiro` → "Financeiro Idemaq" · foco em `src/pages/Financeiro.jsx`, futura tabela `lancamento_financeiro` (Schema parte 2). Priorizar contas a receber, a pagar, caixa, lançamentos avulsos/parcelados/recorrentes, inadimplência, meta diária.
 > - `relatorios` → "Relatorios Idemaq" · foco em `src/pages/Relatorios.jsx`, 6 relatórios (Geral/Operacional/Estoque/Vendas/DRE/Funcionários) e integração Claude API pros 2 com IA (DRE e Funcionários).
 > - `ponto` → "Ponto Idemaq" · foco em **Módulo Relógio de Ponto**. **Especificação completa em `CONTEXTO PROJETO ATUALIZADO/idemaq-modulo-ponto-CLAUDE-CODE.md`** (17 seções, ~22KB) — ler ANTES de codar. Resumo: 2 tabelas novas (`ponto_registro` + `jornada_funcionario`), RLS por usuário, geolocalização obrigatória (sem selfie), painel diferente pros funcionários (substitui financeiro que eles não veem), relatório só pro dono em Relatórios → Relógio de Ponto, banco de horas, falta automática. Dono NÃO bate ponto. Componentes em `src/components/ponto/*` + `src/components/paineis/PainelFuncionario.jsx`.
-> - **Padrão pra criar novos**: atalho `.lnk` no Desktop com `cmd /c start "" wt.exe --title "<Nome>" -d "...idemaq" powershell -NoExit -Command "$env:IDEMAQ_TERMINAL = '<area>'; ...banner...; claude"`. Atualizar esta tabela + memória `project_terminais_dedicados` ao criar.
+> - **Padrão pra criar novos**: atalho `.lnk` em `TERMINAIS/` com `cmd /c start "" wt.exe --title "<Nome>" -d "...idemaq" powershell -NoExit -Command "$env:IDEMAQ_TERMINAL = '<area>'; ...banner...; claude"`. Atualizar esta tabela + memória `project_terminais_dedicados` ao criar.
 
 - **Empresa**: IDEMAQ Assistência Técnica LTDA (Naviraí/MS · 12 anos · ~50 OS/mês · meta R$ 20.000/mês)
 - **Segmento**: manutenção e limpeza de máquinas de lavar; também faz fabricação (refurbish) e venda
