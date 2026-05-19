@@ -14,6 +14,11 @@ const VAZIO = {
   sku: '',
   categoria: '',
   fornecedor: '',
+  marca: '',
+  tipo: '',
+  referencia: '',
+  modelo: '',
+  modelosCompativeis: '',
   qtdAtual: '',
   qtdMinima: '',
   qtdMaxima: '',
@@ -63,8 +68,9 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
   }, [form, custo, venda, margemValida])
 
   const podeSalvar = Object.keys(erros).length === 0
+  const [salvando, setSalvando] = useState(false)
 
-  function salvar() {
+  async function salvar() {
     if (!podeSalvar) {
       notify('erro', 'Confira os campos destacados')
       return
@@ -74,15 +80,37 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
       sku: form.sku.trim(),
       categoria: form.categoria,
       fornecedor: form.fornecedor.trim(),
+      marca: form.marca.trim(),
+      tipo: form.tipo.trim(),
+      referencia: form.referencia.trim(),
+      modelo: form.modelo.trim(),
+      // `modelos_compativeis` é text[] no banco — convertemos o input livre
+      // (separado por vírgula, barra, ponto-e-vírgula ou quebra de linha) num array
+      modelosCompativeis: form.modelosCompativeis
+        .split(/[,/\n;]/)
+        .map(s => s.trim())
+        .filter(Boolean),
       qtdAtual: toNum(form.qtdAtual),
       qtdMinima: toNum(form.qtdMinima),
       qtdMaxima: form.qtdMaxima === '' ? toNum(form.qtdMinima) * 3 : toNum(form.qtdMaxima),
       custoAtual: custo,
       precoVenda: venda,
     }
-    onSalvar?.(nova)
-    notify('ok', `Peça "${nova.nome}" cadastrada`)
-    onClose?.()
+    setSalvando(true)
+    try {
+      const res = await onSalvar?.(nova)
+      // Se o callback retornar { error }, mantém o modal aberto
+      if (res && res.error) {
+        notify('erro', 'Erro ao salvar: ' + (res.error.message || res.error))
+        setSalvando(false)
+        return
+      }
+      notify('ok', `Peça "${nova.nome}" cadastrada`)
+      onClose?.()
+    } catch (e) {
+      notify('erro', 'Erro ao salvar: ' + (e?.message || e))
+      setSalvando(false)
+    }
   }
 
   const sectionLabel = {
@@ -159,6 +187,80 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
                 peças do tipo certo (válvula, eletrobomba, trava da porta, etc.).
               </div>
             </CampoErro>
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: T.border, margin: '14px 0' }} />
+
+        {/* Especificação técnica — opcional, mas casa com o padrão do catálogo BCM
+            (marca + tipo + referência + modelo + modelos compatíveis). Ajuda o
+            técnico a achar a peça certa pelo código do fabricante. */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <i className="ti ti-settings" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+            <span style={sectionLabel}>Especificação técnica</span>
+            <span style={{ fontSize: 10.5, color: T.textDim }}>(opcional)</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Input T={T} dark={dark} label="Marca"
+                value={form.marca} onChange={set('marca')}
+                placeholder="Ex: Brastemp, Consul, Electrolux…"
+                icon="ti-building-factory"
+              />
+              <Input T={T} dark={dark} label="Tipo"
+                value={form.tipo} onChange={set('tipo')}
+                placeholder="Ex: Agitador, Capacitor…"
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Input T={T} dark={dark} label="Referência"
+                value={form.referencia} onChange={set('referencia')}
+                placeholder="Ex: W10754807"
+                icon="ti-hash"
+              />
+              <Input T={T} dark={dark} label="Modelo"
+                value={form.modelo} onChange={set('modelo')}
+                placeholder="Ex: 67493623"
+              />
+            </div>
+            <Input T={T} dark={dark} label="Modelos compatíveis"
+              value={form.modelosCompativeis} onChange={set('modelosCompativeis')}
+              placeholder="Ex: BWC10BB, BWG10A, CWE13AB"
+              icon="ti-device-washing-machine"
+            />
+
+            {/* Preview dos chips — atualiza enquanto o usuário digita,
+                pra deixar claro que cada item separado por vírgula vira um chip */}
+            {(() => {
+              const lista = form.modelosCompativeis
+                .split(/[,/\n;]/)
+                .map(s => s.trim())
+                .filter(Boolean)
+              if (lista.length === 0) return null
+              return (
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 5,
+                  marginTop: -4,
+                }}>
+                  {lista.map((m, i) => (
+                    <span key={i} style={{
+                      fontSize: 10.5, fontWeight: 600,
+                      padding: '2px 8px', borderRadius: 10,
+                      background: azul + '22', color: azul,
+                      border: `1px solid ${azul}44`,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>{m}</span>
+                  ))}
+                </div>
+              )
+            })()}
+
+            <div style={{ fontSize: 10.5, color: T.textDim }}>
+              Lista de modelos de máquina que aceitam essa peça — separar por vírgula.
+              Usada na busca quando o técnico digita o código que está na máquina do cliente.
+            </div>
           </div>
         </div>
 
@@ -263,13 +365,13 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
         display: 'flex', justifyContent: 'flex-end', gap: 8,
         background: T.cardAlt, flexShrink: 0,
       }}>
-        <Button T={T} dark={dark} variant="secondary" onClick={onClose}>
+        <Button T={T} dark={dark} variant="secondary" onClick={onClose} disabled={salvando}>
           Cancelar
         </Button>
-        <Button variant="primary" iconLeft="ti-check"
+        <Button variant="primary" iconLeft={salvando ? 'ti-loader-2 ti-spin' : 'ti-check'}
           onClick={salvar}
-          disabled={!podeSalvar}>
-          Salvar peça
+          disabled={!podeSalvar || salvando}>
+          {salvando ? 'Salvando…' : 'Salvar peça'}
         </Button>
       </div>
     </Modal>

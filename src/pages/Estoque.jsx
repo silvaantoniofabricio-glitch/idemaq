@@ -1,11 +1,11 @@
 // idemaq-src/pages/Estoque.jsx
 // Tela de Estoque — Peças + Máquinas (Módulo 06 do plano).
-// MVP visual: tabelas `peca` e `maquina` já existem no Supabase mas a tela
-// ainda lê mocks. Entrada manual e por NF (IA) ficam pra próximos chats.
-// Visível pra todos os papéis (RLS no banco vai filtrar conforme o caso).
+// Peças: ligadas à tabela `peca` via usePecas() (filtros server-side).
+// Máquinas: ainda em mock — depende do Módulo 07 (chassi + revenda).
 
-import React, { useState, useMemo } from 'react'
-import { corEtapa, bgEtapa, corHero } from '../utils/colors'
+import React, { useState, useEffect, useMemo } from 'react'
+import { supabase } from '../supabase'
+import { corEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import { isAdmin } from '../utils/osHelpers'
 import {
@@ -16,26 +16,15 @@ import {
 import PecaDetalheModal from '../components/estoque/PecaDetalheModal'
 import MaquinaDetalheModal from '../components/estoque/MaquinaDetalheModal'
 import NovaPecaModal from '../components/estoque/NovaPecaModal'
-import { CATEGORIAS_PECA, CATEGORIA_POR_ID, contarPorCategoria } from '../utils/categoriasPeca'
-
-// Mocks — futuro: lê de `peca` e `maquina` no Supabase
-const PECAS_MOCK = [
-  { id:1, nome:'Capa Brastemp 12kg',              sku:'CAP-BRA-12',  categoria:'capa',          qtdAtual: 8, qtdMinima: 5, qtdMaxima: 20, custoAtual: 30, precoVenda: 85,  fornecedor:'ML' },
-  { id:2, nome:'Mangueira admissão Consul',       sku:'MAN-CON-01',  categoria:'mangueira',     qtdAtual: 2, qtdMinima: 5, qtdMaxima: 15, custoAtual: 18, precoVenda: 45,  fornecedor:'ML' },
-  { id:3, nome:'Capacitor 8μF universal',         sku:'CAP-EL-08',   categoria:'capacitor',     qtdAtual: 0, qtdMinima: 3, qtdMaxima: 12, custoAtual: 12, precoVenda: 35,  fornecedor:'ML' },
-  { id:4, nome:'Filtro pluma LG 11kg',            sku:'FIL-LG-11',   categoria:'filtro',        qtdAtual:15, qtdMinima: 5, qtdMaxima: 30, custoAtual: 22, precoVenda: 65,  fornecedor:'Atacado MS' },
-  { id:5, nome:'Correia transmissão Electrolux',  sku:'COR-ELE-01',  categoria:'correia',       qtdAtual: 6, qtdMinima: 3, qtdMaxima: 12, custoAtual: 40, precoVenda: 110, fornecedor:'Atacado MS' },
-  { id:6, nome:'Termostato Brastemp 220V',        sku:'TER-BRA-220', categoria:'termostato',    qtdAtual: 1, qtdMinima: 2, qtdMaxima: 8,  custoAtual: 55, precoVenda: 145, fornecedor:'ML' },
-  { id:7, nome:'Bomba de drenagem Consul',        sku:'BOM-CON-01',  categoria:'eletrobomba',   qtdAtual:12, qtdMinima: 4, qtdMaxima: 20, custoAtual: 65, precoVenda: 180, fornecedor:'Distribuidor SP' },
-  { id:8, nome:'Placa eletrônica LG WD-1014',     sku:'PLA-LG-WD',   categoria:'placa',         qtdAtual: 3, qtdMinima: 2, qtdMaxima: 6,  custoAtual: 280,precoVenda: 580, fornecedor:'Distribuidor SP' },
-]
+import { CATEGORIAS_PECA, CATEGORIA_POR_ID } from '../utils/categoriasPeca'
+import { usePecas } from '../hooks/usePecas'
 
 const MAQUINAS_MOCK = [
-  { id:1, modelo:'Lavadora Consul CWE10',     marca:'Consul',   capacidade:'10kg', estado:'disponivel', custoCompra:150, custoItens:180, custoServico:50,  precoVenda:650 },
-  { id:2, modelo:'Lavadora LG WD-1014',       marca:'LG',       capacidade:'11kg', estado:'disponivel', custoCompra:180, custoItens:200, custoServico:40,  precoVenda:650 },
-  { id:3, modelo:'Brastemp Active BWL12',     marca:'Brastemp', capacidade:'12kg', estado:'em_revisao', custoCompra:120, custoItens:120, custoServico:55,  precoVenda:650 },
-  { id:4, modelo:'Lavadora Consul Maré 8kg',  marca:'Consul',   capacidade:'8kg',  estado:'do_cliente',custoCompra:0,   custoItens:0,   custoServico:0,   precoVenda:0 },
-  { id:5, modelo:'Electrolux LAC11',          marca:'Electrolux', capacidade:'11kg', estado:'vendida', custoCompra:165, custoItens:155, custoServico:45,  precoVenda:650 },
+  { id:1, modelo:'Lavadora Consul CWE10',     marca:'Consul',     capacidade:'10kg', estado:'disponivel', custoCompra:150, custoItens:180, custoServico:50,  precoVenda:650 },
+  { id:2, modelo:'Lavadora LG WD-1014',       marca:'LG',         capacidade:'11kg', estado:'disponivel', custoCompra:180, custoItens:200, custoServico:40,  precoVenda:650 },
+  { id:3, modelo:'Brastemp Active BWL12',     marca:'Brastemp',   capacidade:'12kg', estado:'em_revisao', custoCompra:120, custoItens:120, custoServico:55,  precoVenda:650 },
+  { id:4, modelo:'Lavadora Consul Maré 8kg',  marca:'Consul',     capacidade:'8kg',  estado:'do_cliente',custoCompra:0,   custoItens:0,   custoServico:0,   precoVenda:0 },
+  { id:5, modelo:'Electrolux LAC11',          marca:'Electrolux', capacidade:'11kg', estado:'vendida',   custoCompra:165, custoItens:155, custoServico:45,  precoVenda:650 },
 ]
 
 const ESTADO_MAQUINA = {
@@ -50,7 +39,27 @@ const ABAS = [
   { id:'maquinas', label:'Máquinas', icon:'ti-device-washing-machine' },
 ]
 
+// Paleta Deutan-safe (sem verde puro / vermelho puro sem reforço). O badge
+// da categoria sempre vem com label de texto, então o vermelho aqui não fere
+// a regra "nunca cor isolada como significado".
+const PALETA_CAT = ['#5B9BD5', '#FFD966', '#FF6B6B', '#B8CCE4']
+
+// Hash determinístico de string → 0..N. Mesma categoria sempre mapeia pra
+// mesma cor (estável entre sessões).
+function corDaCategoria(catId) {
+  if (!catId) return PALETA_CAT[0]
+  let h = 0
+  for (let i = 0; i < catId.length; i++) {
+    h = (h * 31 + catId.charCodeAt(i)) | 0
+  }
+  return PALETA_CAT[Math.abs(h) % PALETA_CAT.length]
+}
+
+// Quando qtdMinima = 0 a peça está em modo "catálogo" — não controlamos
+// estoque (caso das 680 peças importadas do BCM). Pra não poluir a tela
+// com 680 "esgotado", devolvemos um nível neutro.
 function nivelEstoque(qtd, min) {
+  if (!min || min <= 0) return 'sem_controle'
   if (qtd <= 0) return 'esgotado'
   if (qtd <= min) return 'baixo'
   return 'ok'
@@ -58,6 +67,13 @@ function nivelEstoque(qtd, min) {
 
 function NivelBadge({ qtd, min, dark }) {
   const n = nivelEstoque(qtd, min)
+  if (n === 'sem_controle') {
+    return (
+      <Badge variant="neutro" dark={dark} sm>
+        <i className="ti ti-book-2" aria-hidden="true" /> Catálogo
+      </Badge>
+    )
+  }
   if (n === 'esgotado') {
     return (
       <Badge variant="vermelho" dark={dark} sm>
@@ -85,25 +101,73 @@ function pctLucro(custo, venda) {
 }
 
 export default function Estoque({ T, dark, user }) {
-  const cor = (d, c) => dark ? d : c
   const notify = useToast()
   // Funcionário não enxerga valores financeiros (custo, lucro, capital).
   // Só vê preço de venda + quantidade. Toggle único usado em todos os blocos.
   const mostraValores = isAdmin(user)
+
   const [aba, setAba] = useState('pecas')
   const [busca, setBusca] = useState('')
-  const [categoriaSel, setCategoriaSel] = useState('todas') // 'todas' | id da categoria
-  const [pecas, setPecas] = useState(PECAS_MOCK)
-  const [maquinas] = useState(MAQUINAS_MOCK)
+  const [buscaDebounced, setBuscaDebounced] = useState('')
+  const [categoriaSel, setCategoriaSel] = useState('todas')
   const [pecaAberta, setPecaAberta] = useState(null)
   const [maquinaAberta, setMaquinaAberta] = useState(null)
   const [novaPecaAberta, setNovaPecaAberta] = useState(false)
+  const [refetchKey, setRefetchKey] = useState(0)
 
-  function adicionarPeca(nova) {
-    setPecas(prev => [
-      { id: Math.max(0, ...prev.map(p => p.id)) + 1, ...nova },
-      ...prev,
-    ])
+  // Debounce 300ms na busca pra não bombardear o banco a cada tecla
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaDebounced(busca), 300)
+    return () => clearTimeout(t)
+  }, [busca])
+
+  // Hook principal — filtros server-side
+  const {
+    pecas,
+    loading: loadingPecas,
+    error: errorPecas,
+    criar: criarPeca,
+    atualizar: atualizarPeca,
+  } = usePecas({
+    categoria: categoriaSel,
+    busca: buscaDebounced,
+  })
+
+  // Stats globais (independem do filtro). Query light: só campos necessários
+  // pra contagem por categoria e KPIs do header. Recarrega quando inserimos
+  // ou atualizamos uma peça (via `refetchKey`).
+  const [statsRaw, setStatsRaw] = useState([])
+  useEffect(() => {
+    let alive = true
+    supabase
+      .from('peca')
+      .select('id, categoria, qtd_atual, qtd_minima, custo_atual')
+      .is('deleted_at', null)
+      .then(({ data }) => {
+        if (!alive) return
+        setStatsRaw(data || [])
+      })
+    return () => { alive = false }
+  }, [refetchKey])
+
+  const [maquinas] = useState(MAQUINAS_MOCK)
+
+  // CREATE — retorna { error } pro modal decidir se fecha ou continua
+  async function adicionarPeca(nova) {
+    const res = await criarPeca(nova)
+    if (!res.error) setRefetchKey(k => k + 1)
+    return res
+  }
+
+  // UPDATE — usado pelo PecaDetalheModal
+  async function salvarEdicaoPeca(patch) {
+    if (!pecaAberta) return { error: new Error('Sem peça aberta') }
+    const { data, error } = await atualizarPeca(pecaAberta.id, patch)
+    if (!error && data) {
+      setPecaAberta(data)
+      setRefetchKey(k => k + 1)
+    }
+    return { data, error }
   }
 
   const azul = corEtapa('blue', dark)
@@ -111,22 +175,15 @@ export default function Estoque({ T, dark, user }) {
   const vermelho = corEtapa('red', dark)
   const verde = corEtapa('green', dark)
 
-  // Filtros — busca + categoria combinados
-  const pecasFiltradas = useMemo(() => {
-    const q = busca.trim().toLowerCase()
-    return pecas.filter(p => {
-      if (categoriaSel !== 'todas' && (p.categoria || 'outros') !== categoriaSel) return false
-      if (q && !(
-        p.nome.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        (p.fornecedor || '').toLowerCase().includes(q)
-      )) return false
-      return true
-    })
-  }, [pecas, busca, categoriaSel])
-
-  // Contagem por categoria (só categorias com peças mostradas no filtro)
-  const contagemCat = useMemo(() => contarPorCategoria(pecas), [pecas])
+  // Contagem por categoria — usa snapshot global, não a lista filtrada
+  const contagemCat = useMemo(() => {
+    const m = {}
+    for (const p of statsRaw) {
+      const k = p.categoria || 'outros'
+      m[k] = (m[k] || 0) + 1
+    }
+    return m
+  }, [statsRaw])
 
   const maquinasFiltradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -138,13 +195,20 @@ export default function Estoque({ T, dark, user }) {
     )
   }, [maquinas, busca])
 
-  // Stats
-  const totalPecas = pecas.reduce((s, p) => s + p.qtdAtual, 0)
-  const pecasBaixas = pecas.filter(p => nivelEstoque(p.qtdAtual, p.qtdMinima) !== 'ok').length
-  const valorPecas = pecas.reduce((s, p) => s + p.qtdAtual * p.custoAtual, 0)
+  // Stats globais (do snapshot completo)
+  const totalGlobal  = statsRaw.length
+  const totalPecas   = statsRaw.reduce((s, p) => s + (p.qtd_atual || 0), 0)
+  const pecasBaixas  = statsRaw.filter(p => {
+    const n = nivelEstoque(p.qtd_atual, p.qtd_minima)
+    return n === 'esgotado' || n === 'baixo'
+  }).length
+  const valorPecas   = statsRaw.reduce(
+    (s, p) => s + (p.qtd_atual || 0) * Number(p.custo_atual || 0),
+    0
+  )
 
   const disponiveis = maquinas.filter(m => m.estado === 'disponivel').length
-  const emRevisao = maquinas.filter(m => m.estado === 'em_revisao').length
+  const emRevisao   = maquinas.filter(m => m.estado === 'em_revisao').length
   const valorMaquinas = maquinas
     .filter(m => m.estado === 'disponivel' || m.estado === 'em_revisao')
     .reduce((s, m) => s + (m.custoCompra + m.custoItens + m.custoServico), 0)
@@ -169,6 +233,12 @@ export default function Estoque({ T, dark, user }) {
     notify('info', msg || 'Em breve — Módulo 06 do plano')
   }
 
+  // Texto do subtítulo: durante o loading mostra "Carregando…", senão a
+  // contagem de visíveis vs total global.
+  const subtitlePecas = loadingPecas
+    ? 'Carregando peças…'
+    : `${pecas.length} de ${totalGlobal} peças${pecasBaixas > 0 ? ` · ${pecasBaixas} precisam de reposição` : ''}`
+
   return (
     <div style={{
       padding: '20px 24px 32px',
@@ -177,9 +247,7 @@ export default function Estoque({ T, dark, user }) {
     }}>
       <PageHeader T={T} dark={dark}
         title="Estoque"
-        subtitle={onPecas
-          ? `${pecasFiltradas.length} de ${pecas.length} peças${pecasBaixas > 0 ? ` · ${pecasBaixas} precisam de reposição` : ''}`
-          : `${maquinasFiltradas.length} de ${maquinas.length} máquinas`}
+        subtitle={onPecas ? subtitlePecas : `${maquinasFiltradas.length} de ${maquinas.length} máquinas`}
         stats={headerStats}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
@@ -203,18 +271,29 @@ export default function Estoque({ T, dark, user }) {
           <Tabs T={T} dark={dark}
             options={ABAS}
             value={aba}
-            onChange={(v) => { setAba(v); setBusca(''); setCategoriaSel('todas') }}
+            onChange={(v) => { setAba(v); setBusca(''); setBuscaDebounced(''); setCategoriaSel('todas') }}
             variant="segmented"
           />
           <div style={{ width: 1, height: 24, background: T.border }} />
-          <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
             <Input T={T} dark={dark}
               value={busca} onChange={setBusca}
               icon="ti-search"
               placeholder={onPecas
-                ? 'Buscar peça por nome, SKU ou fornecedor…'
+                ? 'Buscar por nome, SKU ou referência…'
                 : 'Buscar máquina por modelo, marca ou capacidade…'}
             />
+            {/* Indicador discreto de "buscando" enquanto o debounce ainda não disparou */}
+            {onPecas && busca !== buscaDebounced && (
+              <span style={{
+                position: 'absolute', right: 10, top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: 11, color: T.textMuted,
+                pointerEvents: 'none',
+              }}>
+                <i className="ti ti-loader-2 ti-spin" aria-hidden="true" />
+              </span>
+            )}
           </div>
         </div>
       </Card>
@@ -226,14 +305,19 @@ export default function Estoque({ T, dark, user }) {
           categoriaSel={categoriaSel}
           onSelecionar={setCategoriaSel}
           contagem={contagemCat}
-          total={pecas.length}
+          total={totalGlobal}
         />
       )}
 
       {onPecas
-        ? <ListaPecas T={T} dark={dark} itens={pecasFiltradas} todos={pecas} busca={busca}
-            mostraValores={mostraValores}
-            onAbrir={(p) => setPecaAberta(p)} />
+        ? (loadingPecas
+            ? <PecasSkeleton T={T} dark={dark} mostraValores={mostraValores} />
+            : errorPecas
+              ? <EstoqueErro T={T} dark={dark} mensagem={errorPecas.message} />
+              : <ListaPecas T={T} dark={dark} itens={pecas}
+                  total={totalGlobal} busca={buscaDebounced}
+                  mostraValores={mostraValores}
+                  onAbrir={(p) => setPecaAberta(p)} />)
         : <ListaMaquinas T={T} dark={dark} itens={maquinasFiltradas} todos={maquinas} busca={busca}
             mostraValores={mostraValores}
             onAbrir={(m) => setMaquinaAberta(m)} />}
@@ -242,6 +326,7 @@ export default function Estoque({ T, dark, user }) {
         <PecaDetalheModal T={T} dark={dark}
           peca={pecaAberta}
           mostraValores={mostraValores}
+          onSalvar={salvarEdicaoPeca}
           onClose={() => setPecaAberta(null)} />
       )}
 
@@ -262,12 +347,9 @@ export default function Estoque({ T, dark, user }) {
 }
 
 // =============================================================================
-// PEÇAS
+// PEÇAS — listagem
 // =============================================================================
-function ListaPecas({ T, dark, itens, todos, busca, onAbrir, mostraValores = true }) {
-  const azul = corEtapa('blue', dark)
-  const cor = (d, c) => dark ? d : c
-
+function ListaPecas({ T, dark, itens, total, busca, onAbrir, mostraValores = true }) {
   // Grid muda conforme o papel: dono vê 6 colunas, funcionário 4 (sem Custo + Lucro)
   const gridCols = mostraValores
     ? '1fr 90px 110px 110px 90px 90px'
@@ -292,7 +374,7 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir, mostraValores = tru
         <SectionHeader T={T} dark={dark} icon="ti-puzzle" mb={0}
           action={
             <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-              {itens.length} de {todos.length}
+              {itens.length} de {total}
             </span>
           }
         >Peças</SectionHeader>
@@ -319,6 +401,8 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir, mostraValores = tru
 
       {itens.map((p) => {
         const lucro = pctLucro(p.custoAtual, p.precoVenda)
+        const catCor = corDaCategoria(p.categoria)
+        const catInfo = CATEGORIA_POR_ID[p.categoria]
         return (
           <div key={p.id}
             onClick={() => onAbrir(p)}
@@ -347,24 +431,30 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir, mostraValores = tru
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
                 {p.nome}
-                {p.categoria && CATEGORIA_POR_ID[p.categoria] && (
+                {p.categoria && catInfo && (
                   <span style={{
                     fontSize: 9.5, fontWeight: 700,
                     padding: '1px 6px', borderRadius: 4,
-                    background: corEtapa('blue', dark) + '22',
-                    color: corEtapa('blue', dark),
-                    border: `1px solid ${corEtapa('blue', dark)}33`,
+                    background: catCor + '22',
+                    color: catCor,
+                    border: `1px solid ${catCor}55`,
                     textTransform: 'uppercase', letterSpacing: '.3px',
                     flexShrink: 0,
                   }}>
-                    {CATEGORIA_POR_ID[p.categoria].label}
+                    {catInfo.label}
                   </span>
                 )}
               </div>
               <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, display: 'flex', gap: 8 }}>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{p.sku}</span>
-                <span>·</span>
-                <span>{p.fornecedor}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{p.sku || '—'}</span>
+                {p.fornecedor && (<>
+                  <span>·</span>
+                  <span>{p.fornecedor}</span>
+                </>)}
+                {p.marca && (<>
+                  <span>·</span>
+                  <span>{p.marca}</span>
+                </>)}
               </div>
             </div>
 
@@ -416,11 +506,10 @@ function ListaPecas({ T, dark, itens, todos, busca, onAbrir, mostraValores = tru
 }
 
 // =============================================================================
-// MÁQUINAS
+// MÁQUINAS — mock (Módulo 07)
 // =============================================================================
 function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = true }) {
   const azul = corEtapa('blue', dark)
-  const cor = (d, c) => dark ? d : c
 
   if (itens.length === 0) {
     return (
@@ -544,9 +633,6 @@ function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = 
 // FILTRO DE CATEGORIAS — chips horizontais (scroll quando excede)
 // =============================================================================
 function FiltroCategorias({ T, dark, categoriaSel, onSelecionar, contagem, total }) {
-  const azul = corEtapa('blue', dark)
-  const bgAzul = corEtapa('blue', dark) + '22'
-
   return (
     <Card T={T} dark={dark} padding="10px 14px">
       <div style={{
@@ -566,6 +652,7 @@ function FiltroCategorias({ T, dark, categoriaSel, onSelecionar, contagem, total
         <ChipCategoria T={T} dark={dark}
           label="Todas" count={total}
           ativo={categoriaSel === 'todas'}
+          cor={corEtapa('blue', dark)}
           onClick={() => onSelecionar('todas')}
         />
 
@@ -576,6 +663,7 @@ function FiltroCategorias({ T, dark, categoriaSel, onSelecionar, contagem, total
             <ChipCategoria key={cat.id} T={T} dark={dark}
               label={cat.label} count={count}
               ativo={categoriaSel === cat.id}
+              cor={corDaCategoria(cat.id)}
               onClick={() => onSelecionar(cat.id)}
             />
           )
@@ -585,11 +673,10 @@ function FiltroCategorias({ T, dark, categoriaSel, onSelecionar, contagem, total
   )
 }
 
-function ChipCategoria({ T, dark, label, count, ativo, onClick }) {
-  const azul = corEtapa('blue', dark)
-  const bg = ativo ? azul + '22' : 'transparent'
-  const corT = ativo ? azul : T.textMuted
-  const borderC = ativo ? azul + '55' : T.border
+function ChipCategoria({ T, dark, label, count, ativo, cor, onClick }) {
+  const bg = ativo ? cor + '33' : 'transparent'
+  const corT = ativo ? cor : T.textMuted
+  const borderC = ativo ? cor + '88' : T.border
 
   return (
     <button onClick={onClick} style={{
@@ -606,12 +693,93 @@ function ChipCategoria({ T, dark, label, count, ativo, onClick }) {
       <span style={{
         fontSize: 10, fontWeight: 700,
         padding: '1px 5px', borderRadius: 8,
-        background: ativo ? azul : T.cardAlt,
+        background: ativo ? cor : T.cardAlt,
         color: ativo ? '#fff' : T.textMuted,
         fontVariantNumeric: 'tabular-nums',
       }}>
         {count}
       </span>
     </button>
+  )
+}
+
+// =============================================================================
+// SKELETON — placeholder enquanto a query inicial carrega
+// =============================================================================
+function PecasSkeleton({ T, dark, mostraValores }) {
+  const gridCols = mostraValores
+    ? '1fr 90px 110px 110px 90px 90px'
+    : '1fr 90px 110px 90px'
+  const bar = (w) => (
+    <div style={{
+      height: 10, width: w, borderRadius: 4,
+      background: T.cardAlt,
+      border: `1px solid ${T.border}`,
+      opacity: 0.7,
+    }} />
+  )
+  return (
+    <Card T={T} dark={dark} padding={0}>
+      <div style={{ padding: '12px 16px 10px' }}>
+        <SectionHeader T={T} dark={dark} icon="ti-puzzle" mb={0}>
+          <span style={{ opacity: 0.5 }}>Carregando peças…</span>
+        </SectionHeader>
+      </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: gridCols,
+        gap: 10, alignItems: 'center',
+        padding: '8px 16px',
+        borderTop: `1px solid ${T.border}`,
+        background: T.cardAlt,
+        fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '0.04em',
+      }}>
+        <div>Item</div>
+        <div style={{ textAlign: 'right' }}>Qtd</div>
+        {mostraValores && <div style={{ textAlign: 'right' }}>Custo</div>}
+        <div style={{ textAlign: 'right' }}>Venda</div>
+        {mostraValores && <div style={{ textAlign: 'right' }}>Lucro</div>}
+        <div style={{ textAlign: 'right' }}>Status</div>
+      </div>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} style={{
+          display: 'grid',
+          gridTemplateColumns: gridCols,
+          gap: 10, alignItems: 'center',
+          padding: '14px 16px',
+          borderTop: `1px solid ${T.border}`,
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {bar(`${50 + ((i * 7) % 35)}%`)}
+            {bar('40%')}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{bar(40)}</div>
+          {mostraValores && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{bar(60)}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{bar(60)}</div>
+          {mostraValores && <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{bar(40)}</div>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{bar(70)}</div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function EstoqueErro({ T, dark, mensagem }) {
+  return (
+    <Card T={T} dark={dark}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '20px 16px',
+        color: corEtapa('red', dark),
+        fontSize: 13,
+      }}>
+        <i className="ti ti-alert-triangle" style={{ fontSize: 18 }} aria-hidden="true" />
+        <div>
+          <div style={{ fontWeight: 600 }}>Erro ao carregar peças</div>
+          <div style={{ color: T.textMuted, fontSize: 11.5, marginTop: 2 }}>{mensagem}</div>
+        </div>
+      </div>
+    </Card>
   )
 }

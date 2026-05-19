@@ -186,6 +186,10 @@ export default function PecaDetalheModal({ T, dark, peca, onClose, mobile, mostr
 
         <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
 
+        {/* Especificação técnica — só renderiza se tem algum campo preenchido.
+            Casa com o padrão do catálogo BCM (marca · tipo · ref · modelo). */}
+        <EspecTecnica T={T} dark={dark} peca={peca} sectionLabel={sectionLabel} />
+
         {/* Preço de venda — funcionário vê só venda; dono vê custo + margem */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -293,6 +297,108 @@ export default function PecaDetalheModal({ T, dark, peca, onClose, mobile, mostr
         </div>
       </div>
     </Modal>
+  )
+}
+
+// ─── Especificação técnica (marca, tipo, ref, modelo, modelos compativeis) ──
+function EspecTecnica({ T, dark, peca, sectionLabel }) {
+  const azul = corEtapa('blue', dark)
+  const campos = [
+    { label: 'Marca',      icon: 'ti-building-factory',  valor: peca.marca },
+    { label: 'Tipo',       icon: 'ti-shape',             valor: peca.tipo },
+    { label: 'Referência', icon: 'ti-hash',              valor: peca.referencia },
+    { label: 'Modelo',     icon: 'ti-cpu',               valor: peca.modelo },
+  ].filter(c => c.valor && String(c.valor).trim())
+
+  // `modelosCompativeis` agora vem do banco como text[] (array). Aceita
+  // string legada (separa por vírgula/barra/quebra) só por segurança.
+  const compatList = Array.isArray(peca.modelosCompativeis)
+    ? peca.modelosCompativeis.filter(Boolean)
+    : (peca.modelosCompativeis || '')
+        .split(/[,/\n;]/)
+        .map(s => s.trim())
+        .filter(Boolean)
+
+  // Nada preenchido → não renderiza o bloco nem o divider seguinte
+  if (campos.length === 0 && compatList.length === 0) return null
+
+  return (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <i className="ti ti-settings" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+          <span style={sectionLabel}>Especificação técnica</span>
+        </div>
+
+        {campos.length > 0 && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10,
+            marginBottom: compatList.length > 0 ? 10 : 0,
+          }}>
+            {campos.map(c => (
+              <div key={c.label} style={{
+                padding: '10px 12px',
+                background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 9,
+                minWidth: 0,
+              }}>
+                <div style={{
+                  fontSize: 10, color: T.textMuted, fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                  marginBottom: 3,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                  <i className={`ti ${c.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+                  {c.label}
+                </div>
+                <div style={{
+                  fontSize: 13, fontWeight: 600,
+                  color: T.textPrimary,
+                  fontVariantNumeric: 'tabular-nums',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }} title={c.valor}>
+                  {c.valor}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {compatList.length > 0 && (
+          <div style={{
+            padding: '10px 12px',
+            background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 9,
+          }}>
+            <div style={{
+              fontSize: 10, color: T.textMuted, fontWeight: 600,
+              textTransform: 'uppercase', letterSpacing: '0.04em',
+              marginBottom: 6,
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              <i className="ti ti-device-washing-machine" style={{ fontSize: 12 }} aria-hidden="true" />
+              Modelos compatíveis
+              <span style={{ marginLeft: 'auto', color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
+                {compatList.length}
+              </span>
+            </div>
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 5,
+            }}>
+              {compatList.map((m, i) => (
+                <span key={i} style={{
+                  fontSize: 11, fontWeight: 600,
+                  padding: '3px 8px', borderRadius: 10,
+                  background: azul + '22', color: azul,
+                  border: `1px solid ${azul}44`,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}>{m}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
+    </>
   )
 }
 
