@@ -21,7 +21,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
-import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { useOSItens } from '../../../hooks/useOSItens'
 import BlocoAcao from './BlocoAcao'
 import RelatorioDiagnostico, { itensMarcadosDoDiag } from '../RelatorioDiagnostico'
 
@@ -45,7 +45,7 @@ export default function AcaoOficina({ T, dark, os, usuarios, onUpdateOS, onMover
   // === O QUE TEM NO ORÇAMENTO ===
   // Limpeza = item com /limpeza/i no nome (Limpeza, Limpeza combinada, etc.)
   // Manutenção = qualquer outro item (peças, manutenção, mão de obra, taxa…)
-  const itensOrcamento = OS_ITENS_MOCK[os.numero] || []
+  const { itens: itensOrcamento, loading: loadingItens } = useOSItens(os.id)
   const temLimpeza    = itensOrcamento.some(i => /limpeza/i.test(i.nome))
   const itensNaoLimp  = itensOrcamento.filter(i => !/limpeza/i.test(i.nome))
   const temManutencao = itensNaoLimp.length > 0

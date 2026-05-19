@@ -11,14 +11,14 @@
 // - Em qualquer outra etapa: ao confirmar pagamento, OS fica na etapa atual
 //   (sistema já redireciona Entrega→Concluído quando estiver paga, via podeMoverOS)
 //
-// IMPORTANTE: persistência dos itens ainda é mock (OS_ITENS_MOCK). A edição
-// vive em estado local + sobe via onUpdateOS — Módulo 03 plugará no Supabase.
+// Persistência dos itens via useOSItens (Lote 2d do Módulo 00c). Edição vive
+// em estado local; salvar() faz diff (delete/update/insert) contra o banco.
 
 import React, { useState, useMemo } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
-import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
 import { estaPagaTotal, estaPagaParcial } from '../../../utils/osHelpers'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
@@ -33,8 +33,20 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
   const isOrcamento = os.etapa === 'orcamento'
   const isPagamento = os.etapa === 'pagamento'
 
-  // Itens editáveis em estado local (origem: mock)
-  const [itens, setItens] = useState(() => (OS_ITENS_MOCK[os.numero] || []).map(i => ({ ...i })))
+  // Itens editáveis em estado local (origem: Supabase via useOSItens).
+  // Hook usa aliases (addItemDB/updateItemDB/removeItemDB) porque já existem
+  // funções locais addItem/updateItem/removeItem que manipulam o state em memória.
+  const {
+    itens: itensSalvos,
+    loading: loadingItens,
+    addItem: addItemDB,
+    updateItem: updateItemDB,
+    removeItem: removeItemDB,
+  } = useOSItens(os.id)
+  const [itens, setItens] = useState([])
+  React.useEffect(() => {
+    if (!loadingItens) setItens(itensSalvos.map(i => ({ ...i })))
+  }, [loadingItens])
   const [desconto, setDesconto] = useState(os.desconto || 0)
 
   const subtotal = useMemo(() => itens.reduce((s, i) => s + i.valor * i.qtd, 0), [itens])
@@ -66,18 +78,39 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
     setItens(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it))
   }
 
-  function salvarOrcamento() {
-    onUpdateOS(os.numero, { valor: subtotal, desconto })
-    OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i })) // mutação do mock — Módulo 03 substitui
+  // Persiste o diff de itens contra o que veio do banco.
+  async function salvar() {
+    const idsSalvos = itensSalvos.map(i => i.id).filter(Boolean)
+    const idsLocais = itens.map(i => i.id).filter(Boolean)
+    const deletados = idsSalvos.filter(id => !idsLocais.includes(id))
+    for (const id of deletados) await removeItemDB(id)
+    for (const item of itens) {
+      const payload = {
+        tipo: item.tipo,
+        nome: item.nome,
+        qtd: item.qtd ?? 1,
+        valor_unitario: item.valor_unitario ?? item.valor ?? 0,
+      }
+      if (item.id) {
+        await updateItemDB(item.id, payload)
+      } else {
+        await addItemDB(payload)
+      }
+    }
   }
 
-  function aprovarOrcamento() {
-    salvarOrcamento()
+  async function salvarOrcamento() {
+    onUpdateOS(os.numero, { valor: subtotal, desconto })
+    await salvar()
+  }
+
+  async function aprovarOrcamento() {
+    await salvarOrcamento()
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
-  function recusarOrcamento() {
-    salvarOrcamento()
+  async function recusarOrcamento() {
+    await salvarOrcamento()
     const recusado = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'recusado')
     if (recusado) onMoverOS(os.numero, recusado.id)
   }
@@ -88,7 +121,7 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
   //   'parcial'  → registra parcial, OS continua aberta
   //   'desconto' → quita aplicando desconto pelo restante
   // parcelas:    → quando forma === aprazo, array de { data, valor }
-  function handleConfirmarPagamento({ valor, forma, modo, parcelas: parcelasAPrazo }) {
+  async function handleConfirmarPagamento({ valor, forma, modo, parcelas: parcelasAPrazo }) {
     const novoValorPago = valorPago + valor
     let novoDesconto = desconto
     let novoPago = 'total'
@@ -117,7 +150,7 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
       forma_pagamento: forma,
       ...(novasObs !== os.observacoes ? { observacoes: novasObs } : {}),
     })
-    OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i }))
+    await salvar()
     // Só move pra Concluído quando o recebimento total acontece DENTRO da
     // etapa Pagamento. Pagamentos adiantados (em agendamento, recebido…)
     // mantêm a OS na etapa atual — o sistema redireciona Entrega→Concluído

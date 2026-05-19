@@ -43,5 +43,37 @@ export function useOSItens(osId) {
 
   useEffect(() => { fetchItens() }, [osId])
 
-  return { itens, loading, error, refetch: fetchItens }
+  // Adicionar item novo
+  async function addItem(novoItem) {
+    // novoItem: { tipo, nome, qtd, valor_unitario }
+    const { data, error } = await supabase
+      .from('os_item')
+      .insert({ ...novoItem, os_id: osId })
+      .select()
+      .single()
+    if (!error) await fetchItens()
+    return { data, error }
+  }
+
+  // Atualizar item existente
+  async function updateItem(id, patch) {
+    const { error } = await supabase
+      .from('os_item')
+      .update(patch)
+      .eq('id', id)
+    if (!error) await fetchItens()
+    return { error }
+  }
+
+  // Remover item (hard delete — itens não têm soft-delete)
+  async function removeItem(id) {
+    const { error } = await supabase
+      .from('os_item')
+      .delete()
+      .eq('id', id)
+    if (!error) await fetchItens()
+    return { error }
+  }
+
+  return { itens, loading, error, refetch: fetchItens, addItem, updateItem, removeItem }
 }

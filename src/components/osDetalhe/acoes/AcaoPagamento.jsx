@@ -10,7 +10,7 @@ import React from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
-import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
 import BlocoAcao from './BlocoAcao'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
@@ -20,7 +20,7 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
   const verde = corEtapa('green', dark)
 
   // Cálculos
-  const itens = OS_ITENS_MOCK[os.numero] || []
+  const { itens, loading: loadingItens } = useOSItens(os.id)
   const subtotal = itens.reduce((s, i) => s + i.valor * i.qtd, 0)
   const descontoAtual = os.desconto || 0
   const total = Math.max(0, subtotal - descontoAtual)

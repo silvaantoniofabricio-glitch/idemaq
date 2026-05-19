@@ -14,7 +14,7 @@ import React, { useState, useMemo } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
-import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
 import BlocoAcao from './BlocoAcao'
 import RelatorioDiagnostico, { itensMarcadosDoDiag } from '../RelatorioDiagnostico'
@@ -40,9 +40,20 @@ export default function AcaoOrcamento({ T, dark, os, usuarios, onMoverOS, onUpda
   const itensMarcados = itensMarcadosDoDiag(os)
 
   // === Estado local do orçamento ===
-  const [itens, setItens] = useState(
-    () => (OS_ITENS_MOCK[os.numero] || []).map(i => ({ ...i }))
-  )
+  // Hook usa aliases (addItemDB/updateItemDB/removeItemDB) porque já existem
+  // funções locais addItem/updateItem/removeItem que manipulam o state em memória.
+  const {
+    itens: itensSalvos,
+    loading: loadingItens,
+    addItem: addItemDB,
+    updateItem: updateItemDB,
+    removeItem: removeItemDB,
+  } = useOSItens(os.id)
+  const [itens, setItens] = useState([])
+  // sincroniza state local quando dados do banco chegam (só na primeira carga)
+  React.useEffect(() => {
+    if (!loadingItens) setItens(itensSalvos.map(i => ({ ...i })))
+  }, [loadingItens])
   const [desconto, setDesconto] = useState(os.desconto || 0)
 
   const subtotal = useMemo(() => itens.reduce((s, i) => s + i.valor * i.qtd, 0), [itens])
@@ -80,9 +91,30 @@ export default function AcaoOrcamento({ T, dark, os, usuarios, onMoverOS, onUpda
     setItens(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it))
   }
 
-  function salvar() {
-    onUpdateOS?.(os.numero, { valor: subtotal, desconto })
-    OS_ITENS_MOCK[os.numero] = itens.map(i => ({ ...i }))
+  async function salvar() {
+    // persiste desconto na OS
+    onUpdateOS?.(os.numero, { desconto })
+
+    // diff: remove itens deletados localmente
+    const idsSalvos = itensSalvos.map(i => i.id).filter(Boolean)
+    const idsLocais = itens.map(i => i.id).filter(Boolean)
+    const deletados = idsSalvos.filter(id => !idsLocais.includes(id))
+    for (const id of deletados) await removeItemDB(id)
+
+    // insere/atualiza cada item local
+    for (const item of itens) {
+      const payload = {
+        tipo: item.tipo,
+        nome: item.nome,
+        qtd: item.qtd ?? 1,
+        valor_unitario: item.valor_unitario ?? item.valor ?? 0,
+      }
+      if (item.id) {
+        await updateItemDB(item.id, payload)
+      } else {
+        await addItemDB(payload)
+      }
+    }
   }
 
   function aprovar() {

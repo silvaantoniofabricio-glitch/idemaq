@@ -9,7 +9,7 @@ import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { dentroGarantia, totalAPagar } from '../../../utils/osHelpers'
 import { corEtapa, bgEtapa, corHero } from '../../../utils/colors'
-import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
 import { useToast } from '../../ui'
 import BlocoAcao from './BlocoAcao'
@@ -23,7 +23,7 @@ export default function AcaoConcluido({ T, dark, os, onMoverOS }) {
   const garantiaAtiva = dentroGarantia(os)
 
   // === Resumo: tempo total + itens + total ===
-  const itens = OS_ITENS_MOCK[os.numero] || []
+  const { itens, loading: loadingItens } = useOSItens(os.id)
   const subtotal = itens.reduce((s, i) => s + i.valor * i.qtd, 0)
   const total = totalAPagar(os) || (subtotal - (os.desconto || 0))
 

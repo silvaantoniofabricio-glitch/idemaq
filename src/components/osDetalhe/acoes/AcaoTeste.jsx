@@ -16,7 +16,7 @@ import React, { useState, useMemo } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
-import { OS_ITENS_MOCK } from '../../../_mocks/os'
+import { useOSItens } from '../../../hooks/useOSItens'
 import BlocoAcao from './BlocoAcao'
 
 const TESTES = [
@@ -46,7 +46,7 @@ export default function AcaoTeste({ T, dark, os, onMoverOS, onUpdateOS }) {
   const amarelo = cor(P.yellow, P.yellowDark)
 
   // === Detecta se orçamento tem limpeza (mesma regra do AcaoOficina) ===
-  const itensOrcamento = OS_ITENS_MOCK[os.numero] || []
+  const { itens: itensOrcamento, loading: loadingItens } = useOSItens(os.id)
   const temLimpeza = itensOrcamento.some(i => /limpeza/i.test(i.nome))
 
   // === Estado ===
