@@ -12,6 +12,8 @@ import React, { useState, useMemo } from 'react'
 import { supabase } from '../../supabase'
 import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
+import { useRegisterRouteRefresh } from '../../contexts/RefreshContext'
+import { normalizePatchOS } from '../../utils/osPatch'
 import {
   podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin,
 } from '../../utils/osHelpers'
@@ -31,6 +33,8 @@ export default function OSMobile({ T, dark, user }) {
   const { usuarios } = useUsuarios()
   const notify = useToast()
   const admin = isAdmin(user)
+  // Liga o refetch ao PullToRefresh global (App.jsx). Função estável vinda do hook.
+  useRegisterRouteRefresh(refetch)
 
   const [busca, setBusca] = useState('')
   const [filtros, setFiltros] = useState({
@@ -72,18 +76,27 @@ export default function OSMobile({ T, dark, user }) {
   }, [osList, busca, filtros, admin])
 
   // ─── Atualização genérica de campos (usada pelas ações do OSDetalhe) ───────
+  // UI sempre recebe patch completo (optimistic). Persistência filtrada via
+  // normalizePatchOS (whitelist em utils/osPatch.js) — campos sem coluna no banco
+  // ficam só em memória até criarmos schema pra eles.
   async function updateOS(numero, patch) {
     const os = osList.find(o => o.numero === numero)
     if (!os) return
     const prev = osList
-    // Optimistic
     setOsList(arr => arr.map(o => o.numero === numero ? { ...o, ...patch } : o))
+    const { dbPatch, skipped } = normalizePatchOS(patch)
+    if (Object.keys(dbPatch).length === 0) {
+      if (skipped.length) console.warn('[updateOS] sem colunas persistíveis, mantido só em memória:', skipped)
+      return
+    }
     try {
-      const { error } = await supabase.from('os').update(patch).eq('id', os.id)
+      const { error } = await supabase.from('os').update(dbPatch).eq('id', os.id)
       if (error) throw error
-    } catch {
+      if (skipped.length) console.warn('[updateOS] persistido', Object.keys(dbPatch), '— pendente schema:', skipped)
+    } catch (e) {
       setOsList(prev)
       notify('erro', 'Erro ao salvar — mudança revertida')
+      console.error('[updateOS] falha:', e)
     }
   }
 
@@ -105,7 +118,10 @@ export default function OSMobile({ T, dark, user }) {
     } : o))
     try {
       const dbEtapa = uiEtapaToDb(os.tipo, etapaFinal)
-      const { error } = await supabase.from('os').update({ etapa: dbEtapa }).eq('id', os.id)
+      const patch = { etapa: dbEtapa }
+      if (etapaFinal === 'concluido') patch.data_conclusao = new Date().toISOString()
+      else if (os.etapa === 'concluido') patch.data_conclusao = null
+      const { error } = await supabase.from('os').update(patch).eq('id', os.id)
       if (error) throw error
       await supabase.from('os_historico').insert({
         os_id: os.id,

@@ -30,6 +30,7 @@ import { isAdmin, getRole } from './utils/osHelpers'
 
 import AppLayout from './components/layout/AppLayout'
 import { ToastProvider } from './components/ui/Toast'
+import { RefreshProvider, useRouteRefresh } from './contexts/RefreshContext'
 
 import Login        from './pages/Login'
 import Painel       from './pages/Painel'
@@ -69,15 +70,17 @@ export default function App() {
 
   return (
     <ToastProvider T={T} dark={dark}>
-      <BrowserRouter>
-        <AppLayout T={T} dark={dark} toggleTheme={toggleTheme} user={user} sair={sair} isMobile={isMobile}>
-          <ErrorBoundary T={T}>
-            {isMobile
-              ? <RoutesMobile T={T} dark={dark} user={user} />
-              : <RoutesDesktop T={T} dark={dark} user={user} />}
-          </ErrorBoundary>
-        </AppLayout>
-      </BrowserRouter>
+      <RefreshProvider>
+        <BrowserRouter>
+          <AppLayout T={T} dark={dark} toggleTheme={toggleTheme} user={user} sair={sair} isMobile={isMobile}>
+            <ErrorBoundary T={T}>
+              {isMobile
+                ? <RoutesMobile T={T} dark={dark} user={user} />
+                : <RoutesDesktop T={T} dark={dark} user={user} />}
+            </ErrorBoundary>
+          </AppLayout>
+        </BrowserRouter>
+      </RefreshProvider>
     </ToastProvider>
   )
 }
@@ -119,8 +122,11 @@ function RoutesMobile({ T, dark, user }) {
   // Mobile usa PullToRefresh embrulhando o conteúdo.
   // Telas Clientes/Logistica/Estoque/Financeiro/Relatorios já são responsivas
   // (não precisam de versão mobile dedicada por enquanto) — usa as mesmas.
+  // onRefresh dispara o refetch registrado pela página ativa (via
+  // RefreshContext). Páginas sem hook registrado: no-op silencioso.
+  const refresh = useRouteRefresh()
   return (
-    <PullToRefresh T={T} dark={dark} onRefresh={() => Promise.resolve()}>
+    <PullToRefresh T={T} dark={dark} onRefresh={refresh}>
       <Routes>
         <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
         <Route path="/os"          element={<OSMobile T={T} dark={dark} user={user} />} />

@@ -1,11 +1,13 @@
 // src/hooks/useOS.js
-// Hook real do Supabase pra lista de OS (Módulo 00c · Lote 1).
-// Consolidado em 18/05/2026 — antes era um shim mock que retornava OS_MOCK,
-// causando "invalid input syntax for type uuid: 'mock-003'" quando o Kanban
-// passava id mock pros hooks reais (useOSItens/useOSHistorico).
+// Hook real do Supabase pra lista de OS.
+// - SELECT com outer join em cliente + os_item(count); soft-delete de cliente
+//   filtrado em JS pós-fetch (outer porque fabricação tem cliente_id NULL)
+// - Realtime: subscreve a tabela `os` e faz refetch silencioso em qualquer mudança
+// - updateOS: optimistic + rollback, persiste via normalizePatchOS (whitelist)
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabase'
+import { normalizePatchOS } from '../utils/osPatch'
 
 // Traduz etapa do banco (DB) para o valor usado na UI
 function dbEtapaToUI(tipo, dbEtapa) {
@@ -42,9 +44,12 @@ export function useOS(buscando = false) {
   const [osList, setOsList] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  // Ref pra updateOS enxergar sempre a lista mais recente sem virar dependência
+  const osListRef = useRef([])
+  useEffect(() => { osListRef.current = osList }, [osList])
 
-  const fetchOS = useCallback(async () => {
-    setLoading(true)
+  const fetchOS = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const { data, error: err } = await supabase
@@ -54,8 +59,10 @@ export function useOS(buscando = false) {
           valor_total, desconto, pago, valor_pago, forma_pagamento,
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
-          prazo, data_conclusao, criado_em,
-          cliente:cliente_id(id, nome, telefone),
+          prazo, data_conclusao, criado_em, atualizado_em,
+          cliente_id,
+          cliente:cliente_id(id, nome, telefone, deleted_at),
+          os_item(count),
           os_historico(id, etapa_de, etapa_para, funcionario_id, data)
         `)
         .is('deleted_at', null)
@@ -67,8 +74,15 @@ export function useOS(buscando = false) {
 
       const mapped = (data || [])
         .filter(os => {
-          // Ocultar concluídas há mais de 24h (busca escapa esse filtro)
-          if (!buscando && os.data_conclusao && new Date(os.data_conclusao) < limite24h) return false
+          // Ocultar concluídas há mais de 24h (busca escapa esse filtro).
+          // Usa data_conclusao quando existir; fallback pra atualizado_em pra
+          // pegar OS antigas migradas sem data_conclusao preenchida.
+          if (!buscando && (os.etapa === 'concluido' || os.etapa === 'recusado')) {
+            const ref = os.data_conclusao || os.atualizado_em
+            if (ref && new Date(ref) < limite24h) return false
+          }
+          // Ocultar OS de cliente soft-deletado (fabricação tem cliente_id NULL — passa)
+          if (os.cliente_id && os.cliente?.deleted_at) return false
           return true
         })
         .map(os => ({
@@ -88,6 +102,8 @@ export function useOS(buscando = false) {
           endereco: '',
           fotos: 0,
           observacoes: '',
+          // Contagem de itens da OS (vem de os_item(count) → [{ count: N }])
+          itens: os.os_item?.[0]?.count || 0,
           // Financeiro
           valor: os.valor_total || 0,
           desconto: os.desconto || 0,
@@ -125,11 +141,55 @@ export function useOS(buscando = false) {
     } catch (e) {
       setError(e?.message || 'Erro ao carregar OS')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [buscando])
 
   useEffect(() => { fetchOS() }, [fetchOS])
 
-  return { osList, setOsList, loading, error, refetch: fetchOS }
+  // Realtime: refetch silencioso quando qualquer linha de `os` muda.
+  // Cobre drag-and-drop entre dispositivos, edições de outro usuário, e novas OS.
+  useEffect(() => {
+    const channel = supabase
+      .channel('os-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'os' },
+        () => { fetchOS(true) }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchOS])
+
+  // updateOS: optimistic update + persist parcial (whitelist via normalizePatchOS).
+  // Retorna { ok, error, skipped } — consumer mostra toast/log conforme precisar.
+  // Campos fora da whitelist (diagnostico, oficina_execucao, teste_falhas, entrega_*)
+  // ficam só em memória até criarmos colunas pra eles.
+  const updateOS = useCallback(async (numero, patch) => {
+    const lista = osListRef.current
+    const os = lista.find(o => o.numero === numero)
+    if (!os) return { ok: false, error: 'OS não encontrada', skipped: [] }
+
+    const prev = lista
+    setOsList(curr => curr.map(o => o.numero === numero ? { ...o, ...patch } : o))
+
+    const { dbPatch, skipped } = normalizePatchOS(patch)
+    if (Object.keys(dbPatch).length === 0) {
+      if (skipped.length) console.warn('[updateOS] sem colunas persistíveis, mantido só em memória:', skipped)
+      return { ok: true, error: null, skipped }
+    }
+
+    try {
+      const { error: errUp } = await supabase.from('os').update(dbPatch).eq('id', os.id)
+      if (errUp) throw errUp
+      if (skipped.length) console.warn('[updateOS] persistido', Object.keys(dbPatch), '— pendente schema:', skipped)
+      return { ok: true, error: null, skipped }
+    } catch (e) {
+      setOsList(prev)
+      console.error('[updateOS] falha:', e)
+      return { ok: false, error: e?.message || 'Erro ao salvar', skipped }
+    }
+  }, [])
+
+  return { osList, setOsList, loading, error, refetch: fetchOS, updateOS }
 }

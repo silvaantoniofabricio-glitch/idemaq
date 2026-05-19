@@ -9,11 +9,11 @@ import { P } from '../../../theme'
 import { corEtapa, bgEtapa } from '../../../utils/colors'
 import { dentroGarantia, calcStatusPrazo, diasPrazo, totalAPagar, estaPagaTotal } from '../../../utils/osHelpers'
 import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
-import { funcPorId, TIPOS_OS } from '../../../utils/osData'
+import { TIPOS_OS } from '../../../utils/osData'
 import { useOSItens } from '../../../hooks/useOSItens'
 import RelatorioDiagnostico from '../RelatorioDiagnostico'
 
-export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
+export default function ResumoTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {
   const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
 
@@ -85,7 +85,7 @@ export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
           (troca/manutenção) + badge "Diag por XX". Esconde se OS ainda nem
           chegou no Diagnóstico. */}
       {(os.defeito || os.diagnostico?.causa || os.diagnostico?.checklist) && (
-        <RelatorioDiagnostico T={T} dark={dark} os={os} />
+        <RelatorioDiagnostico T={T} dark={dark} os={os} usuarios={usuarios} />
       )}
 
       {/* Orçamento — só admin (regra: funcionário não vê valores financeiros) */}
@@ -115,7 +115,7 @@ export default function ResumoTab({ T, dark, os, osBase, admin, onAbrirOS }) {
       )}
 
       {/* Histórico recente — últimas 3 mudanças */}
-      <HistoricoRecenteBloco T={T} dark={dark} os={os} />
+      <HistoricoRecenteBloco T={T} dark={dark} os={os} usuarios={usuarios} />
 
       {/* Observações */}
       {os.observacoes && (
@@ -268,9 +268,16 @@ function tipoIcone(tipo) {
 }
 
 // ─── Histórico recente — últimas 3 mudanças de etapa ────────────────────────
-function HistoricoRecenteBloco({ T, dark, os }) {
+function HistoricoRecenteBloco({ T, dark, os, usuarios }) {
   const historico = os.historico || []
   if (historico.length === 0) return null
+  // Resolve responsável pelo id real do usuário (vindo do banco). Mantém um
+  // shape mínimo (apelido/nome) pra renderização — sem cair pra mock.
+  const funcPorId = (id) => {
+    const u = (usuarios || []).find(x => x.id === id)
+    if (!u) return null
+    return { nome: u.apelido || u.nome || 'desconhecido' }
+  }
 
   const azul = corEtapa('blue', dark)
 

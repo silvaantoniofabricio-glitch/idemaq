@@ -17,6 +17,7 @@ export function useUsuarios() {
     supabase
       .from('usuarios')
       .select('id, email, apelido, papel')
+      .is('deleted_at', null)
       .eq('ativo', true)
       .order('apelido')
       .then(({ data, error: err }) => {

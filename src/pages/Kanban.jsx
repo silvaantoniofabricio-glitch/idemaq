@@ -15,6 +15,7 @@ import {
   estaPagaTotal, estaPagaParcial,
   podeMoverOS, ordenarColuna, dentroMesCorrente,
   calcStatusPrazo, diasPrazo,
+  responsavelAtual,
 } from '../utils/osHelpers'
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
@@ -48,12 +49,13 @@ export default function Kanban({ T, dark, user }) {
   // Sincroniza buscaAtiva para que useOS saiba se deve mostrar concluídas >24h
   useEffect(() => { setBuscaAtiva(busca.trim().length > 0) }, [busca])
   const [statusF, setStatusF]         = useState('todos')
+  const [respF, setRespF]               = useState('todos')
   const [verRecusados, setVerRecusados] = useState(false)
   const [verAgPeca, setVerAgPeca]       = useState(false)
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
   // useOS: busca do banco + estado mutável para optimistic updates
-  const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch } = useOS(buscaAtiva)
+  const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch, updateOS: updateOSHook } = useOS(buscaAtiva)
   const { usuarios } = useUsuarios()
   // Drag-and-drop
   const [arrastando, setArrastando] = useState(null) // {numero, etapa}
@@ -102,30 +104,28 @@ export default function Kanban({ T, dark, user }) {
     if (r.alvo) notify('ok', `OS #${numero} já estava paga — foi direto para ${labelFinal}`)
     else        notify('ok', `OS #${numero} movida para ${labelFinal}`)
 
-    // Persistir no Supabase
+    // Persistir no Supabase. Trigger do banco cria o registro em os_historico.
     try {
       const dbEtapa = uiEtapaToDb(os.tipo, etapaFinal)
-      const { error: errUp } = await supabase.from('os').update({ etapa: dbEtapa }).eq('id', os.id)
+      // Marca data_conclusao ao concluir; limpa ao sair de concluido (raro,
+      // mas garante o filtro "some 24h após" se a OS for reaberta).
+      const patch = { etapa: dbEtapa }
+      if (etapaFinal === 'concluido') patch.data_conclusao = new Date().toISOString()
+      else if (os.etapa === 'concluido') patch.data_conclusao = null
+      const { error: errUp } = await supabase.from('os').update(patch).eq('id', os.id)
       if (errUp) throw errUp
-      // Inserir histórico manualmente (verificar se trigger já existe no banco — se houver duplicata, ignorar)
-      await supabase.from('os_historico').insert({
-        os_id: os.id,
-        etapa_de: uiEtapaToDb(os.tipo, os.etapa),
-        etapa_para: dbEtapa,
-        funcionario_id: user?.id,
-      })
     } catch {
       setOsList(osPrev)
       notify('erro', 'Erro ao mover OS — mudança revertida')
     }
   }
 
-  // Atualização genérica de campos da OS — usada pelas ações do OSDetalhe
-  // (checkbox limpeza, diagnóstico, checklist oficina, etc.). PR1: estado local
-  // apenas, toast avisa que persistência real entra no Módulo 03.
-  function updateOS(numero, patch) {
-    setOsList(prev => prev.map(o => o.numero === numero ? { ...o, ...patch } : o))
-    notify('ok', 'Alteração salva localmente — persistência no Módulo 03')
+  // Atualização genérica de campos da OS — usada pelas ações do OSDetalhe.
+  // Lógica (optimistic + rollback + whitelist via osPatch) mora no hook useOS.
+  // Aqui só wrapamos pra mostrar toast em caso de erro.
+  async function updateOS(numero, patch) {
+    const res = await updateOSHook(numero, patch)
+    if (!res.ok) notify('erro', 'Erro ao salvar — mudança revertida')
   }
 
   async function toggleAgPecaOS(numero) {
@@ -174,6 +174,13 @@ export default function Kanban({ T, dark, user }) {
       if (statusF === 'hoje')    return s === 'hoje' || s === 'amanha'
       if (statusF === 'ok')      return s === 'ok'
       return true
+    })
+    .filter(o => {
+      if (respF === 'todos') return true
+      const resp = responsavelAtual(o)
+      if (resp === respF) return true
+      // Também considera quem passou pela OS (histórico) — facilita acompanhar tarefa
+      return (o.historico || []).some(h => h.funcionario === respF)
     })
     // Filtro mês corrente em Concluído (escapado pela busca)
     .filter(o => buscando ? true : dentroMesCorrente(o))
@@ -301,6 +308,19 @@ export default function Kanban({ T, dark, user }) {
               )
             })}
           </div>
+          <div style={{ display:'flex', gap:5 }}>
+            <span style={{ fontSize:11, color:T.textMuted, alignSelf:'center', marginRight:3, fontWeight:600, textTransform:'uppercase', letterSpacing:'.3px' }}>Resp.</span>
+            {[{ id:'todos', apelido:'Todos' }, ...usuarios].map(u => {
+              const ativo = respF === u.id
+              const azul = cor(P.blue, P.blueDark)
+              const azulBg = cor('#0d2035', '#e6f1fb')
+              return (
+                <button key={u.id} onClick={()=>setRespF(u.id)}
+                  title={u.id === 'todos' ? 'Sem filtro de responsável' : `Filtrar por ${u.apelido}`}
+                  style={{ padding:'5px 10px', borderRadius:6, border:`1px solid ${ativo?azul:T.border}`, background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:ativo?600:500 }}>{u.apelido}</button>
+              )
+            })}
+          </div>
           <button onClick={()=>setVerAgPeca(v=>!v)}
             style={{ padding:'5px 11px', borderRadius:6, border:`1px solid ${verAgPeca?cor(P.blue,P.blueDark):T.border}`, background:verAgPeca?cor('#0d2035','#e6f1fb'):'transparent', color:verAgPeca?cor(P.blue,P.blueDark):T.textMuted, fontSize:11.5, cursor:'pointer', fontWeight:600, display:'flex', alignItems:'center', gap:5 }}>
             <i className={`ti ${verAgPeca?'ti-package':'ti-package-off'}`} style={{ fontSize:13 }} aria-hidden="true" />
@@ -362,7 +382,7 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
-      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" />}
+      {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />}
       {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList} usuarios={usuarios}
         onClose={()=>setDetalhe(null)}
         onToggleAgPeca={()=>toggleAgPecaOS(osDetalheAtual.numero)}

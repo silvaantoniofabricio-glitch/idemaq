@@ -76,7 +76,12 @@ export const ZONAS = [
   { id:'financeiro', label:'Financeiro', icon:'ti-cash-banknote',  cor:'green',  etapas:['orcamento','pagamento','concluido'] },
 ]
 
-// Funcionários (mock — futuro: usuarios via Supabase)
+// FUNCIONARIOS / funcPorId — DEPRECATED (Módulo 00c — Lote 1, 19/05/2026).
+// Substituído por useUsuarios() (`src/hooks/useUsuarios.js`) que lê a tabela
+// `usuarios` real do Supabase. Mantido aqui SÓ porque os arquivos em
+// `_legacy/` ainda importam (`desktopKanbanModals.jsx` + `mobileComponents.jsx`
+// + `components/os/OSDrawer.jsx`). Quando o legacy for refatorado, deletar.
+// Não usar em código novo — receba `usuarios` por prop e resolva o id ali.
 export const FUNCIONARIOS = [
   { id:'dono',  nome:'Dono',         apelido:'DN', cor:'#5B9BD5' },
   { id:'func1', nome:'Func1 — Log.', apelido:'F1', cor:'#FFD966' },
@@ -84,7 +89,10 @@ export const FUNCIONARIOS = [
 ]
 export function funcPorId(id) { return FUNCIONARIOS.find(f => f.id === id) }
 
-// Mocks pra formulários e detalhe (Nova OS, OSDetalhe)
+// CLIENTES_MOCK — DEPRECATED. A tela de Clientes já lê do Supabase via
+// useClientes(); só `_legacy/desktopKanbanModals.jsx` (NovaOSModal) ainda
+// usa pro autocomplete do "Cliente" no Passo 2. Deletar quando NovaOSModal
+// for refatorada e migrada pro hook real.
 export const CLIENTES_MOCK = [
   { id:1, nome:'Ana Reis',         fone:'(67) 9 9911-1010', endereco:'R. das Acácias, 412 — Naviraí/MS' },
   { id:2, nome:'João Costa',       fone:'(67) 9 9922-2020', endereco:'R. Bahia, 87 — Naviraí/MS' },
@@ -96,6 +104,9 @@ export const CLIENTES_MOCK = [
   { id:8, nome:'Igor Vasconcelos', fone:'(67) 9 9712-3344', endereco:'R. Maranhão, 199 — Naviraí/MS' },
 ]
 
+// ESTOQUE_MAQUINAS_MOCK — DEPRECATED. Mantido só pra NovaOSModal de Venda
+// (em `_legacy/`) listar máquinas reformadas disponíveis. Será trocado por
+// usePecas() filtrado por tipo `maquina` quando NovaOSModal for refatorada.
 export const ESTOQUE_MAQUINAS_MOCK = [
   { id:'M-201', descricao:'Lavadora reformada Consul 10kg',  valor:650 },
   { id:'M-203', descricao:'Lavadora reformada LG 11kg',      valor:650 },

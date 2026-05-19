@@ -8,7 +8,10 @@
 
 import React from 'react'
 import { corEtapa } from '../../utils/colors'
-import { funcPorId } from '../../utils/osData'
+
+// Cor por papel — alinhada com a paleta Deutan. Usada como fallback quando
+// `usuarios` ainda está carregando ou o id do histórico não bate com ninguém.
+const COR_PAPEL = { dono: '#5B9BD5', logistica: '#FFD966', oficina: '#B8CCE4' }
 
 // Espelha os ids/labels do checklist de AcaoDiagnostico.jsx.
 // Mantido aqui pra não importar do arquivo de uma etapa específica.
@@ -43,7 +46,7 @@ export function itensMarcadosDoDiag(os) {
     })
 }
 
-export default function RelatorioDiagnostico({ T, dark, os }) {
+export default function RelatorioDiagnostico({ T, dark, os, usuarios }) {
   const cor = (d, c) => dark ? d : c
   const azul     = corEtapa('blue', dark)
   const amarelo  = corEtapa('yellow', dark)
@@ -52,7 +55,10 @@ export default function RelatorioDiagnostico({ T, dark, os }) {
   const causa = diag.causa || ''
   const itens = itensMarcadosDoDiag(os)
   const regDiag  = [...(os.historico || [])].reverse().find(h => h.etapa === 'diagnostico')
-  const funcDiag = regDiag && funcPorId(regDiag.funcionario)
+  const u = regDiag && (usuarios || []).find(x => x.id === regDiag.funcionario)
+  const funcDiag = u
+    ? { apelido: u.apelido || u.nome || 'técnico', cor: u.cor || COR_PAPEL[u.papel] || '#5B9BD5' }
+    : null
 
   return (
     <div style={{

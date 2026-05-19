@@ -33,7 +33,7 @@ function deriveStatus(m, t) {
   return 'andamento'
 }
 
-export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onToggleAgPeca }) {
+export default function AcaoOficina({ T, dark, os, usuarios, onUpdateOS, onMoverOS, onToggleAgPeca }) {
   const cor = (d, c) => dark ? d : c
   const azul       = corEtapa('blue', dark)
   const azulClaro  = corEtapa('blueLight', dark)
@@ -195,7 +195,7 @@ export default function AcaoOficina({ T, dark, os, onUpdateOS, onMoverOS, onTogg
       )}
 
       {/* === RELATÓRIO COMPLETO DO DIAGNÓSTICO === */}
-      {!orcamentoVazio && <RelatorioDiagnostico T={T} dark={dark} os={os} />}
+      {!orcamentoVazio && <RelatorioDiagnostico T={T} dark={dark} os={os} usuarios={usuarios} />}
 
       {/* === CARDS LIMPEZA + MANUTENÇÃO === */}
       {!orcamentoVazio && (

@@ -27,7 +27,7 @@ const ATALHOS = [
   { nome: 'Capa',                tipo: 'peca',    valor:  85, icon: 'ti-package' },
 ]
 
-export default function AcaoOrcamento({ T, dark, os, onMoverOS, onUpdateOS, setAba }) {
+export default function AcaoOrcamento({ T, dark, os, usuarios, onMoverOS, onUpdateOS, setAba }) {
   const cor = (d, c) => dark ? d : c
   const azul     = corEtapa('blue', dark)
   const amarelo  = corEtapa('yellow', dark)
@@ -204,7 +204,7 @@ Aguardo sua aprovação pra começar o serviço. Qualquer dúvida estou aqui!`
       descricao="Único lugar onde se mexe em preço. Edite os itens, gere PDF ou envie pro cliente."
     >
       {/* === RELATÓRIO DO DIAGNÓSTICO === */}
-      <RelatorioDiagnostico T={T} dark={dark} os={os} />
+      <RelatorioDiagnostico T={T} dark={dark} os={os} usuarios={usuarios} />
 
       {/* === ATALHOS RÁPIDOS === */}
       <div>

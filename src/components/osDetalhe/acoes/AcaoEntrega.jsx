@@ -14,7 +14,7 @@
 
 import React, { useState } from 'react'
 import { P } from '../../../theme'
-import { ETAPAS_TODOS, FUNCIONARIOS } from '../../../utils/osData'
+import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa, bgEtapa, corHero } from '../../../utils/colors'
 import { estaPagaTotal } from '../../../utils/osHelpers'
 import { useToast } from '../../ui'
@@ -28,7 +28,9 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
   const notify = useToast()
 
   const jaPaga = estaPagaTotal(os)
-  const lista = (usuarios && usuarios.length > 0) ? usuarios : FUNCIONARIOS
+  // Lista vem sempre do useUsuarios (vazia durante carregamento — select com 0
+  // opções é OK; o form só salva quando há responsável selecionado).
+  const lista = usuarios || []
 
   // Fase 1 = sem data agendada · Fase 2 = data já marcada
   const [editando, setEditando] = useState(false)
