@@ -17,9 +17,14 @@
 
 1. Atualizar `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md` com o que mudou
 2. Atualizar `CLAUDE.md` **só se** mudou regra de ouro / arquitetura / status macro (ver seção 3)
-3. `git add` dos arquivos tocados (nunca `git add -A` — pode incluir sensível)
-4. `git commit -m "<tipo>(<area>): <descrição curta>"`
-5. **`git push origin main`** — sem push, outros terminais não veem o trabalho e o deploy Vercel não roda
+3. **Rodar `git status --short` e revisar a lista `??` (untracked)**. Qualquer arquivo novo em `src/`, `sql/`, `supabase/functions/` que faz parte do trabalho **precisa entrar no commit**. Não confie só no que você lembra de ter criado.
+4. `git add <arquivos>` explícito (nunca `git add -A` — pode incluir sensível). Se criou arquivo novo, **inclua ele aqui** — esse é o passo onde a gente perdeu o `osPatch.js` em 18/05 e quebrou 8 deploys.
+5. **Se criou arquivo novo em `src/` que é importado por outro**: rodar `npm run build` local antes de push. Build local quebra em 5 segundos; Vercel quebra em 30s + você só descobre depois. Vale a checagem.
+6. `git commit -m "<tipo>(<area>): <descrição curta>"`
+7. **`git push origin main`** — sem push, outros terminais não veem o trabalho e o deploy Vercel não roda
+
+### Por que o passo 3-5 é regra agora
+Em 19/05/2026, `src/utils/osPatch.js` ficou 1 dia como untracked (`??` no git status). Funcionava local mas o Vercel clonava o repo sem ele → 8 builds seguidos falharam com "Module not found: ../utils/osPatch", produção ficou servindo código de 2 dias atrás enquanto 7 terminais trabalhavam no vazio. `git status --short` no fim de sessão pega isso em 1 segundo.
 
 ---
 
