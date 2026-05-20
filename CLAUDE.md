@@ -221,7 +221,7 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | Painel (dono) | ✅ Real ponta a ponta | Mover meta R$ 20k pra `configuracoes` (Mod. 09) |
 | Painel Funcionários | ✅ Implementado | Trocar mocks (`_mocks.js`) por queries reais quando schema `ponto_registro` subir |
 | Kanban (OS) | ✅ Real + Realtime + Garantia + Recusada→Fabricação | — |
-| OSDetalhe + 10 Ações | ✅ Schema parte 2 aplicado e plugado | Foto pro Storage privado (idemaq-privado/os/{id}/coleta/) |
+| OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage privado (20/05) | — (após criar bucket + sql/08) |
 | Clientes | ✅ Real (782) + modal lista OS | — |
 | Logística | ✅ Real (rota + Places) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
 | Estoque | ✅ Real (680) + UPDATE modal + baixa automática (SQL/07 aplicado 20/05) | — |

@@ -9,6 +9,9 @@ import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
+import {
+  uploadFotoColeta, removerFotoColeta, resolverFotoUrl, FOTO_STORAGE_MARKER,
+} from '../../../utils/osStorage'
 import BlocoAcao from './BlocoAcao'
 
 const TESTES = [
@@ -28,8 +31,8 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
   const amarelo = cor(P.yellow, P.yellowDark)
 
-  // Persistência em checklist_etapa(etapa='recebido'). Foto continua em jsonb
-  // local (os.pre_diagnostico.foto) — Storage virá em outro PR.
+  // Persistência em checklist_etapa(etapa='recebido'). Foto vai pro Supabase
+  // Storage privado (bucket idemaq-privado, path os/{osId}/coleta.jpg).
   // Estrutura do `itens`:
   //   { id: 'teste:<id>', label, checked: bool, valor: 'ok'|'defeito'|'barulho' }
   const { itens: chkItens, observacoes: chkObs, salvar: salvarChk, loading: loadingChk } =
@@ -41,11 +44,27 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
     TESTES.reduce((acc, t) => ({ ...acc, [t.id]: salvo[t.id] || null }), {})
   )
   const [obsPreDiag, setObsPreDiag] = useState(salvo.observacoes || '')
-  // Foto da coleta — placeholder local (base64 preview). Quando Storage entrar,
-  // upload pra idemaq-privado/os/{os.id}/coleta/. Hoje só state local pra UX.
-  const [fotoBase64, setFotoBase64] = useState(salvo.foto || null)
+  // Foto da coleta:
+  // - `fotoUrl` = URL exibível (signed URL do Storage OU base64 legacy)
+  // - `fotoNoStorage` = true quando a foto vive no bucket (não em base64)
+  // - `uploading` = spinner enquanto sobe pro Storage
+  const [fotoUrl, setFotoUrl]     = useState(null)
+  const [fotoNoStorage, setFotoNoStorage] = useState(salvo.foto === FOTO_STORAGE_MARKER)
+  const [uploading, setUploading] = useState(false)
   const inputFotoRef = useRef(null)
   const [hidratado, setHidratado] = useState(false)
+
+  // Resolve URL exibível ao montar — gera signed URL se a foto está no Storage,
+  // ou usa direto se for base64 legacy.
+  useEffect(() => {
+    let cancelado = false
+    async function carregar() {
+      const url = await resolverFotoUrl(salvo.foto, os.id)
+      if (!cancelado) setFotoUrl(url)
+    }
+    if (salvo.foto) carregar()
+    return () => { cancelado = true }
+  }, [salvo.foto, os.id])
 
   // Hidrata do checklist_etapa quando chegar (sobrescreve só se em memória estava vazio)
   useEffect(() => {
@@ -60,19 +79,37 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
     setHidratado(true)
   }, [loadingChk, chkItens, chkObs, hidratado])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  function escolherFoto(file) {
+  async function escolherFoto(file) {
     if (!file) return
     if (!file.type.startsWith('image/')) {
       alert('Selecione uma imagem (JPG/PNG).')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => setFotoBase64(reader.result)
-    reader.readAsDataURL(file)
+    setUploading(true)
+    const res = await uploadFotoColeta(os.id, file)
+    setUploading(false)
+    if (!res.ok) {
+      alert(`Falha ao enviar foto: ${res.error}`)
+      return
+    }
+    setFotoUrl(res.url)
+    setFotoNoStorage(true)
+    // Persiste o marker no banco imediatamente (não espera concluir())
+    onUpdateOS(os.numero, {
+      pre_diagnostico: { ...salvo, ...testes, observacoes: obsPreDiag, foto: FOTO_STORAGE_MARKER },
+    })
   }
-  function removerFoto() {
-    setFotoBase64(null)
+
+  async function removerFoto() {
+    if (fotoNoStorage) {
+      await removerFotoColeta(os.id)
+    }
+    setFotoUrl(null)
+    setFotoNoStorage(false)
     if (inputFotoRef.current) inputFotoRef.current.value = ''
+    onUpdateOS(os.numero, {
+      pre_diagnostico: { ...salvo, ...testes, observacoes: obsPreDiag, foto: null },
+    })
   }
 
   function selecionar(testeId, valor) {
@@ -83,12 +120,13 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
   }
 
   async function concluir() {
-    // Foto continua em jsonb local (skipped no DB até Storage entrar)
+    // Foto agora vive no Storage; salvamos só o marker no jsonb pra indicar
+    // "tem foto" — URL é gerada on-demand via resolverFotoUrl(osId).
     onUpdateOS(os.numero, {
       pre_diagnostico: {
         ...testes,
         observacoes: obsPreDiag,
-        foto: fotoBase64,  // futuro: trocar por URL do Storage
+        foto: fotoNoStorage ? FOTO_STORAGE_MARKER : null,
       },
     })
     // Persiste testes + observações em checklist_etapa
@@ -260,14 +298,14 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
           style={{ display: 'none' }}
         />
 
-        {fotoBase64 ? (
+        {fotoUrl ? (
           <div style={{
             position: 'relative',
             border: `1px solid ${T.border}`,
             borderRadius: 8, overflow: 'hidden',
             maxWidth: 280,
           }}>
-            <img src={fotoBase64} alt="Foto da coleta"
+            <img src={fotoUrl} alt="Foto da coleta"
               style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 220, objectFit: 'cover' }} />
             <div style={{
               position: 'absolute', top: 6, right: 6,
@@ -276,14 +314,16 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
               <button
                 type="button"
                 onClick={() => inputFotoRef.current?.click()}
-                title="Trocar foto"
+                disabled={uploading}
+                title={uploading ? 'Enviando...' : 'Trocar foto'}
                 style={{
                   width: 28, height: 28, borderRadius: 6,
                   background: 'rgba(0,0,0,0.6)', color: '#fff',
-                  border: 'none', cursor: 'pointer',
+                  border: 'none', cursor: uploading ? 'wait' : 'pointer',
+                  opacity: uploading ? 0.6 : 1,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                <i className="ti ti-camera" style={{ fontSize: 14 }} aria-hidden="true" />
+                <i className={`ti ${uploading ? 'ti-loader-2' : 'ti-camera'}`} style={{ fontSize: 14 }} aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -303,16 +343,19 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
           <button
             type="button"
             onClick={() => inputFotoRef.current?.click()}
+            disabled={uploading}
             style={{
               padding: '10px 14px', borderRadius: 7,
               border: `1px dashed ${T.border}`,
               background: 'transparent', color: T.textSecondary,
-              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              fontSize: 12, fontWeight: 500,
+              cursor: uploading ? 'wait' : 'pointer',
+              opacity: uploading ? 0.6 : 1,
               fontFamily: 'inherit',
               display: 'inline-flex', alignItems: 'center', gap: 6,
             }}>
-            <i className="ti ti-camera-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-            Adicionar foto da coleta
+            <i className={`ti ${uploading ? 'ti-loader-2' : 'ti-camera-plus'}`} style={{ fontSize: 15 }} aria-hidden="true" />
+            {uploading ? 'Enviando foto...' : 'Adicionar foto da coleta'}
           </button>
         )}
       </div>

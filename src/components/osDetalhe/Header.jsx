@@ -6,9 +6,10 @@
 //  3. Timeline compacta (com border-top sutil)
 //  4. 3 abas (Etapa · Resumo · Pagamento)
 //
-// Foto lê de os.pre_diagnostico.foto (base64 do AcaoRecebido). Click no
-// placeholder vazio abre input file pra escolher imagem (mesma lógica do
-// AcaoRecebido). Click numa foto existente abre FotoAmpliadaModal.
+// Foto lê de os.pre_diagnostico.foto (marker 'storage' OU base64 legacy).
+// Click no placeholder vazio abre input file pra escolher imagem. Click numa
+// foto existente abre FotoAmpliadaModal. Storage privado em idemaq-privado/
+// os/{id}/coleta.jpg — signed URL gerada on-demand.
 
 import React, { useState, useRef, useEffect } from 'react'
 import { P } from '../../theme'
@@ -18,6 +19,9 @@ import {
   estaPagaTotal, estaPagaParcial,
   calcStatusPrazo, diasPrazo,
 } from '../../utils/osHelpers'
+import {
+  uploadFotoColeta, resolverFotoUrl, FOTO_STORAGE_MARKER,
+} from '../../utils/osStorage'
 import { useToast } from '../ui'
 import Timeline from './Timeline'
 import FotoAmpliadaModal from './FotoAmpliadaModal'
@@ -42,10 +46,26 @@ export default function Header({
   const notify = useToast()
 
   // === Foto ===
-  const fotoUrl = os.pre_diagnostico?.foto || os.foto || null
+  // `fotoRef` é o que está salvo no banco ('storage' marker OU base64 legacy).
+  // `fotoUrl` é a URL exibível (signed URL do Storage OU base64 inline).
+  const fotoRef = os.pre_diagnostico?.foto || os.foto || null
+  const [fotoUrl, setFotoUrl] = useState(null)
   const [fotoAmpliada, setFotoAmpliada] = useState(false)
   const [fotoHover, setFotoHover] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const inputFotoRef = useRef(null)
+
+  // Resolve URL exibível ao montar/trocar a foto
+  useEffect(() => {
+    let cancelado = false
+    async function carregar() {
+      const url = await resolverFotoUrl(fotoRef, os.id)
+      if (!cancelado) setFotoUrl(url)
+    }
+    if (fotoRef) carregar()
+    else setFotoUrl(null)
+    return () => { cancelado = true }
+  }, [fotoRef, os.id])
 
   // === Dropdown "Mais ações" ===
   const [menuAberto, setMenuAberto] = useState(false)
@@ -97,26 +117,28 @@ export default function Header({
     }
   }
 
-  function escolherFoto(file) {
+  async function escolherFoto(file) {
     if (!file) return
     if (!file.type?.startsWith('image/')) {
       notify('erro', 'Selecione uma imagem (JPG/PNG).')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const base64 = reader.result
-      // Salva em pre_diagnostico.foto (mesmo lugar usado pelo AcaoRecebido).
-      // Futuro: quando Storage entrar, fazer upload pra idemaq-privado/os/{id}/coleta/
-      // e salvar URL assinada em vez do base64.
-      onUpdateOS?.(os.numero, {
-        pre_diagnostico: { ...(os.pre_diagnostico || {}), foto: base64 },
-      })
-      notify('ok', 'Foto adicionada')
+    setUploading(true)
+    const res = await uploadFotoColeta(os.id, file)
+    setUploading(false)
+    if (!res.ok) {
+      notify('erro', `Falha ao enviar foto: ${res.error}`)
+      return
     }
-    reader.readAsDataURL(file)
+    setFotoUrl(res.url)
+    // Persiste marker 'storage' (URL é gerada on-demand via resolverFotoUrl)
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: { ...(os.pre_diagnostico || {}), foto: FOTO_STORAGE_MARKER },
+    })
+    notify('ok', 'Foto adicionada')
   }
   function clicarFoto() {
+    if (uploading) return
     if (fotoUrl) setFotoAmpliada(true)
     else inputFotoRef.current?.click()
   }
