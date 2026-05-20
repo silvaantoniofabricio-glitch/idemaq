@@ -1,6 +1,6 @@
 // idemaq-src/pages/Logistica.jsx
 // Tela de Logística — paradas do dia (coletas + entregas) com placeholder de mapa.
-// MVP visual: tabela `rota` e Google Maps API ainda não decididos (Módulo 05 do plano).
+// MVP visual: tabela `rota` desenhada em sql/06-rota.sql (não aplicada).
 // Botões "Maps" abrem Google Maps diretamente via link público (sem chave de API).
 // Visível pra Dono + Alessandro (RLS no banco vai bloquear acesso pra Guilherme).
 
@@ -12,23 +12,11 @@ import {
   useToast,
 } from '../components/ui'
 import { ChipToggle } from '../components/ui/Tabs'
+import { useRotas } from '../hooks/useRotas'
 
-// Mock — futuro: lê de OS com coleta_data/entrega_data + tabela `rota`.
-// Datas relativas pra ficar coerente independente do dia em que abrir.
+// Datas-âncora pro filtro (hoje / amanhã / semana) — coerentes em qualquer dia.
 const HOJE = new Date().toISOString().slice(0, 10)
 const AMANHA = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-
-const PARADAS_MOCK = [
-  { id:1, tipo:'coleta',  osNum:247, cliente:'Ana Reis',         fone:'(67) 9 9911-1010', endereco:'R. das Acácias, 412 — Naviraí/MS', horario:'08:30', status:'pendente',  equipamento:'Lavadora Consul 10kg',     data: HOJE },
-  { id:2, tipo:'entrega', osNum:241, cliente:'Paula Mendes',     fone:'(67) 9 9944-4040', endereco:'Av. Cuiabá, 1.020 — Naviraí/MS',   horario:'09:15', status:'pendente',  equipamento:'Lavadora LG 11kg',         data: HOJE },
-  { id:3, tipo:'coleta',  osNum:248, cliente:'Roberto Dias',     fone:'(67) 9 9955-5050', endereco:'R. Paraná, 56 — Naviraí/MS',       horario:'10:00', status:'pendente',  equipamento:'Brastemp 12kg',            data: HOJE },
-  { id:4, tipo:'entrega', osNum:243, cliente:'Maria Silva',      fone:'(67) 9 9810-1111', endereco:'R. Acre, 88 — Naviraí/MS',         horario:'11:00', status:'concluida', equipamento:'Lavadora Consul 8kg',      data: HOJE },
-  { id:5, tipo:'coleta',  osNum:249, cliente:'João Costa',       fone:'(67) 9 9922-2020', endereco:'R. Bahia, 87 — Naviraí/MS',        horario:'14:30', status:'pendente',  equipamento:'Electrolux 13kg',          data: HOJE },
-  { id:6, tipo:'entrega', osNum:245, cliente:'Carlos Lima',      fone:'(67) 9 9933-3030', endereco:'R. Goiás, 245 — Naviraí/MS',       horario:'15:45', status:'pendente',  equipamento:'LG 14kg',                  data: HOJE },
-  { id:7, tipo:'coleta',  osNum:250, cliente:'Igor Vasconcelos', fone:'(67) 9 9712-3344', endereco:'R. Maranhão, 199 — Naviraí/MS',    horario:'16:30', status:'pendente',  equipamento:'Consul 11kg',              data: HOJE },
-  { id:8, tipo:'coleta',  osNum:251, cliente:'Pedro Alves',      fone:'(67) 9 9966-6060', endereco:'R. Ceará, 312 — Naviraí/MS',       horario:'09:00', status:'pendente',  equipamento:'Brastemp Active 11kg',     data: AMANHA },
-  { id:9, tipo:'entrega', osNum:246, cliente:'João Costa',       fone:'(67) 9 9922-2020', endereco:'R. Bahia, 87 — Naviraí/MS',        horario:'10:30', status:'pendente',  equipamento:'Lavadora Consul 10kg',     data: AMANHA },
-]
 
 const FILTROS_DATA = [
   { id: 'hoje',    label: 'Hoje',    icon: 'ti-calendar-event' },
@@ -52,7 +40,7 @@ function rotaCompletaUrl(enderecos) {
 export default function Logistica({ T, dark }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
-  const [paradas, setParadas] = useState(PARADAS_MOCK)
+  const { rotas, loading, error, tabelaAusente, concluirParada: concluirParadaHook } = useRotas()
   const [filtroData, setFiltroData] = useState('hoje')
   const [verColetas, setVerColetas] = useState(true)
   const [verEntregas, setVerEntregas] = useState(true)
@@ -61,6 +49,27 @@ export default function Logistica({ T, dark }) {
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
   const verde = corEtapa('green', dark)
+
+  // Achata { rotas: [{ paradas: [...] }] } pra lista plana de paradas + data,
+  // mantendo o `rotaId` p/ chamar a mutação corretamente.
+  const paradas = useMemo(() => {
+    const out = []
+    for (const r of rotas) {
+      for (const p of (r.paradas || [])) {
+        out.push({
+          ...p,
+          rotaId: r.id,
+          data: r.data,
+          // aliases p/ o JSX abaixo (osNum/cliente/fone/horario):
+          osNum: p.os_num,
+          cliente: p.cliente_nome,
+          fone: p.cliente_fone,
+          horario: p.horario_previsto,
+        })
+      }
+    }
+    return out
+  }, [rotas])
 
   function dataMatch(p) {
     if (filtroData === 'hoje')    return p.data === HOJE
@@ -96,10 +105,8 @@ export default function Logistica({ T, dark }) {
   const concluidas    = baseVisivel.filter(p => p.status === 'concluida').length
   const pendentes     = baseVisivel.filter(p => p.status === 'pendente').length
 
-  function concluirParada(id) {
-    setParadas(prev => prev.map(p =>
-      p.id === id ? { ...p, status: 'concluida' } : p
-    ))
+  function concluirParada(rotaId, paradaId) {
+    concluirParadaHook(rotaId, paradaId)
     notify('ok', 'Parada concluída')
   }
 
@@ -115,6 +122,58 @@ export default function Logistica({ T, dark }) {
   const tituloFiltro = filtroData === 'hoje' ? 'Rota de hoje'
                      : filtroData === 'amanha' ? 'Rota de amanhã'
                      : 'Rota da semana'
+
+  // Estados especiais — vêm antes da UI normal de filtros/lista.
+  if (loading) {
+    return (
+      <div style={{ padding: '20px 24px 32px', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <PageHeader T={T} dark={dark}
+          title="Logística"
+          subtitle="Carregando rotas…"
+        />
+        <Card T={T} dark={dark}>
+          <EmptyState T={T} icon="ti-loader-2" title="Carregando rotas…"
+            description="Buscando paradas do dia." compact />
+        </Card>
+      </div>
+    )
+  }
+
+  if (tabelaAusente) {
+    return (
+      <div style={{ padding: '20px 24px 32px', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <PageHeader T={T} dark={dark}
+          title="Logística"
+          subtitle="Tabela `rota` ainda não criada no banco"
+        />
+        <Card T={T} dark={dark}>
+          <EmptyState T={T} icon="ti-database-off"
+            title="Tabela `rota` ainda não foi criada"
+            description="Aplique o arquivo sql/06-rota.sql no SQL Editor do Supabase pra liberar este módulo."
+            compact
+          />
+        </Card>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '20px 24px 32px', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <PageHeader T={T} dark={dark}
+          title="Logística"
+          subtitle="Erro ao carregar rotas"
+        />
+        <Card T={T} dark={dark}>
+          <EmptyState T={T} icon="ti-alert-triangle"
+            title="Erro ao carregar rotas"
+            description={error.message || 'Falha desconhecida ao consultar a tabela `rota`.'}
+            compact
+          />
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div style={{
@@ -339,7 +398,7 @@ export default function Logistica({ T, dark }) {
                     {!concluida && (
                       <Button variant="secondary" T={T} dark={dark}
                         size="sm" iconLeft="ti-check"
-                        onClick={() => concluirParada(p.id)}
+                        onClick={() => concluirParada(p.rotaId, p.id)}
                       >
                         Concluir
                       </Button>
