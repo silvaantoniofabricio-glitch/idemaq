@@ -14,6 +14,7 @@ import {
   useToast,
 } from '../components/ui'
 import LancamentoDetalheModal from '../components/financeiro/LancamentoDetalheModal'
+import NovoLancamentoModal from '../components/financeiro/NovoLancamentoModal'
 import { useFinanceiro } from '../hooks/useFinanceiro'
 
 // ============================================================================
@@ -209,6 +210,8 @@ export default function Financeiro({ T, dark }) {
   const [pagar, setPagar]     = useState([])
   const [caixa, setCaixa]     = useState([])
   const [selecionado, setSelecionado] = useState(null)
+  // Modal de novo lançamento: null=fechado, 'receita'|'despesa'=aberto com tipo inicial
+  const [novoLancTipo, setNovoLancTipo] = useState(null)
 
   // Hook real do Supabase. Schema parte 2 (`lancamento_financeiro`) ainda
   // pode não existir — o hook trata graciosamente via `tabelaAusente` e
@@ -216,6 +219,7 @@ export default function Financeiro({ T, dark }) {
   const {
     lancamentos: lancsReal, contas: contasReais,
     loading: loadingHook, tabelaAusente,
+    criar: criarLanc, atualizar: atualizarLanc,
     darBaixa, excluir: excluirReal, refetch,
   } = useFinanceiro()
   const usandoBanco = !tabelaAusente
@@ -366,7 +370,7 @@ export default function Financeiro({ T, dark }) {
               Importar
             </Button>
             <Button variant="primary" iconLeft="ti-plus"
-              onClick={() => placeholder('Novo lançamento (avulso/parcelado/recorrente) em breve')}>
+              onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}>
               Novo lançamento
             </Button>
           </div>
@@ -441,13 +445,34 @@ export default function Financeiro({ T, dark }) {
       {selecionado && (
         <LancamentoDetalheModal T={T} dark={dark}
           lancamento={selecionado.item} tipo={selecionado.tipo}
+          contas={contasReais}
           onClose={() => setSelecionado(null)}
           onBaixar={(item) => {
             if (selecionado.tipo === 'receber') baixarReceber(item)
             else if (selecionado.tipo === 'pagar') baixarPagar(item)
           }}
-          onEditar={() => placeholder('Edição de lançamento em breve — schema parte 2')}
+          onSalvarEdicao={async (id, patch) => {
+            const res = await atualizarLanc(id, patch)
+            if (!res.error) {
+              await refetch()
+              setSelecionado(null) // fecha pra ver lista atualizada
+            }
+            return res
+          }}
           onExcluir={(item) => excluirLancamento(item, selecionado.tipo)}
+        />
+      )}
+
+      {novoLancTipo && (
+        <NovoLancamentoModal T={T} dark={dark}
+          tipoInicial={novoLancTipo}
+          contas={contasReais}
+          onCriar={async (payload) => {
+            const res = await criarLanc(payload)
+            if (!res.error) await refetch()
+            return res
+          }}
+          onClose={() => setNovoLancTipo(null)}
         />
       )}
     </div>

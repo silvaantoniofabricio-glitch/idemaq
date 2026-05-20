@@ -66,8 +66,8 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 
 ### O que falta
 - ~~Toni rodar `sql/01-lancamento-financeiro.sql`~~ ✅ **feito 20/05/2026** (8 lançamentos seed confirmados)
-- `LancamentoDetalheModal` edição inline (hoje só placeholder — `onEditar` mostra toast)
-- `NovoLancamentoModal` (avulso/parcelado/recorrente)
+- ✅ ~~`LancamentoDetalheModal` edição inline~~ — **feito em 20/05/2026** (sessão `geral`). Botão Editar troca body do modal por form pré-preenchido (valor/vencimento/categoria/descrição/conta/forma/taxa). `useFinanceiro.atualizar(id, patch)` exposto pelo hook (whitelist em CAMPOS_EDITAVEIS — não sobrescreve null em campos ausentes). Caixa permanece read-only por regra (Editar só aparece em A Receber/A Pagar).
+- ✅ ~~`NovoLancamentoModal` (avulso)~~ — **feito em 20/05/2026** (sessão `geral`). MVP: receita/despesa, em aberto OU já paga (vai pro Caixa), validações inline, conta/categoria/forma/taxa. Parcelado/recorrente fora de escopo (modal separado depois). Aberto pelo botão "Novo lançamento" do PageHeader; default da aba `pagar` é tipo `despesa`, demais abas é `receita`.
 - ✅ ~~`utils/financeiro.js` (`calcularD1Util` + `ehFeriadoBancario`)~~ — **feito** (19/05/2026)
 - ✅ ~~**Integração OS → Financeiro**~~ — **plugada em 20/05/2026** (sessão `geral`). `src/utils/osToFinanceiro.js` monta+persiste lançamentos a partir de `{ valor, forma, taxa_pct, parcelasAPrazo }`. Chamado de `AcaoPagamento.handleConfirmar` e `PagamentoTab.handleConfirmarPagamento`. Regra: à vista cria receita pago no Caixa + despesa de taxa em D+1 útil (se taxa>0); a prazo cria N receitas em aberto, 1 por parcela. Lookup de `conta_id` por nome (PIX→Mercado Pago, Cartão/Link→InfinitePay, Dinheiro→Cresol). `FormRecebimento.onConfirmar` ganhou campo `taxa_pct` no payload pra propagar a taxa calculada internamente.
 

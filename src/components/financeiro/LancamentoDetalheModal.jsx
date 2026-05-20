@@ -4,12 +4,25 @@
 //   - 'pagar'   : conta a pagar   → ações [Excluir] [Editar] [Pagar]
 //   - 'caixa'   : movimentação confirmada → read-only · só [Excluir]
 // Regra de negócio: Caixa só permite exclusão (sem edição). Módulo 07 do plano.
-// Edição ainda é placeholder — entra com o schema parte 2 (`lancamento_financeiro`).
+// Edição inline plugada em 20/05/2026 — troca o body por form quando editando.
 
 import React, { useState, useEffect } from 'react'
-import { Modal, Button, Badge, SubCard } from '../ui'
+import { Modal, Button, Badge, SubCard, useToast } from '../ui'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { fmtBRL, fmtPrazoCurto } from '../../utils/fmt'
+import { CATEGORIAS_SUGESTAO } from '../../hooks/useFinanceiro'
+
+const FORMAS_EDIT = [
+  { id: 'pix',                label: 'PIX',                temTaxa: false },
+  { id: 'dinheiro',           label: 'Dinheiro',           temTaxa: false },
+  { id: 'debito',             label: 'Cartão débito',      temTaxa: true  },
+  { id: 'credito_1x',         label: 'Cartão 1x',          temTaxa: true  },
+  { id: 'credito_parcelado',  label: 'Cartão parcelado',   temTaxa: true  },
+  { id: 'link_pagamento',     label: 'Link InfinitePay',   temTaxa: true  },
+  { id: 'boleto',             label: 'Boleto',             temTaxa: false },
+  { id: 'transferencia',      label: 'Transferência',      temTaxa: false },
+  { id: 'a_prazo',            label: 'A prazo',            temTaxa: false },
+]
 
 // ─── Status do vencimento (mesma regra usada em Financeiro.jsx) ──────────────
 function statusVencimento(isoData) {
@@ -74,9 +87,10 @@ export default function LancamentoDetalheModal({
   T, dark,
   lancamento,
   tipo,                  // 'receber' | 'pagar' | 'caixa'
+  contas = [],           // [{ id, nome, tipo }] — pro select de conta no modo edição
   onClose,
   onBaixar,              // (lancamento) → registra baixa (receber/pagar)
-  onEditar,              // (lancamento) → abrir edição (placeholder por enquanto)
+  onSalvarEdicao,        // async (id, patch) → { error? } — edição inline
   onExcluir,             // (lancamento) → remove
   mobile = false,
 }) {
@@ -85,14 +99,70 @@ export default function LancamentoDetalheModal({
   const cfg = configTipo(lancamento, tipo, dark)
   const st = cfg.isoData ? statusVencimento(cfg.isoData) : null
   const ehCaixa = tipo === 'caixa'
+  const notify = useToast()
 
   // Ações destrutivas/irreversíveis exigem confirmação dentro do próprio modal:
   // 1º clique troca o rodapé pra "Tem certeza? · [Voltar] [Confirmar]" — evita
   // que clique acidental no botão primário (Baixar/Pagar) ou no Excluir conclua
   // a transação sem chance de voltar. null = estado normal.
   const [pendente, setPendente] = useState(null)  // null | 'baixar' | 'excluir'
-  // Se trocar de item (sem fechar modal), reseta o estado de confirmação
-  useEffect(() => { setPendente(null) }, [lancamento?.id])
+  // Modo edição inline: body vira form pré-preenchido com valores atuais.
+  const [editando, setEditando] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [form, setForm] = useState(null)
+  // Se trocar de item (sem fechar modal), reseta o estado de confirmação/edição
+  useEffect(() => {
+    setPendente(null)
+    setEditando(false)
+    setForm(null)
+  }, [lancamento?.id])
+
+  function entrarEmEdicao() {
+    setForm({
+      valor:           String(lancamento.valor ?? ''),
+      vencimento:      lancamento.vencimento || '',
+      categoria:       lancamento.categoria || '',
+      descricao:       lancamento.descricao || '',
+      conta_id:        lancamento.conta_id || '',
+      forma_pagamento: lancamento.forma_enum || '',
+      taxa_pct:        String(lancamento.taxa_pct ?? lancamento.taxa ?? ''),
+    })
+    setEditando(true)
+  }
+
+  async function salvarEdicao() {
+    if (!form || salvando) return
+    const patch = {
+      valor:           Number(String(form.valor).replace(',', '.')) || 0,
+      vencimento:      form.vencimento || null,
+      categoria:       form.categoria,
+      descricao:       form.descricao,
+      conta_id:        form.conta_id || null,
+      forma_pagamento: form.forma_pagamento || null,
+      taxa_pct:        Number(String(form.taxa_pct).replace(',', '.')) || 0,
+    }
+    if (!patch.valor || patch.valor <= 0) {
+      notify('erro', 'Valor precisa ser maior que zero')
+      return
+    }
+    if (!patch.descricao?.trim()) {
+      notify('erro', 'Descrição obrigatória')
+      return
+    }
+    setSalvando(true)
+    const res = await onSalvarEdicao?.(lancamento.id, patch)
+    setSalvando(false)
+    if (res?.error) {
+      if (res.error.code === 'OFFLINE') {
+        notify('info', 'Modo demo: edição não persiste. Aplique sql/01 no Supabase.')
+      } else {
+        notify('erro', `Falha ao salvar: ${res.error.message || 'erro desconhecido'}`)
+      }
+      return
+    }
+    notify('ok', 'Lançamento atualizado')
+    setEditando(false)
+  }
 
   const vermelho = corEtapa('red', dark)
   const amarelo = corEtapa('yellow', dark)
@@ -145,7 +215,15 @@ export default function LancamentoDetalheModal({
         </button>
       </div>
 
-      {/* Corpo rolável */}
+      {/* Corpo rolável — modo view OU form (edição inline) */}
+      {editando ? (
+        <FormEdicao
+          T={T} dark={dark}
+          form={form} setForm={setForm}
+          contas={contas}
+          tipoLanc={lancamento.tipo /* 'receita' | 'despesa' do shape UI */}
+        />
+      ) : (
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
 
         {/* Hero: valor grande + status */}
@@ -290,9 +368,27 @@ export default function LancamentoDetalheModal({
           </div>
         )}
       </div>
+      )}
 
-      {/* Rodapé: ações normais OU painel de confirmação (anti-clique-acidental) */}
-      {pendente ? (
+      {/* Rodapé: edição OU confirmação OU ações normais */}
+      {editando ? (
+        <div style={{
+          padding: '12px 20px', borderTop: `1px solid ${T.border}`,
+          display: 'flex', justifyContent: 'flex-end', gap: 8,
+          background: T.cardAlt, flexShrink: 0,
+        }}>
+          <Button T={T} dark={dark} variant="ghost" size="sm"
+            onClick={() => { setEditando(false); setForm(null) }}>
+            Cancelar
+          </Button>
+          <Button variant="primary" size="sm"
+            iconLeft={salvando ? 'ti-loader-2' : 'ti-check'}
+            onClick={salvarEdicao}
+            disabled={salvando}>
+            {salvando ? 'Salvando...' : 'Salvar alterações'}
+          </Button>
+        </div>
+      ) : pendente ? (
         <ConfirmacaoFooter T={T} dark={dark}
           pendente={pendente}
           tipo={tipo}
@@ -323,7 +419,7 @@ export default function LancamentoDetalheModal({
             {!ehCaixa && (
               <Button T={T} dark={dark} variant="secondary" size="sm"
                 iconLeft="ti-pencil"
-                onClick={() => onEditar?.(lancamento)}>
+                onClick={entrarEmEdicao}>
                 Editar
               </Button>
             )}
@@ -428,4 +524,116 @@ function CampoLinha({ T, label, valor, icon, iconCor }) {
       </span>
     </div>
   )
+}
+
+// ─── Form de edição inline ──────────────────────────────────────────────────
+// Renderizado dentro do body quando `editando=true`. Mantém o cabeçalho
+// colorido + footer normais — só troca o miolo por inputs pré-preenchidos.
+function FormEdicao({ T, dark, form, setForm, contas, tipoLanc }) {
+  if (!form) return null
+  const tipoBase = tipoLanc === 'despesa' ? 'despesa' : 'receita'
+  const categoriasSugestao = CATEGORIAS_SUGESTAO[tipoBase] || []
+  const formaSel = FORMAS_EDIT.find(f => f.id === form.forma_pagamento)
+  const mostraTaxa = formaSel?.temTaxa
+
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
+
+  return (
+    <div style={{
+      flex: 1, overflowY: 'auto',
+      padding: '14px 20px',
+      display: 'flex', flexDirection: 'column', gap: 12,
+    }}>
+      <FieldLabel T={T}>Valor</FieldLabel>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 13, color: T.textMuted, fontWeight: 600 }}>R$</span>
+        <input type="number" min="0" step="0.01" value={form.valor}
+          onChange={e => set('valor', e.target.value)}
+          style={{
+            flex: 1, padding: '9px 12px', borderRadius: 7,
+            border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+            fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+            outline: 'none', textAlign: 'right',
+            fontFamily: 'inherit', boxSizing: 'border-box',
+          }} />
+      </div>
+
+      <FieldLabel T={T}>Descrição</FieldLabel>
+      <input type="text" value={form.descricao}
+        onChange={e => set('descricao', e.target.value)}
+        style={editInputStyle(T)} />
+
+      <FieldLabel T={T}>Categoria</FieldLabel>
+      <input type="text" list="cat-edit-sugestao" value={form.categoria}
+        onChange={e => set('categoria', e.target.value)}
+        style={editInputStyle(T)} />
+      <datalist id="cat-edit-sugestao">
+        {categoriasSugestao.map(c => <option key={c} value={c} />)}
+      </datalist>
+
+      <FieldLabel T={T}>
+        Conta bancária <span style={{ color: T.textDim, fontWeight: 400, textTransform: 'none' }}>· opcional</span>
+      </FieldLabel>
+      <select value={form.conta_id} onChange={e => set('conta_id', e.target.value)}
+        style={editInputStyle(T)}>
+        <option value="">— sem conta definida —</option>
+        {contas.map(c => (
+          <option key={c.id} value={c.id}>{c.nome}{c.tipo ? ` (${c.tipo})` : ''}</option>
+        ))}
+      </select>
+
+      <FieldLabel T={T}>Vencimento</FieldLabel>
+      <input type="date" value={form.vencimento || ''}
+        onChange={e => set('vencimento', e.target.value)}
+        style={{ ...editInputStyle(T), colorScheme: dark ? 'dark' : 'light' }} />
+
+      <FieldLabel T={T}>
+        Forma de pagamento <span style={{ color: T.textDim, fontWeight: 400, textTransform: 'none' }}>· opcional</span>
+      </FieldLabel>
+      <select value={form.forma_pagamento || ''}
+        onChange={e => set('forma_pagamento', e.target.value)}
+        style={editInputStyle(T)}>
+        <option value="">— nenhuma —</option>
+        {FORMAS_EDIT.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+      </select>
+
+      {mostraTaxa && (
+        <>
+          <FieldLabel T={T}>
+            Taxa <span style={{ color: T.textDim, fontWeight: 400, textTransform: 'none' }}>· % sobre o valor</span>
+          </FieldLabel>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="number" min="0" step="0.01" value={form.taxa_pct}
+              onChange={e => set('taxa_pct', e.target.value)}
+              style={{
+                flex: 1, padding: '9px 12px', borderRadius: 7,
+                border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                fontSize: 14, fontVariantNumeric: 'tabular-nums',
+                outline: 'none', textAlign: 'right',
+                fontFamily: 'inherit', boxSizing: 'border-box',
+              }} />
+            <span style={{ fontSize: 13, color: T.textMuted, fontWeight: 600 }}>%</span>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function FieldLabel({ T, children }) {
+  return (
+    <label style={{
+      display: 'block', fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+      marginBottom: -4, textTransform: 'uppercase', letterSpacing: '.4px',
+    }}>{children}</label>
+  )
+}
+
+function editInputStyle(T) {
+  return {
+    width: '100%', padding: '9px 12px', borderRadius: 7,
+    border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+    fontSize: 13, outline: 'none',
+    fontFamily: 'inherit', boxSizing: 'border-box',
+  }
 }

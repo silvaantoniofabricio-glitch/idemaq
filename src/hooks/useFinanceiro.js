@@ -221,6 +221,47 @@ export function useFinanceiro(filtros = {}) {
   }
 
   /**
+   * Edita campos arbitrários de um lançamento. Aceita um patch parcial e só
+   * envia o que foi passado (não sobrescreve null em campos ausentes).
+   *
+   * Campos editáveis: tipo, valor, vencimento, pago_em, categoria, descricao,
+   * conta_id, forma_pagamento, taxa_pct, os_id.
+   *
+   * @param {string} id
+   * @param {object} patch
+   */
+  async function atualizar(id, patch) {
+    if (tabelaAusente) return { data: null, error: { code: 'OFFLINE', message: 'Tabela não aplicada' } }
+    const CAMPOS_EDITAVEIS = [
+      'tipo', 'valor', 'vencimento', 'pago_em',
+      'categoria', 'descricao', 'conta_id',
+      'forma_pagamento', 'taxa_pct', 'os_id',
+    ]
+    const limpo = {}
+    for (const k of CAMPOS_EDITAVEIS) {
+      if (patch[k] === undefined) continue
+      if (k === 'valor' || k === 'taxa_pct') {
+        limpo[k] = patch[k] == null ? null : Number(patch[k])
+      } else if (typeof patch[k] === 'string') {
+        limpo[k] = patch[k].trim() || null
+      } else {
+        limpo[k] = patch[k]
+      }
+    }
+    if (Object.keys(limpo).length === 0) {
+      return { data: null, error: { code: 'NOOP', message: 'Nada a atualizar' } }
+    }
+    const { data, error: err } = await supabase
+      .from('lancamento_financeiro')
+      .update(limpo)
+      .eq('id', id)
+      .select()
+      .single()
+    if (!err) await fetchAll()
+    return { data, error: err }
+  }
+
+  /**
    * Marca como pago. Em modo real, faz UPDATE. Em modo demo, devolve OFFLINE
    * (a Página já tem fallback in-memory pra esse caso).
    *
@@ -264,6 +305,6 @@ export function useFinanceiro(filtros = {}) {
     lancamentos, contas,
     loading, error, tabelaAusente,
     refetch: fetchAll,
-    criar, darBaixa, excluir,
+    criar, atualizar, darBaixa, excluir,
   }
 }
