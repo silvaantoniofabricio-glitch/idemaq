@@ -219,17 +219,17 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | Área | Status | Próximo passo macro |
 |---|---|---|
 | Painel (dono) | ✅ Real + meta diária restante + lê de `configuracoes` (20/05) | — |
-| Painel Funcionários | ✅ Real (OS abertas + KPIs do mês + pontualidade via `usePainelFuncionario`) (20/05) | — |
+| Painel Funcionários | ✅ Real + OS específicas do funcionário via `os_historico` (fallback global) (20/05) | — |
 | Kanban (OS) | ✅ Real + Realtime + Garantia + Recusada→Fabricação | — |
-| OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + trocar/excluir foto (20/05) | — |
+| OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + FormClienteEdit + FormEquipamentoEdit (20/05) | — |
 | Clientes | ✅ Real (782) + modal lista OS | — |
 | Logística | ✅ Real (rota + Places) + NovaRotaModal + RotaDetalheModal com DnD (20/05) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
-| Estoque | ✅ Real (680) + UPDATE + baixa automática + ajuste manual (20/05) | Tabela `peca_movimentacao` pra histórico real |
+| Estoque | ✅ Real (680) + ajuste manual + histórico real via `peca_movimentacao` (20/05) | 🟡 Toni rodar `sql/11-peca-movimentacao.sql` no Supabase |
 | Financeiro | ✅ Real + OS→Financeiro + NovoLanc (avulso/parcelado/recorrente) + edição inline (20/05) | — |
 | Relatórios | ✅ 7 reais (DRE + Funcionários + Relógio de Ponto ligados ao Supabase 20/05) | Deploy da edge function `relatorio-ia` pra destravar análise IA |
 | Configurações (Mod 09) | ✅ MVP: tabela chave/valor + `useConfiguracoes` + página admin-only (20/05) | — |
 | Ponto | ✅ Schema aplicado + hook + componentes (20/05) | Funcionários começarem a bater pra povoar o histórico |
-| Schema parte 2 | ✅ Todos aplicados (01/05/06/07/08/09/10) | — |
+| Schema parte 2 | ✅ Aplicados (01/05/06/07/08/09/10) | 🟡 Falta `sql/11-peca-movimentacao.sql` |
 | Storage idemaq-privado | ✅ Bucket criado + foto coleta plugada (20/05) | — |
 | Env vars Vercel | ✅ Código pronto, fallback hardcoded até Toni setar no Vercel (20/05) | Toni adicionar `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no painel Vercel |
 | Edge function `relatorio-ia` | ✅ Código pronto + guia em `docs/deploy-edge-function-ia.md` | Toni rodar `supabase functions deploy` (~5 min) |
