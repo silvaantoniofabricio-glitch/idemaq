@@ -12,6 +12,7 @@ import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
+import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import BlocoAcao from './BlocoAcao'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 
@@ -27,7 +28,7 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
   const valorPago = os.valor_pago || 0
   const aPagar = Math.max(0, total - valorPago)
 
-  function handleConfirmar({ valor, forma, modo, parcelas: parcelasAPrazo }) {
+  function handleConfirmar({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) {
     const novoValorPago = valorPago + valor
     let novoDesconto = descontoAtual
     let novoPago = 'total'
@@ -54,6 +55,13 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
       pago: novoPago,
       forma_pagamento: forma,
       ...(novasObs !== os.observacoes ? { observacoes: novasObs } : {}),
+    })
+    // Cria lançamentos no Financeiro (fire-and-forget, best-effort).
+    // - Pagamento à vista (PIX/Cartão/etc): cria receita pago + despesa de taxa em D+1 útil
+    // - A prazo: cria N receitas em aberto (1 por parcela)
+    persistirLancamentosDoPagamento(os, {
+      valor, forma, taxa_pct,
+      parcelasAPrazo: parcelasAPrazo || [],
     })
     // Estamos na etapa Pagamento, então quitar fecha pra Concluído
     if (novoPago === 'total') {

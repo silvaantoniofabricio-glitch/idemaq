@@ -21,6 +21,7 @@ import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
 import { estaPagaTotal, estaPagaParcial } from '../../../utils/osHelpers'
+import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 
 export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
@@ -123,7 +124,7 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
   //   'parcial'  → registra parcial, OS continua aberta
   //   'desconto' → quita aplicando desconto pelo restante
   // parcelas:    → quando forma === aprazo, array de { data, valor }
-  async function handleConfirmarPagamento({ valor, forma, modo, parcelas: parcelasAPrazo }) {
+  async function handleConfirmarPagamento({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) {
     const novoValorPago = valorPago + valor
     let novoDesconto = desconto
     let novoPago = 'total'
@@ -153,6 +154,11 @@ export default function PagamentoTab({ T, dark, os, onUpdateOS, onMoverOS }) {
       ...(novasObs !== os.observacoes ? { observacoes: novasObs } : {}),
     })
     await salvar()
+    // Cria lançamentos no Financeiro (fire-and-forget, best-effort).
+    persistirLancamentosDoPagamento(os, {
+      valor, forma, taxa_pct,
+      parcelasAPrazo: parcelasAPrazo || [],
+    })
     // Só move pra Concluído quando o recebimento total acontece DENTRO da
     // etapa Pagamento. Pagamentos adiantados (em agendamento, recebido…)
     // mantêm a OS na etapa atual — o sistema redireciona Entrega→Concluído

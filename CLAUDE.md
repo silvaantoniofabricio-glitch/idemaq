@@ -225,7 +225,7 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | Clientes | ✅ Real (782) + modal lista OS | — |
 | Logística | ✅ Real (rota + Places) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
 | Estoque | ✅ Real (680) + UPDATE modal + baixa automática (SQL/07 aplicado 20/05) | — |
-| Financeiro | ✅ Real ponta a ponta (SQL 01 v2 aplicado, 8 seeds) | Integração OS→Financeiro (criar lançamento automático ao pagar OS) |
+| Financeiro | ✅ Real ponta a ponta (SQL 01 v2 aplicado, 8 seeds) + OS→Financeiro plugado (20/05) | NovoLancamentoModal avulso + edição inline do LancamentoDetalheModal |
 | Relatórios | ✅ 4 reais funcionando | Deploy da edge function `relatorio-ia` pra destravar DRE + Funcionários com IA |
 | Ponto | 🔴 Não implementado | Ler spec em `idemaq-modulo-ponto-CLAUDE-CODE.md` + criar schema `ponto_registro` + componentes |
 | Schema parte 2 | ✅ Todos aplicados | sql/01 (lancamento) + sql/05 (checklist+falha) + sql/06 (rota) rodaram em 19-20/05 |

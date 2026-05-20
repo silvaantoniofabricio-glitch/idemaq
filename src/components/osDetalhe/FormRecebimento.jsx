@@ -148,6 +148,7 @@ export default function FormRecebimento({
     if (forma === 'aprazo') {
       onConfirmar({
         valor, forma: formaIdFinal(), modo: 'total',
+        taxa_pct: taxa,
         parcelas: parcelasAPrazo.map(p => ({ ...p, valor: Number(p.valor) || 0 })),
       })
       return
@@ -155,17 +156,17 @@ export default function FormRecebimento({
     if (isParcial) {
       setPartialDialog(true)
     } else {
-      onConfirmar({ valor, forma: formaIdFinal(), modo: 'total' })
+      onConfirmar({ valor, forma: formaIdFinal(), modo: 'total', taxa_pct: taxa })
     }
   }
 
   function confirmarParcial() {
-    onConfirmar({ valor, forma: formaIdFinal(), modo: 'parcial' })
+    onConfirmar({ valor, forma: formaIdFinal(), modo: 'parcial', taxa_pct: taxa })
     setPartialDialog(false)
   }
 
   function confirmarComDesconto() {
-    onConfirmar({ valor, forma: formaIdFinal(), modo: 'desconto' })
+    onConfirmar({ valor, forma: formaIdFinal(), modo: 'desconto', taxa_pct: taxa })
     setPartialDialog(false)
   }
 

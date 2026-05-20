@@ -69,7 +69,7 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 - `LancamentoDetalheModal` edição inline (hoje só placeholder — `onEditar` mostra toast)
 - `NovoLancamentoModal` (avulso/parcelado/recorrente)
 - ✅ ~~`utils/financeiro.js` (`calcularD1Util` + `ehFeriadoBancario`)~~ — **feito** (19/05/2026)
-- **Integração OS → Financeiro**: ainda não plugada — Entrega gera A Receber, Pagamento gera Caixa + Taxa em D+1 útil. Helper `calcularD1Util` pronto, falta wirar no `useOS`/`AcaoPagamento`.
+- ✅ ~~**Integração OS → Financeiro**~~ — **plugada em 20/05/2026** (sessão `geral`). `src/utils/osToFinanceiro.js` monta+persiste lançamentos a partir de `{ valor, forma, taxa_pct, parcelasAPrazo }`. Chamado de `AcaoPagamento.handleConfirmar` e `PagamentoTab.handleConfirmarPagamento`. Regra: à vista cria receita pago no Caixa + despesa de taxa em D+1 útil (se taxa>0); a prazo cria N receitas em aberto, 1 por parcela. Lookup de `conta_id` por nome (PIX→Mercado Pago, Cartão/Link→InfinitePay, Dinheiro→Cresol). `FormRecebimento.onConfirmar` ganhou campo `taxa_pct` no payload pra propagar a taxa calculada internamente.
 
 ### Diagnóstico (script reutilizável)
 
