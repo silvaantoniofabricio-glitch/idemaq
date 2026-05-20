@@ -62,6 +62,7 @@ export function useOS(buscando = false) {
           recusada, aguardando_peca,
           prazo, data_conclusao, criado_em, atualizado_em,
           cliente_id,
+          marca_equipamento, modelo_equipamento, defeito_relatado,
           pre_diagnostico, observacoes,
           cliente:cliente_id(id, nome, telefone, deleted_at),
           os_item(count),
@@ -95,12 +96,14 @@ export function useOS(buscando = false) {
           cliente: os.cliente?.nome || '',
           fone: os.cliente?.telefone || '',
           cliente_id: os.cliente?.id || null,
-          // Campos não existentes no schema v1 — preenchidos quando maquina_id for adicionado
+          // Equipamento: colunas reais existem em `os` (marca_equipamento,
+          // modelo_equipamento, defeito_relatado). `serie` e `endereco` ainda
+          // não têm coluna — ficam vazios até o schema avançar.
           equipamento: '',
-          marca: '',
-          modelo: '',
+          marca: os.marca_equipamento || '',
+          modelo: os.modelo_equipamento || '',
           serie: '',
-          defeito: '',
+          defeito: os.defeito_relatado || '',
           endereco: '',
           fotos: 0,
           observacoes: os.observacoes || '',
