@@ -1,6 +1,8 @@
 // idemaq-src/components/layout/Sidebar.jsx
-// Sidebar desktop fina (56px) que expande pra 210px no hover (overlay, não empurra
-// conteúdo). Botão ☰ "fixa" o estado expandido (persistido em localStorage).
+// Sidebar desktop com 2 modos:
+//   - LIVRE: slot 56px (fina). Hover expande a interna pra 210px em OVERLAY (não empurra).
+//   - FIXA:  slot 210px (cheia). A interna ocupa o slot — EMPURRA o conteúdo.
+// Botão de pino alterna entre os modos (persistido em localStorage).
 // User-block hospeda tema + sair (Topbar foi removido).
 
 import React, { useMemo, useState, useEffect } from 'react'
@@ -39,21 +41,31 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
     flexShrink: 0,
   }
 
+  // Slot empurra conteúdo quando fixo (210px); fica fino (56px) quando livre.
+  const slotW = pinned ? FULL_W : SLOT_W
+  // Interna ocupa todo o slot quando fixa; faz overlay até 210px quando livre+hover.
+  const innerW = expanded ? FULL_W : SLOT_W
+  // Sombra/overlay só quando livre+hover (não fixo).
+  const showOverlayShadow = hovered && !pinned
+
   return (
-    // Slot fixo de 56px no flex — sidebar interna faz overlay pra direita ao expandir
-    <div style={{ width: SLOT_W, minWidth: SLOT_W, flexShrink: 0, position: 'relative', zIndex: 20 }}>
+    <div style={{
+      width: slotW, minWidth: slotW, flexShrink: 0,
+      position: 'relative', zIndex: 20,
+      transition: 'width .15s ease',
+    }}>
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
           position: 'absolute', top: 0, left: 0, bottom: 0,
-          width: expanded ? FULL_W : SLOT_W,
+          width: innerW,
           background: T.sbBg,
           display: 'flex', flexDirection: 'column',
           borderRight: `1px solid ${T.border}`,
           transition: 'width .15s ease',
           overflow: 'hidden',
-          boxShadow: expanded && !pinned ? (dark ? '0 8px 24px rgba(0,0,0,.4)' : '0 8px 24px rgba(0,0,0,.12)') : 'none',
+          boxShadow: showOverlayShadow ? (dark ? '0 8px 24px rgba(0,0,0,.4)' : '0 8px 24px rgba(0,0,0,.12)') : 'none',
         }}
       >
         {/* Header / logo */}
