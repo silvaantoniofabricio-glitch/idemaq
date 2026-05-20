@@ -134,12 +134,22 @@ export default function KanbanCard({
           }}>—</span>
         )}
 
-        {/* Linha 3: equipamento (span 2) */}
+        {/* Linha 3: equipamento + S/N (span 2) */}
         <div style={{
           gridColumn: '1 / -1',
           fontSize: 11.5, color: T.textSecondary,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{linhaEquip}</div>
+        }}>
+          {linhaEquip}
+          {os.serie && (
+            <span style={{
+              color: T.textMuted,
+              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+              fontSize: 10.5,
+              marginLeft: 6,
+            }}>· S/N {os.serie}</span>
+          )}
+        </div>
 
         {/* Linha 4: endereço (span 2, sem ícone) */}
         {endResumido && (
