@@ -41,6 +41,7 @@ export default function OSDetalhe({
   onAbrirOS,
   onMoverOS,
   onUpdateOS,
+  onExcluir,
   mobile = false,
 }) {
   const admin = isAdmin(user)
@@ -108,6 +109,7 @@ export default function OSDetalhe({
             onShowHistorico={() => setShowHistorico(true)}
             onClose={onClose}
             onUpdateOS={onUpdateOS}
+            onExcluir={onExcluir}
             mobile={mobile}
           />
 

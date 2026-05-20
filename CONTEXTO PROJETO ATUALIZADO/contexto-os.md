@@ -188,7 +188,7 @@ Linha 2 do header: foto da máquina + bloco info estruturado.
 - Dropdown ancorado no botão (top:calc(100% + 4px), right:0, z-index:50). Fecha por ESC, click-fora e click no item (atributo `data-mais-acoes` no container)
 - 2 itens hoje:
   1. **Copiar nº da OS** — `navigator.clipboard.writeText(os.numero)` + toast
-  2. **Excluir OS** (só pra admin via prop `admin`) — soft-delete (`deleted_at`+`excluido_por` via `supabase.auth.getUser`), `window.confirm` antes, fecha o modal e some do Kanban via filtro do `useOS`
+  2. **Excluir OS** (só pra admin via prop `admin`) — Header só chama `onExcluir(numero)` + `onClose`. A função real mora no Kanban (`excluirOS`) e faz **optimistic remove** via `setOsList(prev => prev.filter(...))` ANTES do UPDATE no Supabase. Rollback se UPDATE falhar. Não confia em Realtime (latência variável + publication `os` às vezes desabilitada)
 - Histórico: botão nasceu disabled no commit `985f31c` (17/05, PR1) e ficou ~3 dias inerte. Não era regressão da Onda 2 (schema parte 2 não tocou em Header.jsx)
 
 ---

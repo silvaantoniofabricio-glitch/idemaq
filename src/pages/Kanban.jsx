@@ -128,6 +128,29 @@ export default function Kanban({ T, dark, user }) {
     if (!res.ok) notify('erro', 'Erro ao salvar — mudança revertida')
   }
 
+  // Exclusão (soft-delete) — optimistic remove imediato + rollback em erro.
+  // Não confia em Realtime pra sumir do Kanban (latência variável e às vezes
+  // a publication `os` não está habilitada no Supabase).
+  async function excluirOS(numero) {
+    const os = osList.find(o => o.numero === numero)
+    if (!os) return
+    const osPrev = osList
+    setOsList(prev => prev.filter(o => o.numero !== numero))
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      const { error } = await supabase.from('os').update({
+        deleted_at: new Date().toISOString(),
+        excluido_por: userData?.user?.id || null,
+      }).eq('id', os.id)
+      if (error) throw error
+      notify('ok', `OS #${numero} excluída`)
+    } catch (e) {
+      setOsList(osPrev)
+      notify('erro', `Erro ao excluir OS: ${e?.message || 'desconhecido'}`)
+      console.error('[Kanban] excluir OS:', e)
+    }
+  }
+
   async function toggleAgPecaOS(numero) {
     const os = osList.find(o => o.numero === numero)
     if (!os) return
@@ -388,7 +411,8 @@ export default function Kanban({ T, dark, user }) {
         onToggleAgPeca={()=>toggleAgPecaOS(osDetalheAtual.numero)}
         onAbrirOS={(num)=>{ const o = osList.find(x=>x.numero===num); if(o) setDetalhe(o) }}
         onMoverOS={moverOS}
-        onUpdateOS={updateOS} />}
+        onUpdateOS={updateOS}
+        onExcluir={excluirOS} />}
     </>
   )
 }

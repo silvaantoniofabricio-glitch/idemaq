@@ -11,7 +11,6 @@
 // AcaoRecebido). Click numa foto existente abre FotoAmpliadaModal.
 
 import React, { useState, useRef, useEffect } from 'react'
-import { supabase } from '../../supabase'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { corEtapa } from '../../utils/colors'
@@ -33,7 +32,7 @@ export default function Header({
   T, dark, os, admin,
   aba, setAba,
   onShowHistorico, onClose,
-  onUpdateOS,
+  onUpdateOS, onExcluir,
   mobile = false,
 }) {
   const cor = (d, c) => dark ? d : c
@@ -77,8 +76,9 @@ export default function Header({
     }
   }
 
-  // Soft-delete: marca deleted_at + excluido_por. Some do Kanban via filtro do useOS.
-  // Realtime do useOS notifica outras sessões abertas.
+  // Soft-delete delegado pro Kanban (que faz optimistic remove + rollback).
+  // O Header só fecha o modal — o filter local do osList já faz a OS sumir
+  // instantaneamente sem depender do Realtime.
   async function excluirOS() {
     if (excluindo) return
     setMenuAberto(false)
@@ -90,17 +90,9 @@ export default function Header({
     )) return
     setExcluindo(true)
     try {
-      const { data: userData } = await supabase.auth.getUser()
-      const { error } = await supabase.from('os').update({
-        deleted_at: new Date().toISOString(),
-        excluido_por: userData?.user?.id || null,
-      }).eq('id', os.id)
-      if (error) throw error
-      notify('ok', `OS #${os.numero} excluída`)
+      await onExcluir?.(os.numero)
       onClose?.()
-    } catch (e) {
-      notify('erro', `Erro ao excluir: ${e?.message || 'desconhecido'}`)
-      console.error('[Header] excluir OS:', e)
+    } finally {
       setExcluindo(false)
     }
   }
