@@ -49,11 +49,12 @@
 
 1. ~~**Commitar `03-peca-importar-v2.sql`** substituindo `sql/03-peca-importar-bcm.sql`~~ ✅ feito 20/05/2026 (gerado direto pelo script com `modelos_compativeis` como ARRAY literal)
 2. ~~**UPDATE peça via modal de detalhe**~~ ✅ feito 19/05/2026
-3. Ajuste manual de estoque (botão "Ajustar estoque" ainda toast)
+3. ~~**Ajuste manual de estoque**~~ ✅ feito 20/05/2026 (AjusteEstoqueModal + `usePecas.ajustarEstoque`; histórico real depende da tabela `peca_movimentacao` — ver §12)
 4. ~~**Baixa automática ao concluir OS**~~ ✅ feito 20/05/2026 (client-side, match por nome ILIKE; ver §9). Idempotência via `peca_movimentacao` fica pra próxima onda.
 5. Máquinas: ligar ao Supabase (Módulo 07)
 6. Entrada por nota fiscal (futuro): upload PDF/foto/Excel → Claude API lê → revisão → salva
 7. Edição de categoria/marca/tipo/referência/modelos compatíveis no modal (chat seguinte — hoje só identificação básica + qtds + preços)
+8. Criar tabela `peca_movimentacao` (peca_id, delta, motivo, observacao, os_id, criado_em, criado_por) — destrava: histórico real no PecaDetalheModal (hoje mock) + INSERT pelo ajuste manual + INSERT pela baixa automática de OS (ver §9 e §12)
 
 ---
 
@@ -221,3 +222,26 @@ Cruza com Relatórios IA — ver `contexto-relatorios.md`.
 - **Financeiro**: custo de peça vai compor custo da OS, base do DRE. Ver `contexto-financeiro.md`
 - **Relatórios**: relatório de Estoque (consumo, ponto de pedido). Ver `contexto-relatorios.md`
 - **Geral / cross-area**: import scripts ficam em `scripts/`. SQL em `sql/`. Ver `contexto-geral.md`
+
+---
+
+## 12. Ajuste manual de estoque (20/05/2026)
+
+Caso de uso: contagem mensal acha divergência, peça quebrada no manuseio, devolução de cliente, sobra encontrada na prateleira — corrige `qtd_atual` sem precisar abrir OS.
+
+- **Componente**: `src/components/estoque/AjusteEstoqueModal.jsx`
+  - Aberto pelo botão "Ajustar estoque" do `PecaDetalheModal` (antes era stub com toast)
+  - Mostra qtd atual read-only + Input "Nova quantidade" + Select "Motivo" + Textarea "Observação" + preview `qtdAtual → qtdNova · delta (motivo)`
+  - Motivos canônicos: `contagem | perda | ganho | devolucao | outro`
+  - Validação: `qtdNova >= 0`, inteiro, diferente da atual (delta=0 não salva)
+  - Botão fica `disabled` enquanto `salvando` ou inválido; ESC e click-fora desabilitados durante save
+
+- **Hook**: `usePecas.ajustarEstoque(pecaId, { qtdNova, motivo, observacao })`
+  1. SELECT atual da peça (`qtd_atual`) — confere delta contra o banco, não só contra o que a UI tinha
+  2. UPDATE `peca SET qtd_atual = nova` (saneado: `max(0, trunc(N))`)
+  3. `console.log('[ajusteEstoque]', { pecaId, nome, qtd_antes, qtd_depois, delta, motivo, observacao })` — rastro durante a fase sem histórico real
+  4. Refetcha lista; retorna `{ data: dbToUi(row), error }`
+
+- **Visibilidade**: botão "Ajustar estoque" só aparece quando `mostraValores = isAdmin(user)`. Funcionário não ajusta — só vê. RLS no banco reforça (defesa em 3 camadas, igual aos custos do estoque).
+
+- **Pendente** (item 8 da §2): tabela `peca_movimentacao(peca_id, delta, motivo, observacao, os_id?, criado_em, criado_por)`. Quando existir, o hook insere lá além do UPDATE, e o histórico real substitui o `movsMock` do `PecaDetalheModal`. A baixa automática da OS (§9) também passa a inserir nessa mesma tabela com `motivo='baixa_os'` + `os_id` preenchido.

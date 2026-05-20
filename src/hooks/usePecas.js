@@ -195,7 +195,58 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
     return res
   }
 
-  return { pecas, loading, error, refetch: fetchPecas, criar, atualizar, excluir, baixarItens }
+  /**
+   * Ajuste manual de estoque (contagem / perda / ganho / devolução / outro).
+   * Persiste só o UPDATE de `qtd_atual` por enquanto — quando a tabela
+   * `peca_movimentacao` existir, o INSERT do histórico entra aqui também.
+   * Loga o delta no console pra rastreio durante essa fase de transição.
+   *
+   * @param {string} pecaId
+   * @param {{ qtdNova: number, motivo: string, observacao?: string|null }} payload
+   * @returns {Promise<{ data: object|null, error: any }>}
+   */
+  async function ajustarEstoque(pecaId, { qtdNova, motivo, observacao = null } = {}) {
+    if (!pecaId) return { data: null, error: new Error('pecaId vazio') }
+    const nova = Math.max(0, Math.trunc(Number(qtdNova) || 0))
+
+    // SELECT antes pro log do delta — quem chama já tem o valor atual em UI,
+    // mas conferimos no banco pra evitar race com outra sessão.
+    const { data: antes, error: errSel } = await supabase
+      .from('peca')
+      .select('id, nome, qtd_atual')
+      .eq('id', pecaId)
+      .is('deleted_at', null)
+      .maybeSingle()
+    if (errSel) return { data: null, error: errSel }
+    if (!antes) return { data: null, error: new Error('Peça não encontrada') }
+
+    const qtdAntes = Number(antes.qtd_atual) || 0
+    const delta = nova - qtdAntes
+
+    const { data, error: err } = await supabase
+      .from('peca')
+      .update({ qtd_atual: nova })
+      .eq('id', pecaId)
+      .select(SELECT_COLS)
+      .single()
+    if (err) return { data: null, error: err }
+
+    // TODO(peca_movimentacao): quando a tabela existir, INSERT aqui:
+    //   await supabase.from('peca_movimentacao').insert({
+    //     peca_id: pecaId, delta, motivo, observacao,
+    //   })
+    // Hoje só logamos pra ter rastro durante a transição.
+    console.log('[ajusteEstoque]', {
+      pecaId, nome: antes.nome,
+      qtd_antes: qtdAntes, qtd_depois: nova, delta,
+      motivo, observacao,
+    })
+
+    await fetchPecas()
+    return { data: dbToUi(data), error: null }
+  }
+
+  return { pecas, loading, error, refetch: fetchPecas, criar, atualizar, excluir, baixarItens, ajustarEstoque }
 }
 
 // =============================================================================

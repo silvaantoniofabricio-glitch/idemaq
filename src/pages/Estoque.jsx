@@ -128,6 +128,7 @@ export default function Estoque({ T, dark, user }) {
     error: errorPecas,
     criar: criarPeca,
     atualizar: atualizarPeca,
+    ajustarEstoque: ajustarEstoquePeca,
   } = usePecas({
     categoria: categoriaSel,
     busca: buscaDebounced,
@@ -163,6 +164,17 @@ export default function Estoque({ T, dark, user }) {
   async function salvarEdicaoPeca(patch) {
     if (!pecaAberta) return { error: new Error('Sem peça aberta') }
     const { data, error } = await atualizarPeca(pecaAberta.id, patch)
+    if (!error && data) {
+      setPecaAberta(data)
+      setRefetchKey(k => k + 1)
+    }
+    return { data, error }
+  }
+
+  // AJUSTE MANUAL — usado pelo AjusteEstoqueModal dentro do PecaDetalheModal
+  async function ajustarEstoqueDaPeca(payload) {
+    if (!pecaAberta) return { error: new Error('Sem peça aberta') }
+    const { data, error } = await ajustarEstoquePeca(pecaAberta.id, payload)
     if (!error && data) {
       setPecaAberta(data)
       setRefetchKey(k => k + 1)
@@ -327,6 +339,7 @@ export default function Estoque({ T, dark, user }) {
           peca={pecaAberta}
           mostraValores={mostraValores}
           onSalvar={salvarEdicaoPeca}
+          onAjustar={ajustarEstoqueDaPeca}
           onClose={() => setPecaAberta(null)} />
       )}
 

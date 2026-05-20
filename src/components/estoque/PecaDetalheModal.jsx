@@ -10,6 +10,7 @@ import React, { useMemo, useState } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
 import { Modal, Button, Badge, Input, useToast } from '../ui'
+import AjusteEstoqueModal from './AjusteEstoqueModal'
 
 // ─── Mock de movimentações (substituir quando entrar baixa automática) ─────
 const TIPOS_MOV = {
@@ -68,7 +69,7 @@ function diffPatch(form, peca, mostraValores) {
 }
 
 export default function PecaDetalheModal({
-  T, dark, peca, onClose, onSalvar, mobile,
+  T, dark, peca, onClose, onSalvar, onAjustar, mobile,
   mostraValores = true,
 }) {
   const cor = (d, c) => dark ? d : c
@@ -80,6 +81,7 @@ export default function PecaDetalheModal({
 
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [ajustandoAberto, setAjustandoAberto] = useState(false)
 
   // Form começa espelhando a peça. Strings vazias permitem digitar livre.
   const [form, setForm] = useState(() => ({
@@ -539,14 +541,33 @@ export default function PecaDetalheModal({
             </Button>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button T={T} dark={dark} variant="secondary" onClick={onClose}>Fechar</Button>
-              <Button variant="primary" iconLeft="ti-arrows-up-down"
-                onClick={() => notify('info', 'Ajuste manual de estoque — próximo chat')}>
-                Ajustar estoque
-              </Button>
+              {/* Ajuste manual só pro dono — funcionário não mexe em estoque
+                  fora do fluxo de OS. Defesa em UI; RLS reforça no banco. */}
+              {mostraValores && (
+                <Button variant="primary" iconLeft="ti-adjustments-alt"
+                  onClick={() => setAjustandoAberto(true)}>
+                  Ajustar estoque
+                </Button>
+              )}
             </div>
           </>
         )}
       </div>
+
+      {ajustandoAberto && (
+        <AjusteEstoqueModal T={T} dark={dark}
+          peca={peca}
+          mobile={mobile}
+          onClose={() => setAjustandoAberto(false)}
+          onSalvar={async (payload) => {
+            if (!onAjustar) {
+              notify('erro', 'Ajuste não conectado')
+              return { error: new Error('onAjustar não conectado') }
+            }
+            return onAjustar(payload)
+          }}
+        />
+      )}
     </Modal>
   )
 }
