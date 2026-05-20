@@ -14,10 +14,11 @@ export function useUsuarios() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    // Tabela `usuarios` NÃO tem coluna `deleted_at` (não usa soft-delete).
+    // Usa `ativo` como equivalente. Confirmado via probe-usuarios.mjs em 20/05.
     supabase
       .from('usuarios')
       .select('id, email, apelido, papel')
-      .is('deleted_at', null)
       .eq('ativo', true)
       .order('apelido')
       .then(({ data, error: err }) => {
