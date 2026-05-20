@@ -203,7 +203,7 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 
 | Área | Status | Próximo passo macro |
 |---|---|---|
-| Painel (dono) | ✅ Refatorado | Trocar mocks por queries reais conforme outras áreas evoluem |
+| Painel (dono) | ✅ Real (Onda 1) | Mover meta R$ 20k pra `configuracoes` (Mod. 09); badge `demo` some quando SQL 01 rodar |
 | Painel Funcionários | ✅ Implementado — botão de ponto presente, ajustes pontuais | Trocar mocks (`_mocks.js`) por queries reais quando schema `ponto_registro` subir |
 | Kanban (OS) | ✅ Real + Realtime | OS de garantia funcional + conversão Recusada→Fabricação |
 | OSDetalhe + 10 Ações | ✅ Visual completo | Schema parte 2 (checklist_etapa + falha_teste) |

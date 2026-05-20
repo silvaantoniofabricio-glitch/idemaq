@@ -1,7 +1,10 @@
 // idemaq-src/pages/Painel.jsx
 // Painel principal (desktop) — Hero + KPIs + Críticos + Pipeline + Fluxo + Próximas paradas.
 // Usa componentes do design system (idemaq-src/components/painel/*).
-// Dados derivados de useOS + useUsuarios (Módulo 00c — Lote 1, terminal `painel`).
+// Fontes reais (Onda 1): useOS + useUsuarios + useClientes + usePecas + useFinanceiro.
+//   - OS: pipeline, atrasadas, alertas operacionais, abertas/oficina/aguard. peça
+//   - Finance: faturamento do mês, sparkline 30d, recebido hoje, fluxo anual
+//   - Pecas: alertas de estoque (esgotada/baixa)
 
 import React, { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +17,9 @@ import { calcStatusPrazo, diasPrazo } from '../utils/osHelpers'
 import { ETAPAS_TODOS } from '../utils/osData'
 import { useOS } from '../hooks/useOS'
 import { useUsuarios } from '../hooks/useUsuarios'
+import { useClientes } from '../hooks/useClientes'
+import { usePecas } from '../hooks/usePecas'
+import { useFinanceiro } from '../hooks/useFinanceiro'
 import { supabase } from '../supabase'
 
 import Card from '../components/ui/Card'
@@ -32,11 +38,13 @@ ChartJS.register(...registerables)
 const MESES_LONGO = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const MESES_CURTO = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
 
-// Data do pagamento da OS — etapa 'pagamento' ou (quando pulou direto) 'concluido'
-function dataPagamento(os) {
-  const reg = (os.historico || []).find(h => h.etapa === 'pagamento') ||
-              (os.historico || []).find(h => h.etapa === 'concluido')
-  return reg ? new Date(reg.data) : null
+// Parse "YYYY-MM-DD" (campo `pago_em` é DATE) sem deslocamento de fuso.
+// new Date("2026-05-19") seria UTC e poderia voltar 1 dia em Cuiabá.
+function parseISODate(s) {
+  if (!s) return null
+  const [y, m, d] = String(s).split('-').map(Number)
+  if (!y || !m || !d) return null
+  return new Date(y, m - 1, d)
 }
 function mesmoMes(d, ref) {
   return d && d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth()
@@ -61,6 +69,12 @@ export default function Painel({ T, dark, user }) {
   const navigate = useNavigate()
   const { osList } = useOS(false)
   const { apelidoDe } = useUsuarios()
+  const { clientes } = useClientes()
+  const { pecas }    = usePecas()
+  // Faturamento e fluxo de caixa vêm direto da tabela financeira.
+  // Em modo demo (`tabelaAusente`), o hook devolve mock no mesmo shape — o
+  // Painel mostra valores ilustrativos até o SQL 01 ser aplicado.
+  const { lancamentos: lancsFin, tabelaAusente: financeiroDemo } = useFinanceiro()
 
   // Fallback robusto: prop user pode vir undefined (ex: PainelPorPerfil em
   // App.jsx não está repassando). Busca via supabase.auth como backup.
@@ -74,14 +88,70 @@ export default function Painel({ T, dark, user }) {
   const apelido = (ap && ap !== 'desconhecido') ? ap : 'parceiro'
   const hojeData = new Date()
 
-  // ─── Agregações principais derivadas de osList ────────────────────────────
+  // ─── Sinais financeiros (a partir de lancamento_financeiro) ───────────────
+  // Source of truth da grana — independente do que está em `os.valor_pago`.
+  // Quando a tabela ainda não foi criada, o hook devolve mock (financeiroDemo).
+  const finAgg = useMemo(() => {
+    const ano = hojeData.getFullYear()
+    const mesAtual = hojeData.getMonth()
+    const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
+
+    const recebidoSerie = Array(12).fill(0)
+    const pagoSerie     = Array(12).fill(0)
+    const spark30d      = Array(30).fill(0)
+    let recebidoHoje = 0
+    let faturamentoAntCrossYear = 0 // pra cobrir jan→dez ano anterior
+
+    for (const l of lancsFin || []) {
+      if (!l.pago_em) continue
+      const dt = parseISODate(l.pago_em)
+      if (!dt) continue
+      const valor = Number(l.valor) || 0
+
+      // Série anual (só do ano corrente)
+      if (dt.getFullYear() === ano) {
+        if (l.tipo === 'receita')      recebidoSerie[dt.getMonth()] += valor
+        else if (l.tipo === 'despesa') pagoSerie[dt.getMonth()]     += valor
+      }
+      // Cross-year: se hoje é janeiro, mês anterior = dezembro do ano passado
+      if (mesAtual === 0 && l.tipo === 'receita'
+          && dt.getFullYear() === ano - 1 && dt.getMonth() === 11) {
+        faturamentoAntCrossYear += valor
+      }
+
+      // Sparkline 30 dias — só receitas
+      if (l.tipo === 'receita') {
+        const diff = Math.round((hojeZero - dt) / 86400000)
+        if (diff >= 0 && diff < 30) spark30d[29 - diff] += valor
+        if (dt.getTime() === hojeZero.getTime()) recebidoHoje += valor
+      }
+    }
+
+    const faturamentoMes = recebidoSerie[mesAtual]
+    const faturamentoAnt = mesAtual === 0
+      ? faturamentoAntCrossYear
+      : recebidoSerie[mesAtual - 1]
+
+    // Saldo acumulado mês a mês (recebido - pago), até o mês atual.
+    // Meses futuros ficam null (sem ponto na linha — visual mais limpo).
+    const saldoSerie = Array(12).fill(null)
+    let acc = 0
+    for (let m = 0; m <= mesAtual; m++) {
+      acc += recebidoSerie[m] - pagoSerie[m]
+      saldoSerie[m] = acc
+    }
+
+    return {
+      recebidoSerie, pagoSerie, saldoSerie, spark30d,
+      faturamentoMes, faturamentoAnt, recebidoHoje,
+    }
+  }, [lancsFin, hojeData])
+
+  // ─── Agregações operacionais (OS) — pipeline, atrasadas, oficina, etc ─────
   const dados = useMemo(() => {
     const refMesAtual = new Date(hojeData.getFullYear(), hojeData.getMonth(), 1)
     const refMesAnt   = new Date(hojeData.getFullYear(), hojeData.getMonth() - 1, 1)
-    const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
 
-    let faturamentoMes = 0
-    let faturamentoAnt = 0
     let osAbertas = 0
     let osAtrasadas = 0
     let aguardPeca = 0
@@ -90,21 +160,9 @@ export default function Painel({ T, dark, user }) {
     let osConcluidasMesAnt = 0
     let osCriadasMes = 0
     let osCriadasMesAnt = 0
-    const spark30d = Array(30).fill(0)
 
     for (const os of osList || []) {
       if (os.deleted_at) continue
-
-      // Faturamento (mês atual e anterior) + sparkline 30 dias
-      const dt = dataPagamento(os)
-      if (dt && os.valor_pago > 0) {
-        if (mesmoMes(dt, refMesAtual)) faturamentoMes += os.valor_pago
-        if (mesmoMes(dt, refMesAnt))  faturamentoAnt += os.valor_pago
-
-        const dtZero = new Date(dt); dtZero.setHours(0, 0, 0, 0)
-        const diff = Math.round((hojeZero - dtZero) / 86400000)
-        if (diff >= 0 && diff < 30) spark30d[29 - diff] += os.valor_pago
-      }
 
       // OS criadas no mês (proxy: abertura como "YYYY-MM-DD HH:mm" Cuiabá)
       if (os.abertura) {
@@ -130,26 +188,44 @@ export default function Painel({ T, dark, user }) {
       }
     }
 
-    const ticketMedio = osConcluidasMes > 0 ? Math.round(faturamentoMes / osConcluidasMes) : 0
-    const ticketAnt   = osConcluidasMesAnt > 0 ? Math.round(faturamentoAnt / osConcluidasMesAnt) : 0
+    // Ticket médio = faturamento real (useFinanceiro) ÷ OS concluídas no mês.
+    const ticketMedio = osConcluidasMes    > 0 ? Math.round(finAgg.faturamentoMes / osConcluidasMes)    : 0
+    const ticketAnt   = osConcluidasMesAnt > 0 ? Math.round(finAgg.faturamentoAnt / osConcluidasMesAnt) : 0
 
-    // Helper: variação % vs base. Retorna null se base = 0 (evita "Infinity%").
+    // Variação %. null quando não há base (evita "Infinity%").
     const varPct = (atual, base) =>
       base > 0 ? Math.round(((atual - base) / base) * 100) : null
 
     return {
-      faturamentoMes, faturamentoAnt,
       osAbertas, osAtrasadas, aguardPeca, naOficina,
       osConcluidasMes, osConcluidasMesAnt,
       osCriadasMes, osCriadasMesAnt,
       ticketMedio, ticketAnt,
-      deltaPct:     varPct(faturamentoMes, faturamentoAnt),
-      deltaTicket:  varPct(ticketMedio,    ticketAnt),
-      deltaCriadas: varPct(osCriadasMes,   osCriadasMesAnt),
-      spark30d,
+      deltaPct:     varPct(finAgg.faturamentoMes, finAgg.faturamentoAnt),
+      deltaTicket:  varPct(ticketMedio,           ticketAnt),
+      deltaCriadas: varPct(osCriadasMes,          osCriadasMesAnt),
       labelMesAnt: MESES_CURTO[refMesAnt.getMonth()],
     }
-  }, [osList, hojeData])
+  }, [osList, hojeData, finAgg.faturamentoMes, finAgg.faturamentoAnt])
+
+  // ─── Estoque e clientes (sinais agregados — alimentam alertas e textos) ───
+  const estoque = useMemo(() => {
+    // qtd_minima = 0 → peça "catálogo" (não conta como esgotada).
+    // qtd_atual = 0 com qtd_minima > 0 → esgotada de verdade.
+    // qtd_atual entre 1 e qtd_minima → baixa.
+    let esgotadas = 0
+    let baixas = 0
+    for (const p of pecas || []) {
+      const min = p.qtdMinima || 0
+      const cur = p.qtdAtual || 0
+      if (min <= 0) continue
+      if (cur === 0)         esgotadas++
+      else if (cur <= min)   baixas++
+    }
+    return { totalPecas: (pecas || []).length, esgotadas, baixas }
+  }, [pecas])
+
+  const totalClientes = (clientes || []).length
 
   // ─── Pipeline — contagem real por etapa (exceto admin-only) ───────────────
   const pipeline = useMemo(() =>
@@ -220,8 +296,33 @@ export default function Painel({ T, dark, user }) {
           sub: 'Vence amanhã', prio: 20 })
       }
     }
+
+    // ── ESTOQUE — peças esgotadas/baixas viram alertas operacionais ──────
+    // Crítico se há esgotadas; Atenção se só baixas. Mostra a peça mais
+    // urgente (1 entrada por nível pra não tomar conta do painel).
+    if (estoque.esgotadas > 0) {
+      const exemplo = (pecas || []).find(p => (p.qtdMinima || 0) > 0 && (p.qtdAtual || 0) === 0)
+      list.push({
+        nivel: 'critico', icon: 'ti-package-off',
+        msg: `${estoque.esgotadas} ${estoque.esgotadas === 1 ? 'peça esgotada' : 'peças esgotadas'}`,
+        sub: exemplo ? `Ex.: ${exemplo.nome}` : 'Repor antes de comprometer OS',
+        prio: 3,
+      })
+    }
+    if (estoque.baixas > 0) {
+      const exemplo = (pecas || []).find(p => {
+        const min = p.qtdMinima || 0, cur = p.qtdAtual || 0
+        return min > 0 && cur > 0 && cur <= min
+      })
+      list.push({
+        nivel: 'atencao', icon: 'ti-package',
+        msg: `${estoque.baixas} ${estoque.baixas === 1 ? 'peça' : 'peças'} no nível baixo`,
+        sub: exemplo ? `Ex.: ${exemplo.nome} (${exemplo.qtdAtual}/${exemplo.qtdMinima})` : 'Planejar reposição',
+        prio: 12,
+      })
+    }
     return list.sort((a, b) => a.prio - b.prio).slice(0, 6)
-  }, [osList])
+  }, [osList, estoque, pecas])
 
   // ─── Próximas paradas (próximos 7 dias com prazo, qualquer etapa ativa) ───
   const proximas = useMemo(() => {
@@ -249,40 +350,44 @@ export default function Painel({ T, dark, user }) {
   }, [osList])
 
   // ─── Hero ─────────────────────────────────────────────────────────────────
+  const inicio30 = new Date(hojeData); inicio30.setDate(inicio30.getDate() - 29)
+  const meio30   = new Date(hojeData); meio30.setDate(meio30.getDate() - 14)
+  const fmtDM = (d) => `${String(d.getDate()).padStart(2, '0')}/${MESES_CURTO[d.getMonth()]}`
   const hero = {
     mesLabel: `${MESES_LONGO[hojeData.getMonth()]} ${hojeData.getFullYear()}`,
-    atual: dados.faturamentoMes,
-    meta: 20000, // meta da empresa — confirmar com Toni se varia
+    atual: finAgg.faturamentoMes,
+    meta: 20000, // meta da empresa — TODO mover pra `configuracoes` no Módulo 09
     deltaPct: dados.deltaPct,
-    hojeLabel: `${String(hojeData.getDate()).padStart(2, '0')}/${MESES_CURTO[hojeData.getMonth()]}`,
-    spark30d: dados.spark30d,
+    deltaLabel: `vs ${dados.labelMesAnt}`,
+    hojeLabel: fmtDM(hojeData),
+    inicioLabel: fmtDM(inicio30),
+    meioLabel: fmtDM(meio30),
+    spark30d: finAgg.spark30d,
+    demo: financeiroDemo, // true = tabela ainda não aplicada (mostra "demo")
   }
 
   // ─── Hoje sidekick ────────────────────────────────────────────────────────
+  // Recebido hoje vem do financeiro (caixa real). Contagem "OS" usa lancsFin
+  // filtrado por pago_em=hoje + tipo=receita — proxy de "transações pagas hoje".
   const hoje = useMemo(() => {
     const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
-    let recebidoHoje = 0
     let pagasHoje = 0
-    for (const os of osList || []) {
-      const dt = dataPagamento(os)
-      if (!dt || !os.valor_pago) continue
-      const dtZero = new Date(dt); dtZero.setHours(0, 0, 0, 0)
-      if (dtZero.getTime() === hojeZero.getTime()) {
-        recebidoHoje += os.valor_pago
-        pagasHoje++
-      }
+    for (const l of lancsFin || []) {
+      if (l.tipo !== 'receita' || !l.pago_em) continue
+      const dt = parseISODate(l.pago_em)
+      if (dt && dt.getTime() === hojeZero.getTime()) pagasHoje++
     }
     const emRota = (osList || []).filter(o =>
       !o.deleted_at && ['ag_agendamento', 'agendamento', 'entrega', 'entregue'].includes(o.etapa)
     ).length
     return {
-      recebido: recebidoHoje,
+      recebido: finAgg.recebidoHoje,
       osPagas: pagasHoje,
       osAbertas: dados.osAbertas,
       emRota,
       proximas: proximas.slice(0, 3),
     }
-  }, [osList, dados.osAbertas, proximas])
+  }, [lancsFin, osList, dados.osAbertas, finAgg.recebidoHoje, proximas])
 
   // ─── KPIs operacionais ────────────────────────────────────────────────────
   // Variações com base no mês anterior. `delta == null` = sem base — esconde a
@@ -302,9 +407,9 @@ export default function Painel({ T, dark, user }) {
     },
     {
       id: 'faturamento', label: 'Faturamento do mês', icon: 'ti-cash',
-      valor: dados.faturamentoMes, corKey: 'blue',
+      valor: finAgg.faturamentoMes, corKey: 'blue',
       delta: dados.deltaPct, deltaLbl: lblAnt,
-      spark: dados.spark30d,
+      spark: finAgg.spark30d,
     },
     {
       id: 'ticket', label: 'Ticket médio', icon: 'ti-receipt',
@@ -314,35 +419,40 @@ export default function Painel({ T, dark, user }) {
     },
   ]
 
-  // ─── Fluxo de caixa anual — placeholder (despesas só vêm no Módulo 07) ────
-  // Por enquanto: meses 1–4 com valores ilustrativos + mês atual com receita real.
-  // TODO: trocar por dados de `lancamento_financeiro` quando existir.
+  // ─── Fluxo de caixa anual — série real de lancamento_financeiro ───────────
+  // Recebido = receitas pagas no mês. Pago = despesas pagas no mês (positivo
+  // visualmente, no eixo negativo via sinal). Saldo = acumulado líquido até o
+  // mês atual; meses futuros sem ponto.
   const gridColor = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'
   const tickColor = T.textDim
   const chartOpts = () => ({
     responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
-      tooltip: { backgroundColor: T.card, titleColor: T.textPrimary, bodyColor: T.textSecondary, borderColor: T.border, borderWidth: 1, padding: 9 },
+      tooltip: {
+        backgroundColor: T.card, titleColor: T.textPrimary, bodyColor: T.textSecondary,
+        borderColor: T.border, borderWidth: 1, padding: 9,
+        callbacks: {
+          label: (ctx) => {
+            const v = Math.abs(ctx.parsed.y || 0)
+            return `${ctx.dataset.label}: ${fmtBRL(v)}`
+          },
+        },
+      },
     },
     scales: {
       x: { stacked: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } }, border: { color: 'transparent' } },
       y: { stacked: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => (v < 0 ? '-R$' + Math.abs(Math.round(v / 1000)) + 'k' : 'R$' + Math.round(v / 1000) + 'k') }, border: { color: 'transparent' } },
     },
   })
-  const mesIdx = hojeData.getMonth()
-  const recebidoSerie = Array(12).fill(0)
-  const pagoSerie = Array(12).fill(0)
-  const saldoSerie = Array(12).fill(null)
-  recebidoSerie[mesIdx] = dados.faturamentoMes
-  if (mesIdx > 0) recebidoSerie[mesIdx - 1] = dados.faturamentoAnt
-  saldoSerie[mesIdx] = Math.max(0, dados.faturamentoMes)
+  // Despesas viram negativas no gráfico empilhado (recebido pra cima, pago pra baixo).
+  const pagoNegSerie = finAgg.pagoSerie.map(v => -v)
   const chartAnualData = {
     labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
     datasets: [
-      { label: 'Recebido', data: recebidoSerie, backgroundColor: cor(P.blue, P.blueDark), borderRadius: 3, stack: 's' },
-      { label: 'Pago',     data: pagoSerie, backgroundColor: cor(P.red, P.redDark), borderRadius: 3, stack: 's' },
-      { type: 'line', label: 'Saldo', data: saldoSerie, borderColor: cor(P.blueLight, P.blueLightDark), borderWidth: 1.5, pointBackgroundColor: cor(P.blueLight, P.blueLightDark), pointRadius: 3, tension: 0.4, fill: false },
+      { label: 'Recebido', data: finAgg.recebidoSerie, backgroundColor: cor(P.blue, P.blueDark), borderRadius: 3, stack: 's' },
+      { label: 'Pago',     data: pagoNegSerie,         backgroundColor: cor(P.red,  P.redDark),  borderRadius: 3, stack: 's' },
+      { type: 'line', label: 'Saldo', data: finAgg.saldoSerie, borderColor: cor(P.blueLight, P.blueLightDark), borderWidth: 1.5, pointBackgroundColor: cor(P.blueLight, P.blueLightDark), pointRadius: 3, tension: 0.4, fill: false },
     ],
   }
 
@@ -364,6 +474,11 @@ export default function Painel({ T, dark, user }) {
         <span style={{ fontSize: 12 }}>
           · {hojeData.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
         </span>
+        {totalClientes > 0 && (
+          <span style={{ fontSize: 12, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
+            · {totalClientes} clientes · {estoque.totalPecas} peças no estoque
+          </span>
+        )}
       </div>
 
       {/* Hero row */}
@@ -389,9 +504,18 @@ export default function Painel({ T, dark, user }) {
           <SectionHeader T={T} dark={dark} icon="ti-arrows-exchange" sm>Fluxo de caixa · {hojeData.getFullYear()}</SectionHeader>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: -2, marginBottom: 8 }}>
             <span style={{ fontSize: 26, fontWeight: 700, color: corHero(dark), letterSpacing: '-.025em', fontVariantNumeric: 'tabular-nums' }}>
-              {fmtBRL(dados.faturamentoMes)}
+              {fmtBRL(finAgg.faturamentoMes)}
             </span>
             <span style={{ fontSize: 11, color: T.textMuted }}>recebido em {MESES_CURTO[hojeData.getMonth()]}</span>
+            {financeiroDemo && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, color: T.textDim, textTransform: 'uppercase',
+                letterSpacing: '.06em', border: `1px solid ${T.border}`,
+                padding: '1px 6px', borderRadius: 4,
+              }}>
+                demo
+              </span>
+            )}
           </div>
           <div style={{ position: 'relative', width: '100%', height: 220 }}>
             <Bar data={chartAnualData} options={chartOpts()} />

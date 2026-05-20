@@ -33,7 +33,16 @@ export default function HeroFaturamento({ T, dark, hero }) {
             letterSpacing: '-.035em', lineHeight: 1,
             fontVariantNumeric: 'tabular-nums',
           }}>{fmtBRL(hero.atual)}</div>
-          <DeltaPill value={hero.deltaPct} dark={dark} lbl="vs abr" />
+          <DeltaPill value={hero.deltaPct} dark={dark} lbl={hero.deltaLabel || ''} />
+          {hero.demo && (
+            <span title="Tabela lancamento_financeiro ainda não foi aplicada — exibindo dados de demonstração" style={{
+              fontSize: 9, fontWeight: 700, color: T.textDim, textTransform: 'uppercase',
+              letterSpacing: '.06em', border: `1px solid ${T.border}`,
+              padding: '2px 7px', borderRadius: 4, lineHeight: 1,
+            }}>
+              demo
+            </span>
+          )}
         </div>
         <div style={{ marginTop: 14, marginBottom: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
@@ -58,7 +67,7 @@ export default function HeroFaturamento({ T, dark, hero }) {
         </div>
         <Sparkline data={hero.spark30d} color={blueC} fill={0.18} height={56} />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
-          <span>15/abr</span><span>30/abr</span>
+          <span>{hero.inicioLabel || ''}</span><span>{hero.meioLabel || ''}</span>
           <span style={{ color: blueC, fontWeight: 600 }}>{hero.hojeLabel} · hoje</span>
         </div>
       </div>
