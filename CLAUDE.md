@@ -218,17 +218,19 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 
 | Área | Status | Próximo passo macro |
 |---|---|---|
-| Painel (dono) | ✅ Real ponta a ponta | Mover meta R$ 20k pra `configuracoes` (Mod. 09) |
-| Painel Funcionários | ✅ Implementado | Trocar mocks (`_mocks.js`) por queries reais quando schema `ponto_registro` subir |
+| Painel (dono) | ✅ Real + meta diária restante + lê de `configuracoes` (20/05) | — |
+| Painel Funcionários | ✅ Implementado | Trocar mocks (`_mocks.js`) por queries reais quando `ponto_registro` for povoado |
 | Kanban (OS) | ✅ Real + Realtime + Garantia + Recusada→Fabricação | — |
-| OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage privado (20/05) | — (após criar bucket + sql/08) |
+| OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + trocar/excluir foto (20/05) | — |
 | Clientes | ✅ Real (782) + modal lista OS | — |
-| Logística | ✅ Real (rota + Places) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
+| Logística | ✅ Real (rota + Places) + NovaRotaModal + RotaDetalheModal com DnD (20/05) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
 | Estoque | ✅ Real (680) + UPDATE modal + baixa automática (SQL/07 aplicado 20/05) | — |
-| Financeiro | ✅ Real ponta a ponta + OS→Financeiro + NovoLancamentoModal + edição inline (20/05) | Parcelado/recorrente no novo lançamento (modal separado) |
-| Relatórios | ✅ 4 reais funcionando | Deploy da edge function `relatorio-ia` pra destravar DRE + Funcionários com IA |
-| Ponto | 🔴 Não implementado | Ler spec em `idemaq-modulo-ponto-CLAUDE-CODE.md` + criar schema `ponto_registro` + componentes |
-| Schema parte 2 | ✅ Todos aplicados | sql/01 (lancamento) + sql/05 (checklist+falha) + sql/06 (rota) rodaram em 19-20/05 |
+| Financeiro | ✅ Real + OS→Financeiro + NovoLancamentoModal + edição inline (20/05) | Parcelado/recorrente (modal separado) |
+| Relatórios | ✅ 6 reais (DRE + Funcionários ligados ao Supabase 20/05) | Deploy da edge function `relatorio-ia` pra destravar análise com IA |
+| Configurações (Mod 09) | ✅ MVP: tabela chave/valor + `useConfiguracoes` + página admin-only (20/05) | Após `sql/10-configuracoes.sql` rodar |
+| Ponto | 🟡 Código pronto, aguarda SQL | Toni rodar `sql/09-ponto-schema.sql` no Supabase |
+| Schema parte 2 | ✅ Todos aplicados (01/05/06/07) | 🟡 Falta `sql/09-ponto-schema.sql` + `sql/10-configuracoes.sql` |
+| Storage idemaq-privado | ✅ Bucket criado + foto coleta plugada (20/05) | — |
 | Env vars Vercel | 🟡 Dívida técnica | Migrar URL/anon key do `src/supabase.js` hardcoded pra `VITE_SUPABASE_*` no Vercel |
 
 ---
