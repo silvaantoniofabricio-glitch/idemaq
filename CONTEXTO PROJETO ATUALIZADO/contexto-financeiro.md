@@ -67,7 +67,13 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 ### O que falta
 - ~~Toni rodar `sql/01-lancamento-financeiro.sql`~~ ✅ **feito 20/05/2026** (8 lançamentos seed confirmados)
 - ✅ ~~`LancamentoDetalheModal` edição inline~~ — **feito em 20/05/2026** (sessão `geral`). Botão Editar troca body do modal por form pré-preenchido (valor/vencimento/categoria/descrição/conta/forma/taxa). `useFinanceiro.atualizar(id, patch)` exposto pelo hook (whitelist em CAMPOS_EDITAVEIS — não sobrescreve null em campos ausentes). Caixa permanece read-only por regra (Editar só aparece em A Receber/A Pagar).
-- ✅ ~~`NovoLancamentoModal` (avulso)~~ — **feito em 20/05/2026** (sessão `geral`). MVP: receita/despesa, em aberto OU já paga (vai pro Caixa), validações inline, conta/categoria/forma/taxa. Parcelado/recorrente fora de escopo (modal separado depois). Aberto pelo botão "Novo lançamento" do PageHeader; default da aba `pagar` é tipo `despesa`, demais abas é `receita`.
+- ✅ ~~`NovoLancamentoModal` (avulso)~~ — **feito em 20/05/2026** (sessão `geral`).
+- ✅ ~~`NovoLancamentoModal` parcelado/recorrente~~ — **feito em 20/05/2026** (sessão `financeiro`). 3 modos via toggle no topo (Avulso/Parcelado/Recorrente):
+  - **Parcelado**: 2-12x, intervalo em dias (default 30), valor total dividido por N (resíduo de centavos vai na última parcela). Descrição vira "X — 1/N", "X — 2/N", etc.
+  - **Recorrente**: 2-24x, intervalo `mensal` (mesmo dia do mês via `setMonth(+i)`, JS rola se dia inexistente) OU `customizado` em N dias. Valor é por linha, não dividido.
+  - **Preview inline** sticky no modal: lista compacta (idx/total · DD/MM · descrição · R$) com scroll + total no header. Atualiza em real-time conforme usuário muda parâmetros.
+  - **Persistência**: `Promise.all` de N chamadas `useFinanceiro.criar()`. Toast no fim: "8 parcelas criadas — X" ou "12 lançamentos criados — X". Falha parcial → toast informa "N/M falharam, alguns foram salvos".
+  - **Limitação conhecida**: cron-like — intervalo em dias NÃO considera FDS/feriado (diferente de `calcularD1Util` da taxa OS→Financeiro). Banner inline avisa o usuário. Se virar requisito, vira flag opcional depois.
 - ✅ ~~`utils/financeiro.js` (`calcularD1Util` + `ehFeriadoBancario`)~~ — **feito** (19/05/2026)
 - ✅ ~~**Integração OS → Financeiro**~~ — **plugada em 20/05/2026** (sessão `geral`). `src/utils/osToFinanceiro.js` monta+persiste lançamentos a partir de `{ valor, forma, taxa_pct, parcelasAPrazo }`. Chamado de `AcaoPagamento.handleConfirmar` e `PagamentoTab.handleConfirmarPagamento`. Regra: à vista cria receita pago no Caixa + despesa de taxa em D+1 útil (se taxa>0); a prazo cria N receitas em aberto, 1 por parcela. Lookup de `conta_id` por nome (PIX→Mercado Pago, Cartão/Link→InfinitePay, Dinheiro→Cresol). `FormRecebimento.onConfirmar` ganhou campo `taxa_pct` no payload pra propagar a taxa calculada internamente.
 
@@ -83,9 +89,10 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 2. ✅ ~~Criar hook `useFinanceiro`~~ — **feito** (refatorado 20/05/2026 pro schema esperado + filtros server-side + mock fallback)
 3. ✅ ~~Ligar `FinanceiroPage` ao hook real~~ — **feito** (commit `12f9857` + refator 20/05/2026)
 4. ✅ ~~Criar `src/utils/financeiro.js`~~ — **feito** (19/05/2026): `calcularD1Util`, `calcularD1UtilISO`, `ehFeriadoBancario`, `ehFimDeSemana`
-5. **Ligar `LancamentoDetalheModal` ao Supabase de fato** (edição inline, hoje só placeholder — `onEditar` mostra toast)
-6. **Criar `NovoLancamentoModal`** (avulso/parcelado/recorrente)
-7. **Integração OS → Financeiro**: Entrega → A Receber, Pagamento → Caixa + Taxa (em D+1 útil via `calcularD1Util`)
+5. ✅ ~~`LancamentoDetalheModal` edição inline~~ — feito 20/05/2026
+6. ✅ ~~`NovoLancamentoModal` avulso~~ — feito 20/05/2026
+7. ✅ ~~`NovoLancamentoModal` parcelado/recorrente~~ — feito 20/05/2026
+8. ✅ ~~Integração OS → Financeiro~~ — feito 20/05/2026
 
 ---
 
