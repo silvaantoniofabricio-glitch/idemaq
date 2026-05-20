@@ -1,43 +1,69 @@
 // idemaq-src/components/layout/Sidebar.jsx
-// Sidebar desktop com 2 seções (Principal / Operação), botão de collapse e user block embaixo.
+// Sidebar desktop fina (56px) que expande pra 210px no hover (overlay, não empurra
+// conteúdo). Botão ☰ "fixa" o estado expandido (persistido em localStorage).
+// User-block hospeda tema + sair (Topbar foi removido).
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { P } from '../../theme'
 import { MENUS } from '../../utils/osData'
 import { isAdmin } from '../../utils/osHelpers'
 import NavItem from './NavItem'
 
-// Itens que só o dono enxerga (RLS no banco bloqueia funcionário de fato).
-const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios']
+const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios', 'configuracoes']
+const PIN_KEY = 'idemaq.sidebar.pinned'
+const SLOT_W = 56
+const FULL_W = 210
 
-export default function Sidebar({ pagina, setPagina, user, sair, collapsed, setCollapsed, T, dark }) {
+export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggleTheme }) {
   const initials = user?.email?.substring(0, 2).toUpperCase() || 'US'
-  const w = collapsed ? 56 : 210
 
-  // Funcionário não vê Financeiro nem Relatórios no menu
+  const [pinned, setPinned] = useState(() => {
+    try { return localStorage.getItem(PIN_KEY) === '1' } catch { return false }
+  })
+  const [hovered, setHovered] = useState(false)
+  const expanded = pinned || hovered
+
+  useEffect(() => {
+    try { localStorage.setItem(PIN_KEY, pinned ? '1' : '0') } catch { /* noop */ }
+  }, [pinned])
+
   const menusVisiveis = useMemo(() => {
     if (isAdmin(user)) return MENUS
     return MENUS.filter(m => !MENUS_ADMIN_ONLY.includes(m.id))
   }, [user])
+
+  const userBlockBtn = {
+    width: 28, height: 28, borderRadius: 6,
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    color: T.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  }
+
   return (
-    <div style={{
-      width: w, minWidth: w,
-      background: T.sbBg,
-      display: 'flex', flexDirection: 'column',
-      flexShrink: 0,
-      borderRight: `1px solid ${T.border}`,
-      transition: 'width .2s ease',
-      overflow: 'hidden',
-    }}>
-      {/* Header / logo */}
-      <div style={{
-        height: 56, padding: '0 12px',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center',
-        justifyContent: collapsed ? 'center' : 'space-between',
-        flexShrink: 0, gap: 8,
-      }}>
-        {!collapsed && (
+    // Slot fixo de 56px no flex — sidebar interna faz overlay pra direita ao expandir
+    <div style={{ width: SLOT_W, minWidth: SLOT_W, flexShrink: 0, position: 'relative', zIndex: 20 }}>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          position: 'absolute', top: 0, left: 0, bottom: 0,
+          width: expanded ? FULL_W : SLOT_W,
+          background: T.sbBg,
+          display: 'flex', flexDirection: 'column',
+          borderRight: `1px solid ${T.border}`,
+          transition: 'width .15s ease',
+          overflow: 'hidden',
+          boxShadow: expanded && !pinned ? (dark ? '0 8px 24px rgba(0,0,0,.4)' : '0 8px 24px rgba(0,0,0,.12)') : 'none',
+        }}
+      >
+        {/* Header / logo */}
+        <div style={{
+          height: 56, padding: '0 12px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center',
+          justifyContent: expanded ? 'space-between' : 'center',
+          flexShrink: 0, gap: 8,
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden' }}>
             <div style={{
               width: 28, height: 28,
@@ -48,57 +74,71 @@ export default function Sidebar({ pagina, setPagina, user, sair, collapsed, setC
             }}>
               <i className="ti ti-tool" style={{ fontSize: 14, color: '#fff' }} aria-hidden="true" />
             </div>
-            <div>
-              <div style={{ color: T.textPrimary, fontWeight: 700, fontSize: 15, letterSpacing: '-.3px', whiteSpace: 'nowrap' }}>Idemaq</div>
-              <div style={{ color: T.textDim, fontSize: 9, letterSpacing: '.5px', textTransform: 'uppercase' }}>Gestão</div>
-            </div>
+            {expanded && (
+              <div>
+                <div style={{ color: T.textPrimary, fontWeight: 700, fontSize: 15, letterSpacing: '-.3px', whiteSpace: 'nowrap' }}>Idemaq</div>
+                <div style={{ color: T.textDim, fontSize: 9, letterSpacing: '.5px', textTransform: 'uppercase' }}>Gestão</div>
+              </div>
+            )}
           </div>
-        )}
-        <button onClick={() => setCollapsed(!collapsed)}
-          style={{ background: 'transparent', border: 'none', color: T.textMuted, cursor: 'pointer', fontSize: 18, padding: 4, flexShrink: 0, lineHeight: 1 }}
-          aria-label="Recolher menu">☰</button>
-      </div>
-
-      {/* Nav */}
-      <div style={{ flex: 1, padding: '6px 0', overflowY: 'auto', overflowX: 'hidden' }}>
-        {!collapsed && (
-          <div style={{
-            padding: '10px 14px 4px', fontSize: 10, color: T.textDim,
-            textTransform: 'uppercase', letterSpacing: '.6px', fontWeight: 600,
-          }}>Principal</div>
-        )}
-        <div style={{ padding: '0 6px' }}>
-          {menusVisiveis.filter(m => m.section === 'principal').map(m =>
-            <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={collapsed} T={T} dark={dark} />
+          {expanded && (
+            <button onClick={() => setPinned(p => !p)}
+              title={pinned ? 'Soltar menu (volta a recolher no hover)' : 'Fixar menu aberto'}
+              style={{
+                background: 'transparent', border: 'none',
+                color: pinned ? (dark ? P.blue : P.blueDark) : T.textMuted,
+                cursor: 'pointer', fontSize: 14, padding: 4, flexShrink: 0, lineHeight: 1,
+                borderRadius: 5,
+              }}
+              aria-label={pinned ? 'Soltar menu' : 'Fixar menu'}>
+              <i className={`ti ${pinned ? 'ti-pinned' : 'ti-pin'}`} style={{ fontSize: 15 }} aria-hidden="true" />
+            </button>
           )}
         </div>
-        {!collapsed && (
-          <div style={{
-            padding: '10px 14px 4px', fontSize: 10, color: T.textDim,
-            textTransform: 'uppercase', letterSpacing: '.6px', fontWeight: 600,
-          }}>Operação</div>
-        )}
-        <div style={{ padding: '0 6px' }}>
-          {menusVisiveis.filter(m => m.section === 'operacao').map(m =>
-            <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={collapsed} T={T} dark={dark} />
-          )}
-        </div>
-      </div>
 
-      {/* User block */}
-      <div style={{
-        padding: collapsed ? '10px 6px' : '12px',
-        borderTop: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden',
-      }}>
+        {/* Nav */}
+        <div style={{ flex: 1, padding: '6px 0', overflowY: 'auto', overflowX: 'hidden' }}>
+          {expanded && (
+            <div style={{
+              padding: '10px 14px 4px', fontSize: 10, color: T.textDim,
+              textTransform: 'uppercase', letterSpacing: '.6px', fontWeight: 600,
+            }}>Principal</div>
+          )}
+          <div style={{ padding: '0 6px' }}>
+            {menusVisiveis.filter(m => m.section === 'principal').map(m =>
+              <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={!expanded} T={T} dark={dark} />
+            )}
+          </div>
+          {expanded && (
+            <div style={{
+              padding: '10px 14px 4px', fontSize: 10, color: T.textDim,
+              textTransform: 'uppercase', letterSpacing: '.6px', fontWeight: 600,
+            }}>Operação</div>
+          )}
+          <div style={{ padding: '0 6px' }}>
+            {menusVisiveis.filter(m => m.section === 'operacao').map(m =>
+              <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={!expanded} T={T} dark={dark} />
+            )}
+          </div>
+        </div>
+
+        {/* User block — avatar + (tema | sair). Layout horizontal expandido, vertical colapsado. */}
         <div style={{
-          width: 32, height: 32, borderRadius: '50%',
-          background: `linear-gradient(135deg,${P.blue},#3a7bbf)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0,
-        }}>{initials}</div>
-        {!collapsed && (
-          <>
+          padding: expanded ? '10px 12px' : '8px 6px',
+          borderTop: `1px solid ${T.border}`,
+          display: 'flex',
+          flexDirection: expanded ? 'row' : 'column',
+          alignItems: 'center',
+          gap: expanded ? 9 : 6,
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: '50%',
+            background: `linear-gradient(135deg,${P.blue},#3a7bbf)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0,
+          }}>{initials}</div>
+          {expanded && (
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{
                 fontSize: 12, color: T.textSecondary, fontWeight: 500,
@@ -106,13 +146,15 @@ export default function Sidebar({ pagina, setPagina, user, sair, collapsed, setC
               }}>{user?.email || 'Usuário'}</div>
               <div style={{ fontSize: 10, color: T.textMuted }}>{isAdmin(user) ? 'Administrador' : 'Funcionário'}</div>
             </div>
-            <button onClick={sair}
-              style={{ background: 'transparent', border: 'none', color: T.textMuted, cursor: 'pointer', padding: 4, borderRadius: 5, flexShrink: 0 }}
-              aria-label="Sair">
-              <i className="ti ti-logout" style={{ fontSize: 15 }} aria-hidden="true" />
-            </button>
-          </>
-        )}
+          )}
+          <button onClick={toggleTheme} title={dark ? 'Modo claro' : 'Modo escuro'} aria-label="Alternar tema"
+            style={userBlockBtn}>
+            <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 14, color: dark ? P.yellow : T.textMuted }} aria-hidden="true" />
+          </button>
+          <button onClick={sair} title="Sair" aria-label="Sair" style={userBlockBtn}>
+            <i className="ti ti-logout" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   )

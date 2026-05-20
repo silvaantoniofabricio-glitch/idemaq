@@ -10,6 +10,8 @@
 ## 1. Status atual
 
 ✅ **Real ponta a ponta** (Onda 2, 19-20/05/2026 — mocks removidos; `useFinanceiro` ligado e SQL 01 aplicado).
+✅ **Meta diária restante** no Hero (20/05/2026): calcula `(meta − faturado) / dias_uteis_restantes` descontando FDS + feriados via `ehFimDeSemana`/`ehFeriadoBancario` de `utils/financeiro.js`. Mostra texto "Pra bater nos X dias úteis que faltam: R$ Y/dia". Quando meta já bateu, troca pra "Meta do mês batida" com ícone troféu.
+✅ **Meta vem de `configuracoes`** (Módulo 09, 20/05/2026): `useConfiguracoes().get('meta_mensal', 20000)`. Hardcoded 20000 deixou de existir no Hero.
 
 `src/pages/Painel.jsx` consome `useOS`, `useUsuarios`, `useClientes`, `usePecas` **e `useFinanceiro`**. Faturamento, sparkline 30d, recebido hoje e fluxo de caixa anual agora vêm de `lancamento_financeiro` real (não mais de `os.valor_pago` nem de mocks). Os componentes de `src/components/painel/` são dumb (só recebem props) — não tem mock interno.
 
@@ -46,8 +48,9 @@
 `dados` (OS-based) continua calculando o lado operacional. `ticketMedio` agora é `finAgg.faturamentoMes / osConcluidasMes`, mantendo a junção dos dois mundos.
 
 ### O que ainda é placeholder/mock no Painel
-- **Meta de R$ 20.000** — hardcoded. Vai pra `configuracoes` no Módulo 09.
+- ~~**Meta de R$ 20.000** — hardcoded.~~ (20/05 — agora vem de `configuracoes` via `useConfiguracoes`; default 20000 enquanto sql/10 não rodar).
 - Quando `useFinanceiro` está em modo demo (`tabelaAusente`), os números do Hero/KPI/chart são do mock do hook (badge `demo` no Hero deixa explícito).
+- Quando `useConfiguracoes` está em modo demo (sql/10 não aplicado), Painel usa default 20000 silenciosamente — só a página /configuracoes mostra banner amarelo "Modo demo".
 
 ---
 
@@ -126,8 +129,8 @@ KPIs do Painel são caros (agregações). Estratégias:
 3. ✅ ~~Roteamento Painel vs PainelFuncionarios~~ — feito via `PainelPorPerfil` em App.jsx (chama `isAdmin(user)`)
 4. ✅ ~~Sparkline real dos últimos 30 dias~~ — feito (agora a partir de receitas pagas, não mais de `valor_pago`)
 5. ✅ ~~AlertasCriticos consumir dados reais~~ — feito (3 níveis com lógica documentada em painel-noite.md; estoque integrado em 19/05)
-6. Mover meta R$ 20.000 pra `configuracoes` (Módulo 09)
-7. Calcular meta diária restante `(meta - faturado) / dias_uteis_restantes` (hoje só mostra progress % + falta)
+6. ✅ ~~Mover meta R$ 20.000 pra `configuracoes` (Módulo 09)~~ — feito 20/05 (sql/10-configuracoes.sql + useConfiguracoes + página /configuracoes admin-only)
+7. ✅ ~~Calcular meta diária restante `(meta - faturado) / dias_uteis_restantes`~~ — feito 20/05 (Hero mostra "Pra bater nos X dias úteis: R$ Y/dia"; usa ehFimDeSemana + ehFeriadoBancario)
 
 ---
 

@@ -5,7 +5,7 @@ import { MENUS, MENUS_MOBILE } from '../../utils/osData'
 import { isAdmin } from '../../utils/osHelpers'
 
 // Itens visíveis só pro dono (mesma lista da Sidebar)
-const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios']
+const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios', 'configuracoes']
 
 export default function BottomNav({ pagina, setPagina, sair, user, T, dark }) {
   const idsPermitidos = isAdmin(user)

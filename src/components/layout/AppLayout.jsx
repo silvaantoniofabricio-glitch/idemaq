@@ -1,36 +1,31 @@
 // idemaq-src/components/layout/AppLayout.jsx
-// Sidebar + Topbar + área de conteúdo. Mobile: TopbarMobile + área + BottomNav.
+// Desktop: Sidebar (overlay hover-expand) + área de conteúdo (sem topbar).
+// Mobile:  TopbarMobile + área + BottomNav.
 //
-// Usage:
-//   <AppLayout T={T} dark={dark} toggleTheme={toggleTheme} user={user} sair={sair}>
-//     <Routes>
-//       <Route path="/painel" ... />
-//     </Routes>
-//   </AppLayout>
+// Cada página tem seu próprio PageHeader, então não duplicamos o título no topo.
 
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import Topbar from './Topbar'
 import TopbarMobile from './TopbarMobile'
 import BottomNav from './BottomNav'
 
 // Mapa pagina-id → rota
 const ROUTES = {
-  painel:     '/',
-  os:         '/os',
-  clientes:   '/clientes',
-  logistica:  '/logistica',
-  estoque:    '/estoque',
-  financeiro: '/financeiro',
-  relatorios: '/relatorios',
+  painel:        '/',
+  os:            '/os',
+  clientes:      '/clientes',
+  logistica:     '/logistica',
+  estoque:       '/estoque',
+  financeiro:    '/financeiro',
+  relatorios:    '/relatorios',
+  configuracoes: '/configuracoes',
 }
 // Reverso para inferir pagina ativa pela URL
 function pageFromPath(pathname) {
   for (const [id, route] of Object.entries(ROUTES)) {
     if (route === pathname) return id
   }
-  // fallback: pega primeiro segmento
   const seg = pathname.replace(/^\//, '').split('/')[0]
   return seg || 'painel'
 }
@@ -41,7 +36,6 @@ export default function AppLayout({
   isMobile = false,
   children,
 }) {
-  const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const pagina = pageFromPath(location.pathname)
@@ -74,9 +68,8 @@ export default function AppLayout({
       fontFamily: 'inherit', overflow: 'hidden',
     }}>
       <Sidebar pagina={pagina} setPagina={setPagina} user={user} sair={sair}
-        collapsed={collapsed} setCollapsed={setCollapsed} T={T} dark={dark} />
+        T={T} dark={dark} toggleTheme={toggleTheme} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        <Topbar pagina={pagina} dark={dark} toggleTheme={toggleTheme} T={T} />
         {children}
       </div>
     </div>

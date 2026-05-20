@@ -3,13 +3,14 @@
 // Tipos de OS, etapas, zonas, menu, funcionários e mocks de referência.
 
 export const MENUS = [
-  { id: 'painel',     label: 'Painel',     icon: 'ti-layout-dashboard', section: 'principal', badge: 5 },
-  { id: 'os',         label: 'OS',         icon: 'ti-clipboard-list',   section: 'principal', badge: 5 },
-  { id: 'clientes',   label: 'Clientes',   icon: 'ti-user',             section: 'principal' },
-  { id: 'logistica',  label: 'Logística',  icon: 'ti-truck',            section: 'operacao' },
-  { id: 'estoque',    label: 'Estoque',    icon: 'ti-package',          section: 'operacao', badge: 2 },
-  { id: 'financeiro', label: 'Financeiro', icon: 'ti-cash',             section: 'operacao' },
-  { id: 'relatorios', label: 'Relatórios', icon: 'ti-chart-bar',        section: 'operacao' },
+  { id: 'painel',       label: 'Painel',        icon: 'ti-layout-dashboard', section: 'principal' },
+  { id: 'os',           label: 'OS',            icon: 'ti-clipboard-list',   section: 'principal' },
+  { id: 'clientes',     label: 'Clientes',      icon: 'ti-user',             section: 'principal' },
+  { id: 'logistica',    label: 'Logística',     icon: 'ti-truck',            section: 'operacao' },
+  { id: 'estoque',      label: 'Estoque',       icon: 'ti-package',          section: 'operacao' },
+  { id: 'financeiro',   label: 'Financeiro',    icon: 'ti-cash',             section: 'operacao' },
+  { id: 'relatorios',   label: 'Relatórios',    icon: 'ti-chart-bar',        section: 'operacao' },
+  { id: 'configuracoes',label: 'Configurações', icon: 'ti-settings',         section: 'operacao' },
 ]
 export const MENUS_MOBILE = ['painel', 'os', 'estoque', 'financeiro']
 

@@ -38,8 +38,9 @@ import Kanban       from './pages/Kanban'
 import Clientes     from './pages/Clientes'
 import Logistica    from './pages/Logistica'
 import Estoque      from './pages/Estoque'
-import Financeiro   from './pages/Financeiro'
-import Relatorios   from './pages/Relatorios'
+import Financeiro    from './pages/Financeiro'
+import Relatorios    from './pages/Relatorios'
+import Configuracoes from './pages/Configuracoes'
 import PainelFuncionario from './components/paineis/PainelFuncionario'
 import EmConstrucao from './pages/EmConstrucao'
 
@@ -110,9 +111,10 @@ function RoutesDesktop({ T, dark, user }) {
       <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
       <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
       <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
-      <Route path="/financeiro"  element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
-      <Route path="/relatorios"  element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
-      <Route path="/painel-func" element={<PainelFuncionario T={T} dark={dark} />} />
+      <Route path="/financeiro"    element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
@@ -133,9 +135,10 @@ function RoutesMobile({ T, dark, user }) {
         <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
         <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
         <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
-        <Route path="/financeiro"  element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
-        <Route path="/relatorios"  element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
-        <Route path="/painel-func" element={<PainelFuncionario T={T} dark={dark} />} />
+        <Route path="/financeiro"    element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+        <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
+        <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
+        <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </PullToRefresh>

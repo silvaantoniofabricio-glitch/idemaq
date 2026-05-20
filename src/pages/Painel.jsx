@@ -20,6 +20,8 @@ import { useUsuarios } from '../hooks/useUsuarios'
 import { useClientes } from '../hooks/useClientes'
 import { usePecas } from '../hooks/usePecas'
 import { useFinanceiro } from '../hooks/useFinanceiro'
+import { useConfiguracoes } from '../hooks/useConfiguracoes'
+import { ehFimDeSemana, ehFeriadoBancario } from '../utils/financeiro'
 import { supabase } from '../supabase'
 
 import Card from '../components/ui/Card'
@@ -75,6 +77,9 @@ export default function Painel({ T, dark, user }) {
   // Em modo demo (`tabelaAusente`), o hook devolve mock no mesmo shape — o
   // Painel mostra valores ilustrativos até o SQL 01 ser aplicado.
   const { lancamentos: lancsFin, tabelaAusente: financeiroDemo } = useFinanceiro()
+  // Configurações (meta mensal etc) — Módulo 09. Fallback nos defaults do hook
+  // mantém o Painel funcional mesmo se sql/10 ainda não rodou.
+  const { get: getConfig } = useConfiguracoes()
 
   // Fallback robusto: prop user pode vir undefined (ex: PainelPorPerfil em
   // App.jsx não está repassando). Busca via supabase.auth como backup.
@@ -353,10 +358,35 @@ export default function Painel({ T, dark, user }) {
   const inicio30 = new Date(hojeData); inicio30.setDate(inicio30.getDate() - 29)
   const meio30   = new Date(hojeData); meio30.setDate(meio30.getDate() - 14)
   const fmtDM = (d) => `${String(d.getDate()).padStart(2, '0')}/${MESES_CURTO[d.getMonth()]}`
+
+  // Meta vem de `configuracoes` (Módulo 09). Fallback no default do hook.
+  const metaMensal = Number(getConfig('meta_mensal', 20000)) || 20000
+
+  // Dias úteis restantes no mês (incluindo hoje), descontando FDS + feriados
+  // bancários. Mesmas funções usadas pelo D+1 da taxa de maquininha — coerência.
+  const diasUteisRestantes = (() => {
+    const ano = hojeData.getFullYear()
+    const mes = hojeData.getMonth()
+    const ultimoDia = new Date(ano, mes + 1, 0).getDate()
+    let uteis = 0
+    for (let d = hojeData.getDate(); d <= ultimoDia; d++) {
+      const data = new Date(ano, mes, d)
+      if (!ehFimDeSemana(data) && !ehFeriadoBancario(data)) uteis++
+    }
+    return uteis
+  })()
+  const faltaMeta = Math.max(metaMensal - finAgg.faturamentoMes, 0)
+  const metaDiariaRestante = diasUteisRestantes > 0
+    ? Math.round(faltaMeta / diasUteisRestantes)
+    : 0
+
   const hero = {
     mesLabel: `${MESES_LONGO[hojeData.getMonth()]} ${hojeData.getFullYear()}`,
     atual: finAgg.faturamentoMes,
-    meta: 20000, // meta da empresa — TODO mover pra `configuracoes` no Módulo 09
+    meta: metaMensal,
+    diasUteisRestantes,
+    metaDiariaRestante,
+    metaBatida: finAgg.faturamentoMes >= metaMensal && metaMensal > 0,
     deltaPct: dados.deltaPct,
     deltaLabel: `vs ${dados.labelMesAnt}`,
     hojeLabel: fmtDM(hojeData),

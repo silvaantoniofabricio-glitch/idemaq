@@ -12,8 +12,8 @@ import SectionHeader, { SectionAction } from '../ui/SectionHeader'
 export default function HeroFaturamento({ T, dark, hero }) {
   const blueC = corEtapa('blue', dark)
   const blueLightC = corEtapa('blueLight', dark)
-  const pctMeta = Math.round((hero.atual / hero.meta) * 100)
-  const falta = hero.meta - hero.atual
+  const pctMeta = hero.meta > 0 ? Math.round((hero.atual / hero.meta) * 100) : 0
+  const falta = Math.max(hero.meta - hero.atual, 0)
 
   return (
     <Card T={T} dark={dark} radius={14}
@@ -49,15 +49,39 @@ export default function HeroFaturamento({ T, dark, hero }) {
             <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 500 }}>Meta de {fmtBRL(hero.meta)}</span>
             <span style={{ fontSize: 11.5, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
               <strong style={{ color: corHero(dark), fontWeight: 600 }}>{pctMeta}%</strong>
-              <span style={{ color: T.textDim }}> · faltam {fmtBRL(falta)}</span>
+              <span style={{ color: T.textDim }}>{falta > 0 ? ` · faltam ${fmtBRL(falta)}` : ' · meta batida'}</span>
             </span>
           </div>
           <div style={{ background: T.progBg, borderRadius: 99, height: 6, overflow: 'hidden' }}>
             <div style={{
-              width: `${pctMeta}%`, height: '100%',
+              width: `${Math.min(pctMeta, 100)}%`, height: '100%',
               background: `linear-gradient(90deg, ${blueC}, ${blueLightC})`,
               borderRadius: 99, transition: 'width .6s ease',
             }} />
+          </div>
+          {/* Meta diária restante — pacing pros dias úteis que sobram no mês */}
+          <div style={{ marginTop: 8, fontSize: 11, color: T.textMuted, lineHeight: 1.35 }}>
+            {hero.metaBatida ? (
+              <span>
+                <i className="ti ti-trophy" style={{ fontSize: 12, color: blueC, marginRight: 4 }} aria-hidden="true" />
+                Meta do mês batida — qualquer R$ daqui pra frente é acima do alvo.
+              </span>
+            ) : hero.diasUteisRestantes > 0 ? (
+              <span>
+                <i className="ti ti-calendar-stats" style={{ fontSize: 12, color: T.textDim, marginRight: 4 }} aria-hidden="true" />
+                Pra bater nos <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                  {hero.diasUteisRestantes} {hero.diasUteisRestantes === 1 ? 'dia útil' : 'dias úteis'}
+                </strong> que faltam:{' '}
+                <strong style={{ color: blueC, fontVariantNumeric: 'tabular-nums' }}>
+                  {fmtBRL(hero.metaDiariaRestante)}/dia
+                </strong>
+              </span>
+            ) : (
+              <span>
+                <i className="ti ti-calendar-off" style={{ fontSize: 12, color: T.textDim, marginRight: 4 }} aria-hidden="true" />
+                Mês encerrado — sem dias úteis restantes.
+              </span>
+            )}
           </div>
         </div>
       </div>
