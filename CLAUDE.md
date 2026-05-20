@@ -224,12 +224,12 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + FormClienteEdit + FormEquipamentoEdit (20/05) | — |
 | Clientes | ✅ Real (782) + modal lista OS | — |
 | Logística | ✅ Real (rota + Places) + NovaRotaModal + RotaDetalheModal com DnD (20/05) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
-| Estoque | ✅ Real (680) + ajuste manual + histórico real via `peca_movimentacao` (20/05) | 🟡 Toni rodar `sql/11-peca-movimentacao.sql` no Supabase |
+| Estoque | ✅ Real (680) + ajuste manual + histórico real (`peca_movimentacao` aplicado 20/05) | — |
 | Financeiro | ✅ Real + OS→Financeiro + NovoLanc (avulso/parcelado/recorrente) + edição inline (20/05) | — |
 | Relatórios | ✅ 7 reais (DRE + Funcionários + Relógio de Ponto ligados ao Supabase 20/05) | Deploy da edge function `relatorio-ia` pra destravar análise IA |
 | Configurações (Mod 09) | ✅ MVP: tabela chave/valor + `useConfiguracoes` + página admin-only (20/05) | — |
 | Ponto | ✅ Schema aplicado + hook + componentes (20/05) | Funcionários começarem a bater pra povoar o histórico |
-| Schema parte 2 | ✅ Aplicados (01/05/06/07/08/09/10) | 🟡 Falta `sql/11-peca-movimentacao.sql` |
+| Schema parte 2 | ✅ Todos aplicados (01/05/06/07/08/09/10/11) | — |
 | Storage idemaq-privado | ✅ Bucket criado + foto coleta plugada (20/05) | — |
 | Env vars Vercel | ✅ Código pronto, fallback hardcoded até Toni setar no Vercel (20/05) | Toni adicionar `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no painel Vercel |
 | Edge function `relatorio-ia` | ✅ Código pronto + guia em `docs/deploy-edge-function-ia.md` | Toni rodar `supabase functions deploy` (~5 min) |
