@@ -17,6 +17,7 @@ import NovaRotaModal from '../components/logistica/NovaRotaModal'
 import RotaDetalheModal from '../components/logistica/RotaDetalheModal'
 import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDisponiveisSidebar from '../components/logistica/OSDisponiveisSidebar'
+import AdicionarOSARotaModal from '../components/logistica/AdicionarOSARotaModal'
 
 // Datas-âncora pro filtro (hoje / amanhã / semana) — coerentes em qualquer dia.
 const HOJE = new Date().toISOString().slice(0, 10)
@@ -57,6 +58,7 @@ export default function Logistica({ T, dark }) {
   const [busca, setBusca] = useState('')
   const [novaRotaAberta, setNovaRotaAberta] = useState(false)
   const [rotaDetalhe, setRotaDetalhe] = useState(null) // rota selecionada p/ edição
+  const [osParaAdicionarARota, setOsParaAdicionarARota] = useState(null) // OS da sidebar selecionada
 
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
@@ -254,7 +256,7 @@ export default function Logistica({ T, dark }) {
       {/* Sidebar de OS disponíveis nas 4 etapas + Pagamento (planejamento) */}
       <OSDisponiveisSidebar
         T={T} dark={dark}
-        onSelecionarOS={(os) => notify('info', `Adicionar OS #${os.numero} a uma rota — em breve`)}
+        onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
         onAbrirOSDetalhe={(os) => notify('info', `Abrir OS #${os.numero} pra edição — em breve`)}
       />
 
@@ -490,6 +492,17 @@ export default function Logistica({ T, dark }) {
           onAtualizar={atualizarRota}
           onExcluir={excluirRota}
           onConcluirParada={concluirParadaHook}
+        />
+      )}
+
+      {osParaAdicionarARota && (
+        <AdicionarOSARotaModal
+          T={T} dark={dark}
+          os={osParaAdicionarARota}
+          rotas={rotas}
+          onClose={() => setOsParaAdicionarARota(null)}
+          onCriarRota={criarRota}
+          onAtualizarRota={atualizarRota}
         />
       )}
     </div>
