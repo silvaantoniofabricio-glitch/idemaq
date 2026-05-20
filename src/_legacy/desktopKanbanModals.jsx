@@ -308,10 +308,11 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  // Debounce de 250ms na busca de cliente. Dispara com 2+ chars
-  // (evita query nas 782 linhas com 1 letra solta).
-  // Se a query falhar, registra console.error E avisa via toast (notify) pra
-  // não dar a impressão silenciosa de "sem clientes" quando o motivo é erro.
+  // Debounce de 250ms. Dispara com 2+ chars (evita query nas 782 linhas com 1 letra).
+  // 2 queries paralelas (nome ILIKE + telefone ILIKE) + dedupe por id. Trocamos
+  // .or() pra fugir de bugs de escaping do PostgREST com chars especiais no termo.
+  // RLS na tabela `cliente` exige usuário logado — se vier 0 sem erro, é provável
+  // policy. Log no console pra debug.
   useEffect(() => {
     const termo = buscaCli.trim()
     if (termo.length < 2) {
@@ -320,27 +321,31 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
       return
     }
     setLoadingClientes(true)
-    const safe = termo.replace(/[,()]/g, ' ').trim()
+    const safe = termo.replace(/[,()%_]/g, ' ').trim()
     const handle = setTimeout(async () => {
       try {
-        const { data, error: err } = await supabase
-          .from('cliente')
-          .select('id, nome, telefone, endereco')
-          .is('deleted_at', null)
-          .or(`nome.ilike.%${safe}%,telefone.ilike.%${safe}%`)
-          .order('nome', { ascending: true })
-          .limit(20)
-        if (err) throw err
-        const adapted = (data || []).map(c => ({
-          id: c.id,
-          nome: c.nome,
+        const [resNome, resFone] = await Promise.all([
+          supabase.from('cliente').select('id, nome, telefone, endereco')
+            .is('deleted_at', null).ilike('nome', `%${safe}%`)
+            .order('nome', { ascending: true }).limit(20),
+          supabase.from('cliente').select('id, nome, telefone, endereco')
+            .is('deleted_at', null).ilike('telefone', `%${safe}%`)
+            .order('nome', { ascending: true }).limit(20),
+        ])
+        if (resNome.error) throw resNome.error
+        if (resFone.error) throw resFone.error
+        const dedupe = new Map()
+        ;[...(resNome.data || []), ...(resFone.data || [])].forEach(c => dedupe.set(c.id, c))
+        const adapted = Array.from(dedupe.values()).slice(0, 20).map(c => ({
+          id: c.id, nome: c.nome,
           fone: c.telefone || '',
           endereco: c.endereco || '',
           enderecos: c.endereco ? [c.endereco] : [],
         }))
+        console.log('[NovaOS] busca cliente', { termo, achados: adapted.length, nome: resNome.data?.length, fone: resFone.data?.length })
         setClientesAchados(adapted)
       } catch (e) {
-        console.error('[NovaOS] busca cliente:', e)
+        console.error('[NovaOS] busca cliente erro:', e)
         notify?.('erro', `Erro buscando clientes: ${e?.message || e}`)
         setClientesAchados([])
       } finally {
