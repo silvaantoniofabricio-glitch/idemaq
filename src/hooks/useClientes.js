@@ -12,6 +12,36 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
 
+/**
+ * INSERT puro na tabela `cliente` — sem hook/refetch.
+ * Usado por consumidores que precisam só criar (ex: NovaOSModal inline)
+ * e não querem pagar o custo de carregar os 782 clientes do useClientes.
+ *
+ * Schema real: nome, telefone, endereco (text concat), email, observacoes.
+ * Aceita payload com nomes antigos (fone/obs) e novos (telefone/observacoes).
+ */
+export async function criarClientePersist(payload) {
+  const enderecos = Array.isArray(payload.enderecos)
+    ? payload.enderecos.map(e => (e || '').trim()).filter(Boolean)
+    : []
+  const enderecoBase = enderecos.length > 0
+    ? enderecos.join(' | ')
+    : (payload.endereco?.trim() || '')
+
+  const sufixoLocal = [payload.cidade?.trim(), payload.uf?.trim()].filter(Boolean).join('/')
+  const partes = [enderecoBase, sufixoLocal, payload.cep?.trim()].filter(Boolean)
+  const enderecoFinal = partes.length ? partes.join(' — ') : null
+
+  const limpo = {
+    nome:        payload.nome?.trim(),
+    telefone:    (payload.telefone || payload.fone)?.trim() || null,
+    endereco:    enderecoFinal,
+    email:       payload.email?.trim() || null,
+    observacoes: (payload.observacoes || payload.obs)?.trim() || null,
+  }
+  return supabase.from('cliente').insert(limpo).select().single()
+}
+
 export function useClientes() {
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,27 +66,13 @@ export function useClientes() {
   useEffect(() => { fetchClientes() }, [fetchClientes])
 
   /**
-   * Cria um novo cliente. Retorna { data, error }.
+   * Cria um novo cliente + refetch. Retorna { data, error }.
    * Não passar criado_em/criado_por — trigger preenche via auth.uid().
    */
   async function criar(payload) {
-    const limpo = {
-      nome:     payload.nome?.trim(),
-      fone:     payload.fone?.trim() || null,
-      endereco: payload.endereco?.trim() || null,
-      cidade:   payload.cidade?.trim() || 'Naviraí',
-      uf:       payload.uf?.trim() || 'MS',
-      cep:      payload.cep?.trim() || null,
-      email:    payload.email?.trim() || null,
-      obs:      payload.obs?.trim() || null,
-    }
-    const { data, error: err } = await supabase
-      .from('cliente')
-      .insert(limpo)
-      .select()
-      .single()
-    if (!err) await fetchClientes()
-    return { data, error: err }
+    const res = await criarClientePersist(payload)
+    if (!res.error) await fetchClientes()
+    return res
   }
 
   /**

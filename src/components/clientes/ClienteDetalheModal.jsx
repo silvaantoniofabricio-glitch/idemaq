@@ -1,21 +1,18 @@
 // idemaq-src/components/clientes/ClienteDetalheModal.jsx
 // Detalhe do cliente — visualização + edição inline + lista de OS dele.
-// Lote 1 do Módulo 00c:
-//  - Dados do cliente vêm do prop (já vem do Supabase via useClientes)
-//  - Lista de OS vem de SELECT na tabela `os` filtrando cliente_id
-//  - Editar chama prop onSalvar (que executa hook.atualizar no parent)
-//  - Excluir chama prop onExcluir (parent confirma + executa hook.excluir)
 //
-// Schema da tabela `cliente` (apenas estes campos existem):
-//   nome, fone, endereco, cidade, uf, cep, email, obs
-// Sem cpfCnpj, foneSecundario ou multi-endereços. Se precisar desses campos,
-// PARE e peça pro Toni decidir.
+// Schema REAL da tabela `cliente` (sem cidade/uf/cep separados):
+//   id, nome, telefone, email, endereco, observacoes
+// Concatenar cidade/uf/cep no campo `endereco` (memória project_schema_cliente_real).
+//
+// HistoricoOS recebe `osList` (do useOS no pai) por prop e filtra por cliente_id
+// em memória — evita disparar query por modal aberto e reaproveita Realtime.
+// Clique numa linha chama onAbrirOS(id) — o pai abre OSDetalhe.
 
-import React, { useState, useMemo, useEffect } from 'react'
-import { supabase } from '../../supabase'
-import { P } from '../../theme'
+import React, { useState, useMemo } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
 import { TIPOS_OS } from '../../utils/osData'
+import { fmtBRL } from '../../utils/fmt'
 import { Modal, Input, Textarea, Button } from '../ui'
 
 function iniciais(nome) {
@@ -35,29 +32,30 @@ function labelEtapa(os) {
 
 function fmtDataCurta(iso) {
   if (!iso) return '—'
-  const d = new Date(iso)
+  // useOS retorna "YYYY-MM-DD HH:mm" (timezone Cuiabá já aplicado).
+  // Safari não parseia esse formato sem T — normalizamos antes.
+  const d = new Date(typeof iso === 'string' ? iso.replace(' ', 'T') : iso)
   if (isNaN(d)) return '—'
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function clienteParaForm(c) {
   return {
-    nome:     c.nome     || '',
-    fone:     c.fone     || '',
-    endereco: c.endereco || '',
-    cidade:   c.cidade   || 'Naviraí',
-    uf:       c.uf       || 'MS',
-    cep:      c.cep      || '',
-    email:    c.email    || '',
-    obs:      c.obs      || '',
+    nome:        c.nome        || '',
+    telefone:    c.telefone    || '',
+    endereco:    c.endereco    || '',
+    email:       c.email       || '',
+    observacoes: c.observacoes || '',
   }
 }
 
 export default function ClienteDetalheModal({
   T, dark, cliente, mobile,
+  osList = [], // lista completa do useOS no pai — HistoricoOS filtra por cliente_id
   onClose,
   onSalvar,    // (cliente) => Promise<void>  · com .id incluso
   onExcluir,   // () => Promise<void>  · parent trata confirmação
+  onAbrirOS,   // (osId) => void · pai abre OSDetalhe pra essa OS
 }) {
   const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
@@ -67,7 +65,7 @@ export default function ClienteDetalheModal({
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const obrigatoriosOk = !!form.nome.trim() && !!form.fone.trim()
+  const obrigatoriosOk = !!form.nome.trim() && !!form.telefone.trim()
   const alterado = useMemo(() => {
     return Object.keys(initial).some(k => (form[k] || '') !== (initial[k] || ''))
   }, [form, initial])
@@ -77,15 +75,12 @@ export default function ClienteDetalheModal({
     if (!podeSalvar) return
     setSalvando(true)
     await onSalvar?.({
-      id:       cliente.id,
-      nome:     form.nome.trim(),
-      fone:     form.fone.trim() || null,
-      endereco: form.endereco.trim() || null,
-      cidade:   form.cidade.trim() || null,
-      uf:       form.uf.trim() || null,
-      cep:      form.cep.trim() || null,
-      email:    form.email.trim() || null,
-      obs:      form.obs.trim() || null,
+      id:          cliente.id,
+      nome:        form.nome.trim(),
+      telefone:    form.telefone.trim() || null,
+      endereco:    form.endereco.trim() || null,
+      email:       form.email.trim() || null,
+      observacoes: form.observacoes.trim() || null,
     })
     setSalvando(false)
   }
@@ -125,7 +120,7 @@ export default function ClienteDetalheModal({
               display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
             }}>
               <i className="ti ti-brand-whatsapp" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-              <span>{form.fone || cliente.fone || '—'}</span>
+              <span>{form.telefone || cliente.telefone || '—'}</span>
               {alterado && (
                 <>
                   <span style={{ width: 3, height: 3, background: T.textMuted, borderRadius: '50%' }} />
@@ -162,7 +157,7 @@ export default function ClienteDetalheModal({
               placeholder="Ex: Maria Silva" />
             <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <Input T={T} dark={dark} label="Telefone *" type="tel"
-                value={form.fone} onChange={v => update('fone', v)}
+                value={form.telefone} onChange={v => update('telefone', v)}
                 icon="ti-brand-whatsapp"
                 placeholder="(67) 9 0000-0000" />
               <Input T={T} dark={dark} label="E-mail" type="email"
@@ -175,29 +170,16 @@ export default function ClienteDetalheModal({
 
         <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
 
-        {/* Endereço */}
+        {/* Endereço (campo único — cidade/uf/cep concatenam aqui) */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <i className="ti ti-map-pin" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
             <span style={sectionLabel}>Endereço</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Input T={T} dark={dark}
-              value={form.endereco} onChange={v => update('endereco', v)}
-              icon="ti-map-pin"
-              placeholder="Rua, número, bairro" />
-            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '2fr 1fr 1fr', gap: 10 }}>
-              <Input T={T} dark={dark} label="Cidade"
-                value={form.cidade} onChange={v => update('cidade', v)}
-                placeholder="Naviraí" />
-              <Input T={T} dark={dark} label="UF"
-                value={form.uf} onChange={v => update('uf', v)}
-                placeholder="MS" />
-              <Input T={T} dark={dark} label="CEP"
-                value={form.cep} onChange={v => update('cep', v)}
-                placeholder="79950-000" />
-            </div>
-          </div>
+          <Input T={T} dark={dark}
+            value={form.endereco} onChange={v => update('endereco', v)}
+            icon="ti-map-pin"
+            placeholder="Rua, número, bairro — cidade/UF — CEP" />
         </div>
 
         <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
@@ -209,15 +191,20 @@ export default function ClienteDetalheModal({
             <span style={sectionLabel}>Observações</span>
           </div>
           <Textarea T={T} dark={dark}
-            value={form.obs} onChange={v => update('obs', v)}
+            value={form.observacoes} onChange={v => update('observacoes', v)}
             placeholder="Ex: cliente recorrente, prefere atendimento pela manhã…"
             rows={3} />
         </div>
 
         <div style={{ height: 1, background: T.border, margin: '18px 0 14px' }} />
 
-        {/* Histórico de OS — query real ao Supabase */}
-        <HistoricoOS T={T} dark={dark} clienteId={cliente.id} />
+        {/* Histórico de OS — filtra osList do useOS (montado no pai) */}
+        <HistoricoOS
+          T={T} dark={dark}
+          clienteId={cliente.id}
+          osList={osList}
+          onAbrirOS={onAbrirOS}
+        />
       </div>
 
       {/* Rodapé */}
@@ -246,82 +233,37 @@ export default function ClienteDetalheModal({
 }
 
 // ─── Histórico de OS deste cliente ────────────────────────────────────────
-// SELECT direto na tabela `os` filtrando pelo cliente_id real (FK).
-// Soft-delete filtrado.
-function HistoricoOS({ T, dark, clienteId }) {
+// Filtra a osList do useOS (recebida do pai) por cliente_id em memória.
+// Reaproveita Realtime do useOS sem disparar query nova por abertura de modal.
+// Clique chama onAbrirOS(id) — pai abre OSDetalhe.
+function HistoricoOS({ T, dark, clienteId, osList, onAbrirOS }) {
   const azul = corEtapa('blue', dark)
-  const [osCliente, setOsCliente] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
-  useEffect(() => {
-    if (!clienteId) return
-    let cancelado = false
-    setLoading(true); setError(null)
-    supabase
-      .from('os')
-      .select('id, numero, tipo, etapa, criado_em, deleted_at')
-      .eq('cliente_id', clienteId)
-      .is('deleted_at', null)
-      .order('criado_em', { ascending: false })
-      .then(({ data, error: err }) => {
-        if (cancelado) return
-        if (err) {
-          setError(err)
-          setOsCliente([])
-        } else {
-          setOsCliente(data || [])
-        }
-        setLoading(false)
-      })
-    return () => { cancelado = true }
-  }, [clienteId])
+  const osCliente = useMemo(() => {
+    return (osList || [])
+      .filter(o => o.cliente_id === clienteId)
+      .slice()
+      .sort((a, b) => new Date(b.abertura) - new Date(a.abertura))
+  }, [osList, clienteId])
 
   const sectionLabel = {
     fontSize: 11, color: T.textMuted, fontWeight: 600,
     letterSpacing: '.4px', textTransform: 'uppercase',
   }
 
+  const clickable = typeof onAbrirOS === 'function'
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
         <i className="ti ti-history" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
         <span style={sectionLabel}>Histórico de OS</span>
-        {!loading && !error && (
-          <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-            {osCliente.length} {osCliente.length === 1 ? 'OS' : 'OS'}
-          </span>
-        )}
+        <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+          {osCliente.length} OS
+        </span>
       </div>
 
-      {loading && (
-        <div style={{
-          padding: '14px 16px', borderRadius: 9,
-          background: T.cardAlt, border: `1px dashed ${T.border}`,
-          fontSize: 12, color: T.textMuted, textAlign: 'center',
-        }}>
-          <i className="ti ti-loader-2" style={{
-            fontSize: 14, marginRight: 6,
-            animation: 'spin 1s linear infinite',
-          }} aria-hidden="true" />
-          Carregando histórico…
-          <style>{`@keyframes spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }`}</style>
-        </div>
-      )}
-
-      {error && (
-        <div style={{
-          padding: '10px 12px', borderRadius: 9,
-          background: T.cardAlt, border: `1px solid ${corEtapa('red', dark)}55`,
-          fontSize: 12, color: T.textSecondary,
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <i className="ti ti-alert-triangle" style={{ fontSize: 14, color: corEtapa('red', dark) }} aria-hidden="true" />
-          Erro ao carregar histórico: {error.message || 'desconhecido'}
-        </div>
-      )}
-
-      {!loading && !error && osCliente.length === 0 && (
+      {osCliente.length === 0 && (
         <div style={{
           background: T.cardAlt, border: `1px dashed ${T.border}`,
           borderRadius: 9, padding: '14px 16px',
@@ -339,43 +281,75 @@ function HistoricoOS({ T, dark, clienteId }) {
         </div>
       )}
 
-      {!loading && !error && osCliente.length > 0 && (
+      {osCliente.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {osCliente.map(os => {
             const cfg = TIPOS_OS[os.tipo]
             const etapaCfg = cfg?.etapas?.find(e => e.id === os.etapa) || cfg?.lateral
             const etapaCor = corEtapa(etapaCfg?.cor || 'neutro', dark)
+            const onClick = clickable ? () => onAbrirOS(os.id) : undefined
             return (
-              <div key={os.id} style={{
-                background: T.cardAlt,
-                border: `1px solid ${T.border}`,
-                borderRadius: 9,
-                padding: '10px 12px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                gap: 10, flexWrap: 'wrap',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+              <div key={os.id}
+                onClick={onClick}
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                onKeyDown={clickable ? (e => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrirOS(os.id) }
+                }) : undefined}
+                onMouseEnter={clickable ? (e => e.currentTarget.style.background = T.card) : undefined}
+                onMouseLeave={clickable ? (e => e.currentTarget.style.background = T.cardAlt) : undefined}
+                style={{
+                  background: T.cardAlt,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 9,
+                  padding: '10px 12px',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: clickable ? 'pointer' : 'default',
+                  transition: 'background .12s',
+                  outline: 'none',
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>OS #{os.numero}</span>
+                    <span style={{ fontSize: 11, color: T.textMuted }}>·</span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, color: T.textSecondary,
+                      textTransform: 'capitalize',
+                    }}>{cfg?.label || os.tipo}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      padding: '2px 7px', borderRadius: 4,
+                      background: etapaCor + '22', color: etapaCor,
+                      textTransform: 'uppercase', letterSpacing: '.3px',
+                    }}>{labelEtapa(os)}</span>
+                  </div>
+                  <div style={{
+                    fontSize: 10.5, color: T.textMuted, marginTop: 4,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      <i className="ti ti-calendar" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
+                      {fmtDataCurta(os.abertura)}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   <span style={{
                     fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
                     fontVariantNumeric: 'tabular-nums',
-                  }}>OS #{os.numero}</span>
-                  <span style={{ fontSize: 11, color: T.textMuted }}>·</span>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, color: T.textSecondary,
-                    textTransform: 'capitalize',
-                  }}>{cfg?.label || os.tipo}</span>
-                  <span style={{ fontSize: 11, color: T.textMuted }}>·</span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700,
-                    padding: '2px 7px', borderRadius: 4,
-                    background: etapaCor + '22', color: etapaCor,
-                    textTransform: 'uppercase', letterSpacing: '.3px',
-                  }}>{labelEtapa(os)}</span>
+                  }}>{fmtBRL(os.valor)}</span>
+                  {clickable && (
+                    <i className="ti ti-chevron-right"
+                       style={{ fontSize: 14, color: T.textDim }} aria-hidden="true" />
+                  )}
                 </div>
-                <span style={{
-                  fontSize: 11, color: T.textMuted,
-                  fontVariantNumeric: 'tabular-nums',
-                }}>{fmtDataCurta(os.criado_em)}</span>
               </div>
             )
           })}

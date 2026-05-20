@@ -8,8 +8,9 @@
 import React, { useState, useMemo } from 'react'
 import { corEtapa, corHero } from '../utils/colors'
 import { useClientes } from '../hooks/useClientes'
+import { useOS } from '../hooks/useOS'
 import {
-  Card, Button, Badge, Input,
+  Card, Button, Input,
   EmptyState, PageHeader, SectionHeader,
   useToast,
 } from '../components/ui'
@@ -31,6 +32,9 @@ export default function Clientes({ T, dark }) {
   const azul = corEtapa('blue', dark)
 
   const { clientes, loading, error, refetch, criar, atualizar, excluir } = useClientes()
+  // useOS com buscando=true: pega TODAS as OS (inclusive concluídas >24h)
+  // pra montar o histórico completo dentro do ClienteDetalheModal.
+  const { osList } = useOS(true)
 
   const [busca, setBusca] = useState('')
   const [modalNovo, setModalNovo] = useState(false)
@@ -41,7 +45,7 @@ export default function Clientes({ T, dark }) {
     if (!q) return clientes
     return clientes.filter(c =>
       (c.nome     || '').toLowerCase().includes(q) ||
-      (c.fone     || '').toLowerCase().includes(q) ||
+      (c.telefone || '').toLowerCase().includes(q) ||
       (c.endereco || '').toLowerCase().includes(q)
     )
   }, [clientes, busca])
@@ -226,9 +230,6 @@ export default function Clientes({ T, dark }) {
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     maxWidth: 360,
                   }}>{c.endereco || '—'}</span>
-                  {c.cidade && (
-                    <Badge variant="neutro" dark={dark} sm>{c.cidade}{c.uf ? `/${c.uf}` : ''}</Badge>
-                  )}
                 </div>
               </div>
 
@@ -241,7 +242,7 @@ export default function Clientes({ T, dark }) {
                 }}>
                   <i className="ti ti-brand-whatsapp"
                      style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-                  {c.fone || '—'}
+                  {c.telefone || '—'}
                 </div>
                 <i className="ti ti-chevron-right"
                    style={{ fontSize: 16, color: T.textDim }} aria-hidden="true" />
@@ -265,6 +266,7 @@ export default function Clientes({ T, dark }) {
         <ClienteDetalheModal
           T={T} dark={dark}
           cliente={clienteAberto}
+          osList={osList}
           onClose={() => setClienteAberto(null)}
           onSalvar={salvarCliente}
           onExcluir={() => excluirCliente(clienteAberto)}

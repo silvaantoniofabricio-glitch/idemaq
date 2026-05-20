@@ -23,21 +23,23 @@ export default function NovoClienteModal({
   const notify = useToast()
   const azul = corEtapa('blue', dark)
 
+  // Campos cidade/uf/cep são auxiliares de UX — o helper criarClientePersist
+  // concatena tudo no `endereco` (a tabela `cliente` não tem essas colunas).
   const [form, setForm] = useState({
     nome: nomeInicial,
-    fone: '',
+    telefone: '',
     endereco: '',
     cidade: 'Naviraí',
     uf: 'MS',
     cep: '',
     email: '',
-    obs: '',
+    observacoes: '',
   })
   const [salvando, setSalvando] = useState(false)
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const podeSalvar = !!form.nome.trim() && !!form.fone.trim() && !salvando
+  const podeSalvar = !!form.nome.trim() && !!form.telefone.trim() && !salvando
 
   async function salvar() {
     if (!podeSalvar) return
@@ -74,8 +76,8 @@ export default function NovoClienteModal({
         <Input T={T} dark={dark}
           label="Telefone *"
           type="tel"
-          value={form.fone}
-          onChange={v => update('fone', v)}
+          value={form.telefone}
+          onChange={v => update('telefone', v)}
           icon="ti-brand-whatsapp"
           placeholder="(67) 9 0000-0000"
           required
@@ -121,8 +123,8 @@ export default function NovoClienteModal({
 
         <Textarea T={T} dark={dark}
           label="Observações"
-          value={form.obs}
-          onChange={v => update('obs', v)}
+          value={form.observacoes}
+          onChange={v => update('observacoes', v)}
           placeholder="Ex: cliente recorrente, prefere atendimento pela manhã, etc."
           rows={3}
         />
