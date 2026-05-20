@@ -45,6 +45,15 @@ const PERIODOS = [
   { id:'ano',       label:'Ano' },
 ]
 
+// Flag de deploy da edge function `relatorio-ia`.
+// Enquanto `false`: o botão "Gerar análise" fica oculto e InsightIA mostra "Em breve".
+// Flipar pra `true` depois de:
+//   supabase functions deploy relatorio-ia --no-verify-jwt
+//   supabase secrets set ANTHROPIC_API_KEY=...
+// Antes do flip o invoke trava ~25-30s no timeout do Supabase Functions, então mantemos
+// off de propósito (Toni reportou esse freeze em prod).
+const IA_DEPLOYED = false
+
 // Sparkline 12m vem do hook real (`useRelatorioGeral`). Mantemos só o fallback
 // abaixo pros relatórios em mock (DRE/Funcionários), pra evitar tela vazia.
 const FAT_12M = [13800, 14200, 15100, 15600, 14900, 16200, 17000, 17500, 16800, 17900, 18200, 17500]
@@ -554,7 +563,7 @@ function RelatorioFinanceiro({ T, dark }) {
 
       <InsightIA T={T} dark={dark}
         markdown={markdown} loading={loading} error={error}
-        onGerar={() => gerar('dre', dadosIA)}
+        onGerar={IA_DEPLOYED ? () => gerar('dre', dadosIA) : undefined}
         previewTexto="A IA vai analisar receitas, despesas e margem — destacando o que puxou pra cima, o que puxou pra baixo e ações pra atingir a meta de R$ 20.000." />
     </div>
   )
@@ -631,7 +640,7 @@ function RelatorioFuncionarios({ T, dark }) {
 
       <InsightIA T={T} dark={dark}
         markdown={markdown} loading={loading} error={error}
-        onGerar={() => gerar('funcionarios', { equipe: funcs })}
+        onGerar={IA_DEPLOYED ? () => gerar('funcionarios', { equipe: funcs }) : undefined}
         previewTexto="A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números da tabela acima." />
     </div>
   )

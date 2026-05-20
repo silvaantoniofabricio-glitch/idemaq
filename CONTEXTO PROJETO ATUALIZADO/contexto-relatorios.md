@@ -8,7 +8,7 @@
 ## 1. Status atual
 
 🟢 **4 relatórios com dados reais** (Geral, OS Operacional, Estoque, Vendas)
-🟡 **2 relatórios em mock + IA plugada** (DRE e Funcionários): a chamada ao Claude já funciona via edge function — falta só trocar os dados mock por queries reais (DRE depende do schema parte 2; Funcionários depende de volume em `os_historico`).
+🟡 **2 relatórios em mock** (DRE e Funcionários): código IA pronto (edge function + hook + UI) mas **botão "Gerar análise" gateado por `IA_DEPLOYED=false`** — ativa quando o deploy da edge function for feito. Antes do flip, o `supabase.functions.invoke` trava ~25-30s no timeout.
 
 ### O que está pronto
 - Hub com 6 cards de entrada + badge **IA** nos 2 com Claude
@@ -207,7 +207,28 @@ Estratégias se ficar pesado:
 
 ---
 
-## 11. Decisões nesta rodada
+## 11. Bugs corrigidos (fix anterior)
+
+### #1 — Regressão dos 4 reais em prod (mostravam "dados de exemplo")
+**Causa**: `src/hooks/useRelatorios.js` **nunca foi versionado** (estava untracked). Localmente o `Relatorios.jsx` importava o hook e funcionava, mas no Vercel o arquivo não existia → build falhava → prod ficou servindo o último build bom (o anterior ao `fca1484`), que ainda tinha os 4 cards com valores mock hardcoded.
+
+**Fix**: `git add src/hooks/useRelatorios.js` + commit. Vercel rebuildou e os 4 voltaram a puxar do Supabase.
+
+**Lição**: depois de criar arquivo novo na pasta `hooks/`, sempre `git status` antes de fechar a feature. O `npm run build` local não pega esse caso porque o arquivo existe na máquina.
+
+### #2 — DRE "Inteligente" travando 20-30s
+**Causa**: o botão "Gerar análise agora" chamava `supabase.functions.invoke('relatorio-ia', ...)` numa edge function que **ainda não foi deployada**. O SDK do Supabase espera o timeout completo (~25-30s) antes de devolver erro.
+
+**Fix**: gatear o botão atrás da constante `IA_DEPLOYED` (linha ~52 de `Relatorios.jsx`). Enquanto `false`, o `onGerar` não é passado pro `InsightIA` → botão some, UI mostra "Em breve". Quando a edge function for deployada, flipar pra `true` e o botão volta sem outra mudança de código.
+
+```js
+// src/pages/Relatorios.jsx
+const IA_DEPLOYED = false  // ← flipar depois do deploy
+```
+
+---
+
+## 12. Decisões nesta rodada
 
 1. **Hooks lazy por relatório** em vez de um único agregador — só carrega o que abrir, evita queries inúteis quando o usuário navega.
 2. **Sem deltas (% vs anterior)** — pra evitar fetch dobrado em cada KPI. Sparkline 12m absoluto cobre a leitura de tendência.
