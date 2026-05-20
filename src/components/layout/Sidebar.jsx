@@ -121,12 +121,6 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
               <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={!expanded} T={T} dark={dark} />
             )}
           </div>
-          {expanded && (
-            <div style={{
-              padding: '10px 14px 4px', fontSize: 10, color: T.textDim,
-              textTransform: 'uppercase', letterSpacing: '.6px', fontWeight: 600,
-            }}>Operação</div>
-          )}
           <div style={{ padding: '0 6px' }}>
             {menusVisiveis.filter(m => m.section === 'operacao').map(m =>
               <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={!expanded} T={T} dark={dark} />
