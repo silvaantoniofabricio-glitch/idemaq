@@ -16,6 +16,7 @@ import { useRotas } from '../hooks/useRotas'
 import NovaRotaModal from '../components/logistica/NovaRotaModal'
 import RotaDetalheModal from '../components/logistica/RotaDetalheModal'
 import MapaLogistica from '../components/logistica/MapaLogistica'
+import OSDisponiveisSidebar from '../components/logistica/OSDisponiveisSidebar'
 
 // Datas-âncora pro filtro (hoje / amanhã / semana) — coerentes em qualquer dia.
 const HOJE = new Date().toISOString().slice(0, 10)
@@ -249,6 +250,13 @@ export default function Logistica({ T, dark }) {
           </div>
         </div>
       </Card>
+
+      {/* Sidebar de OS disponíveis nas 4 etapas + Pagamento (planejamento) */}
+      <OSDisponiveisSidebar
+        T={T} dark={dark}
+        onSelecionarOS={(os) => notify('info', `Adicionar OS #${os.numero} a uma rota — em breve`)}
+        onAbrirOSDetalhe={(os) => notify('info', `Abrir OS #${os.numero} pra edição — em breve`)}
+      />
 
       <div style={{
         display: 'grid',
