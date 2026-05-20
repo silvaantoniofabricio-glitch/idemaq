@@ -224,7 +224,7 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | OSDetalhe + 10 Ações | ✅ Schema parte 2 aplicado e plugado | Foto pro Storage privado (idemaq-privado/os/{id}/coleta/) |
 | Clientes | ✅ Real (782) + modal lista OS | — |
 | Logística | ✅ Real (rota + Places) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
-| Estoque | ✅ Real (680) + UPDATE modal + baixa automática | — |
+| Estoque | ✅ Real (680) + UPDATE modal + baixa automática (SQL/07 aplicado 20/05) | — |
 | Financeiro | ✅ Real ponta a ponta (SQL 01 v2 aplicado, 8 seeds) | Integração OS→Financeiro (criar lançamento automático ao pagar OS) |
 | Relatórios | ✅ 4 reais funcionando | Deploy da edge function `relatorio-ia` pra destravar DRE + Funcionários com IA |
 | Ponto | 🔴 Não implementado | Ler spec em `idemaq-modulo-ponto-CLAUDE-CODE.md` + criar schema `ponto_registro` + componentes |

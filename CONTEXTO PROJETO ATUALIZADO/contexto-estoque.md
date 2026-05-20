@@ -178,15 +178,16 @@ RLS no banco também protege os dados sensíveis (defesa em camadas).
 
 Implementação client-side com **idempotência real via flag no banco**:
 
-- **Schema (`sql/07-os-itens-baixados.sql`)** — precisa ser aplicado **uma vez** no SQL Editor do Supabase (publishable key não roda DDL):
+- **Schema (`sql/07-os-itens-baixados.sql`)** — ✅ **APLICADO em 20/05/2026** (sessão `geral`):
   - `os.itens_baixados boolean NOT NULL DEFAULT false` — flag de "estoque já debitou"
   - `os_item.peca_id uuid REFERENCES peca(id)` — FK opcional pra peça do catálogo; NULL = item avulso (texto livre), ignorado na baixa
   - Index parcial em `os_item.peca_id WHERE deleted_at IS NULL`
+  - Verificador: `node scripts/verificar-sql-07.mjs`
 
 - **`usePecas.js`** — exporta `baixarItensDaOS(osId)` standalone + `usePecas().baixarItens(osId)` wrapper (faz `fetchPecas` no fim). Fluxo:
   1. **Claim atômico**: `UPDATE os SET itens_baixados=true WHERE id=$1 AND itens_baixados=false RETURNING id, numero`. Se nada casou → outro side já baixou → `{ ja_baixado: true }`, sai sem mexer em estoque.
-  2. SELECT `os_item` da OS com `tipo='peca'` E `peca_id IS NOT NULL`
-  3. Pra cada item: SELECT da peça pelo id + UPDATE `qtd_atual = max(0, qtd_atual - qtd)` (nunca negativo)
+  2. SELECT `os_item` da OS com `peca_id IS NOT NULL` (Onda 4 removeu coluna `tipo`; discriminação peça×serviço agora é só por `peca_id`).
+  3. Pra cada item: SELECT da peça pelo id + UPDATE `qtd_atual = max(0, qtd_atual - quantidade)` (nunca negativo; coluna é `quantidade`, não `qtd`).
   4. Retorna `{ ok, ja_baixado, aplicadas, erros, osId, osNumero, motivo? }`
   - Se schema 07 ainda não rodou: detecta `42703` ou `PGRST204`, loga `"rode sql/07..."` e retorna `{ ok:false, motivo:'schema-pendente:sql/07' }` sem quebrar.
 

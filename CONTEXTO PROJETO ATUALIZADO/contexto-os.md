@@ -47,7 +47,7 @@
 ## 2. Próximos passos
 
 1. ✅ ~~**Aplicar `sql/05-schema-parte-2-checklist-falha.sql` no Supabase SQL Editor**~~ — **APLICADO em 19/05/2026** (Onda 2). checklist_etapa + falha_teste em produção.
-1b. **Aplicar `sql/07-os-itens-baixados.sql`** (publishable key não roda DDL): adiciona `os.itens_baixados` + `os_item.peca_id` pra baixa automática de estoque. Enquanto não rodar, a baixa só loga "schema-pendente" no console — OS conclui normal mas estoque não decrementa.
+1b. ✅ ~~Aplicar `sql/07-os-itens-baixados.sql`~~ — **APLICADO em 20/05/2026** (sessão `geral`). Verificador: `node scripts/verificar-sql-07.mjs`. Baixa automática de estoque agora roda end-to-end (idempotente via flag `os.itens_baixados`). Drift colateral em `usePecas.baixarItensDaOS` (filtrava coluna `tipo` removida na Onda 4 + usava `qtd` em vez de `quantidade`) **corrigido na mesma sessão**, igual em `AcaoOrcamento.salvar()` e `PagamentoTab.salvar()`.
 2. **Foto da coleta → Supabase Storage privado** (`idemaq-privado/os/{id}/coleta/`). Hoje base64 em memória no jsonb local `os.pre_diagnostico.foto`. Header e AcaoRecebido leem desse mesmo jsonb.
 3. **Adicionar colunas pros campos pendentes em `os`**: `entrega_*` (data/hora/responsavel/obs), `observacoes` global (ver PENDENCIAS-ROTAS).
 4. **AcaoOrçamento → lançamento real de itens via `useOSItens.addItem/updateItem/removeItem`** (hoje ainda escreve só local).

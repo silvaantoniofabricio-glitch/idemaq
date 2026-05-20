@@ -102,12 +102,14 @@ export default function AcaoOrcamento({ T, dark, os, usuarios, onMoverOS, onUpda
     for (const id of deletados) await removeItemDB(id)
 
     // insere/atualiza cada item local
+    // Onda 4: schema os_item perdeu `tipo` e renomeou `qtd` → `quantidade`.
+    // Discriminação peça×serviço agora é só por peca_id (NULL = serviço/avulso).
     for (const item of itens) {
       const payload = {
-        tipo: item.tipo,
         nome: item.nome,
-        qtd: item.qtd ?? 1,
+        quantidade: item.qtd ?? item.quantidade ?? 1,
         valor_unitario: item.valor_unitario ?? item.valor ?? 0,
+        peca_id: item.peca_id ?? null,
       }
       if (item.id) {
         await updateItemDB(item.id, payload)

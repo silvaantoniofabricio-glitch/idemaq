@@ -256,12 +256,13 @@ export async function baixarItensDaOS(osId) {
   const aplicadas = []
   const erros = []
 
-  // 2) Itens elegíveis: tipo='peca' E peca_id NOT NULL (avulsos ficam de fora).
+  // 2) Itens elegíveis: peca_id NOT NULL (item avulso/serviço fica de fora).
+  // Onda 4 removeu a coluna `tipo` do os_item — agora a discriminação é só por
+  // peca_id IS NOT NULL. Coluna de quantidade chama `quantidade` (não `qtd`).
   const { data: itens, error: errIt } = await supabase
     .from('os_item')
-    .select('peca_id, nome, qtd')
+    .select('peca_id, nome, quantidade')
     .eq('os_id', osId)
-    .eq('tipo', 'peca')
     .not('peca_id', 'is', null)
     .is('deleted_at', null)
 
@@ -279,7 +280,7 @@ export async function baixarItensDaOS(osId) {
 
   // 3) Debita cada peça.
   for (const item of itens) {
-    const qtd = Number(item.qtd) || 0
+    const qtd = Number(item.quantidade) || 0
     if (qtd <= 0) continue
 
     const { data: peca, error: errSel } = await supabase
