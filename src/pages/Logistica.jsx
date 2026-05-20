@@ -13,6 +13,8 @@ import {
 } from '../components/ui'
 import { ChipToggle } from '../components/ui/Tabs'
 import { useRotas } from '../hooks/useRotas'
+import NovaRotaModal from '../components/logistica/NovaRotaModal'
+import RotaDetalheModal from '../components/logistica/RotaDetalheModal'
 
 // Datas-âncora pro filtro (hoje / amanhã / semana) — coerentes em qualquer dia.
 const HOJE = new Date().toISOString().slice(0, 10)
@@ -40,11 +42,19 @@ function rotaCompletaUrl(enderecos) {
 export default function Logistica({ T, dark }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
-  const { rotas, loading, error, tabelaAusente, concluirParada: concluirParadaHook } = useRotas()
+  const {
+    rotas, loading, error, tabelaAusente,
+    concluirParada: concluirParadaHook,
+    criar: criarRota,
+    atualizar: atualizarRota,
+    excluir: excluirRota,
+  } = useRotas()
   const [filtroData, setFiltroData] = useState('hoje')
   const [verColetas, setVerColetas] = useState(true)
   const [verEntregas, setVerEntregas] = useState(true)
   const [busca, setBusca] = useState('')
+  const [novaRotaAberta, setNovaRotaAberta] = useState(false)
+  const [rotaDetalhe, setRotaDetalhe] = useState(null) // rota selecionada p/ edição
 
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
@@ -194,9 +204,14 @@ export default function Logistica({ T, dark }) {
           { label: 'Concluídas', value: concluidas,    color: concluidas > 0 ? verde : T.textDim },
         ]}
         actions={
-          <Button variant="primary" iconLeft="ti-route" onClick={abrirRotaCompleta}>
-            Abrir rota no Maps
-          </Button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button T={T} dark={dark} variant="secondary" iconLeft="ti-external-link" onClick={abrirRotaCompleta}>
+              Abrir no Maps
+            </Button>
+            <Button T={T} dark={dark} variant="primary" iconLeft="ti-plus" onClick={() => setNovaRotaAberta(true)}>
+              Nova rota
+            </Button>
+          </div>
         }
       />
 
@@ -310,8 +325,14 @@ export default function Logistica({ T, dark }) {
                        style={{ fontSize: 16, color: corTipo }} />
                   </div>
 
-                  {/* Info principal */}
-                  <div style={{ minWidth: 0 }}>
+                  {/* Info principal (click abre RotaDetalheModal) */}
+                  <div
+                    onClick={() => {
+                      const rotaAlvo = rotas.find(r => r.id === p.rotaId)
+                      if (rotaAlvo) setRotaDetalhe(rotaAlvo)
+                    }}
+                    style={{ minWidth: 0, cursor: 'pointer' }}
+                  >
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       marginBottom: 4, flexWrap: 'wrap',
@@ -485,6 +506,25 @@ export default function Logistica({ T, dark }) {
           </div>
         </Card>
       </div>
+
+      {novaRotaAberta && (
+        <NovaRotaModal
+          T={T} dark={dark}
+          onClose={() => setNovaRotaAberta(false)}
+          onCriar={criarRota}
+        />
+      )}
+
+      {rotaDetalhe && (
+        <RotaDetalheModal
+          T={T} dark={dark}
+          rota={rotaDetalhe}
+          onClose={() => setRotaDetalhe(null)}
+          onAtualizar={atualizarRota}
+          onExcluir={excluirRota}
+          onConcluirParada={concluirParadaHook}
+        />
+      )}
     </div>
   )
 }

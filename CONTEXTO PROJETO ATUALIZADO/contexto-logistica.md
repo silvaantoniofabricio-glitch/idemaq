@@ -7,10 +7,13 @@
 
 ## 1. Status atual
 
-🟢 **Hook + UI ligados em modo real + AddressInput com Places + SQL 06 APLICADO** (19-20/05/2026).
-- `src/pages/Logistica.jsx` — UI completa, consome `useRotas`. Trata `loading`, `tabelaAusente` e `error` com estados próprios (EmptyState).
+🟢 **CRUD completo: hook + UI + modais de criação/edição com drag-and-drop** (20/05/2026).
+- `src/pages/Logistica.jsx` — UI completa, consome `useRotas`. Botão "Nova rota" no PageHeader; clique no corpo da parada abre `RotaDetalheModal`. Trata `loading`, `tabelaAusente` e `error` com estados próprios (EmptyState).
 - `src/hooks/useRotas.js` — **modo real**, lê `rota` no Supabase com JOIN em `usuarios` (motorista). Mutações `concluirParada`/`reordenarParadas` fazem UPDATE optimistic do jsonb `paradas` inteiro (com rollback em caso de erro). `criar/atualizar/excluir` (soft-delete) implementados.
 - `src/components/logistica/AddressInput.jsx` — autocomplete via Google Maps Places quando `VITE_GOOGLE_MAPS_KEY` está setada. Loader singleton, debounce 250ms, session token pra economizar quota. Fallback automático pra texto livre quando a chave não existe ou o script falha.
+- `src/components/logistica/ParadasEditor.jsx` — **NOVO (20/05)**. Lista editável de paradas com **drag-and-drop nativo HTML5** (`@dnd-kit` não está instalado). Reusável entre criação e edição. Cada linha: handle de drag · número da ordem · ícone do tipo · Select tipo (`coleta`/`entrega`/`servico`) · Input cliente · time horário previsto · `AddressInput` · Select OS opcional (auto-preenche cliente/fone) · Input telefone · ações Concluir/Remover. Renumera `ordem` no parent ao salvar.
+- `src/components/logistica/NovaRotaModal.jsx` — **NOVO (20/05)**. Campos: data (required), motorista (Select de usuarios com papel `logistica`/`dono`), observações, paradas (`ParadasEditor`). Valida data + ≥1 parada com endereço. Chama `useRotas.criar({ data, motorista_id, paradas, status: 'planejada', observacoes })`.
+- `src/components/logistica/RotaDetalheModal.jsx` — **NOVO (20/05)**. Mesmos campos + Select de status (`planejada`/`em_andamento`/`concluida`/`cancelada`). Botões: "Excluir rota" (com confirmação inline), "Cancelar", "Salvar alterações" (chama `useRotas.atualizar`). Botão "Concluir" por parada dispara `useRotas.concluirParada` direto (já é optimistic no hook). Reordenação por DnD é parte do draft local — só persiste no Save.
 - `sql/06-rota.sql` — ✅ **APLICADO em 19/05/2026** no SQL Editor do Supabase. Tabela `rota` em prod.
 - `scripts/verificar-tabela-rota.mjs` — verificador: `node scripts/verificar-tabela-rota.mjs` reporta se o SQL já rodou.
 
@@ -21,7 +24,7 @@
 
 ### O que falta
 - Setar `VITE_GOOGLE_MAPS_KEY` no `.env.local` (ou Vercel) pra ativar autocomplete.
-- UI de criação/edição de rota (modal — `reordenarParadas` já existe no hook)
+- ~~UI de criação/edição de rota~~ ✅ feito 20/05/2026 (NovaRotaModal + RotaDetalheModal + ParadasEditor)
 - Otimização de rota (Maps Directions API — futuro)
 - Foto na coleta/entrega (Storage privado)
 
@@ -35,7 +38,7 @@
 4. ~~Integração Google Maps Places no `AddressInput.jsx`~~ → feito (precisa `VITE_GOOGLE_MAPS_KEY`)
 5. ~~Aplicar `sql/06-rota.sql` no Supabase~~ ✅ **feito 19/05/2026**
 6. ~~Embed do motorista `nome`→`apelido`~~ ✅ **feito 20/05/2026 (Onda 4)**
-7. UI de criação/edição de rota (drag-and-drop pra reordenar — `reordenarParadas` já existe no hook)
+7. ~~UI de criação/edição de rota (drag-and-drop pra reordenar)~~ ✅ **feito 20/05/2026** — `NovaRotaModal` + `RotaDetalheModal` + `ParadasEditor` (HTML5 DnD nativo)
 8. Foto da coleta (obrigatória, com opção pular) — base64 + Storage
 9. Foto da entrega (opcional)
 
