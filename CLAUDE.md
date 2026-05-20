@@ -205,15 +205,15 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 |---|---|---|
 | Painel (dono) | ✅ Real (Onda 1) | Mover meta R$ 20k pra `configuracoes` (Mod. 09); badge `demo` some quando SQL 01 rodar |
 | Painel Funcionários | ✅ Implementado — botão de ponto presente, ajustes pontuais | Trocar mocks (`_mocks.js`) por queries reais quando schema `ponto_registro` subir |
-| Kanban (OS) | ✅ Real + Realtime | OS de garantia funcional + conversão Recusada→Fabricação |
-| OSDetalhe + 10 Ações | ✅ Visual completo | Schema parte 2 (checklist_etapa + falha_teste) |
+| Kanban (OS) | ✅ Real + Realtime | — |
+| OSDetalhe + 10 Ações | ✅ Schema parte 2 plugado | Aplicar SQL 05 no Supabase (Toni) + foto pro Storage privado |
 | Clientes | 🟢 Real (782) | ClienteDetalheModal listar OS + commit do v3 |
 | Logística | 🟢 Real (hook + Places) | Aplicar `sql/06-rota.sql` + setar `VITE_GOOGLE_MAPS_KEY` |
 | Estoque | 🟢 Real (680) | UPDATE via modal + baixa automática |
 | Financeiro | 🟡 Mock Bling-style | Rodar SQL 01 + ligar `useFinanceiro` real |
 | Relatórios | 🟢 4 reais (Geral/Operacional/Estoque/Vendas) | DRE + Funcionários com Claude API |
 | Ponto | 🔴 Não implementado | Ler spec + criar schema + componentes |
-| Schema parte 2 | 🟡 Parcial | SQL 01 e 05 prontos pra aplicar; outros a desenhar |
+| Schema parte 2 | 🟡 Parcial | SQL 01 pendente; SQL 05 (checklist_etapa + falha_teste) **plugado no front 19/05 — falta Toni aplicar no Supabase SQL Editor** |
 
 ---
 

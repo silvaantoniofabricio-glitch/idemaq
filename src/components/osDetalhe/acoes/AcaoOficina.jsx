@@ -22,6 +22,8 @@ import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
+import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
+import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import BlocoAcao from './BlocoAcao'
 import RelatorioDiagnostico, { itensMarcadosDoDiag } from '../RelatorioDiagnostico'
 
@@ -55,15 +57,36 @@ export default function AcaoOficina({ T, dark, os, usuarios, onUpdateOS, onMover
   // === DIAGNÓSTICO (REFERÊNCIA) — usado como checklist do "Serviço" ===
   const itensDiag = useMemo(() => itensMarcadosDoDiag(os), [os])
 
-  // === ESTADO ===
-  // 3 etapas sincronizáveis: desmontagem e montagem são compartilhadas.
-  // limpeza e servico são individuais.
-  const exec = os.oficina_execucao || {}
-  const [desmontagem, setDesmontagem] = useState(() => !!exec.desmontagem)
-  const [montagem, setMontagem]       = useState(() => !!exec.montagem)
-  const [limpezaFeita, setLimpezaFeita] = useState(() => !!exec.limpeza)
-  const [servicoCheck, setServicoCheck] = useState(() => exec.servico || {})
-  const [pecasPendentes, setPecasPendentes] = useState(() => exec.pecas_pendentes || {})
+  // === ESTADO + persistência em checklist_etapa(etapa='em_oficina') ===
+  // Layout do array `itens` no banco:
+  //   { id: 'desmontagem'|'limpeza'|'montagem', label: '…', checked: bool }
+  //   { id: 'serv:<key>',  label: '<item diag>', checked: bool }
+  //   { id: 'pend:<key>',  label: '<item diag>', checked: bool }  // ag. peça
+  const { itens: chkItens, salvar: salvarChk, loading: loadingChk } =
+    useChecklistEtapa(os.id, 'em_oficina')
+  const { abertas: falhasAbertas } = useFalhaTeste(os.id)
+
+  const [desmontagem, setDesmontagem] = useState(false)
+  const [montagem, setMontagem]       = useState(false)
+  const [limpezaFeita, setLimpezaFeita] = useState(false)
+  const [servicoCheck, setServicoCheck] = useState({})
+  const [pecasPendentes, setPecasPendentes] = useState({})
+  const [hidratado, setHidratado] = useState(false)
+
+  // Hidrata o estado uma vez quando o checklist chega do banco
+  useEffect(() => {
+    if (loadingChk || hidratado) return
+    const get = id => !!chkItens.find(i => i.id === id)?.checked
+    setDesmontagem(get('desmontagem'))
+    setMontagem(get('montagem'))
+    setLimpezaFeita(get('limpeza'))
+    const serv = {}, pend = {}
+    chkItens.forEach(i => {
+      if (i.id?.startsWith('serv:')) serv[i.id.slice(5)] = !!i.checked
+      if (i.id?.startsWith('pend:')) pend[i.id.slice(5)] = !!i.checked
+    })
+    setServicoCheck(serv); setPecasPendentes(pend); setHidratado(true)
+  }, [loadingChk, chkItens, hidratado])
 
   // Serviço da Manutenção é SEMPRE o checklist do diagnóstico
   // (mangueira troca, placa manutenção, etc). Se diagnóstico vazio mas
@@ -88,19 +111,30 @@ export default function AcaoOficina({ T, dark, os, usuarios, onUpdateOS, onMover
   const manutTotal = temManutencao ? 3 : 0
   const statusManut = deriveStatus(manutMarcados, manutTotal)
 
-  // === SINCRONIZA COM A OS ===
+  // === SINCRONIZA COM CHECKLIST_ETAPA ===
+  // Roda só depois da hidratação pra não sobrescrever o que vem do banco com
+  // os defaults vazios do estado inicial.
   useEffect(() => {
+    if (!hidratado) return
+    const linhas = [
+      { id: 'desmontagem', label: 'Desmontagem', checked: !!desmontagem },
+      { id: 'limpeza',     label: 'Limpeza',     checked: !!limpezaFeita },
+      { id: 'montagem',    label: 'Montagem',    checked: !!montagem },
+      ...itensDiag.map(it => ({
+        id: `serv:${it.key}`, label: it.label, checked: !!servicoCheck[it.key],
+      })),
+      ...itensDiag.map(it => ({
+        id: `pend:${it.key}`, label: it.label, checked: !!pecasPendentes[it.key],
+      })),
+    ]
+    salvarChk(linhas)
+    // status macro continua em os.limpeza/os.manutencao via onUpdateOS pro Kanban
     onUpdateOS?.(os.numero, {
       limpeza: temLimpeza ? statusLimpeza : null,
       manutencao: temManutencao ? statusManut : null,
-      oficina_execucao: {
-        desmontagem, montagem, limpeza: limpezaFeita,
-        servico: servicoCheck,
-        pecas_pendentes: pecasPendentes,
-      },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusLimpeza, statusManut, desmontagem, montagem, limpezaFeita,
+  }, [hidratado, statusLimpeza, statusManut, desmontagem, montagem, limpezaFeita,
       JSON.stringify(servicoCheck), JSON.stringify(pecasPendentes)])
 
   // === REGRAS DE BLOQUEIO DA MONTAGEM ===
@@ -173,7 +207,8 @@ export default function AcaoOficina({ T, dark, os, usuarios, onUpdateOS, onMover
       )}
 
       {/* === AVISO: falhas do teste (OS voltou pra oficina) === */}
-      {(os.teste_falhas || []).length > 0 && (
+      {/* Lido de `falha_teste` (resolvida=false). Substitui o jsonb em memória os.teste_falhas. */}
+      {falhasAbertas.length > 0 && (
         <div style={{
           padding: '11px 14px', borderRadius: 8,
           background: cor('#2a1515', '#fde8e8'),
@@ -183,11 +218,11 @@ export default function AcaoOficina({ T, dark, os, usuarios, onUpdateOS, onMover
           <i className="ti ti-arrow-back-up" style={{ fontSize: 18, color: vermelho, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: vermelho, marginBottom: 5 }}>
-              OS voltou do Teste com {os.teste_falhas.length} {os.teste_falhas.length === 1 ? 'falha' : 'falhas'} pra corrigir:
+              OS voltou do Teste com {falhasAbertas.length} {falhasAbertas.length === 1 ? 'falha' : 'falhas'} pra corrigir:
             </div>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11.5, color: T.textSecondary, lineHeight: 1.5 }}>
-              {os.teste_falhas.map((f, i) => (
-                <li key={i}>{f}</li>
+              {falhasAbertas.map((f) => (
+                <li key={f.id}>{f.descricao}</li>
               ))}
             </ul>
           </div>

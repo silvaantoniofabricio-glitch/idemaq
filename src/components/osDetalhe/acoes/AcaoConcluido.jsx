@@ -4,11 +4,12 @@
 // status de garantia com dias restantes, botão "Abrir OS de garantia" (placeholder)
 // e botão "Reabrir OS" (volta pra Entrega).
 
-import React from 'react'
+import React, { useState } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { dentroGarantia, totalAPagar } from '../../../utils/osHelpers'
 import { corEtapa, bgEtapa, corHero } from '../../../utils/colors'
+import { criarOSDerivada } from '../../../utils/osDerivada'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
 import { useToast } from '../../ui'
@@ -19,6 +20,7 @@ export default function AcaoConcluido({ T, dark, os, onMoverOS }) {
   const azul = corEtapa('blue', dark)
   const verde = corEtapa('green', dark)
   const notify = useToast()
+  const [criandoGarantia, setCriandoGarantia] = useState(false)
 
   const garantiaAtiva = dentroGarantia(os)
 
@@ -55,8 +57,40 @@ export default function AcaoConcluido({ T, dark, os, onMoverOS }) {
     if (entrega) onMoverOS(os.numero, entrega.id)
   }
 
-  function abrirGarantia() {
-    notify('info', `Em breve: vai abrir Nova OS com garantia=true e os_origem_id=${os.numero}`)
+  // Abre OS de garantia: cria nova OS de atendimento herdando cliente,
+  // marca/modelo/defeito da OS original. valor_total=0 e garantia_dias=90.
+  // Vai pra "recebido" — atendimento já chegou (o cliente trouxe de volta).
+  async function abrirGarantia() {
+    if (criandoGarantia) return
+    if (!window.confirm(
+      `Abrir OS de garantia a partir da #${os.numero}?\n\n` +
+      `• Cliente: ${os.cliente || '—'}\n` +
+      `• Equipamento: ${[os.marca, os.modelo].filter(Boolean).join(' · ') || '—'}\n` +
+      `• Valor: R$ 0 (mão de obra coberta)\n` +
+      `• Garantia: 90 dias\n\n` +
+      `A nova OS abre na coluna "Recebido" pronta pro pré-diagnóstico.`
+    )) return
+
+    setCriandoGarantia(true)
+    try {
+      const { error, numero } = await criarOSDerivada(os.id, {
+        tipo: 'atendimento',
+        etapa: 'recebido',
+        garantia: true,
+        garantia_dias: 90,
+        valor_total: 0,
+        desconto: 0,
+        pago: 'nao',
+        valor_pago: 0,
+      })
+      if (error) throw error
+      notify('ok', `OS de garantia #${numero} criada (origem #${os.numero})`)
+    } catch (e) {
+      notify('erro', `Erro ao abrir garantia: ${e?.message || 'desconhecido'}`)
+      console.error('[AcaoConcluido] abrirGarantia:', e)
+    } finally {
+      setCriandoGarantia(false)
+    }
   }
 
   return (
@@ -138,16 +172,20 @@ export default function AcaoConcluido({ T, dark, os, onMoverOS }) {
       {/* === AÇÕES === */}
       <div style={{ display: 'grid', gridTemplateColumns: garantiaAtiva ? '1fr 1fr' : '1fr', gap: 8 }}>
         {garantiaAtiva && (
-          <button onClick={abrirGarantia} style={{
+          <button onClick={abrirGarantia} disabled={criandoGarantia} style={{
             padding: '11px 14px', borderRadius: 7, border: 'none',
             background: `linear-gradient(135deg, ${azul}, ${azul}cc)`,
             color: '#fff', fontSize: 12.5, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'inherit',
+            cursor: criandoGarantia ? 'wait' : 'pointer',
+            opacity: criandoGarantia ? 0.7 : 1,
+            fontFamily: 'inherit',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             boxShadow: `0 2px 8px ${azul}33`,
           }}>
-            <i className="ti ti-shield-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-            Abrir OS de garantia
+            <i className={`ti ${criandoGarantia ? 'ti-loader-2' : 'ti-shield-plus'}`}
+               style={{ fontSize: 15, animation: criandoGarantia ? 'idemaq-spin 0.8s linear infinite' : undefined }}
+               aria-hidden="true" />
+            {criandoGarantia ? 'Criando…' : 'Abrir OS de garantia'}
           </button>
         )}
 

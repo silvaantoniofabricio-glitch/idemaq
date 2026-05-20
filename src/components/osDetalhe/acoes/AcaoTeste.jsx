@@ -12,11 +12,13 @@
 // - Voltar pra oficina aparece quando há defeito/barulho — leva as falhas
 //   automaticamente (os.teste_falhas) pro banner do AcaoOficina
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
+import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
+import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import BlocoAcao from './BlocoAcao'
 
 const TESTES = [
@@ -49,16 +51,35 @@ export default function AcaoTeste({ T, dark, os, onMoverOS, onUpdateOS }) {
   const { itens: itensOrcamento, loading: loadingItens } = useOSItens(os.id)
   const temLimpeza = itensOrcamento.some(i => /limpeza/i.test(i.nome))
 
-  // === Estado ===
-  const salvo = os.teste_resultados || {}
-  const [testes, setTestes] = useState(() =>
-    TESTES.reduce((acc, t) => ({ ...acc, [t.id]: salvo[t.id] || null }), {})
-  )
+  // === Checklist persistido em checklist_etapa (etapa='teste_final') ===
+  // Estrutura do `itens`:
+  //   [{ id: 'teste:entrada_agua', label: 'Entrada de água', checked: false, valor: 'ok'|'defeito'|'barulho' },
+  //    { id: 'acab:polimento',     label: 'Polimento',       checked: true }]
+  // Convertemos pra/de estado local pra preservar a UX sem reescrever a UI.
+  const { itens: chkItens, salvar: salvarChk, loading: loadingChk } =
+    useChecklistEtapa(os.id, 'teste_final')
+  const { abertas: falhasAbertas, sincronizarAbertas } = useFalhaTeste(os.id)
 
-  const acabSalvo = os.acabamento || {}
-  const [acabamento, setAcabamento] = useState(() =>
-    ACABAMENTO.reduce((acc, a) => ({ ...acc, [a.id]: !!acabSalvo[a.id] }), {})
+  // === Estado UI (hidrata do checklist quando chega) ===
+  const [testes, setTestes] = useState(
+    () => TESTES.reduce((acc, t) => ({ ...acc, [t.id]: null }), {})
   )
+  const [acabamento, setAcabamento] = useState(
+    () => ACABAMENTO.reduce((acc, a) => ({ ...acc, [a.id]: false }), {})
+  )
+  const [hidratado, setHidratado] = useState(false)
+  useEffect(() => {
+    if (loadingChk || hidratado) return
+    const novoTestes = TESTES.reduce((acc, t) => {
+      const found = chkItens.find(i => i.id === `teste:${t.id}`)
+      return { ...acc, [t.id]: found?.valor ?? null }
+    }, {})
+    const novoAcab = ACABAMENTO.reduce((acc, a) => {
+      const found = chkItens.find(i => i.id === `acab:${a.id}`)
+      return { ...acc, [a.id]: !!found?.checked }
+    }, {})
+    setTestes(novoTestes); setAcabamento(novoAcab); setHidratado(true)
+  }, [loadingChk, chkItens, hidratado])
 
   // === Derivações ===
   // Falhas = testes marcados como defeito ou barulho
@@ -88,22 +109,28 @@ export default function AcaoTeste({ T, dark, os, onMoverOS, onUpdateOS }) {
     setAcabamento(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
-  function aprovar() {
-    onUpdateOS?.(os.numero, {
-      teste_resultados: testes,
-      teste_falhas: [],  // limpa falhas (passou)
-      acabamento: temLimpeza ? acabamento : null,
-    })
+  function serializarChecklist() {
+    const linhasTestes = TESTES.map(t => ({
+      id: `teste:${t.id}`, label: t.label,
+      checked: testes[t.id] === 'ok',
+      valor: testes[t.id] || null,
+    }))
+    const linhasAcab = temLimpeza
+      ? ACABAMENTO.map(a => ({ id: `acab:${a.id}`, label: a.label, checked: !!acabamento[a.id] }))
+      : []
+    return [...linhasTestes, ...linhasAcab]
+  }
+
+  async function aprovar() {
+    await salvarChk(serializarChecklist())
+    await sincronizarAbertas([])  // todas as falhas em aberto viram resolvidas
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'entrega')
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
 
-  function voltarOficina() {
-    onUpdateOS?.(os.numero, {
-      teste_resultados: testes,
-      teste_falhas: falhas,  // persiste pra banner do AcaoOficina
-      acabamento: temLimpeza ? acabamento : null,
-    })
+  async function voltarOficina() {
+    await salvarChk(serializarChecklist())
+    await sincronizarAbertas(falhas)  // persiste falhas pro banner do AcaoOficina
     const oficina = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')
     if (oficina) onMoverOS(os.numero, oficina.id)
   }

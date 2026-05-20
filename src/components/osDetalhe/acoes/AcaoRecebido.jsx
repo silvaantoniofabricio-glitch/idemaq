@@ -4,10 +4,11 @@
 // cada um com opção Ok / Defeito / Barulho + textarea de observações.
 // Botão "Concluir pré-diagnóstico" → avança pra Diagnóstico.
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
+import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import BlocoAcao from './BlocoAcao'
 
 const TESTES = [
@@ -27,6 +28,13 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
   const amarelo = cor(P.yellow, P.yellowDark)
 
+  // Persistência em checklist_etapa(etapa='recebido'). Foto continua em jsonb
+  // local (os.pre_diagnostico.foto) — Storage virá em outro PR.
+  // Estrutura do `itens`:
+  //   { id: 'teste:<id>', label, checked: bool, valor: 'ok'|'defeito'|'barulho' }
+  const { itens: chkItens, observacoes: chkObs, salvar: salvarChk, loading: loadingChk } =
+    useChecklistEtapa(os.id, 'recebido')
+
   // Estado dos testes — inicializa do campo salvo ou vazio
   const salvo = os.pre_diagnostico || {}
   const [testes, setTestes] = useState(() =>
@@ -37,6 +45,20 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
   // upload pra idemaq-privado/os/{os.id}/coleta/. Hoje só state local pra UX.
   const [fotoBase64, setFotoBase64] = useState(salvo.foto || null)
   const inputFotoRef = useRef(null)
+  const [hidratado, setHidratado] = useState(false)
+
+  // Hidrata do checklist_etapa quando chegar (sobrescreve só se em memória estava vazio)
+  useEffect(() => {
+    if (loadingChk || hidratado) return
+    if (chkItens.length === 0 && !chkObs) { setHidratado(true); return }
+    const novos = TESTES.reduce((acc, t) => {
+      const found = chkItens.find(i => i.id === `teste:${t.id}`)
+      return { ...acc, [t.id]: found?.valor ?? acc[t.id] }
+    }, { ...testes })
+    setTestes(novos)
+    if (chkObs && !obsPreDiag) setObsPreDiag(chkObs)
+    setHidratado(true)
+  }, [loadingChk, chkItens, chkObs, hidratado])  // eslint-disable-line react-hooks/exhaustive-deps
 
   function escolherFoto(file) {
     if (!file) return
@@ -60,7 +82,8 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
     }))
   }
 
-  function concluir() {
+  async function concluir() {
+    // Foto continua em jsonb local (skipped no DB até Storage entrar)
     onUpdateOS(os.numero, {
       pre_diagnostico: {
         ...testes,
@@ -68,6 +91,15 @@ export default function AcaoRecebido({ T, dark, os, onUpdateOS, onMoverOS }) {
         foto: fotoBase64,  // futuro: trocar por URL do Storage
       },
     })
+    // Persiste testes + observações em checklist_etapa
+    await salvarChk(
+      TESTES.map(t => ({
+        id: `teste:${t.id}`, label: t.label,
+        checked: testes[t.id] === 'ok',
+        valor: testes[t.id] || null,
+      })),
+      obsPreDiag,
+    )
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'diagnostico')
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
