@@ -328,11 +328,12 @@ export function useRelatorioEstoque({ iniIso, fimIso }) {
           .is('deleted_at', null)
         if (errP) throw errP
 
-        // Consumo no período — itens de OS do tipo peça
+        // Consumo no período — itens de OS vinculados a peças do estoque
+        // (peca_id preenchido = peça do estoque; null = serviço/avulso)
         const { data: itens, error: errI } = await supabase
           .from('os_item')
-          .select('nome, qtd, valor_unitario, valor_total, tipo, criado_em')
-          .eq('tipo', 'peca')
+          .select('nome, quantidade, valor_unitario, valor_total, peca_id, criado_em')
+          .not('peca_id', 'is', null)
           .is('deleted_at', null)
           .gte('criado_em', iniIso)
           .lte('criado_em', fimIso)
@@ -357,7 +358,7 @@ export function useRelatorioEstoque({ iniIso, fimIso }) {
           const k = (it.nome || '').trim().toLowerCase()
           if (!k) continue
           if (!consumoPorNome[k]) consumoPorNome[k] = { nome: it.nome, qtd: 0 }
-          consumoPorNome[k].qtd += Number(it.qtd || 1)
+          consumoPorNome[k].qtd += Number(it.quantidade || 1)
         }
         const ranking = Object.values(consumoPorNome).sort((a, b) => b.qtd - a.qtd).slice(0, 5)
         const maxQtd = ranking[0]?.qtd || 1
@@ -430,9 +431,10 @@ export function useRelatorioVendas({ iniIso, fimIso }) {
         if (errA) throw errA
 
         // Itens vendidos no período (serviços e peças)
+        // tipo é derivado: peca_id preenchido → 'peca'; null → 'servico'
         const { data: itens, error: errI } = await supabase
           .from('os_item')
-          .select('tipo, nome, qtd, valor_total, criado_em')
+          .select('peca_id, nome, quantidade, valor_total, criado_em')
           .is('deleted_at', null)
           .gte('criado_em', iniIso)
           .lte('criado_em', fimIso)
@@ -519,10 +521,11 @@ export function useRelatorioVendas({ iniIso, fimIso }) {
         // Serviços / peças mais vendidos no período
         const porNome = {}
         for (const it of itens || []) {
-          const k = `${it.tipo}:${(it.nome || '').trim().toLowerCase()}`
+          const tipo = it.peca_id ? 'peca' : 'servico'
+          const k = `${tipo}:${(it.nome || '').trim().toLowerCase()}`
           if (!k.endsWith(':')) {
-            if (!porNome[k]) porNome[k] = { nome: it.nome, tipo: it.tipo, qtd: 0, receita: 0 }
-            porNome[k].qtd += Number(it.qtd || 1)
+            if (!porNome[k]) porNome[k] = { nome: it.nome, tipo, qtd: 0, receita: 0 }
+            porNome[k].qtd += Number(it.quantidade || 1)
             porNome[k].receita += Number(it.valor_total || 0)
           }
         }
