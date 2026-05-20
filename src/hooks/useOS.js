@@ -62,6 +62,7 @@ export function useOS(buscando = false) {
           recusada, aguardando_peca,
           prazo, data_conclusao, criado_em, atualizado_em,
           cliente_id,
+          pre_diagnostico, observacoes,
           cliente:cliente_id(id, nome, telefone, deleted_at),
           os_item(count),
           os_historico(id, etapa_de, etapa_para, funcionario_id, data)
@@ -102,7 +103,7 @@ export function useOS(buscando = false) {
           defeito: '',
           endereco: '',
           fotos: 0,
-          observacoes: '',
+          observacoes: os.observacoes || '',
           // Contagem de itens da OS (vem de os_item(count) → [{ count: N }])
           itens: os.os_item?.[0]?.count || 0,
           // Financeiro
@@ -118,8 +119,9 @@ export function useOS(buscando = false) {
           // Flags
           recusada: os.recusada || false,
           aguardando_peca: os.aguardando_peca || false,
-          // Pré-diagnóstico: removido do select (não é coluna direta da `os`).
-          pre_diagnostico: null,
+          // Pré-diagnóstico: jsonb com testes + observacoes + foto (marker
+          // 'storage' OU base64 legacy). Resolve via resolverFotoUrl().
+          pre_diagnostico: os.pre_diagnostico || null,
           // Datas convertidas para Cuiabá
           prazo: os.prazo ? toCuiaba(os.prazo) : null,
           data_conclusao: os.data_conclusao || null,
