@@ -13,17 +13,12 @@ const UI_TO_DB = {
   valor: 'valor_total',
   marca: 'marca_equipamento',
   modelo: 'modelo_equipamento',
+  serie: 'numero_serie',
   defeito: 'defeito_relatado',
 }
 
 // Whitelist de colunas que sabemos existir na tabela `os` (do SELECT em useOS).
 // Quando criar novas colunas no banco, basta adicionar aqui.
-//
-// ⚠️ marca_equipamento/modelo_equipamento/defeito_relatado **NÃO existem em
-// prod** (confirmado por probe 20/05/2026 — PostgREST 42703). Tirar da
-// whitelist até aplicar `sql/10-os-equipamento.sql`. FormEquipamentoEdit
-// continua chamando o patch — os campos vão pra `skipped[]` (in-memory),
-// igual `numero_serie`/`endereco`.
 const COLUNAS_SAFE = new Set([
   'etapa',
   'valor_total', 'desconto', 'pago', 'valor_pago', 'forma_pagamento',
@@ -31,6 +26,8 @@ const COLUNAS_SAFE = new Set([
   'recusada', 'aguardando_peca',
   'prazo', 'data_conclusao',
   'cliente_id',
+  // Equipamento — aplicado via sql/10-os-equipamento.sql em 20/05/2026.
+  'marca_equipamento', 'modelo_equipamento', 'numero_serie', 'defeito_relatado',
   'data_agendamento',
   // jsonb: marker 'storage' da foto da coleta + obs/testes do pre-diagnostico.
   // Coluna `os.pre_diagnostico jsonb` ja consumida em SELECT — adicionar

@@ -3,9 +3,9 @@
 // Aberto pelo Header do OSDetalhe ao clicar na linha de equipamento.
 //
 // Patch direto via onUpdateOS(numero, patch) — o normalizePatchOS traduz
-// `marca/modelo/defeito` pras colunas reais (`marca_equipamento`,
-// `modelo_equipamento`, `defeito_relatado`). `serie` ainda não está na
-// whitelist do osPatch — fica em memória até a coluna existir no banco.
+// `marca/modelo/serie/defeito` pras colunas reais (`marca_equipamento`,
+// `modelo_equipamento`, `numero_serie`, `defeito_relatado`).
+// Colunas aplicadas via sql/10-os-equipamento.sql em 20/05/2026.
 
 import React, { useState } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'

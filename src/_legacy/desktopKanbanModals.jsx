@@ -442,19 +442,17 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
         : null
 
       // Schema flat da tabela `os` (sem JSONB de equipamento — colunas separadas).
-      // Campos sem coluna conhecida (tipo_equipamento, serie_equipamento,
-      // observacoes, maquinaEstoque) ficam de fora; trigger preenche numero/criado_em/por.
-      //
-      // ⚠️ marca_equipamento/modelo_equipamento/defeito_relatado **NÃO existem
-      // em prod** (confirmado por probe 20/05/2026 — PostgREST PGRST204).
-      // Mandar essas colunas quebra o INSERT inteiro. Mantemos as variáveis
-      // (marcaFinal etc.) só pra não derrubar o resto do form, mas omitimos
-      // do payload até `sql/10-os-equipamento.sql` ser aplicado.
-      // Exceção `_legacy` autorizada — mesmo precedente do trecho CLIENTES_MOCK.
+      // Campos sem coluna conhecida (tipo_equipamento, maquinaEstoque) ficam de
+      // fora; trigger preenche numero/criado_em/por. Colunas de equipamento
+      // aplicadas via sql/10-os-equipamento.sql em 20/05/2026.
       const payload = {
         tipo,
         etapa: etapaInicial,
         cliente_id: form.clienteId || null,
+        marca_equipamento: marcaFinal || null,
+        modelo_equipamento: form.equipamentoModelo?.trim() || null,
+        numero_serie: form.equipamentoSerie?.trim() || null,
+        defeito_relatado: form.defeito?.trim() || null,
         data_agendamento: dataAgIso,
       }
       if (tipo === 'fabricacao' && form.valor) {
