@@ -182,6 +182,7 @@ src/
 - ❌ **Não use cor hardcoded** (`#fff`, `#000`, `red`, etc.). Sempre via `T.*`, `P.*` ou helpers.
 - ❌ **Não duplique lógica** que já está em `utils/osHelpers.js`.
 - ❌ **Não use `<select>`/`<input>`/`<button>` cru** quando há `<Select>`/`<Input>`/`<Button>` na lib.
+- ❌ **Não dependa SÓ do Realtime pra UI refletir mutação local** — sempre fazer **optimistic update** (`setOsList(prev => ...)` antes do `supabase.update/insert/delete`) com **rollback em erro**. Realtime tem latência variável e às vezes a publication da tabela está desabilitada no Supabase. Ex: `moverOS`/`excluirOS` no `Kanban.jsx`.
 
 ---
 
