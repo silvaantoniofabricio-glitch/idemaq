@@ -53,6 +53,26 @@ if (hist.data?.length) {
   console.log('por funcionário:', porFunc)
 }
 
+console.log('\n--- Ponto: SELECT em jornada_funcionario + join usuarios ---')
+const jornadas = await supabase
+  .from('jornada_funcionario')
+  .select(`
+    funcionario_id, dia, total_horas_trabalhadas, saldo_horas, status,
+    funcionario:funcionario_id ( id, apelido, papel )
+  `)
+  .is('deleted_at', null)
+  .gte('dia', iniIso.slice(0, 10))
+  .lte('dia', fimIso.slice(0, 10))
+console.log('error:', jornadas.error)
+console.log('count:', jornadas.data?.length)
+if (jornadas.data?.[0]) {
+  console.log('1ª linha (shape de interval):', {
+    total: jornadas.data[0].total_horas_trabalhadas,
+    saldo: jornadas.data[0].saldo_horas,
+    status: jornadas.data[0].status,
+  })
+}
+
 console.log('\n--- OS concluídas no período ---')
 const os = await supabase
   .from('os')

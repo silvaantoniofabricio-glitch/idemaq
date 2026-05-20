@@ -7,7 +7,7 @@
 
 ## 1. Status atual
 
-🟢 **6 relatórios com dados reais** (Geral, OS Operacional, Estoque, Vendas, **DRE**, **Funcionários** — IA plugada em 20/05/2026 noite).
+🟢 **7 relatórios com dados reais** (Geral, OS Operacional, Estoque, Vendas, **DRE**, **Funcionários**, **Ponto** — Ponto adicionado em 20/05/2026 noite ligado a `jornada_funcionario`).
 🟡 **Botão "Gerar análise IA" ainda gateado por `IA_DEPLOYED=false`** nos 2 relatórios com Claude (DRE, Funcionários) — ativa quando o deploy da edge function for feito. Os números/tabelas/KPIs já vêm reais; só falta o resumo gerado por IA. Antes do flip, o `supabase.functions.invoke` trava ~25-30s no timeout.
 
 ### O que está pronto
@@ -29,7 +29,7 @@
 
 ---
 
-## 2. Os 6 relatórios
+## 2. Os 7 relatórios
 
 | # | Relatório | IA? | Fonte de dados | Status |
 |---|---|---|---|---|
@@ -39,6 +39,7 @@
 | 4 | Vendas | Não | `os`, `os_item`, `os_historico` | ✅ real |
 | 5 | DRE | **Sim** | `lancamento_financeiro` (schema parte 2) | ✅ real (botão IA gateado por `IA_DEPLOYED`) |
 | 6 | Funcionários | **Sim** | `os_historico` + `usuarios` + `os` | ✅ real (botão IA gateado por `IA_DEPLOYED`) |
+| 7 | Ponto | Não | `jornada_funcionario` + `usuarios` | ✅ real (adicionado 20/05/2026 noite) |
 
 > ⚠️ Conferir os números reais contra Supabase via SQL editor — em ambiente de produção podem aparecer divergências (ex: OS antigas migradas sem `data_conclusao` preenchido).
 
@@ -90,6 +91,20 @@
 - Agregados globais: `totalEtapas`, `totalOSAtendidas`, `totalFuncionarios`
 - Ordenado por `etapasFeitas` decrescente
 - **Sem soft-delete em `os_historico`** (tabela append-only) — não filtrar `deleted_at` aí
+
+### `useRelatorioPonto({ iniIso, fimIso, funcionarioId? })` — adicionado 20/05/2026
+- Lê de `jornada_funcionario` (agregado diário, 1 linha por funcionário/dia) + join `funcionario:funcionario_id (id, apelido, papel)`
+- Filtra `dia` BETWEEN `iniIso.slice(0,10)` AND `fimIso.slice(0,10)` (coluna `date`, não timestamptz — precisa de YYYY-MM-DD)
+- `funcionarioId` opcional restringe a um único funcionário (drill-down futuro)
+- Por funcionário agrega:
+  - `totalHorasMin` (soma de `total_horas_trabalhadas` em minutos via `intervalToMinutes`)
+  - `saldoHorasMin` (soma de `saldo_horas` — pode ser negativo)
+  - `faltas` (count `status='falta'`) + `faltasJustificadas`
+  - `diasComputados`
+- Globais: `totalHoras` (string formatada), `totalFaltas`, `totalDias`, `totalFuncionarios`, `topPerformer` (1ª linha após ordenação por horas DESC)
+- Filtra `deleted_at IS NULL`
+- **Utility `intervalToMinutes`** suporta os 3 shapes que PostgREST devolve pra `interval`: string `"HH:MM:SS"` ou `"N day(s) HH:MM:SS"` (com sinal), objeto `{ days, hours, minutes, seconds }`, ou número. Lida com saldo negativo (banco de horas).
+- **Utility `fmtHorasMin(min)`** formata minutos → "Xh Ymin" (com sinal se negativo).
 
 ### `useRelatorioVendas({ iniIso, fimIso })`
 - Conversão orçamento = (OS que passaram por etapa pós-orçamento) / (OS que chegaram em orçamento)
@@ -217,7 +232,7 @@ Estratégias se ficar pesado:
 6. ~~**DRE com IA**~~ ✅ **dados reais ligados** (20/05) — só falta `IA_DEPLOYED=true` + deploy da edge function pra liberar o botão
 7. ~~**Funcionários com IA**~~ ✅ **dados reais ligados** (20/05) — idem
 8. Exportação PDF/Excel
-9. Relógio de Ponto (módulo Ponto entregar primeiro)
+9. ~~Relógio de Ponto~~ ✅ **dados reais ligados em 20/05/2026 noite** (`useRelatorioPonto` + `src/pages/relatorios/RelatorioPonto.jsx`). Continua dependendo do cronjob de falta automática e do funcionário efetivamente bater ponto pra encher a tabela `jornada_funcionario`.
 10. **Deploy edge function `relatorio-ia`** + flip de `IA_DEPLOYED` pra true em `src/pages/Relatorios.jsx` (linha ~50)
 
 ---
@@ -279,3 +294,5 @@ Estoque e Vendas voltaram a puxar números reais. Geral e Operacional não tocav
 9. **Cache duplo no system** — `SYSTEM_BASE` (persona) + `PROMPTS[tipo]` (estrutura), ambos com `cache_control: ephemeral`. Só o JSON do usuário não é cacheado.
 10. **DRE em regime de caixa, não competência** (20/05/2026) — filtro por `pago_em` BETWEEN ini AND fim. Razão: o módulo Financeiro já mostra contas a receber/pagar separadamente; misturar competência no DRE confundiria o dono. Lucro = caixa que efetivamente entrou menos caixa que efetivamente saiu.
 11. **Funcionários sem "Score"** (20/05/2026) — removi a coluna `pontuacao` (era arbitrária no mock). As 6 colunas reais (Pessoa · Etapas · OS · Finalizadas · Tempo médio · Ticket médio) já dão leitura de performance sem precisar inventar fórmula. Gargalo individual aparece como subtítulo abaixo do nome ("gargalo: <etapa> (<tempo>)").
+12. **Slot `ponto` desacoplado de `RelatorioPontoDono`** (20/05/2026 noite) — o componente do terminal `ponto` (dashboard de 6 abas em `src/components/ponto/RelatorioPontoDono.jsx`) usa 100% mocks de `_mocks.js`. Pra não mostrar números fictícios pro dono na rota `/relatorios`, troquei o slot por `src/pages/relatorios/RelatorioPonto.jsx` — slim, mesmo padrão visual dos outros 6 (KPI strip + tabela densa), 100% dados reais. O `RelatorioPontoDono` permanece no repo, mas só será usado depois quando o módulo Ponto plugar seus mocks em dados reais. Não deletei — só removi do roteamento de `/relatorios`.
+13. **`RelatorioPonto` em arquivo próprio** (20/05/2026 noite) — quebrei o padrão "tudo inline em `Relatorios.jsx`" porque o componente do Ponto + utilities (parser de interval) cresceria demais inline. Criada pasta `src/pages/relatorios/` pra futuros relatórios maiores. Os 6 originais continuam inline em `Relatorios.jsx` (sem refator — não pedido).

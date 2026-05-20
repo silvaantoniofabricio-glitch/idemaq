@@ -1,5 +1,5 @@
 // idemaq-src/pages/Relatorios.jsx
-// Tela de Relatórios — hub + 6 relatórios + Ponto (Módulo 08).
+// Tela de Relatórios — hub + 7 relatórios (Ponto incluso, dados reais).
 //
 // 4 relatórios reais (Geral / OS Operacional / Estoque / Vendas): consomem
 // hooks de `useRelatorios.js` que agregam Supabase no JS.
@@ -16,7 +16,7 @@ import {
   Sparkline, DeltaPill,
   useToast,
 } from '../components/ui'
-import RelatorioPontoDono from '../components/ponto/RelatorioPontoDono'
+import RelatorioPonto from './relatorios/RelatorioPonto'
 import {
   computeRange,
   useRelatorioGeral,
@@ -37,7 +37,7 @@ const RELATORIOS = [
   { id:'vendas',        label:'Vendas',          icon:'ti-shopping-cart',     desc:'Funil, ticket médio, conversão', cor:'blue' },
   { id:'financeiro',    label:'Financeiro (DRE)', icon:'ti-cash-banknote',    desc:'DRE + análise com IA', cor:'blue', ia:true },
   { id:'funcionarios',  label:'Funcionários',    icon:'ti-users',             desc:'Performance individual + IA', cor:'blue', ia:true },
-  { id:'ponto',         label:'Relógio de Ponto', icon:'ti-clock-pin',        desc:'Equipe, espelhos, mapa, banco de horas', cor:'blue' },
+  { id:'ponto',         label:'Relógio de Ponto', icon:'ti-clock',            desc:'Horas trabalhadas, faltas, banco de horas por funcionário', cor:'blue' },
 ]
 
 const PERIODOS = [
@@ -122,7 +122,7 @@ export default function Relatorios({ T, dark }) {
           ? `${RELATORIOS.find(r => r.id === relAtivo)?.label} · período ${labelPeriodo()}`
           : 'Escolha um relatório pra ver os números'}
         stats={!relAtivo ? [
-          { label: '6 relatórios', value: 6, color: corEtapa('blue', dark) },
+          { label: '7 relatórios', value: 7, color: corEtapa('blue', dark) },
           { label: 'Com IA',        value: 2, color: corEtapa('blueLight', dark) },
         ] : []}
         actions={relAtivo && (
@@ -186,7 +186,7 @@ export default function Relatorios({ T, dark }) {
           {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'ponto'        && <RelatorioPontoDono    T={T} dark={dark} />}
+          {relAtivo === 'ponto'        && <RelatorioPonto        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
         </>
       )}
     </div>

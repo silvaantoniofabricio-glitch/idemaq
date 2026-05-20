@@ -89,6 +89,57 @@ function fmtDuracao(segs) {
   return `${dias}d ${horas}h`
 }
 
+// =============================================================================
+// Util: Postgres `interval` → minutos. Suporta os 3 formatos que PostgREST
+// pode devolver:
+//   - string "HH:MM:SS"  ou  "N day(s) HH:MM:SS"  (com sinal opcional)
+//   - objeto { days?, hours?, minutes?, seconds? } (formato JSON do iso8601)
+//   - número (já em minutos — proteção)
+// Retorna inteiro com sinal (pode ser negativo — saldo de banco de horas).
+// =============================================================================
+function intervalToMinutes(iv) {
+  if (iv == null) return 0
+  if (typeof iv === 'number') return Math.round(iv)
+  if (typeof iv === 'object') {
+    const days    = Number(iv.days    || 0)
+    const hours   = Number(iv.hours   || 0)
+    const minutes = Number(iv.minutes || 0)
+    const seconds = Number(iv.seconds || 0)
+    return Math.round(days * 1440 + hours * 60 + minutes + seconds / 60)
+  }
+  if (typeof iv === 'string') {
+    let s = iv.trim()
+    if (!s) return 0
+    let sign = 1
+    if (s.startsWith('-')) { sign = -1; s = s.slice(1) }
+    let total = 0
+    const dayMatch = s.match(/(\d+)\s+days?/i)
+    if (dayMatch) total += Number(dayMatch[1]) * 1440
+    const timeMatch = s.match(/(\d+):(\d+)(?::(\d+(?:\.\d+)?))?/)
+    if (timeMatch) {
+      total += Number(timeMatch[1]) * 60
+      total += Number(timeMatch[2])
+      if (timeMatch[3]) total += Number(timeMatch[3]) / 60
+    }
+    return Math.round(sign * total)
+  }
+  return 0
+}
+
+// =============================================================================
+// Util: minutos → "Xh Ymin" (com sinal se negativo). Usado em saldo de banco.
+// =============================================================================
+function fmtHorasMin(min) {
+  if (min == null || isNaN(min)) return '—'
+  const abs = Math.abs(min)
+  const h = Math.floor(abs / 60)
+  const m = abs % 60
+  const sign = min < 0 ? '-' : ''
+  if (h === 0) return `${sign}${m}min`
+  if (m === 0) return `${sign}${h}h`
+  return `${sign}${h}h ${m}min`
+}
+
 // Label amigável das etapas (DB → UI)
 const LABEL_ETAPA = {
   aguardando_agendamento: 'Aguardando agendamento',
@@ -788,5 +839,107 @@ export function useRelatorioFuncionarios({ iniIso, fimIso }) {
   return { data, loading, error }
 }
 
+// =============================================================================
+// useRelatorioPonto — agrega `jornada_funcionario` no período.
+// Lê o agregado diário (1 linha por funcionário/dia) com join em `usuarios`
+// pra trazer apelido. Retorna por funcionário: total de horas trabalhadas,
+// faltas, saldo de banco de horas. Saldo é INT minutos (pode ser negativo).
+//
+// Filtro opcional `funcionarioId` — quando passado, restringe a um único
+// funcionário (UI de drill-down futura).
+//
+// IMPORTANTE: `dia` em jornada_funcionario é `date` (não timestamptz). O
+// filtro precisa de YYYY-MM-DD, não ISO completo. Fatiamos `iniIso.slice(0,10)`.
+// =============================================================================
+export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelado = false
+    async function run() {
+      setLoading(true); setError(null)
+      try {
+        const iniDate = iniIso.slice(0, 10)
+        const fimDate = fimIso.slice(0, 10)
+
+        let query = supabase
+          .from('jornada_funcionario')
+          .select(`
+            funcionario_id, dia, total_horas_trabalhadas, saldo_horas, status,
+            funcionario:funcionario_id ( id, apelido, papel )
+          `)
+          .is('deleted_at', null)
+          .gte('dia', iniDate)
+          .lte('dia', fimDate)
+
+        if (funcionarioId) query = query.eq('funcionario_id', funcionarioId)
+
+        const { data: jornadas, error: errJ } = await query
+        if (errJ) throw errJ
+
+        if (cancelado) return
+
+        // Agrega por funcionário
+        const porFunc = {}
+        for (const j of jornadas || []) {
+          const fid = j.funcionario_id
+          if (!fid) continue
+          if (!porFunc[fid]) {
+            porFunc[fid] = {
+              id: fid,
+              nome: j.funcionario?.apelido || 'desconhecido',
+              papel: j.funcionario?.papel || null,
+              totalHorasMin: 0,
+              faltas: 0,
+              faltasJustificadas: 0,
+              saldoHorasMin: 0,
+              diasComputados: 0,
+            }
+          }
+          const f = porFunc[fid]
+          f.totalHorasMin += intervalToMinutes(j.total_horas_trabalhadas)
+          f.saldoHorasMin += intervalToMinutes(j.saldo_horas)
+          if (j.status === 'falta') f.faltas += 1
+          if (j.status === 'falta_justificada') f.faltasJustificadas += 1
+          f.diasComputados += 1
+        }
+
+        const lista = Object.values(porFunc).map(f => ({
+          ...f,
+          totalHoras: fmtHorasMin(f.totalHorasMin),
+          saldoHoras: fmtHorasMin(f.saldoHorasMin),
+        }))
+        // Ordena por mais horas trabalhadas (top performer primeiro)
+        lista.sort((a, b) => b.totalHorasMin - a.totalHorasMin)
+
+        const totalHorasMin = lista.reduce((s, f) => s + f.totalHorasMin, 0)
+        const totalFaltas   = lista.reduce((s, f) => s + f.faltas, 0)
+        const totalDias     = lista.reduce((s, f) => s + f.diasComputados, 0)
+        const topPerformer  = lista[0] || null
+
+        setData({
+          porFuncionario: lista,
+          totalHorasMin,
+          totalHoras: fmtHorasMin(totalHorasMin),
+          totalFaltas,
+          totalDias,
+          totalFuncionarios: lista.length,
+          topPerformer,
+        })
+      } catch (e) {
+        if (!cancelado) setError(e?.message || 'Erro ao carregar relatório de ponto')
+      } finally {
+        if (!cancelado) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelado = true }
+  }, [iniIso, fimIso, funcionarioId])
+
+  return { data, loading, error }
+}
+
 // Re-export utils
-export { CATEGORIA_POR_ID, fmtDuracao }
+export { CATEGORIA_POR_ID, fmtDuracao, fmtHorasMin, intervalToMinutes }
