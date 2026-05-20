@@ -1,8 +1,11 @@
 // idemaq-src/pages/Relatorios.jsx
-// Tela de Relatórios — hub + 6 relatórios (Módulo 08 do plano).
-// MVP visual: usa Sparkline (já existe) e barras SVG inline pra evitar
-// Chart.js neste primeiro passo. IA financeira fica como placeholder.
-// Visível pro dono (Toni); RLS no banco vai definir o que cada papel vê.
+// Tela de Relatórios — hub + 6 relatórios + Ponto (Módulo 08).
+//
+// 4 relatórios reais (Geral / OS Operacional / Estoque / Vendas): consomem
+// hooks de `useRelatorios.js` que agregam Supabase no JS.
+// 2 com IA (DRE / Funcionários): ainda mock — dependem da edge function do
+// Claude API + (no caso do DRE) do schema parte 2 (`lancamento_financeiro`).
+// Visível só pro dono — rota `/relatorios` envolvida em <AdminOnly> no App.jsx.
 
 import React, { useState, useMemo } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
@@ -14,6 +17,15 @@ import {
   useToast,
 } from '../components/ui'
 import RelatorioPontoDono from '../components/ponto/RelatorioPontoDono'
+import {
+  computeRange,
+  useRelatorioGeral,
+  useRelatorioOperacional,
+  useRelatorioEstoque,
+  useRelatorioVendas,
+  fmtDuracao,
+} from '../hooks/useRelatorios'
+import { useRelatorioIA } from '../hooks/useRelatorioIA'
 
 // === Catálogo dos 7 relatórios ===
 const RELATORIOS = [
@@ -33,9 +45,9 @@ const PERIODOS = [
   { id:'ano',       label:'Ano' },
 ]
 
-// === Dados mock — todos coerentes com R$ 17.500/mês · 50 OS/mês · ticket R$ 350 ===
+// Sparkline 12m vem do hook real (`useRelatorioGeral`). Mantemos só o fallback
+// abaixo pros relatórios em mock (DRE/Funcionários), pra evitar tela vazia.
 const FAT_12M = [13800, 14200, 15100, 15600, 14900, 16200, 17000, 17500, 16800, 17900, 18200, 17500]
-const OS_12M  = [42, 45, 47, 48, 46, 50, 51, 50, 49, 52, 53, 50]
 
 const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
 
@@ -61,6 +73,13 @@ export default function Relatorios({ T, dark }) {
   const [dataFim, setDataFim] = useState('') // 'YYYY-MM-DD'
 
   const temCustom = !!(mesEsp || dataIni || dataFim)
+
+  // Range ISO do período atual — passado pros hooks reais.
+  // Recalcula só quando as deps mudam, evita refetch em qualquer render.
+  const { iniIso, fimIso } = useMemo(
+    () => computeRange(periodo, mesEsp, dataIni, dataFim),
+    [periodo, mesEsp, dataIni, dataFim],
+  )
 
   function escolherPreset(p) {
     setPeriodo(p)
@@ -126,8 +145,17 @@ export default function Relatorios({ T, dark }) {
                 variant="segmented"
               />
               <div style={{ flex: 1, fontSize: 11, color: T.textMuted, textAlign: 'right' }}>
-                <i className="ti ti-info-circle" style={{ marginRight: 4 }} aria-hidden="true" />
-                Dados de exemplo — integração com Supabase virá nos próximos chats
+                {(relAtivo === 'financeiro' || relAtivo === 'funcionarios') ? (
+                  <>
+                    <i className="ti ti-sparkles" style={{ marginRight: 4 }} aria-hidden="true" />
+                    Análise via Claude API — em breve. Dados ainda são de exemplo.
+                  </>
+                ) : (
+                  <>
+                    <i className="ti ti-database" style={{ marginRight: 4 }} aria-hidden="true" />
+                    Dados em tempo real do Supabase
+                  </>
+                )}
               </div>
             </div>
 
@@ -145,12 +173,12 @@ export default function Relatorios({ T, dark }) {
         <RelatoriosHub T={T} dark={dark} onAbrir={setRelAtivo} />
       ) : (
         <>
-          {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} periodo={periodo} />}
-          {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} periodo={periodo} />}
-          {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} periodo={periodo} />}
-          {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} periodo={periodo} />}
-          {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} periodo={periodo} />}
-          {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} periodo={periodo} />}
+          {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} />}
+          {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} />}
           {relAtivo === 'ponto'        && <RelatorioPontoDono    T={T} dark={dark} />}
         </>
       )}
@@ -210,12 +238,19 @@ function RelatoriosHub({ T, dark, onAbrir }) {
 }
 
 // =============================================================================
-// GERAL
+// GERAL — dados reais
 // =============================================================================
-function RelatorioGeral({ T, dark, periodo }) {
+function RelatorioGeral({ T, dark, iniIso, fimIso }) {
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
   const amarelo = corEtapa('yellow', dark)
+  const { data, loading, error } = useRelatorioGeral({ iniIso, fimIso })
+
+  if (loading) return <RelatorioLoading T={T} />
+  if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
+  if (!data)   return null
+
+  const tipoCores = { atendimento: azul, fabricacao: amarelo, venda: azulClaro }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -224,25 +259,30 @@ function RelatorioGeral({ T, dark, periodo }) {
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
         gap: 12,
       }}>
-        <KPI T={T} dark={dark} label="Faturamento" valor={fmtBRL(17500)} delta={4} cor={azul}
-          sparkData={FAT_12M} sparkCor={azul} icon="ti-cash" />
-        <KPI T={T} dark={dark} label="OS no período" valor={50} delta={2} cor={corHero(dark)}
-          sparkData={OS_12M} sparkCor={azulClaro} icon="ti-clipboard-list" />
-        <KPI T={T} dark={dark} label="Ticket médio" valor={fmtBRL(350)} delta={1} cor={corHero(dark)}
+        <KPI T={T} dark={dark} label="Faturamento" valor={fmtBRL(data.faturamento)} cor={azul}
+          sparkData={data.sparkFat} sparkCor={azul} icon="ti-cash" />
+        <KPI T={T} dark={dark} label="OS concluídas" valor={data.osConcluidas} cor={corHero(dark)}
+          sparkData={data.sparkOS} sparkCor={azulClaro} icon="ti-clipboard-list" />
+        <KPI T={T} dark={dark} label="Ticket médio" valor={fmtBRL(data.ticketMedio)} cor={corHero(dark)}
           icon="ti-receipt" />
-        <KPI T={T} dark={dark} label="Margem operacional" valor="34%" delta={2} cor={azul}
-          icon="ti-percentage" />
+        <KPI T={T} dark={dark} label="OS abertas no período" valor={data.totalAbertas} cor={azul}
+          icon="ti-folder-plus" />
       </div>
 
       <Card T={T} dark={dark}>
         <SectionHeader T={T} dark={dark} icon="ti-chart-bar" mb={14}>
           Distribuição por tipo de OS
         </SectionHeader>
-        <BarrasCategoria T={T} dark={dark} dados={[
-          { label: 'Atendimento', valor: 38, cor: azul },
-          { label: 'Fabricação',  valor:  8, cor: amarelo },
-          { label: 'Venda',       valor:  4, cor: azulClaro },
-        ]} total={50} />
+        {data.totalDistribuicao > 0 ? (
+          <BarrasCategoria T={T} dark={dark}
+            dados={data.porTipo.map(t => ({ label: t.label, valor: t.valor, cor: tipoCores[t.id] || azul }))}
+            total={data.totalDistribuicao}
+          />
+        ) : (
+          <EmptyState T={T} compact icon="ti-chart-bar"
+            title="Sem OS abertas neste período"
+            description="Ajuste o filtro acima pra ver outro intervalo." />
+        )}
       </Card>
 
       <InsightIA T={T} dark={dark} disponivel={false} />
@@ -251,12 +291,17 @@ function RelatorioGeral({ T, dark, periodo }) {
 }
 
 // =============================================================================
-// OS OPERACIONAL
+// OS OPERACIONAL — dados reais
 // =============================================================================
-function RelatorioOperacional({ T, dark, periodo }) {
+function RelatorioOperacional({ T, dark, iniIso, fimIso }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
+  const { data, loading, error } = useRelatorioOperacional({ iniIso, fimIso })
+
+  if (loading) return <RelatorioLoading T={T} />
+  if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
+  if (!data)   return null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -264,52 +309,56 @@ function RelatorioOperacional({ T, dark, periodo }) {
         display: 'grid', gap: 12,
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
       }}>
-        <KPI T={T} dark={dark} label="Lead time médio" valor="3d 6h" delta={-12} cor={azul}
-          icon="ti-clock" deltaInverso />
-        <KPI T={T} dark={dark} label="OS concluídas" valor={46} delta={5} cor={corHero(dark)}
+        <KPI T={T} dark={dark} label="Lead time médio" valor={fmtDuracao(data.leadTimeSegs)} cor={azul}
+          icon="ti-clock" />
+        <KPI T={T} dark={dark} label="OS concluídas" valor={data.osConcluidas} cor={corHero(dark)}
           icon="ti-circle-check" />
-        <KPI T={T} dark={dark} label="Recusadas" valor={4} delta={-1} cor={amarelo}
-          icon="ti-x" deltaInverso />
-        <KPI T={T} dark={dark} label="Retrabalho" valor="6%" delta={2} cor={vermelho}
-          icon="ti-rotate-clockwise" deltaInverso />
+        <KPI T={T} dark={dark} label="Recusadas" valor={data.osRecusadas} cor={amarelo}
+          icon="ti-x" />
+        <KPI T={T} dark={dark} label="Retrabalho (garantia)" valor={`${data.pctRetrabalho}%`} cor={vermelho}
+          icon="ti-rotate-clockwise" />
       </div>
 
       <Card T={T} dark={dark}>
         <SectionHeader T={T} dark={dark} icon="ti-hourglass" mb={14}>
           Tempo médio por etapa
         </SectionHeader>
-        <BarrasHorizontais T={T} dark={dark} dados={[
-          { label: 'Aguardando agendamento', valor: '1d 4h', pct: 22 },
-          { label: 'Agendado',               valor: '0d 6h', pct: 5 },
-          { label: 'Recebido',               valor: '0d 8h', pct: 7 },
-          { label: 'Diagnóstico',            valor: '1d 2h', pct: 18 },
-          { label: 'Orçamento',              valor: '0d 18h', pct: 12 },
-          { label: 'Em oficina',             valor: '1d 12h', pct: 25 },
-          { label: 'Teste final',            valor: '0d 4h', pct: 4 },
-          { label: 'Entrega',                valor: '0d 12h', pct: 7 },
-        ]} />
+        {data.tempoMedioPorEtapa.length > 0 ? (
+          <BarrasHorizontais T={T} dark={dark} dados={data.tempoMedioPorEtapa} />
+        ) : (
+          <EmptyState T={T} compact icon="ti-hourglass"
+            title="Sem movimentações no período"
+            description="OS precisam mudar de etapa pra gerar este dado." />
+        )}
       </Card>
 
       <Card T={T} dark={dark}>
         <SectionHeader T={T} dark={dark} icon="ti-alert-triangle" mb={14}>
           Gargalos identificados
         </SectionHeader>
-        <ListaSimples T={T} dark={dark} itens={[
-          { titulo: 'Em oficina', detalhe: 'Concentra 25% do lead time', badge: 'Crítico', badgeVar: 'vermelho' },
-          { titulo: 'Aguardando agendamento', detalhe: 'OS ficam paradas 1d4h em média', badge: 'Atenção', badgeVar: 'amarelo' },
-          { titulo: 'Diagnóstico', detalhe: 'Tempo aceitável mas com picos', badge: 'OK', badgeVar: 'azul' },
-        ]} />
+        {data.gargalos.length > 0 ? (
+          <ListaSimples T={T} dark={dark} itens={data.gargalos} />
+        ) : (
+          <EmptyState T={T} compact icon="ti-alert-triangle"
+            title="Sem gargalos detectados"
+            description="Volume insuficiente no período pra identificar pontos críticos." />
+        )}
       </Card>
     </div>
   )
 }
 
 // =============================================================================
-// ESTOQUE
+// ESTOQUE — dados reais
 // =============================================================================
-function RelatorioEstoque({ T, dark, periodo }) {
+function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
+  const { data, loading, error } = useRelatorioEstoque({ iniIso, fimIso })
+
+  if (loading) return <RelatorioLoading T={T} />
+  if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
+  if (!data)   return null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -317,48 +366,67 @@ function RelatorioEstoque({ T, dark, periodo }) {
         display: 'grid', gap: 12,
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
       }}>
-        <KPI T={T} dark={dark} label="Itens em estoque" valor={53} delta={-3} cor={corHero(dark)}
+        <KPI T={T} dark={dark} label="Itens em estoque" valor={data.totalItens} cor={corHero(dark)}
           icon="ti-package" />
-        <KPI T={T} dark={dark} label="Valor parado" valor={fmtBRL(4280)} delta={-5} cor={azul}
+        <KPI T={T} dark={dark} label="Valor parado" valor={fmtBRL(data.valorParado)} cor={azul}
           icon="ti-cash" />
-        <KPI T={T} dark={dark} label="Estoque baixo" valor={3} delta={1} cor={amarelo}
-          icon="ti-alert-triangle" deltaInverso />
-        <KPI T={T} dark={dark} label="Giro médio" valor="42d" delta={-8} cor={azul}
-          icon="ti-rotate" deltaInverso />
+        <KPI T={T} dark={dark} label="Estoque baixo" valor={data.estoqueBaixo} cor={amarelo}
+          icon="ti-alert-triangle" />
+        <KPI T={T} dark={dark} label="SKUs ativos" valor={data.totalSkus} cor={azul}
+          icon="ti-tag" />
       </div>
 
       <Card T={T} dark={dark}>
         <SectionHeader T={T} dark={dark} icon="ti-trending-up" mb={14}>
           Peças mais usadas no período
         </SectionHeader>
-        <BarrasHorizontais T={T} dark={dark} dados={[
-          { label: 'Capa Brastemp 12kg',         valor: '18 un', pct: 95 },
-          { label: 'Filtro pluma LG 11kg',       valor: '15 un', pct: 79 },
-          { label: 'Mangueira admissão Consul',  valor: '12 un', pct: 63 },
-          { label: 'Correia transmissão',        valor:  '8 un', pct: 42 },
-          { label: 'Capacitor 8μF',              valor:  '6 un', pct: 31 },
-        ]} />
+        {data.pecasMaisUsadas.length > 0 ? (
+          <BarrasHorizontais T={T} dark={dark} dados={data.pecasMaisUsadas} />
+        ) : (
+          <EmptyState T={T} compact icon="ti-package"
+            title="Sem consumo registrado no período"
+            description="Itens consumidos em OS aparecem aqui — verifique se o período cobre OS com peças baixadas." />
+        )}
       </Card>
 
       <Card T={T} dark={dark}>
         <SectionHeader T={T} dark={dark} icon="ti-alert-octagon" mb={14}>
-          Peças paradas (sem giro)
+          Peças paradas (sem giro no período)
         </SectionHeader>
-        <ListaSimples T={T} dark={dark} itens={[
-          { titulo: 'Placa eletrônica LG WD-1014', detalhe: 'Sem saída há 87 dias · custo R$ 280', badge: '87d', badgeVar: 'amarelo' },
-          { titulo: 'Termostato Brastemp 220V',     detalhe: 'Sem saída há 45 dias · custo R$ 55',  badge: '45d', badgeVar: 'azul' },
-        ]} />
+        {data.pecasParadas.length > 0 ? (
+          <ListaSimples T={T} dark={dark} itens={data.pecasParadas.map(p => ({
+            titulo: p.nome,
+            detalhe: `${p.qtd} un em estoque · capital parado ${fmtBRL(p.custoTotal)}`,
+            badge: p.qtd > 5 ? 'Alto' : 'Médio',
+            badgeVar: p.qtd > 5 ? 'amarelo' : 'azul',
+          }))} />
+        ) : (
+          <EmptyState T={T} compact icon="ti-circle-check"
+            title="Sem peças paradas"
+            description={data.temConsumo
+              ? 'Todas as peças com saldo tiveram movimentação.'
+              : 'Sem consumo no período — abra um período maior pra avaliar.'} />
+        )}
       </Card>
     </div>
   )
 }
 
 // =============================================================================
-// VENDAS
+// VENDAS — dados reais
 // =============================================================================
-function RelatorioVendas({ T, dark, periodo }) {
+function RelatorioVendas({ T, dark, iniIso, fimIso }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
+  const azulClaro = corEtapa('blueLight', dark)
+  const { data, loading, error } = useRelatorioVendas({ iniIso, fimIso })
+
+  if (loading) return <RelatorioLoading T={T} />
+  if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
+  if (!data)   return null
+
+  const coresTipo = { servico: azul, peca: azulClaro }
+  const totalCat = data.servicosMaisVendidos.reduce((s, r) => s + r.valor, 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -366,13 +434,13 @@ function RelatorioVendas({ T, dark, periodo }) {
         display: 'grid', gap: 12,
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
       }}>
-        <KPI T={T} dark={dark} label="Conversão orçamento" valor="88%" delta={3} cor={azul}
+        <KPI T={T} dark={dark} label="Conversão orçamento" valor={`${data.conversaoOrcamento}%`} cor={azul}
           icon="ti-target-arrow" />
-        <KPI T={T} dark={dark} label="Ticket médio" valor={fmtBRL(350)} delta={4} cor={corHero(dark)}
-          sparkData={[320,330,340,335,345,350]} sparkCor={azul} icon="ti-receipt" />
-        <KPI T={T} dark={dark} label="Máquinas vendidas" valor={4} delta={2} cor={corHero(dark)}
+        <KPI T={T} dark={dark} label="Ticket médio" valor={fmtBRL(data.ticketMedio)} cor={corHero(dark)}
+          icon="ti-receipt" />
+        <KPI T={T} dark={dark} label="Máquinas vendidas" valor={data.maquinasVendidas} cor={corHero(dark)}
           icon="ti-device-washing-machine" />
-        <KPI T={T} dark={dark} label="Receita máquinas" valor={fmtBRL(2600)} delta={2} cor={azul}
+        <KPI T={T} dark={dark} label="Receita máquinas" valor={fmtBRL(data.receitaMaquinas)} cor={azul}
           icon="ti-cash" />
       </div>
 
@@ -380,35 +448,48 @@ function RelatorioVendas({ T, dark, periodo }) {
         <SectionHeader T={T} dark={dark} icon="ti-funnel" mb={14}>
           Funil de OS
         </SectionHeader>
-        <BarrasHorizontais T={T} dark={dark} dados={[
-          { label: 'Agendadas',  valor: '52 OS', pct: 100 },
-          { label: 'Recebidas',  valor: '50 OS', pct: 96 },
-          { label: 'Orçadas',    valor: '47 OS', pct: 90 },
-          { label: 'Aprovadas',  valor: '42 OS', pct: 81 },
-          { label: 'Entregues',  valor: '40 OS', pct: 77 },
-          { label: 'Pagas',      valor: '38 OS', pct: 73 },
-        ]} />
+        {data.totalAbertas > 0 ? (
+          <BarrasHorizontais T={T} dark={dark} dados={data.funil} />
+        ) : (
+          <EmptyState T={T} compact icon="ti-funnel"
+            title="Sem OS abertas no período"
+            description="Ajuste o filtro pra ver o funil." />
+        )}
       </Card>
 
       <Card T={T} dark={dark}>
         <SectionHeader T={T} dark={dark} icon="ti-star" mb={14}>
-          Serviços mais vendidos
+          Itens mais vendidos no período
         </SectionHeader>
-        <BarrasCategoria T={T} dark={dark} dados={[
-          { label: 'Manutenção',         valor: 32, cor: azul },
-          { label: 'Limpeza',            valor: 28, cor: corEtapa('blueLight', dark) },
-          { label: 'Limpeza combinada',  valor: 14, cor: amarelo },
-          { label: 'Venda de máquina',   valor:  4, cor: corEtapa('green', dark) },
-        ]} total={78} />
+        {data.servicosMaisVendidos.length > 0 ? (
+          <BarrasCategoria T={T} dark={dark}
+            dados={data.servicosMaisVendidos.map(r => ({
+              label: r.label,
+              valor: r.valor,
+              cor: coresTipo[r.tipo] || amarelo,
+            }))}
+            total={totalCat}
+          />
+        ) : (
+          <EmptyState T={T} compact icon="ti-receipt"
+            title="Sem itens vendidos no período"
+            description="Itens de serviço ou peça em OS criadas no período aparecem aqui." />
+        )}
       </Card>
     </div>
   )
 }
 
 // =============================================================================
-// FINANCEIRO (DRE) + IA
+// FINANCEIRO (DRE) + IA — mock
+// TODO[ia]: trocar dados deste relatório por:
+//   1) Query real em `lancamento_financeiro` (depende do schema parte 2 — sql/01)
+//   2) Edge function que chame a Claude API (claude-sonnet-4-6 padrão,
+//      claude-opus-4-7 pra análises profundas) com prompt caching ativado.
+//      Front NÃO chama a Claude API direto — vaza a chave.
+//   Ver `contexto-relatorios.md` seção 4.
 // =============================================================================
-function RelatorioFinanceiro({ T, dark, periodo }) {
+function RelatorioFinanceiro({ T, dark }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const verde = corEtapa('green', dark)
@@ -417,6 +498,20 @@ function RelatorioFinanceiro({ T, dark, periodo }) {
   const despesas = 11540
   const lucro = receitas - despesas
   const margem = Math.round((lucro / receitas) * 100)
+
+  const { markdown, loading, error, gerar } = useRelatorioIA()
+  const dadosIA = {
+    periodo: 'mock (DRE de exemplo — schema parte 2 pendente)',
+    receitas, despesas, lucro, margem,
+    receitasDetalhe: {
+      manutencao: 5920, limpeza: 5180, vendaMaquinas: 2600, pecas: 2400, taxaDiagnostico: 1400,
+    },
+    despesasDetalhe: {
+      funcionarios: 3300, pecasML: 2840, combustivel: 680, trafegoPago: 500,
+      utilidades: 890, impostos: 2400, outras: 930,
+    },
+    meta: 20000,
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -457,16 +552,21 @@ function RelatorioFinanceiro({ T, dark, periodo }) {
         ]} />
       </Card>
 
-      <InsightIA T={T} dark={dark} disponivel={false}
-        previewTexto="Quando ativarmos a integração com a Claude API, este bloco vai trazer análise dos números do DRE — comparação com o mês passado, alertas sobre categorias em desvio e sugestões pra atingir a meta de R$ 20.000." />
+      <InsightIA T={T} dark={dark}
+        markdown={markdown} loading={loading} error={error}
+        onGerar={() => gerar('dre', dadosIA)}
+        previewTexto="A IA vai analisar receitas, despesas e margem — destacando o que puxou pra cima, o que puxou pra baixo e ações pra atingir a meta de R$ 20.000." />
     </div>
   )
 }
 
 // =============================================================================
-// FUNCIONÁRIOS + IA
+// FUNCIONÁRIOS + IA — mock
+// TODO[ia]: trocar dados por agregação real de `os_historico` por
+//   funcionario_id (junto com `usuarios`) + edge function Claude API
+//   pra análise individual. Ver `contexto-relatorios.md` seção 4.
 // =============================================================================
-function RelatorioFuncionarios({ T, dark, periodo }) {
+function RelatorioFuncionarios({ T, dark }) {
   const azul = corEtapa('blue', dark)
 
   const funcs = [
@@ -474,6 +574,8 @@ function RelatorioFuncionarios({ T, dark, periodo }) {
     { nome: 'Alessandro', papel: 'Logística', osTotal: 38, etapasFeitas:  76, tempoMedio: '0d 6h', pontuacao: 88 },
     { nome: 'Guilherme',  papel: 'Oficina',   osTotal: 42, etapasFeitas: 112, tempoMedio: '1d 4h', pontuacao: 91 },
   ]
+
+  const { markdown, loading, error, gerar } = useRelatorioIA()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -527,8 +629,10 @@ function RelatorioFuncionarios({ T, dark, periodo }) {
         ))}
       </Card>
 
-      <InsightIA T={T} dark={dark} disponivel={false}
-        previewTexto="Aqui virá análise individual por funcionário (pontos fortes, etapas que demoram mais, sugestões de treinamento) gerada pela IA a partir do histórico de os_historico." />
+      <InsightIA T={T} dark={dark}
+        markdown={markdown} loading={loading} error={error}
+        onGerar={() => gerar('funcionarios', { equipe: funcs })}
+        previewTexto="A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números da tabela acima." />
     </div>
   )
 }
@@ -788,9 +892,17 @@ function DRELinhas({ T, dark, linhas }) {
   )
 }
 
-function InsightIA({ T, dark, disponivel = false, previewTexto }) {
+function InsightIA({ T, dark, disponivel = false, previewTexto, markdown, loading, error, onGerar }) {
   const azulClaro = corEtapa('blueLight', dark)
+  const vermelho = corEtapa('red', dark)
   const cor = (d, c) => dark ? d : c
+
+  // Estado do badge: pronto > gerando > erro > em breve / ativo
+  const statusLabel = markdown ? 'Pronto'
+    : loading ? 'Gerando…'
+    : error ? 'Erro'
+    : (disponivel || onGerar) ? 'Pronto pra rodar' : 'Em breve'
+
   return (
     <Card T={T} dark={dark} accent={azulClaro}
       style={{ background: cor('#0d2035', '#e6f1fb') + '40' }}>
@@ -804,20 +916,181 @@ function InsightIA({ T, dark, disponivel = false, previewTexto }) {
         }}>
           <i className="ti ti-sparkles" style={{ fontSize: 20, color: azulClaro }} aria-hidden="true" />
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: corHero(dark) }}>
               Insight da IA
             </span>
-            <Badge variant="neutro" dark={dark} sm>
-              {disponivel ? 'Ativo' : 'Em breve'}
-            </Badge>
+            <Badge variant="neutro" dark={dark} sm>{statusLabel}</Badge>
+            <span style={{ fontSize: 10.5, color: T.textMuted }}>
+              <i className="ti ti-cpu" style={{ marginRight: 3 }} aria-hidden="true" />
+              claude-opus-4-7
+            </span>
           </div>
-          <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.5 }}>
-            {previewTexto || 'A integração com a Claude API ainda não foi configurada nesta tela. Quando ativada, esta seção trará análise contextual dos números — comparações, alertas e sugestões.'}
-          </div>
+
+          {markdown ? (
+            <MarkdownView T={T} dark={dark} texto={markdown} />
+          ) : loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: T.textSecondary, fontSize: 12.5, padding: '6px 0' }}>
+              <i className="ti ti-loader-2" style={{ fontSize: 16, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
+              Gerando análise com Claude API…
+            </div>
+          ) : error ? (
+            <div style={{ fontSize: 12.5, color: vermelho, lineHeight: 1.5 }}>
+              <i className="ti ti-alert-triangle" style={{ marginRight: 4 }} aria-hidden="true" />
+              {error}
+              {onGerar && (
+                <div style={{ marginTop: 8 }}>
+                  <Button T={T} dark={dark} variant="secondary" size="sm" iconLeft="ti-refresh" onClick={onGerar}>
+                    Tentar de novo
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.5, marginBottom: onGerar ? 10 : 0 }}>
+                {previewTexto || 'A integração com a Claude API ainda não foi configurada nesta tela. Quando ativada, esta seção trará análise contextual dos números — comparações, alertas e sugestões.'}
+              </div>
+              {onGerar && (
+                <Button T={T} dark={dark} variant="primary" size="sm" iconLeft="ti-sparkles" onClick={onGerar}>
+                  Gerar análise agora
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </div>
+    </Card>
+  )
+}
+
+// Renderiza um subset de Markdown (## h2, **negrito**, listas - / *, parágrafos).
+// Mantemos inline pra não adicionar dependência (regra: sem npm i sem aprovação).
+function MarkdownView({ T, dark, texto }) {
+  const azul = corEtapa('blue', dark)
+  const blocos = parseMarkdown(texto || '')
+
+  return (
+    <div style={{
+      fontSize: 12.5, color: T.textPrimary, lineHeight: 1.55,
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      {blocos.map((b, i) => {
+        if (b.tipo === 'h2') {
+          return (
+            <div key={i} style={{
+              fontSize: 13.5, fontWeight: 700, color: corHero(dark),
+              borderBottom: `1px solid ${T.border}`,
+              paddingBottom: 4, marginTop: i === 0 ? 0 : 6,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <i className="ti ti-point-filled" style={{ fontSize: 10, color: azul }} aria-hidden="true" />
+              {renderInline(b.texto)}
+            </div>
+          )
+        }
+        if (b.tipo === 'h3') {
+          return (
+            <div key={i} style={{ fontSize: 12.5, fontWeight: 700, color: corHero(dark), marginTop: 4 }}>
+              {renderInline(b.texto)}
+            </div>
+          )
+        }
+        if (b.tipo === 'ul') {
+          return (
+            <ul key={i} style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {b.itens.map((it, j) => (
+                <li key={j} style={{ color: T.textSecondary }}>
+                  {renderInline(it)}
+                </li>
+              ))}
+            </ul>
+          )
+        }
+        return (
+          <div key={i} style={{ color: T.textSecondary }}>
+            {renderInline(b.texto)}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function parseMarkdown(md) {
+  const linhas = md.replace(/\r\n/g, '\n').split('\n')
+  const blocos = []
+  let atual = null
+  const fechar = () => { if (atual) { blocos.push(atual); atual = null } }
+  for (const raw of linhas) {
+    const linha = raw.replace(/\s+$/g, '')
+    if (linha.startsWith('## ')) { fechar(); blocos.push({ tipo: 'h2', texto: linha.slice(3) }); continue }
+    if (linha.startsWith('### ')) { fechar(); blocos.push({ tipo: 'h3', texto: linha.slice(4) }); continue }
+    if (linha.startsWith('# ')) { fechar(); blocos.push({ tipo: 'h2', texto: linha.slice(2) }); continue }
+    const liMatch = linha.match(/^\s*[-*]\s+(.*)$/)
+    if (liMatch) {
+      if (!atual || atual.tipo !== 'ul') { fechar(); atual = { tipo: 'ul', itens: [] } }
+      atual.itens.push(liMatch[1])
+      continue
+    }
+    if (linha.trim() === '') { fechar(); continue }
+    if (!atual || atual.tipo !== 'p') { fechar(); atual = { tipo: 'p', texto: '' } }
+    atual.texto += (atual.texto ? ' ' : '') + linha.trim()
+  }
+  fechar()
+  return blocos
+}
+
+// Aplica **negrito** e `código` mantendo segurança (sem dangerouslySetInnerHTML).
+function renderInline(texto) {
+  if (!texto) return null
+  const partes = []
+  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g
+  let ultimo = 0
+  let m
+  let k = 0
+  while ((m = regex.exec(texto)) !== null) {
+    if (m.index > ultimo) partes.push(<span key={`t${k++}`}>{texto.slice(ultimo, m.index)}</span>)
+    const token = m[0]
+    if (token.startsWith('**')) {
+      partes.push(<strong key={`b${k++}`} style={{ fontWeight: 700 }}>{token.slice(2, -2)}</strong>)
+    } else {
+      partes.push(<code key={`c${k++}`} style={{
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontSize: '0.92em', padding: '1px 5px', borderRadius: 4,
+        background: 'rgba(127,127,127,0.15)',
+      }}>{token.slice(1, -1)}</code>)
+    }
+    ultimo = m.index + token.length
+  }
+  if (ultimo < texto.length) partes.push(<span key={`t${k}`}>{texto.slice(ultimo)}</span>)
+  return partes
+}
+
+// =============================================================================
+// Estados auxiliares (loading / erro) usados pelos 4 relatórios reais
+// =============================================================================
+function RelatorioLoading({ T }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 48, color: T.textMuted, fontSize: 13, gap: 8,
+    }}>
+      <i className="ti ti-loader-2" style={{ fontSize: 18, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
+      Carregando dados…
+    </div>
+  )
+}
+
+function RelatorioErro({ T, dark, msg }) {
+  return (
+    <Card T={T} dark={dark} accent={corEtapa('red', dark)}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: corEtapa('red', dark) }}>
+        <i className="ti ti-alert-triangle" style={{ fontSize: 20 }} aria-hidden="true" />
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Falha ao carregar relatório</span>
+      </div>
+      <div style={{ marginTop: 6, fontSize: 12, color: T.textSecondary }}>{msg}</div>
     </Card>
   )
 }
