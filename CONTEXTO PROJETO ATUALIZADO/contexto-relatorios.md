@@ -62,8 +62,8 @@
 
 ### `useRelatorioEstoque({ iniIso, fimIso })`
 - Snapshot atual: total de itens (soma `qtd_atual`), valor parado (`qtd × custo`), SKUs ativos, peças em estoque baixo (`qtd_atual ≤ qtd_minima > 0`)
-- **Consumo no período** vem de `os_item` com `tipo='peca'` no `criado_em`:
-  - Top 5 peças mais usadas (group by `nome`, soma `qtd`)
+- **Consumo no período** vem de `os_item` com `peca_id IS NOT NULL` no `criado_em` (Onda 4 — antes era `tipo='peca'`, coluna removida):
+  - Top 5 peças mais usadas (group by `nome`, soma `quantidade`)
   - Peças paradas: `qtd_atual > 0` AND não aparecem em `os_item` do período (ordenado por capital parado)
 - Giro médio não calculado (sem histórico de movimentação)
 
@@ -72,7 +72,7 @@
 - Ticket médio + faturamento (das concluídas no período abertas no período)
 - Máquinas vendidas + receita máquinas (`tipo='venda'` AND `etapa='concluido'`)
 - Funil: count de OS por etapa alcançada (combina `os_historico.etapa_para` + etapa atual)
-- Top 6 itens mais vendidos (peça/serviço) — soma `qtd` em `os_item`
+- Top 6 itens mais vendidos (peça/serviço) — soma `quantidade` em `os_item` (peça = `peca_id IS NOT NULL`, serviço = `peca_id IS NULL`)
 
 ---
 
@@ -225,6 +225,19 @@ Estratégias se ficar pesado:
 // src/pages/Relatorios.jsx
 const IA_DEPLOYED = false  // ← flipar depois do deploy
 ```
+
+### #3 — Estoque e Vendas voltaram a quebrar em prod (Onda 4, 20/05/2026)
+**Causa**: schema de `os_item` mudou desde que `useRelatorios.js` foi escrito:
+- Coluna `qtd` foi renomeada pra `quantidade`
+- Coluna `tipo` foi removida (era enum `'peca'|'servico'`)
+
+`useRelatorioEstoque` e `useRelatorioVendas` selecionavam `qtd, tipo` → PostgREST devolvia `42703 column "qtd" does not exist` → hook caía pra erro → cards exibiam "Erro ao carregar".
+
+**Fix**: trocar em `src/hooks/useRelatorios.js`:
+- `qtd` → `quantidade` em todas as agregações (soma, média, top N)
+- Filtro `.eq('tipo', 'peca')` → derivar via `peca_id IS NOT NULL` (item com FK = peça; sem FK = serviço/avulso)
+
+Estoque e Vendas voltaram a puxar números reais. Geral e Operacional não tocavam `os_item`, ficaram OK o tempo todo.
 
 ---
 

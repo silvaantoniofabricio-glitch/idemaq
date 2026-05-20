@@ -26,6 +26,8 @@
 1. **Wirar `onAbrirOS` em `pages/Clientes.jsx`** — o modal já expõe a prop e a página já tem `osList` em escopo via `useOS`. Falta importar `OSDetalhe` + montar `useUsuarios` + funções `moverOS/updateOS/toggleAgPeca` (duplicação do Kanban) ou criar um wrapper read-only. Decisão a tomar com o dono.
 2. **FormClienteEdit** (substituir toast "em breve" do header do OSDetalhe)
 
+> Nota (20/05/2026): schema `cliente` real (`telefone`/`observacoes`, sem `cidade/uf/cep`) confirmado em prod via probe. Onda 1 fechada sem regressões pendentes na área.
+
 ---
 
 ## 3. Schema da tabela `cliente` (REAL — gotcha)

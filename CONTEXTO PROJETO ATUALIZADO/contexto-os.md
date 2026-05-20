@@ -46,8 +46,8 @@
 
 ## 2. Próximos passos
 
-1. **Aplicar `sql/05-schema-parte-2-checklist-falha.sql` no Supabase SQL Editor** se ainda não foi (publishable key não roda DDL). Sem isso, escritas em checklist_etapa/falha_teste falham silenciosamente.
-1b. **Aplicar `sql/07-os-itens-baixados.sql`** (mesmo motivo): adiciona `os.itens_baixados` + `os_item.peca_id` pra baixa automática de estoque. Enquanto não rodar, a baixa só loga "schema-pendente" no console — OS conclui normal mas estoque não decrementa.
+1. ✅ ~~**Aplicar `sql/05-schema-parte-2-checklist-falha.sql` no Supabase SQL Editor**~~ — **APLICADO em 19/05/2026** (Onda 2). checklist_etapa + falha_teste em produção.
+1b. **Aplicar `sql/07-os-itens-baixados.sql`** (publishable key não roda DDL): adiciona `os.itens_baixados` + `os_item.peca_id` pra baixa automática de estoque. Enquanto não rodar, a baixa só loga "schema-pendente" no console — OS conclui normal mas estoque não decrementa.
 2. **Foto da coleta → Supabase Storage privado** (`idemaq-privado/os/{id}/coleta/`). Hoje base64 em memória no jsonb local `os.pre_diagnostico.foto`. Header e AcaoRecebido leem desse mesmo jsonb.
 3. **Adicionar colunas pros campos pendentes em `os`**: `entrega_*` (data/hora/responsavel/obs), `observacoes` global (ver PENDENCIAS-ROTAS).
 4. **AcaoOrçamento → lançamento real de itens via `useOSItens.addItem/updateItem/removeItem`** (hoje ainda escreve só local).
@@ -185,6 +185,7 @@ Linha 2 do header: foto da máquina + bloco info estruturado.
 - Timeline com `border-top` separando do bloco novo
 
 ### Botão ⋮ "Mais ações" (20/05/2026)
+- ✅ **Bug de "não abria" corrigido na Onda 3 (20/05)**: dropdown voltou a abrir; problema era no handler de click-fora detectando o próprio botão como "fora".
 - Dropdown ancorado no botão (top:calc(100% + 4px), right:0, z-index:50). Fecha por ESC, click-fora e click no item (atributo `data-mais-acoes` no container)
 - 2 itens hoje:
   1. **Copiar nº da OS** — `navigator.clipboard.writeText(os.numero)` + toast

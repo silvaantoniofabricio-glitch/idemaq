@@ -14,7 +14,8 @@
 - ✅ Skeleton de 8 linhas no loading
 - ✅ 2ª query light alimenta KPIs e contagem por categoria (refletem o snapshot global mesmo quando filtrado)
 - ✅ NovaPecaModal salva via INSERT real com loading/erro inline
-- ✅ **`PecaDetalheModal` com modo edição inline (19/05/2026)**:
+- ✅ **`PecaDetalheModal` com modo edição inline (19/05/2026 → bug fix Onda 3 em 20/05/2026)**:
+  - **Bug em prod**: o botão "Editar peça" estava como **stub** mostrando toast "Módulo 06 chat 1" e não abria nada. Fix Onda 3 (20/05): trocou stub pelo form real que persiste via `usePecas.atualizar`.
   - Botão "Editar peça" alterna pra formulário (nome/SKU/fornecedor/qtds/custo/venda)
   - "Salvar" chama `salvarEdicaoPeca` em `Estoque.jsx` → `usePecas.atualizar` → UPDATE no Supabase
   - Patch enxuto: só envia campos que mudaram (`diffPatch`)

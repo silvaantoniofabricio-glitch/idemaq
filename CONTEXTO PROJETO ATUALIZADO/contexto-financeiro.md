@@ -7,12 +7,14 @@
 
 ## 1. Status atual
 
-🟡 **Bug em prod (19/05/2026 noite)**: UI mostrava ZERO lançamentos em todos filtros e KPIs em R$ 0. Causa raiz confirmada via `scripts/probe-financeiro.mjs`:
-- A tabela `lancamento_financeiro` JÁ existia em prod com **schema antigo v1** (FK `categoria_id`, `data_vencimento`, `data_pagamento`, enums de status/natureza/forma_pagamento).
-- O hook (e o SQL atualizado em 19/05) usa **schema v2** (categoria text livre, `vencimento`/`pago_em`, `taxa_pct`, sem enums).
-- SELECT do hook falhava com `42703 column "vencimento" does not exist`. O fallback de mock só dispara em builds pós-`9787a67`; em prod antes do redeploy a UI ficava simplesmente vazia.
+🟢 **Real ponta a ponta** (19-20/05/2026 — SQL 01 v2 APLICADO + hook real + 8 lançamentos seed).
 
-**Fix aplicado**: `sql/01-lancamento-financeiro.sql` virou MIGRAÇÃO FORÇADA — DROP CASCADE das 3 tabelas antigas + 4 enums + recriação no schema v2 + SEED de 8 lançamentos (3 a receber, 2 a pagar, 3 caixa). Toni cola no SQL Editor e UI passa a ler dados reais imediatamente.
+**Histórico do bug (resolvido)**: em 19/05 noite, UI mostrava ZERO lançamentos em todos filtros. Causa raiz confirmada via `scripts/probe-financeiro.mjs`:
+- A tabela `lancamento_financeiro` JÁ existia em prod com **schema antigo v1** (FK `categoria_id`, `data_vencimento`, `data_pagamento`, enums).
+- O hook usa **schema v2** (categoria text livre, `vencimento`/`pago_em`, `taxa_pct`, sem enums).
+- SELECT falhava com `42703 column "vencimento" does not exist`.
+
+**Fix aplicado e confirmado (20/05/2026)**: `sql/01-lancamento-financeiro.sql` virou MIGRAÇÃO FORÇADA — DROP CASCADE das 3 tabelas antigas + 4 enums + recriação no schema v2 + SEED de 8 lançamentos (3 a receber, 2 a pagar, 3 caixa). **SQL rodado no Supabase**, UI passou a ler dados reais. `probe-financeiro.mjs` re-rodado confirma schema v2 + 8 linhas. Banner amarelo "Schema parte 2 ainda não aplicado" não aparece mais.
 
 🟢 **`src/utils/financeiro.js` criado (19/05/2026)** — exporta `calcularD1Util()`, `calcularD1UtilISO()`, `ehFeriadoBancario()`, `ehFimDeSemana()`. Pronto pra ser consumido pela integração OS→Financeiro (taxa da maquininha em D+1 útil automática).
 
@@ -63,10 +65,11 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 - **Banner amarelo discreto** "Schema parte 2 ainda não aplicado" quando `tabelaAusente: true` — some sozinho quando o SQL roda
 
 ### O que falta
-- **Toni rodar `sql/01-lancamento-financeiro.sql`** no SQL Editor (migração v1→v2 forçada com seed). Verificar pós-execução: `SELECT count(*) FROM lancamento_financeiro;` deve retornar 8.
-- `LancamentoDetalheModal` ainda usa baixa via callback in-memory — quando SQL rodar e `usandoBanco=true`, a página já roteia pro hook real (testado via build)
+- ~~Toni rodar `sql/01-lancamento-financeiro.sql`~~ ✅ **feito 20/05/2026** (8 lançamentos seed confirmados)
+- `LancamentoDetalheModal` edição inline (hoje só placeholder — `onEditar` mostra toast)
 - `NovoLancamentoModal` (avulso/parcelado/recorrente)
 - ✅ ~~`utils/financeiro.js` (`calcularD1Util` + `ehFeriadoBancario`)~~ — **feito** (19/05/2026)
+- **Integração OS → Financeiro**: ainda não plugada — Entrega gera A Receber, Pagamento gera Caixa + Taxa em D+1 útil. Helper `calcularD1Util` pronto, falta wirar no `useOS`/`AcaoPagamento`.
 
 ### Diagnóstico (script reutilizável)
 
@@ -76,7 +79,7 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 
 ## 2. Pendências (ordem)
 
-1. **Rodar `sql/01-lancamento-financeiro.sql` no Supabase** (Toni cola no SQL Editor) — migração v1→v2 forçada + seed de 8 lançamentos. UI sai do modo demo automaticamente
+1. ✅ ~~Rodar `sql/01-lancamento-financeiro.sql` no Supabase~~ — **feito 20/05/2026** (migração v1→v2 forçada + seed de 8 lançamentos)
 2. ✅ ~~Criar hook `useFinanceiro`~~ — **feito** (refatorado 20/05/2026 pro schema esperado + filtros server-side + mock fallback)
 3. ✅ ~~Ligar `FinanceiroPage` ao hook real~~ — **feito** (commit `12f9857` + refator 20/05/2026)
 4. ✅ ~~Criar `src/utils/financeiro.js`~~ — **feito** (19/05/2026): `calcularD1Util`, `calcularD1UtilISO`, `ehFeriadoBancario`, `ehFimDeSemana`

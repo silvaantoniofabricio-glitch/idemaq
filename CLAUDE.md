@@ -218,17 +218,18 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 
 | Área | Status | Próximo passo macro |
 |---|---|---|
-| Painel (dono) | ✅ Real (Onda 1) | Mover meta R$ 20k pra `configuracoes` (Mod. 09); badge `demo` some quando SQL 01 rodar |
-| Painel Funcionários | ✅ Implementado — botão de ponto presente, ajustes pontuais | Trocar mocks (`_mocks.js`) por queries reais quando schema `ponto_registro` subir |
-| Kanban (OS) | ✅ Real + Realtime | — |
-| OSDetalhe + 10 Ações | ✅ Schema parte 2 plugado | Aplicar SQL 05 no Supabase (Toni) + foto pro Storage privado |
-| Clientes | 🟢 Real (782) | ClienteDetalheModal listar OS + commit do v3 |
-| Logística | 🟢 Real (hook + Places) | Aplicar `sql/06-rota.sql` + setar `VITE_GOOGLE_MAPS_KEY` |
-| Estoque | 🟢 Real (680) | UPDATE via modal + baixa automática |
-| Financeiro | 🟡 Mock Bling-style | Rodar SQL 01 + ligar `useFinanceiro` real |
-| Relatórios | 🟢 4 reais (Geral/Operacional/Estoque/Vendas) | DRE + Funcionários com Claude API |
-| Ponto | 🔴 Não implementado | Ler spec + criar schema + componentes |
-| Schema parte 2 | 🟡 Parcial | SQL 01 pendente; SQL 05 (checklist_etapa + falha_teste) **plugado no front 19/05 — falta Toni aplicar no Supabase SQL Editor** |
+| Painel (dono) | ✅ Real ponta a ponta | Mover meta R$ 20k pra `configuracoes` (Mod. 09) |
+| Painel Funcionários | ✅ Implementado | Trocar mocks (`_mocks.js`) por queries reais quando schema `ponto_registro` subir |
+| Kanban (OS) | ✅ Real + Realtime + Garantia + Recusada→Fabricação | — |
+| OSDetalhe + 10 Ações | ✅ Schema parte 2 aplicado e plugado | Foto pro Storage privado (idemaq-privado/os/{id}/coleta/) |
+| Clientes | ✅ Real (782) + modal lista OS | — |
+| Logística | ✅ Real (rota + Places) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
+| Estoque | ✅ Real (680) + UPDATE modal + baixa automática | — |
+| Financeiro | ✅ Real ponta a ponta (SQL 01 v2 aplicado, 8 seeds) | Integração OS→Financeiro (criar lançamento automático ao pagar OS) |
+| Relatórios | ✅ 4 reais funcionando | Deploy da edge function `relatorio-ia` pra destravar DRE + Funcionários com IA |
+| Ponto | 🔴 Não implementado | Ler spec em `idemaq-modulo-ponto-CLAUDE-CODE.md` + criar schema `ponto_registro` + componentes |
+| Schema parte 2 | ✅ Todos aplicados | sql/01 (lancamento) + sql/05 (checklist+falha) + sql/06 (rota) rodaram em 19-20/05 |
+| Env vars Vercel | 🟡 Dívida técnica | Migrar URL/anon key do `src/supabase.js` hardcoded pra `VITE_SUPABASE_*` no Vercel |
 
 ---
 

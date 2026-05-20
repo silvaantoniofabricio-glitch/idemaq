@@ -7,15 +7,19 @@
 
 ## 1. Status atual
 
-🟢 **Hook + UI ligados em modo real + AddressInput com Places** (19/05/2026).
+🟢 **Hook + UI ligados em modo real + AddressInput com Places + SQL 06 APLICADO** (19-20/05/2026).
 - `src/pages/Logistica.jsx` — UI completa, consome `useRotas`. Trata `loading`, `tabelaAusente` e `error` com estados próprios (EmptyState).
 - `src/hooks/useRotas.js` — **modo real**, lê `rota` no Supabase com JOIN em `usuarios` (motorista). Mutações `concluirParada`/`reordenarParadas` fazem UPDATE optimistic do jsonb `paradas` inteiro (com rollback em caso de erro). `criar/atualizar/excluir` (soft-delete) implementados.
 - `src/components/logistica/AddressInput.jsx` — autocomplete via Google Maps Places quando `VITE_GOOGLE_MAPS_KEY` está setada. Loader singleton, debounce 250ms, session token pra economizar quota. Fallback automático pra texto livre quando a chave não existe ou o script falha.
-- `sql/06-rota.sql` — **versionado**. **Aplicar manualmente no SQL Editor do Supabase** (publishable key não permite DDL). Enquanto não for aplicado, a página mostra estado "Tabela `rota` ainda não foi criada" e tudo segue funcionando no resto do app.
+- `sql/06-rota.sql` — ✅ **APLICADO em 19/05/2026** no SQL Editor do Supabase. Tabela `rota` em prod.
 - `scripts/verificar-tabela-rota.mjs` — verificador: `node scripts/verificar-tabela-rota.mjs` reporta se o SQL já rodou.
 
+### Bug fix Onda 4 (20/05/2026) — embed do motorista
+- **Causa raiz**: hook usava `motorista:motorista_id(id,nome)` mas a tabela `usuarios` não tem coluna `nome` — tem `apelido`. PostgREST devolvia `42703 column "nome" does not exist`, que o handler `isMissingTable()` do hook estava interpretando como **tabela ausente** → UI ficava no modo demo com banner "Tabela rota não existe", mesmo com o SQL 06 já aplicado.
+- **Fix**: trocar embed pra `motorista:motorista_id(id,apelido)` em `useRotas.js`. UI passou a listar as rotas reais.
+- **Lição registrada**: `isMissingTable()` precisa distinguir `42P01` (tabela ausente) de `42703` (coluna ausente) — não tratar tudo como ausência de schema.
+
 ### O que falta
-- **Aplicar `sql/06-rota.sql` no Supabase** (SQL Editor → cola → run). Não precisa mexer no código depois.
 - Setar `VITE_GOOGLE_MAPS_KEY` no `.env.local` (ou Vercel) pra ativar autocomplete.
 - UI de criação/edição de rota (modal — `reordenarParadas` já existe no hook)
 - Otimização de rota (Maps Directions API — futuro)
@@ -29,10 +33,11 @@
 2. ~~Hook `useRota`~~ → `useRotas.js` em modo real
 3. ~~Ligar hook real + tratar `tabelaAusente`/`loading`/`error` na página~~ → feito
 4. ~~Integração Google Maps Places no `AddressInput.jsx`~~ → feito (precisa `VITE_GOOGLE_MAPS_KEY`)
-5. **Aplicar `sql/06-rota.sql` no Supabase** (manual, via SQL Editor)
-6. UI de criação/edição de rota (drag-and-drop pra reordenar — `reordenarParadas` já existe no hook)
-7. Foto da coleta (obrigatória, com opção pular) — base64 + Storage
-8. Foto da entrega (opcional)
+5. ~~Aplicar `sql/06-rota.sql` no Supabase~~ ✅ **feito 19/05/2026**
+6. ~~Embed do motorista `nome`→`apelido`~~ ✅ **feito 20/05/2026 (Onda 4)**
+7. UI de criação/edição de rota (drag-and-drop pra reordenar — `reordenarParadas` já existe no hook)
+8. Foto da coleta (obrigatória, com opção pular) — base64 + Storage
+9. Foto da entrega (opcional)
 
 ---
 
@@ -100,7 +105,7 @@ const { rotas, loading, error, tabelaAusente,
         criar, atualizar, excluir } = useRotas({ data, motorista_id, status })
 ```
 
-- Consulta: `from('rota').select('*, motorista:motorista_id(id, nome)').is('deleted_at', null)`
+- Consulta: `from('rota').select('*, motorista:motorista_id(id, apelido)').is('deleted_at', null)` — **`apelido`, não `nome`** (tabela `usuarios` não tem `nome`). Corrigido na Onda 4 (20/05/2026).
 - Quando a tabela ainda não existe (`42P01` / "Could not find the table") → `tabelaAusente: true`, lista vazia, sem throw.
 - Mutações `concluirParada` / `reordenarParadas` fazem **UPDATE optimistic do jsonb `paradas` inteiro** (`.update({ paradas: novaLista }).eq('id', rota.id)`) com rollback em caso de erro.
 - `criar/atualizar` fazem insert/update + `fetchAll()`. `excluir` é soft-delete (`deleted_at = now()`).

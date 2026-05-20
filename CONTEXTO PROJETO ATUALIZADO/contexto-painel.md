@@ -9,11 +9,11 @@
 
 ## 1. Status atual
 
-✅ **Real ponta a ponta** (Onda 1, 19/05/2026 — `useFinanceiro` ligado).
+✅ **Real ponta a ponta** (Onda 2, 19-20/05/2026 — mocks removidos; `useFinanceiro` ligado e SQL 01 aplicado).
 
-`src/pages/Painel.jsx` consome `useOS`, `useUsuarios`, `useClientes`, `usePecas` **e `useFinanceiro`**. Faturamento, sparkline 30d, recebido hoje e fluxo de caixa anual agora vêm de `lancamento_financeiro` (não mais de `os.valor_pago`). Os componentes de `src/components/painel/` são dumb (só recebem props) — não tem mock interno.
+`src/pages/Painel.jsx` consome `useOS`, `useUsuarios`, `useClientes`, `usePecas` **e `useFinanceiro`**. Faturamento, sparkline 30d, recebido hoje e fluxo de caixa anual agora vêm de `lancamento_financeiro` real (não mais de `os.valor_pago` nem de mocks). Os componentes de `src/components/painel/` são dumb (só recebem props) — não tem mock interno.
 
-**Modo demo**: enquanto o SQL 01 não roda no Supabase, `useFinanceiro` devolve mock no mesmo shape e a tela mostra um badge `demo` discreto ao lado do faturamento — assim que o terminal `financeiro/geral` aplicar a tabela, o Painel passa a refletir caixa real sem mais mudança de código.
+**Onda 2 (19/05/2026)**: trocou todos os mocks por hooks reais — `HeroFaturamento` usa `useFinanceiro` real, `PipelineOS`/KPIs usam `useOS`, `AlertasCriticos` cruzam `useOS + usePecas`. Mock fallback de `useFinanceiro` (badge `demo`) só dispara se o SQL 01 não estiver aplicado — em prod, com SQL 01 já rodado, o badge nunca aparece.
 
 ### Componentes (`src/components/painel/`)
 - `HeroFaturamento` — faturamento do mês + sparkline 30d + progress da meta. Labels de data agora vêm calculados (não mais "abr" hardcoded).
