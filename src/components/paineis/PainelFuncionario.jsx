@@ -21,7 +21,8 @@ export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
   const funcionario = FUNCIONARIOS_PONTO.find(f => f.id === funcId) || FUNCIONARIOS_PONTO[0]
 
   // Dados reais (OS ativas + KPIs do mês + pontualidade do funcionário)
-  const { osDoDia, desempenho, loading: loadingPainel } = usePainelFuncionario(funcId)
+  // escopo = 'funcionario' (filtrado via os_historico) | 'global' (fallback)
+  const { osDoDia, desempenho, escopo, loading: loadingPainel } = usePainelFuncionario(funcId)
 
   // Data formatada pro header
   const hoje = new Date()
@@ -73,7 +74,8 @@ export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
       <CardPontoFuncionario T={T} dark={dark} funcionario={funcionario}
         onAbrirEspelho={() => setVerEspelho(true)} />
 
-      {/* OS ativas no Kanban (não concluídas/recusadas) — agendadas pra hoje primeiro */}
+      {/* OS ativas no Kanban (não concluídas/recusadas) — filtradas via histórico
+          do funcionário quando houver, ou globais como fallback no início. */}
       <Card T={T} dark={dark} padding={0}>
         <div style={{ padding: '12px 14px 8px' }}>
           <SectionHeader T={T} dark={dark} icon="ti-clipboard-list" mb={0}
@@ -82,7 +84,16 @@ export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
                 {loadingPainel ? '…' : `${osDoDia.length} OS`}
               </span>
             }
-          >OS abertas</SectionHeader>
+          >{escopo === 'funcionario' ? 'Minhas OS' : 'OS abertas'}</SectionHeader>
+          {!loadingPainel && escopo === 'global' && (
+            <div style={{
+              fontSize: 10.5, color: T.textMuted, marginTop: 4,
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+            }}>
+              <i className="ti ti-info-circle" style={{ fontSize: 12 }} aria-hidden="true" />
+              Sem histórico no seu nome ainda — mostrando OS gerais
+            </div>
+          )}
         </div>
         {loadingPainel && (
           <div style={{ padding: '14px', fontSize: 12, color: T.textMuted }}>

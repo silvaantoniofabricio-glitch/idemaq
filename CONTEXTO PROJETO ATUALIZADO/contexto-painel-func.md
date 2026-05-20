@@ -11,12 +11,19 @@
 
 **Importante:** não existe arquivo `src/pages/PainelFuncionarios.jsx`. A página principal segue sendo `src/pages/Painel.jsx` (do dono); o conteúdo do funcionário vive em `src/components/paineis/PainelFuncionario.jsx`, montado como alternativa pelo `PainelPorPerfil`. Não criar página separada — o roteamento é por papel, não por path.
 
-**O que mudou em 20/05/2026:**
+**O que mudou em 20/05/2026 (sessão `geral` — 2 entregas):**
 - Removidos os 3 mocks (`OS_DO_DIA_MOCK`, `AVISOS_MOCK`, `DESEMPENHO_MOCK`).
-- Novo hook `src/hooks/usePainelFuncionario.js` agrega: OS ativas do Kanban (não concluído/recusado, agendadas pra hoje primeiro) + desempenho do mês (OS concluídas + tempo médio — globais) + pontualidade do funcionário (% presente em `jornada_funcionario` no mês).
+- Novo hook `src/hooks/usePainelFuncionario.js` agrega: OS ativas do Kanban + desempenho do mês (OS concluídas + tempo médio) + pontualidade do funcionário (% presente em `jornada_funcionario` no mês).
 - Card de **Avisos removido** — fonte real não existia (era inline-mock). Recoloca quando houver tabela `aviso` ou agregador automático (estoque baixo / OS atrasadas).
 - Lookup de `funcionario_id` por email (`func1@idemaq.com` → uuid em `usuarios`) com cache em memória.
 - Loading/empty states: "Carregando…" enquanto consulta, "Nenhuma OS aberta no momento" quando lista vazia.
+
+**Filtro por funcionário (20/05/2026 — 2ª entrega):**
+- Hook agora consulta `os_historico` pra descobrir OS que o funcionário tocou nos últimos 90 dias (`os_historico.funcionario_id = funcUuid`).
+- Se houver IDs: OS abertas e OS concluídas do mês são filtradas por esses IDs (`os.id IN (...)`).
+- Se NÃO houver (funcionário ainda não atuou — começo do uso): cai em fallback global com flag `escopo: 'global'`.
+- UI reflete o escopo: título "Minhas OS" vs "OS abertas" + avisinho discreto "Sem histórico no seu nome ainda — mostrando OS gerais" quando global.
+- Pontualidade SEMPRE é específica (não tem fallback global — `jornada_funcionario` é por usuário por definição).
 
 ---
 

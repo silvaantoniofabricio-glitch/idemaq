@@ -1,7 +1,9 @@
 // src/hooks/usePainelFuncionario.js
 // Agrega dados do Painel do funcionário (Alessandro/Guilherme):
 //   - osDoDia: OS ativas (NÃO concluido/recusado), prioridade pras agendadas pra hoje
-//   - desempenho: OS concluídas no mês + tempo médio (global) + pontualidade (do funcionário)
+//   - desempenho: OS concluídas no mês + tempo médio + pontualidade
+//   - escopo: 'funcionario' (filtrado via os_historico.funcionario_id) OU 'global'
+//     (fallback quando funcionário ainda não tem histórico — comum no começo)
 //
 // funcId vem como 'func1' | 'func2' (do getRole(user)). O lookup pra UUID em
 // `usuarios` é feito por email — convenção idemaq (func1@idemaq.com, func2@idemaq.com).
@@ -14,6 +16,10 @@ const EMAIL_POR_FUNC_ID = {
   func1: 'func1@idemaq.com',
   func2: 'func2@idemaq.com',
 }
+
+// Janela do histórico de atuação: últimos 90 dias. OS que o funcionário tocou
+// dentro desse range definem "minhas OS". Pra OS muito antigas, sai do escopo.
+const DIAS_HISTORICO = 90
 
 // Cache de uuid por funcId — sobrevive entre renders do mesmo bundle.
 const _cacheUuid = new Map()
@@ -49,6 +55,13 @@ function rangeDoMes() {
   return { iniIso: toIso(ini), fimIso: toIso(fim) }
 }
 
+// ISO timestamp de X dias atrás
+function diasAtrasIso(dias) {
+  const d = new Date()
+  d.setDate(d.getDate() - dias)
+  return d.toISOString()
+}
+
 // Ordena OS ativas: agendadas pra hoje primeiro, depois por prazo, depois por criado_em
 function ordenarOSDoDia(lista) {
   const hojeIso = new Date().toISOString().slice(0, 10)
@@ -81,8 +94,27 @@ function fmtTempoMedio(horasDecimal) {
 }
 
 /**
+ * Descobre IDs de OS em que o funcionário atuou nos últimos 90 dias.
+ * Retorna array de UUIDs distintos, ou null se erro/sem dados.
+ */
+async function osIdsAtuadasPor(funcUuid) {
+  if (!funcUuid) return null
+  const { data, error } = await supabase
+    .from('os_historico')
+    .select('os_id')
+    .eq('funcionario_id', funcUuid)
+    .gte('data', diasAtrasIso(DIAS_HISTORICO))
+  if (error) {
+    console.warn('[usePainelFuncionario] erro buscando os_historico:', error.message)
+    return null
+  }
+  const ids = [...new Set((data || []).map(h => h.os_id).filter(Boolean))]
+  return ids
+}
+
+/**
  * @param {string} funcId — 'func1' | 'func2'
- * @returns {object} { osDoDia, desempenho, loading, error }
+ * @returns {object} { osDoDia, desempenho, escopo, loading, error }
  */
 export function usePainelFuncionario(funcId) {
   const [osDoDia, setOsDoDia] = useState([])
@@ -91,6 +123,7 @@ export function usePainelFuncionario(funcId) {
     tempoMedio: '—',
     pontualidade: '—',
   })
+  const [escopo, setEscopo] = useState('global') // 'funcionario' | 'global'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -103,8 +136,16 @@ export function usePainelFuncionario(funcId) {
       try {
         const { iniIso, fimIso } = rangeDoMes()
 
+        // ─── 0. Resolve UUID e tenta filtrar por atuação no histórico ────────
+        const funcUuid = await resolverFuncionarioId(funcId)
+        const idsDoFunc = await osIdsAtuadasPor(funcUuid)
+        const filtraPorFunc = Array.isArray(idsDoFunc) && idsDoFunc.length > 0
+        if (cancelado) return
+        const escopoLocal = filtraPorFunc ? 'funcionario' : 'global'
+        setEscopo(escopoLocal)
+
         // ─── 1. OS ativas (não concluído/recusado) — top 10 ──────────────────
-        const { data: osAtivas, error: errOS } = await supabase
+        let qAtivas = supabase
           .from('os')
           .select(`
             id, numero, tipo, etapa,
@@ -113,8 +154,10 @@ export function usePainelFuncionario(funcId) {
           `)
           .is('deleted_at', null)
           .not('etapa', 'in', '("concluido","recusado")')
-          .order('criado_em', { ascending: false })
-          .limit(20)
+        if (filtraPorFunc) qAtivas = qAtivas.in('id', idsDoFunc)
+        qAtivas = qAtivas.order('criado_em', { ascending: false }).limit(20)
+
+        const { data: osAtivas, error: errOS } = await qAtivas
         if (errOS) throw errOS
         if (cancelado) return
 
@@ -127,14 +170,17 @@ export function usePainelFuncionario(funcId) {
         }))
         setOsDoDia(osDia)
 
-        // ─── 2. Desempenho global do mês (todas as OS concluídas) ────────────
-        const { data: concluidas, error: errCl } = await supabase
+        // ─── 2. Desempenho — OS concluídas no mês (filtrado se possível) ─────
+        let qConcl = supabase
           .from('os')
           .select('id, criado_em, data_conclusao')
           .is('deleted_at', null)
           .eq('etapa', 'concluido')
           .gte('data_conclusao', iniIso)
           .lte('data_conclusao', fimIso + 'T23:59:59')
+        if (filtraPorFunc) qConcl = qConcl.in('id', idsDoFunc)
+
+        const { data: concluidas, error: errCl } = await qConcl
         if (errCl) throw errCl
         if (cancelado) return
 
@@ -156,7 +202,6 @@ export function usePainelFuncionario(funcId) {
 
         // ─── 3. Pontualidade do funcionário no mês ───────────────────────────
         let pontualidade = '—'
-        const funcUuid = await resolverFuncionarioId(funcId)
         if (funcUuid) {
           const { data: jornadas, error: errJ } = await supabase
             .from('jornada_funcionario')
@@ -188,5 +233,5 @@ export function usePainelFuncionario(funcId) {
     return () => { cancelado = true }
   }, [funcId])
 
-  return { osDoDia, desempenho, loading, error }
+  return { osDoDia, desempenho, escopo, loading, error }
 }
