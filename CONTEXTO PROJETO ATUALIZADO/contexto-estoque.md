@@ -49,7 +49,7 @@
 1. ~~**Commitar `03-peca-importar-v2.sql`** substituindo `sql/03-peca-importar-bcm.sql`~~ ✅ feito 20/05/2026 (gerado direto pelo script com `modelos_compativeis` como ARRAY literal)
 2. ~~**UPDATE peça via modal de detalhe**~~ ✅ feito 19/05/2026
 3. Ajuste manual de estoque (botão "Ajustar estoque" ainda toast)
-4. **Baixa automática ao concluir OS** — sai na **Onda 2** junto com OS. TODO comentado em `PecaDetalheModal.jsx` + detalhe em `PENDENCIAS-ROTAS.md`. Cruza com OS (ver `contexto-os.md`)
+4. ~~**Baixa automática ao concluir OS**~~ ✅ feito 20/05/2026 (client-side, match por nome ILIKE; ver §9). Idempotência via `peca_movimentacao` fica pra próxima onda.
 5. Máquinas: ligar ao Supabase (Módulo 07)
 6. Entrada por nota fiscal (futuro): upload PDF/foto/Excel → Claude API lê → revisão → salva
 7. Edição de categoria/marca/tipo/referência/modelos compatíveis no modal (chat seguinte — hoje só identificação básica + qtds + preços)
@@ -166,20 +166,35 @@ RLS no banco também protege os dados sensíveis (defesa em camadas).
 - Mapeia snake_case ↔ camelCase via `dbToUi`/`uiToDb`
 - CRUD: `criar` ✅, `atualizar` ✅ (consumido pelo `PecaDetalheModal`), `excluir` (soft) ✅
 - `atualizar(id, patch)` aceita patch parcial em camelCase, retorna `{ data, error }` com a linha atualizada
+- `baixarItens(itens, ctx)` wrapper sobre `baixarItensDoEstoque` que dispara refetch após sucesso
+- Export named `baixarItensDoEstoque(itens, ctx)` standalone (usado pelo `useOS.js` sem precisar instanciar o hook)
 - 2ª query light separada pra KPIs/contagem global (não afetada pelo filtro)
 - Trata `modelos_compativeis` como array
 
 ---
 
-## 9. Baixa automática ao concluir OS (pendente)
+## 9. Baixa automática ao concluir OS (20/05/2026)
 
-Lógica futura:
-1. OS chega em `Concluído`
-2. Itens com `tipo = item` (não serviço/taxa) → decrementa `qtd_atual` da peça
-3. Registrar movimentação no histórico
-4. Disparar alerta se `qtd_atual <= qtd_minima`
+Implementação client-side em 2 partes:
 
-Cruza com OS — ver `contexto-os.md`. Detalhe operacional + cuidados de idempotência em `PENDENCIAS-ROTAS.md`. TODO comentado em `src/components/estoque/PecaDetalheModal.jsx` (perto da definição de `sectionLabel`).
+- **`usePecas.js`** — exporta `baixarItensDoEstoque(itens, ctx)` (standalone, não-hook). Recebe `[{ nome, qtd }]`, para cada item:
+  - `peca` ILIKE `<nome>` exato (1 match → debita; 0 → vai pra `naoEncontradas`; >1 → erro `ambíguo`, pula pra não baixar peça errada)
+  - `UPDATE peca SET qtd_atual = max(0, qtd_atual - qtd)` (não vai negativo)
+  - Retorna `{ aplicadas, naoEncontradas, erros, osId, osNumero }`
+  - Wrapper `usePecas().baixarItens(itens, ctx)` chama o standalone + faz `fetchPecas()` pra UI refletir
+- **`useOS.js`** — dentro do `updateOS`, detecta transição `etapa !== 'concluido' → 'concluido'`. Após o UPDATE bem-sucedido, dispara fire-and-forget `baixarEstoqueAoConcluir(osId, osNumero)`:
+  - SELECT `os_item` da OS filtrado por `tipo = 'peca'` e `deleted_at IS NULL`
+  - Chama `baixarItensDoEstoque` e loga resultado no console (sem toast, pra não poluir o Kanban)
+
+**Idempotência (frágil)**: como ainda não temos `peca_movimentacao`, a única proteção contra dupla-baixa é o caller — só dispara em transição real (etapa anterior `!= 'concluido'`). Se duas sessões empurram a mesma OS pro Concluído ao mesmo tempo (race), ou se alguém volta a OS pra outra etapa e empurra de novo, pode baixar duplo. Aceito como trade-off até subir `peca_movimentacao` (idempotente via UNIQUE `(os_id, peca_id)`).
+
+**Garantia e Fabricação**: dão baixa normal — a peça saiu do estoque independente de cobrar do cliente ou destinar pra revenda.
+
+**Matching por nome**: hoje `os_item` não tem `peca_id`. Mudanças futuras pra robustez:
+- Adicionar `peca_id uuid` em `os_item` (selecionar peça do catálogo no orçamento em vez de digitar nome livre)
+- Criar `peca_movimentacao(peca_id, delta, tipo, os_id, …)` com UNIQUE `(os_id, peca_id)` pra idempotência real + histórico verdadeiro (substitui o mock do `PecaDetalheModal`)
+
+Cruza com OS — ver `contexto-os.md`. Detalhe operacional + cuidados em `PENDENCIAS-ROTAS.md`.
 
 ---
 

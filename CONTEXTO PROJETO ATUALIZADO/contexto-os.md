@@ -312,7 +312,7 @@ Helper `itensMarcadosDoDiag` + map `ITENS_DIAG`.
 ## 14. Interseções com outras áreas
 
 - **Clientes**: NovaOSModal usa `criarClientePersist` standalone. Ver `contexto-clientes.md`
-- **Estoque**: baixa automática ao concluir OS (pendente). Categorias de peça espelham `ITENS_DIAG`. Ver `contexto-estoque.md`
+- **Estoque**: ✅ baixa automática ao concluir OS (20/05/2026) — `useOS.updateOS` dispara `baixarEstoqueAoConcluir(osId, osNumero)` fire-and-forget na transição pra `concluido`, que chama `baixarItensDoEstoque` de `usePecas.js` (match por nome ILIKE). Categorias de peça espelham `ITENS_DIAG`. Ver `contexto-estoque.md` §9
 - **Financeiro**: pagamento gera lançamento em `lancamento_financeiro` (schema parte 2 pendente). Ver `contexto-financeiro.md`
 - **Geral / cross-area**: ✅ `checklist_etapa` + `falha_teste` aplicados (19/05/2026 via sql/05). `retorno_garantia` ainda pendente.
 
