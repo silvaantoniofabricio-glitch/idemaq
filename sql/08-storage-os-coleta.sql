@@ -1,64 +1,42 @@
 -- ============================================================================
 -- 08 — Storage policies pro bucket `idemaq-privado` (foto da coleta da OS)
 --
+-- ⚠️ ATENÇÃO: storage.objects é uma tabela do schema do Supabase. Comandos
+-- ALTER/CREATE POLICY direto em storage.objects estouram com:
+--     ERROR: 42501: must be owner of table objects
+-- porque o dono dessa tabela é o role `supabase_storage_admin` (interno).
+--
+-- CAMINHO QUE FUNCIONA — criar policies pela UI do Dashboard:
+--   https://supabase.com/dashboard/project/yfbbruxqfzgetapbvrgd/storage/policies
+--   → New policy → For full customization
+--   Criar 4 policies com bucket_id='idemaq-privado', role=authenticated:
+--
+--   1. SELECT — "idemaq_privado_select"
+--        USING:      bucket_id = 'idemaq-privado'
+--
+--   2. INSERT — "idemaq_privado_insert"
+--        WITH CHECK: bucket_id = 'idemaq-privado'
+--
+--   3. UPDATE — "idemaq_privado_update"
+--        USING:      bucket_id = 'idemaq-privado'
+--        WITH CHECK: bucket_id = 'idemaq-privado'
+--
+--   4. DELETE — "idemaq_privado_delete"
+--        USING:      bucket_id = 'idemaq-privado'
+--
+-- TESTE RÁPIDO antes de criar policies: muitas vezes o Supabase já permite
+-- as operações pra usuários `authenticated` por default em buckets privados.
+-- Testar primeiro fazendo upload no app — se funcionar, não precisa criar
+-- as 4 policies acima. Se der "row violates row-level security policy" ou
+-- "403 Unauthorized", aí sim crie as policies pela UI.
+--
 -- PRÉ-REQUISITO (manual, 1 vez):
 --   No Supabase Dashboard → Storage → New bucket
 --     Nome:    idemaq-privado
 --     Public:  OFF (privado)
 --     Click "Create bucket"
---
--- Este SQL aplica as policies que permitem:
---   - SELECT/INSERT/UPDATE/DELETE em `idemaq-privado` só pra usuários
---     autenticados (auth.role() = 'authenticated')
---   - Como já temos só 3 usuários reais (Toni + Alessandro + Guilherme),
---     não precisa diferenciar por papel — qualquer um deles bate e tira foto
---
--- Conteúdo armazenado:
---   - os/{osId}/coleta.jpg — 1 foto por OS, sobrescreve em re-upload
---   - (futuro: os/{osId}/entrega.jpg, os/{osId}/diagnostico/*.jpg)
+--   ✅ JÁ FOI FEITO em 20/05/2026 (terminal `geral` ou outro).
 -- ============================================================================
 
--- Habilita RLS na tabela storage.objects (já vem habilitada por default,
--- mas garante idempotência).
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- ─── SELECT (visualizar via signed URL exige read na linha) ─────────────────
-DROP POLICY IF EXISTS "idemaq_privado_select" ON storage.objects;
-CREATE POLICY "idemaq_privado_select"
-  ON storage.objects
-  FOR SELECT
-  TO authenticated
-  USING (bucket_id = 'idemaq-privado');
-
--- ─── INSERT (upload de foto nova) ───────────────────────────────────────────
-DROP POLICY IF EXISTS "idemaq_privado_insert" ON storage.objects;
-CREATE POLICY "idemaq_privado_insert"
-  ON storage.objects
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (bucket_id = 'idemaq-privado');
-
--- ─── UPDATE (sobrescrever via upsert) ───────────────────────────────────────
-DROP POLICY IF EXISTS "idemaq_privado_update" ON storage.objects;
-CREATE POLICY "idemaq_privado_update"
-  ON storage.objects
-  FOR UPDATE
-  TO authenticated
-  USING (bucket_id = 'idemaq-privado')
-  WITH CHECK (bucket_id = 'idemaq-privado');
-
--- ─── DELETE (remover foto) ──────────────────────────────────────────────────
-DROP POLICY IF EXISTS "idemaq_privado_delete" ON storage.objects;
-CREATE POLICY "idemaq_privado_delete"
-  ON storage.objects
-  FOR DELETE
-  TO authenticated
-  USING (bucket_id = 'idemaq-privado');
-
--- ============================================================================
--- VERIFICAÇÃO PÓS-EXECUÇÃO:
---   SELECT polname FROM pg_policy
---     WHERE polrelid = 'storage.objects'::regclass
---       AND polname LIKE 'idemaq_privado_%';
---   -- esperado: 4 policies (select, insert, update, delete)
--- ============================================================================
+-- Nenhum SQL pra rodar aqui — usar UI do Dashboard conforme instrução acima.
+SELECT '08-storage-os-coleta: usar UI do Dashboard, ver comentario do arquivo' AS instrucao;
