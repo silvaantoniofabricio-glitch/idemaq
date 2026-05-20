@@ -20,6 +20,7 @@ import { Modal, Button, useToast } from '../ui'
 import { corEtapa, corHero } from '../../utils/colors'
 import { useUsuarios } from '../../hooks/useUsuarios'
 import { tipoParadaPorEtapa } from '../../hooks/useOSLogistica'
+import AddressInput from './AddressInput'
 
 const TIPOS_PARADA = [
   { id: 'coleta',    label: 'Coleta',    icon: 'ti-arrow-down-circle', cor: 'blue',   contaLimite: true,  desc: 'Buscar máquina' },
@@ -27,6 +28,8 @@ const TIPOS_PARADA = [
   { id: 'cobranca',  label: 'Cobrança',  icon: 'ti-cash',              cor: 'yellow', contaLimite: false, desc: 'Passar pra receber' },
   { id: 'visita',    label: 'Visita',    icon: 'ti-tool',              cor: 'blue',   contaLimite: false, desc: 'Manutenção no local' },
 ]
+
+const TIPO_AVULSA = { id: 'avulsa', label: 'Avulsa', cor: 'neutro', contaLimite: false }
 
 const hojeISO = () => new Date().toISOString().slice(0, 10)
 
@@ -41,13 +44,15 @@ function contarParadas(rota) {
 
 export default function AdicionarOSARotaModal({
   T, dark,
-  os,                  // OS vinda da sidebar (useOSLogistica)
+  os,                  // OS vinda da sidebar — null quando modo=avulsa
+  modo = 'os',         // 'os' | 'avulsa'
   rotas = [],          // todas as rotas (filtra por data internamente)
   onClose,
   onCriarRota,         // async (payload) => { data, error }
   onAtualizarRota,     // async (id, patch) => { data, error }
 }) {
-  if (!os) return null
+  const modoAvulsa = modo === 'avulsa'
+  if (!modoAvulsa && !os) return null
   const notify = useToast()
   const azul     = corEtapa('blue', dark)
   const amarelo  = corEtapa('yellow', dark)
@@ -61,14 +66,21 @@ export default function AdicionarOSARotaModal({
   )
 
   // Data sugerida: data_agendamento da OS, senão hoje
-  const dataSugerida = (os.data_agendamento || '').slice(0, 10) || hojeISO()
+  const dataSugerida = modoAvulsa
+    ? hojeISO()
+    : (os?.data_agendamento || '').slice(0, 10) || hojeISO()
 
   // ─── Estado ───────────────────────────────────────────────────────────────
   const [data, setData]              = useState(dataSugerida)
   const [destino, setDestino]        = useState('nova') // 'nova' | rotaId
-  const [tipoParada, setTipoParada]  = useState(os.tipoParadaSugerido || 'coleta')
+  const [tipoParada, setTipoParada]  = useState(modoAvulsa ? 'avulsa' : (os?.tipoParadaSugerido || 'coleta'))
   const [motoristaId, setMotoristaId] = useState(() => motoristas[0]?.id || '')
   const [salvando, setSalvando]      = useState(false)
+  // Campos avulsa (só usados em modo=avulsa)
+  const [avulsaNome,      setAvulsaNome]      = useState('')
+  const [avulsaEndereco,  setAvulsaEndereco]  = useState('')
+  const [avulsaLat,       setAvulsaLat]       = useState(null)
+  const [avulsaLng,       setAvulsaLng]       = useState(null)
 
   // Quando data muda, escolhe motorista default se ainda não tem
   // (usuarios pode carregar depois do mount)
@@ -85,33 +97,54 @@ export default function AdicionarOSARotaModal({
   // ─── Validação limite (2 coletas + 2 entregas por rota) ──────────────────
   const rotaAlvo = destino !== 'nova' ? rotasDaData.find(r => r.id === destino) : null
   const contagem = rotaAlvo ? contarParadas(rotaAlvo) : { coleta: 0, entrega: 0 }
-  const tipoCfg = TIPOS_PARADA.find(t => t.id === tipoParada)
+  const tipoCfg = modoAvulsa
+    ? TIPO_AVULSA
+    : TIPOS_PARADA.find(t => t.id === tipoParada)
 
   const estouroLimite = tipoCfg?.contaLimite && rotaAlvo && contagem[tipoParada] >= 2
-  const podeSalvar = !!motoristaId && !!data && !estouroLimite && !salvando
+  const camposAvulsaOk = !modoAvulsa || (avulsaNome.trim() && avulsaEndereco.trim())
+  const podeSalvar = !!motoristaId && !!data && !estouroLimite && camposAvulsaOk && !salvando
 
   // ─── Submit ──────────────────────────────────────────────────────────────
   async function salvar() {
     if (!podeSalvar) return
     setSalvando(true)
 
-    const novaParada = {
-      id: crypto.randomUUID(),
-      ordem: (rotaAlvo?.paradas?.length || 0) + 1,
-      tipo: tipoParada,
-      os_id: os.id,
-      os_num: os.numero,
-      cliente_nome: os.cliente_nome,
-      cliente_fone: os.cliente_telefone || null,
-      endereco: os.endereco || null,
-      lat: os.lat || null,
-      lng: os.lng || null,
-      horario_previsto: null,
-      horario_chegada: null,
-      status: 'pendente',
-      foto_url: null,
-      observacoes: null,
-    }
+    const novaParada = modoAvulsa
+      ? {
+          id: crypto.randomUUID(),
+          ordem: (rotaAlvo?.paradas?.length || 0) + 1,
+          tipo: 'avulsa',
+          os_id: null,
+          os_num: null,
+          cliente_nome: avulsaNome.trim(),
+          cliente_fone: null,
+          endereco: avulsaEndereco.trim() || null,
+          lat: avulsaLat,
+          lng: avulsaLng,
+          horario_previsto: null,
+          horario_chegada: null,
+          status: 'pendente',
+          foto_url: null,
+          observacoes: null,
+        }
+      : {
+          id: crypto.randomUUID(),
+          ordem: (rotaAlvo?.paradas?.length || 0) + 1,
+          tipo: tipoParada,
+          os_id: os.id,
+          os_num: os.numero,
+          cliente_nome: os.cliente_nome,
+          cliente_fone: os.cliente_telefone || null,
+          endereco: os.endereco || null,
+          lat: os.lat || null,
+          lng: os.lng || null,
+          horario_previsto: null,
+          horario_chegada: null,
+          status: 'pendente',
+          foto_url: null,
+          observacoes: null,
+        }
 
     let res
     if (destino === 'nova') {
@@ -131,7 +164,9 @@ export default function AdicionarOSARotaModal({
       notify('erro', `Falha ao adicionar: ${res.error.message || 'erro desconhecido'}`)
       return
     }
-    notify('ok', `OS #${os.numero} adicionada à rota`)
+    notify('ok', modoAvulsa
+      ? `Parada avulsa "${avulsaNome}" adicionada à rota`
+      : `OS #${os.numero} adicionada à rota`)
     onClose?.()
   }
 
@@ -151,10 +186,12 @@ export default function AdicionarOSARotaModal({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: corHero(dark) }}>
-            Adicionar a uma rota
+            {modoAvulsa ? 'Nova parada avulsa' : 'Adicionar a uma rota'}
           </div>
           <div style={{ fontSize: 11.5, color: T.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            OS #{os.numero} · {os.cliente_nome} · {os.etapa_label}
+            {modoAvulsa
+              ? 'Parada sem OS (loja, abastecer, almoço, etc)'
+              : `OS #${os.numero} · ${os.cliente_nome} · ${os.etapa_label}`}
           </div>
         </div>
         <button onClick={onClose} aria-label="Fechar"
@@ -172,7 +209,33 @@ export default function AdicionarOSARotaModal({
         display: 'flex', flexDirection: 'column', gap: 14,
         maxHeight: '70vh', overflowY: 'auto',
       }}>
-        {/* Tipo da parada */}
+        {/* Campos da parada avulsa */}
+        {modoAvulsa && (
+          <>
+            <div>
+              <Label T={T}>Nome da parada</Label>
+              <input type="text" value={avulsaNome}
+                onChange={(e) => setAvulsaNome(e.target.value)}
+                placeholder="Ex: BCM Peças, Posto Shell, Almoço"
+                style={inputStyle(T)} />
+            </div>
+            <AddressInput
+              T={T} dark={dark}
+              label="Endereço"
+              value={avulsaEndereco}
+              onChange={({ endereco, lat, lng }) => {
+                setAvulsaEndereco(endereco)
+                setAvulsaLat(lat)
+                setAvulsaLng(lng)
+              }}
+              placeholder="Rua, número — bairro, cidade/UF"
+              required
+            />
+          </>
+        )}
+
+        {/* Tipo da parada (só modo OS) */}
+        {!modoAvulsa && (<>
         <div>
           <Label T={T}>Tipo da parada</Label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -206,6 +269,7 @@ export default function AdicionarOSARotaModal({
             })}
           </div>
         </div>
+        </>)}
 
         {/* Data */}
         <div>

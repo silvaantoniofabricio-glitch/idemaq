@@ -59,6 +59,7 @@ export default function Logistica({ T, dark }) {
   const [novaRotaAberta, setNovaRotaAberta] = useState(false)
   const [rotaDetalhe, setRotaDetalhe] = useState(null) // rota selecionada p/ edição
   const [osParaAdicionarARota, setOsParaAdicionarARota] = useState(null) // OS da sidebar selecionada
+  const [paradaAvulsaAberta, setParadaAvulsaAberta] = useState(false) // modal de parada avulsa
 
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
@@ -211,6 +212,9 @@ export default function Logistica({ T, dark }) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button T={T} dark={dark} variant="secondary" iconLeft="ti-external-link" onClick={abrirRotaCompleta}>
               Abrir no Maps
+            </Button>
+            <Button T={T} dark={dark} variant="secondary" iconLeft="ti-map-pin-plus" onClick={() => setParadaAvulsaAberta(true)}>
+              Parada avulsa
             </Button>
             <Button T={T} dark={dark} variant="primary" iconLeft="ti-plus" onClick={() => setNovaRotaAberta(true)}>
               Nova rota
@@ -454,7 +458,23 @@ export default function Logistica({ T, dark }) {
             </Button>
           </div>
 
-          <MapaLogistica T={T} dark={dark} height={460} />
+          <MapaLogistica
+            T={T} dark={dark}
+            height={460}
+            paradas={paradas
+              .filter(p => p.lat != null && p.lng != null)
+              .map(p => ({
+                lat: p.lat,
+                lng: p.lng,
+                tipo: p.tipo,
+                label: `${p.tipo === 'avulsa' ? 'Avulsa' : `OS #${p.osNum}`} · ${p.cliente_nome || p.cliente || 'Sem cliente'}`,
+                onClick: () => {
+                  const rotaAlvo = rotas.find(r => r.id === p.rotaId)
+                  if (rotaAlvo) setRotaDetalhe(rotaAlvo)
+                },
+              }))
+            }
+          />
 
           {/* (mantido fora do mapa pra não cobrir a UI do Google) */}
           <div style={{ padding: '10px 14px', borderTop: `1px solid ${T.border}` }}>
@@ -501,6 +521,17 @@ export default function Logistica({ T, dark }) {
           os={osParaAdicionarARota}
           rotas={rotas}
           onClose={() => setOsParaAdicionarARota(null)}
+          onCriarRota={criarRota}
+          onAtualizarRota={atualizarRota}
+        />
+      )}
+
+      {paradaAvulsaAberta && (
+        <AdicionarOSARotaModal
+          T={T} dark={dark}
+          modo="avulsa"
+          rotas={rotas}
+          onClose={() => setParadaAvulsaAberta(false)}
           onCriarRota={criarRota}
           onAtualizarRota={atualizarRota}
         />

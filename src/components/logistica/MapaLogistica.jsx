@@ -17,15 +17,36 @@ import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 const NAVIRAI_CENTER = { lat: -23.0653, lng: -54.1903 }
 const ZOOM_DEFAULT = 13
 
+// Cores Deutan + letra por tipo de parada
+const TIPO_VISUAL = {
+  coleta:   { cor: '#5B9BD5', letra: 'C' },
+  entrega:  { cor: '#8FBC55', letra: 'E' },
+  cobranca: { cor: '#FFD966', letra: '$' },
+  visita:   { cor: '#B8CCE4', letra: 'V' },
+  avulsa:   { cor: '#9CA3AF', letra: 'A' },
+}
+
+// Gera data URL SVG dum pin colorido com letra dentro — sem dependência externa.
+function svgPin(cor, letra) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
+    <path d="M16 0 C7 0 0 7 0 16 C0 25 16 42 16 42 C16 42 32 25 32 16 C32 7 25 0 16 0 Z" fill="${cor}" stroke="#fff" stroke-width="2"/>
+    <text x="16" y="22" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="15" font-weight="700">${letra}</text>
+  </svg>`
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg)
+}
+
 export default function MapaLogistica({
   T, dark,
   height = 460,
   center = NAVIRAI_CENTER,
   zoom = ZOOM_DEFAULT,
-  paradas = [], // futuro: [{ lat, lng, tipo: 'coleta'|'entrega', label }]
+  paradas = [], // [{ lat, lng, tipo: 'coleta'|'entrega'|'cobranca'|'visita'|'avulsa', label, onClick? }]
 }) {
   const containerRef = useRef(null)
   const mapaRef = useRef(null)
+  const markersRef = useRef([])
+  const googleRef = useRef(null)
+  const MarkerRef = useRef(null)
   const [status, setStatus] = useState('loading') // 'loading' | 'ok' | 'erro'
   const [erroMsg, setErroMsg] = useState(null)
   const azul = corEtapa('blue', dark)
@@ -53,6 +74,9 @@ export default function MapaLogistica({
         const { Marker } = await google.maps.importLibrary('marker')
         if (cancelado || !containerRef.current) return
 
+        googleRef.current = google
+        MarkerRef.current = Marker
+
         mapaRef.current = new Map(containerRef.current, {
           center,
           zoom,
@@ -63,11 +87,17 @@ export default function MapaLogistica({
           zoomControl: true,
         })
 
-        // Marcador fixo da oficina (sempre visível)
+        // Marcador fixo da oficina (sempre visível) — pin laranja com "O"
         new Marker({
           position: NAVIRAI_CENTER,
           map: mapaRef.current,
           title: 'Oficina Idemaq · Naviraí/MS',
+          icon: {
+            url: svgPin('#FF9800', 'O'),
+            scaledSize: new google.maps.Size(32, 42),
+            anchor: new google.maps.Point(16, 42),
+          },
+          zIndex: 9999,
         })
 
         setStatus('ok')
@@ -83,10 +113,48 @@ export default function MapaLogistica({
     return () => { cancelado = true }
   }, [center.lat, center.lng, zoom])
 
-  // Atualiza marcadores quando paradas mudarem (futuro)
+  // Renderiza marcadores das paradas quando lista mudar
   useEffect(() => {
-    if (status !== 'ok' || !mapaRef.current || !window.google) return
-    // TODO: limpar marcadores antigos + adicionar novos com base em `paradas`
+    if (status !== 'ok' || !mapaRef.current) return
+    const google = googleRef.current
+    const Marker = MarkerRef.current
+    if (!google || !Marker) return
+
+    // Limpa marcadores antigos
+    for (const m of markersRef.current) m.setMap(null)
+    markersRef.current = []
+
+    if (!paradas || paradas.length === 0) return
+
+    const bounds = new google.maps.LatLngBounds()
+    bounds.extend(NAVIRAI_CENTER)
+
+    for (const p of paradas) {
+      if (p.lat == null || p.lng == null) continue
+      const visual = TIPO_VISUAL[p.tipo] || TIPO_VISUAL.avulsa
+      const m = new Marker({
+        position: { lat: Number(p.lat), lng: Number(p.lng) },
+        map: mapaRef.current,
+        title: p.label || p.tipo,
+        icon: {
+          url: svgPin(visual.cor, visual.letra),
+          scaledSize: new google.maps.Size(32, 42),
+          anchor: new google.maps.Point(16, 42),
+        },
+      })
+      if (p.onClick) m.addListener('click', () => p.onClick(p))
+      markersRef.current.push(m)
+      bounds.extend(m.getPosition())
+    }
+
+    // Re-enquadra se tiver paradas válidas
+    if (markersRef.current.length > 0) {
+      mapaRef.current.fitBounds(bounds, 80)
+      // Limita zoom out absurdo quando há 1 ou 2 paradas perto
+      const listener = google.maps.event.addListenerOnce(mapaRef.current, 'idle', () => {
+        if (mapaRef.current.getZoom() > 15) mapaRef.current.setZoom(14)
+      })
+    }
   }, [paradas, status])
 
   // Container sempre presente (pra google.maps.Map ter onde montar).
