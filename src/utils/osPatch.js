@@ -27,6 +27,12 @@ const COLUNAS_SAFE = new Set([
   'cliente_id',
   'marca_equipamento', 'modelo_equipamento', 'defeito_relatado',
   'data_agendamento',
+  // jsonb: marker 'storage' da foto da coleta + obs/testes do pre-diagnostico.
+  // Coluna `os.pre_diagnostico jsonb` ja consumida em SELECT — adicionar
+  // sql/09-os-pre-diagnostico.sql se nao existir no banco.
+  'pre_diagnostico',
+  // observacoes livres da OS (header + detalhe)
+  'observacoes',
 ])
 
 /**
