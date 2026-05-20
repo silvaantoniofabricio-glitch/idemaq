@@ -9,8 +9,17 @@
 ## 1. Início de toda sessão — checklist
 
 1. Rode `echo $env:IDEMAQ_TERMINAL` pra saber em qual terminal você está
-2. Leia `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md` correspondente
-3. Antes de mexer em arquivos compartilhados (App.jsx, osData.js, theme.js, índices), checar `git status` pra não conflitar com outra sessão em paralelo
+2. **`git pull origin main`** — puxa o que outros terminais já enviaram
+3. Leia `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md` correspondente
+4. Antes de mexer em arquivos compartilhados (App.jsx, osData.js, theme.js, índices), checar `git status` pra não conflitar com outra sessão em paralelo
+
+## 1b. Fim de toda tarefa — checklist
+
+1. Atualizar `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md` com o que mudou
+2. Atualizar `CLAUDE.md` **só se** mudou regra de ouro / arquitetura / status macro (ver seção 3)
+3. `git add` dos arquivos tocados (nunca `git add -A` — pode incluir sensível)
+4. `git commit -m "<tipo>(<area>): <descrição curta>"`
+5. **`git push origin main`** — sem push, outros terminais não veem o trabalho e o deploy Vercel não roda
 
 ---
 
