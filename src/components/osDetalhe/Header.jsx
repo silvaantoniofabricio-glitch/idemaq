@@ -10,7 +10,8 @@
 // placeholder vazio abre input file pra escolher imagem (mesma lógica do
 // AcaoRecebido). Click numa foto existente abre FotoAmpliadaModal.
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { supabase } from '../../supabase'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { corEtapa } from '../../utils/colors'
@@ -46,6 +47,63 @@ export default function Header({
   const [fotoAmpliada, setFotoAmpliada] = useState(false)
   const [fotoHover, setFotoHover] = useState(false)
   const inputFotoRef = useRef(null)
+
+  // === Dropdown "Mais ações" ===
+  const [menuAberto, setMenuAberto] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
+  useEffect(() => {
+    if (!menuAberto) return
+    function onDocClick(e) {
+      if (!e.target.closest('[data-mais-acoes]')) setMenuAberto(false)
+    }
+    function onEsc(e) {
+      if (e.key === 'Escape') { e.stopPropagation(); setMenuAberto(false) }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onEsc, true)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onEsc, true)
+    }
+  }, [menuAberto])
+
+  async function copiarNumero() {
+    setMenuAberto(false)
+    try {
+      await navigator.clipboard.writeText(String(os.numero))
+      notify('ok', `OS #${os.numero} copiada`)
+    } catch {
+      notify('erro', 'Não consegui copiar')
+    }
+  }
+
+  // Soft-delete: marca deleted_at + excluido_por. Some do Kanban via filtro do useOS.
+  // Realtime do useOS notifica outras sessões abertas.
+  async function excluirOS() {
+    if (excluindo) return
+    setMenuAberto(false)
+    if (!window.confirm(
+      `Excluir OS #${os.numero}?\n\n` +
+      `Cliente: ${os.cliente || '—'}\n` +
+      `A OS some do Kanban mas fica no banco (soft-delete). ` +
+      `Pra restaurar, precisa de SQL no Supabase.`
+    )) return
+    setExcluindo(true)
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      const { error } = await supabase.from('os').update({
+        deleted_at: new Date().toISOString(),
+        excluido_por: userData?.user?.id || null,
+      }).eq('id', os.id)
+      if (error) throw error
+      notify('ok', `OS #${os.numero} excluída`)
+      onClose?.()
+    } catch (e) {
+      notify('erro', `Erro ao excluir: ${e?.message || 'desconhecido'}`)
+      console.error('[Header] excluir OS:', e)
+      setExcluindo(false)
+    }
+  }
 
   function escolherFoto(file) {
     if (!file) return
@@ -190,16 +248,44 @@ export default function Header({
               }}>{historicoCount > 99 ? '99+' : historicoCount}</span>
             )}
           </button>
-          <button
-            title="Mais ações" aria-label="Mais ações" disabled
-            style={{
-              background: 'transparent', border: `1px solid ${T.border}`,
-              cursor: 'not-allowed', opacity: 0.4,
-              color: T.textMuted, padding: '6px 8px', borderRadius: 6,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            <i className="ti ti-dots-vertical" style={{ fontSize: 16 }} aria-hidden="true" />
-          </button>
+          <div data-mais-acoes style={{ position: 'relative' }}>
+            <button
+              onClick={() => setMenuAberto(v => !v)}
+              title="Mais ações" aria-label="Mais ações"
+              aria-expanded={menuAberto}
+              style={{
+                background: menuAberto ? cor('#0d2035', '#e6f1fb') : 'transparent',
+                border: `1px solid ${menuAberto ? azul : T.border}`,
+                cursor: 'pointer',
+                color: menuAberto ? azul : T.textSecondary,
+                padding: '6px 8px', borderRadius: 6,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background .12s, border-color .12s, color .12s',
+              }}>
+              <i className="ti ti-dots-vertical" style={{ fontSize: 16 }} aria-hidden="true" />
+            </button>
+            {menuAberto && (
+              <div role="menu" style={{
+                position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50,
+                background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 8,
+                padding: 5, minWidth: 200,
+                boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.12)',
+              }}>
+                <MenuItem T={T} icon="ti-copy" onClick={copiarNumero}>
+                  Copiar nº da OS
+                </MenuItem>
+                {admin && (
+                  <>
+                    <div style={{ height: 1, background: T.border, margin: '4px 0' }} />
+                    <MenuItem T={T} icon="ti-trash" danger
+                      onClick={excluirOS} disabled={excluindo}>
+                      {excluindo ? 'Excluindo…' : 'Excluir OS'}
+                    </MenuItem>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <button
             onClick={onClose} aria-label="Fechar"
             style={{
@@ -499,4 +585,32 @@ function ChunkClicavel({ T, azul, icon, texto, onClick, title, truncar }) {
 
 function SeparadorPonto() {
   return <span style={{ color: '#4a4a50', opacity: 0.7 }} aria-hidden="true">·</span>
+}
+
+function MenuItem({ T, icon, onClick, disabled, danger, children }) {
+  const [hover, setHover] = useState(false)
+  const corBase = danger ? '#c04242' : T.textPrimary
+  return (
+    <button role="menuitem"
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: '100%', padding: '8px 10px', borderRadius: 6,
+        background: hover && !disabled
+          ? (danger ? 'rgba(192,66,66,0.10)' : T.bg)
+          : 'transparent',
+        border: 'none', textAlign: 'left',
+        display: 'flex', alignItems: 'center', gap: 9,
+        cursor: disabled ? 'wait' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        color: corBase, fontFamily: 'inherit',
+        fontSize: 12.5, fontWeight: 500,
+        transition: 'background .12s',
+      }}>
+      <i className={`ti ${icon}`} style={{ fontSize: 15, color: corBase, flexShrink: 0 }} aria-hidden="true" />
+      <span style={{ flex: 1 }}>{children}</span>
+    </button>
+  )
 }

@@ -16,10 +16,11 @@
 - ✅ Skeleton de 3 cards/coluna enquanto loading
 
 ### Nova OS (`src/_legacy/desktopKanbanModals.jsx`)
-- ✅ **Salva real** (19/05/2026): busca cliente do Supabase com debounce 300ms + ILIKE em nome/telefone + LIMIT 20
+- ✅ **Salva real** (19/05/2026 → commit em 20/05): busca cliente do Supabase com debounce **250ms** + ILIKE em nome/telefone + **mínimo 2 chars** + LIMIT 20
 - ✅ Cadastro inline via helper `criarClientePersist` de `useClientes.js` (standalone — evita carregar 782 clientes só pra cadastrar 1)
 - ✅ `salvar()` faz INSERT em `os` (trigger preenche `numero`/`criado_em`/`criado_por`)
 - ✅ Toast verde "OS #NNN criada", aparece imediato no Kanban via Realtime
+- ⚠️ **Exceção `_legacy` autorizada pelo dono (20/05/2026)**: edição cirúrgica do trecho NovaOSModal pra trocar `CLIENTES_MOCK` por busca real. Resto do arquivo não tocado. Imports `CLIENTES_MOCK`/`adaptarClientesMock` ficaram órfãos (sem uso) — deletar quando o arquivo for refatorado pra fora do legacy
 
 ### OSDetalhe + 10 Ações (`src/components/osDetalhe/`)
 - ✅ Header redesenhado (foto 72x72 + nome cliente big + contato + equipamento)
@@ -182,6 +183,13 @@ Linha 2 do header: foto da máquina + bloco info estruturado.
   2. Contato 11.5px cinza — `ti-phone` + telefone (click WhatsApp) · `ti-map-pin` + endereço (click Maps). Chunks individuais clicáveis
   3. Equipamento 12px — `ti-device-washing-machine` azul + Marca·Modelo (strong) + (série) cinza + · defeito. Click abre toast (TODO `FormEquipamentoEdit`)
 - Timeline com `border-top` separando do bloco novo
+
+### Botão ⋮ "Mais ações" (20/05/2026)
+- Dropdown ancorado no botão (top:calc(100% + 4px), right:0, z-index:50). Fecha por ESC, click-fora e click no item (atributo `data-mais-acoes` no container)
+- 2 itens hoje:
+  1. **Copiar nº da OS** — `navigator.clipboard.writeText(os.numero)` + toast
+  2. **Excluir OS** (só pra admin via prop `admin`) — soft-delete (`deleted_at`+`excluido_por` via `supabase.auth.getUser`), `window.confirm` antes, fecha o modal e some do Kanban via filtro do `useOS`
+- Histórico: botão nasceu disabled no commit `985f31c` (17/05, PR1) e ficou ~3 dias inerte. Não era regressão da Onda 2 (schema parte 2 não tocou em Header.jsx)
 
 ---
 

@@ -17,6 +17,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../supabase'
+import { criarClientePersist } from '../hooks/useClientes'
 import { P } from '../theme'
 import {
   TIPOS_OS, ETAPAS_TODOS, ZONAS, FUNCIONARIOS,
@@ -272,18 +273,22 @@ function NovoClienteModalCompleto({ T, dark, onClose, onSalvar, nomeInicial, mob
 
 // ─── Modal: Nova OS (redesenhado em 16/05/2026) ─────────────────────────────
 
-function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
+function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }) {
   const cor = (d, c) => dark ? d : c
   const [tipo, setTipo] = useState(tipoInicial || 'atendimento')
   const [tipoMenuAberto, setTipoMenuAberto] = useState(false)
 
-  // Lista local de clientes (adapta o mock global; novos cadastros entram aqui).
-  const [clientes, setClientes] = useState(() => adaptarClientesMock(CLIENTES_MOCK))
+  // Busca de cliente: agora vem do Supabase (com debounce). Local state guarda os
+  // resultados da última query + flag de loading pro spinner do input.
+  const [clientesAchados, setClientesAchados] = useState([])
+  const [loadingClientes, setLoadingClientes] = useState(false)
+  const [salvando, setSalvando] = useState(false)
 
   const [form, setForm] = useState({
     cliente:'', clienteId:null, fone:'',
     enderecoSelecionado:'',   // endereço escolhido pra esta OS (string)
     enderecoIndex:0,          // índice do endereço selecionado (radio)
+    enderecosDisponiveis: [], // endereços do cliente escolhido (vem da busca)
     // Pré-selecionado pro Atendimento (tipo de máquina mais comum). Pros outros tipos,
     // começa vazio e o select mantém a opção "Selecione…".
     equipamentoTipo: (tipoInicial || 'atendimento') === 'atendimento' ? 'Máquina de Lavar' : '',
@@ -303,9 +308,51 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const clientesFiltrados = buscaCli
-    ? clientes.filter(c => c.nome.toLowerCase().includes(buscaCli.toLowerCase()) || c.fone.includes(buscaCli)).slice(0, 5)
-    : []
+  // Debounce de 250ms na busca de cliente. Dispara com 2+ chars
+  // (evita query nas 782 linhas com 1 letra solta).
+  // Se a query falhar, registra console.error E avisa via toast (notify) pra
+  // não dar a impressão silenciosa de "sem clientes" quando o motivo é erro.
+  useEffect(() => {
+    const termo = buscaCli.trim()
+    if (termo.length < 2) {
+      setClientesAchados([])
+      setLoadingClientes(false)
+      return
+    }
+    setLoadingClientes(true)
+    const safe = termo.replace(/[,()]/g, ' ').trim()
+    const handle = setTimeout(async () => {
+      try {
+        const { data, error: err } = await supabase
+          .from('cliente')
+          .select('id, nome, telefone, endereco')
+          .is('deleted_at', null)
+          .or(`nome.ilike.%${safe}%,telefone.ilike.%${safe}%`)
+          .order('nome', { ascending: true })
+          .limit(20)
+        if (err) throw err
+        const adapted = (data || []).map(c => ({
+          id: c.id,
+          nome: c.nome,
+          fone: c.telefone || '',
+          endereco: c.endereco || '',
+          enderecos: c.endereco ? [c.endereco] : [],
+        }))
+        setClientesAchados(adapted)
+      } catch (e) {
+        console.error('[NovaOS] busca cliente:', e)
+        notify?.('erro', `Erro buscando clientes: ${e?.message || e}`)
+        setClientesAchados([])
+      } finally {
+        setLoadingClientes(false)
+      }
+    }, 250)
+    return () => clearTimeout(handle)
+  }, [buscaCli, notify])
+
+  const clientesFiltrados = clientesAchados
+  const buscaTemTexto = buscaCli.trim().length > 0
+  const mostrarDropdown = buscaTemTexto && (loadingClientes || clientesFiltrados.length > 0 || (!loadingClientes && clientesFiltrados.length === 0))
 
   function escolherCliente(c) {
     const enderecos = c.enderecos && c.enderecos.length > 0 ? c.enderecos : (c.endereco ? [c.endereco] : [])
@@ -313,29 +360,46 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
       ...f,
       cliente: c.nome,
       clienteId: c.id,
-      fone: c.fone,
+      fone: c.fone || '',
       enderecoSelecionado: enderecos[0] || '',
       enderecoIndex: 0,
+      enderecosDisponiveis: enderecos,
       endereco: enderecos[0] || '', // compat
     }))
     setBuscaCli('')
+    setClientesAchados([])
   }
 
   function trocarCliente() {
-    setForm(f => ({ ...f, cliente:'', clienteId:null, fone:'', enderecoSelecionado:'', enderecoIndex:0, endereco:'' }))
+    setForm(f => ({ ...f, cliente:'', clienteId:null, fone:'', enderecoSelecionado:'', enderecoIndex:0, enderecosDisponiveis:[], endereco:'' }))
     setBuscaCli('')
+    setClientesAchados([])
   }
 
-  function clienteCadastrado(novoCli) {
-    setClientes(prev => [novoCli, ...prev])
-    escolherCliente(novoCli)
+  async function clienteCadastrado(novoCli) {
+    // novoCli vem do NovoClienteModalCompleto com id fake "novo-NNN" e enderecos array.
+    // Persistimos no Supabase e usamos a linha real retornada (id de verdade).
+    const { data, error: err } = await criarClientePersist({
+      nome: novoCli.nome,
+      telefone: novoCli.fone,
+      enderecos: novoCli.enderecos,
+      email: novoCli.email,
+      observacoes: novoCli.cpfCnpj ? `CPF/CNPJ: ${novoCli.cpfCnpj}` : null,
+    })
+    if (err) {
+      notify?.('erro', `Erro ao cadastrar cliente: ${err.message || err}`)
+      return
+    }
+    escolherCliente({
+      id: data.id,
+      nome: data.nome,
+      fone: data.telefone || '',
+      endereco: data.endereco || '',
+      enderecos: data.endereco ? [data.endereco] : [],
+    })
   }
 
-  const clienteSelecionado = useMemo(
-    () => clientes.find(c => c.id === form.clienteId),
-    [clientes, form.clienteId]
-  )
-  const enderecosCliente = clienteSelecionado?.enderecos || []
+  const enderecosCliente = form.enderecosDisponiveis || []
 
   // Fecha o dropdown de tipo ao clicar fora ou apertar Escape.
   // Escape usa capture + stopPropagation pra não fechar o modal junto.
@@ -360,11 +424,52 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
     setTipoMenuAberto(false)
   }
 
-  function salvar() {
-    const marcaFinal = form.equipamentoMarca === 'Outros' ? form.equipamentoMarcaOutros : form.equipamentoMarca
-    const eqTxt = [form.equipamentoTipo, marcaFinal, form.equipamentoModelo].filter(Boolean).join(' ')
-    alert(`OS de ${TIPOS_OS[tipo].label} criada com sucesso!\n\nCliente: ${form.cliente || '— Estoque'}\nEndereço: ${form.enderecoSelecionado || '—'}\nEquipamento: ${eqTxt || '— a preencher depois'}`)
-    onClose()
+  async function salvar() {
+    if (!podeAvancar || salvando) return
+    setSalvando(true)
+    try {
+      const marcaFinal = form.equipamentoMarca === 'Outros' ? form.equipamentoMarcaOutros : form.equipamentoMarca
+      const etapaInicial = form.data ? 'agendamento' : 'aguardando_agendamento'
+      // Combina data + hora em ISO, assumindo timezone local de Cuiabá (UTC-4).
+      // Hora vazia → default 08:00 (turno da manhã, padrão da equipe).
+      const dataAgIso = form.data
+        ? new Date(`${form.data}T${form.hora || '08:00'}:00-04:00`).toISOString()
+        : null
+
+      // Schema flat da tabela `os` (sem JSONB de equipamento — colunas separadas).
+      // Campos sem coluna conhecida (tipo_equipamento, serie_equipamento,
+      // observacoes, maquinaEstoque) ficam de fora; trigger preenche numero/criado_em/por.
+      const payload = {
+        tipo,
+        etapa: etapaInicial,
+        cliente_id: form.clienteId || null,
+        marca_equipamento: marcaFinal || null,
+        modelo_equipamento: form.equipamentoModelo?.trim() || null,
+        defeito_relatado: form.defeito?.trim() || null,
+        data_agendamento: dataAgIso,
+      }
+      if (tipo === 'fabricacao' && form.valor) {
+        const v = parseFloat(String(form.valor).replace(',', '.'))
+        if (!isNaN(v)) payload.valor_total = v
+      }
+
+      const { data, error: err } = await supabase
+        .from('os')
+        .insert(payload)
+        .select('numero')
+        .single()
+
+      if (err) throw err
+
+      notify?.('ok', `OS #${data.numero} criada`)
+      onCriada?.()
+      onClose()
+    } catch (e) {
+      notify?.('erro', `Erro ao criar OS: ${e?.message || 'desconhecido'}`)
+      console.error('[NovaOS] erro ao salvar:', e)
+    } finally {
+      setSalvando(false)
+    }
   }
 
   const corTipo = corEtapa(TIPOS_OS[tipo].cor, dark)
@@ -489,8 +594,24 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
               {!form.cliente ? (
                 <div style={{ position:'relative' }}>
                   <input value={buscaCli} onChange={e=>setBuscaCli(e.target.value)} placeholder="Buscar cliente por nome ou telefone…" style={inputStyle} autoFocus />
-                  {clientesFiltrados.length > 0 && (
+                  {loadingClientes && (
+                    <i className="ti ti-loader-2" aria-hidden="true"
+                      style={{ position:'absolute', right:10, top:18, fontSize:14, color:T.textMuted, animation:'idemaq-spin 0.8s linear infinite' }} />
+                  )}
+                  {mostrarDropdown && (
                     <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, maxHeight:240, overflowY:'auto', zIndex:10, boxShadow:dark?'0 8px 24px rgba(0,0,0,.4)':'0 4px 16px rgba(0,0,0,.1)' }}>
+                      {loadingClientes && clientesFiltrados.length === 0 && (
+                        <div style={{ padding:'10px 12px', fontSize:12, color:T.textMuted, display:'flex', alignItems:'center', gap:7 }}>
+                          <i className="ti ti-loader-2" style={{ fontSize:13, animation:'idemaq-spin 0.8s linear infinite' }} aria-hidden="true" />
+                          Buscando…
+                        </div>
+                      )}
+                      {!loadingClientes && clientesFiltrados.length === 0 && (
+                        <div style={{ padding:'10px 12px', fontSize:12, color:T.textMuted, display:'flex', alignItems:'center', gap:7 }}>
+                          <i className="ti ti-mood-empty" style={{ fontSize:14 }} aria-hidden="true" />
+                          Nenhum cliente encontrado pra "{buscaCli.trim()}"
+                        </div>
+                      )}
                       {clientesFiltrados.map(c => (
                         <div key={c.id} onClick={()=>escolherCliente(c)}
                           style={{ padding:'9px 12px', cursor:'pointer', borderBottom:`1px solid ${T.border}`, fontSize:12.5 }}
@@ -498,7 +619,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
                           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                           <div style={{ color:T.textPrimary, fontWeight:600 }}>{c.nome}</div>
                           <div style={{ color:T.textMuted, fontSize:11, marginTop:2 }}>
-                            {c.fone} · {(c.enderecos?.length || 0)} endereço(s)
+                            {c.fone || '— sem telefone —'} · {(c.enderecos?.length || 0)} endereço(s)
                           </div>
                         </div>
                       ))}
@@ -690,14 +811,30 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
               {!form.cliente ? (
                 <div style={{ position:'relative' }}>
                   <input value={buscaCli} onChange={e=>setBuscaCli(e.target.value)} placeholder="Buscar cliente por nome ou telefone…" style={inputStyle} autoFocus />
-                  {clientesFiltrados.length > 0 && (
+                  {loadingClientes && (
+                    <i className="ti ti-loader-2" aria-hidden="true"
+                      style={{ position:'absolute', right:10, top:18, fontSize:14, color:T.textMuted, animation:'idemaq-spin 0.8s linear infinite' }} />
+                  )}
+                  {mostrarDropdown && (
                     <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:T.card, border:`1px solid ${T.border}`, borderRadius:7, maxHeight:220, overflowY:'auto', zIndex:10 }}>
+                      {loadingClientes && clientesFiltrados.length === 0 && (
+                        <div style={{ padding:'9px 11px', fontSize:12, color:T.textMuted, display:'flex', alignItems:'center', gap:7 }}>
+                          <i className="ti ti-loader-2" style={{ fontSize:13, animation:'idemaq-spin 0.8s linear infinite' }} aria-hidden="true" />
+                          Buscando…
+                        </div>
+                      )}
+                      {!loadingClientes && clientesFiltrados.length === 0 && (
+                        <div style={{ padding:'9px 11px', fontSize:12, color:T.textMuted, display:'flex', alignItems:'center', gap:7 }}>
+                          <i className="ti ti-mood-empty" style={{ fontSize:14 }} aria-hidden="true" />
+                          Nenhum cliente encontrado pra "{buscaCli.trim()}"
+                        </div>
+                      )}
                       {clientesFiltrados.map(c => (
                         <div key={c.id} onClick={()=>escolherCliente(c)} style={{ padding:'8px 11px', cursor:'pointer', borderBottom:`1px solid ${T.border}`, fontSize:12.5 }}
                           onMouseEnter={e=>e.currentTarget.style.background=T.cardAlt}
                           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                           <div style={{ color:T.textPrimary, fontWeight:600 }}>{c.nome}</div>
-                          <div style={{ color:T.textMuted, fontSize:11 }}>{c.fone}</div>
+                          <div style={{ color:T.textMuted, fontSize:11 }}>{c.fone || '— sem telefone —'}</div>
                         </div>
                       ))}
                     </div>
@@ -785,9 +922,9 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile }) {
           style={{ padding:'8px 14px', borderRadius:8, border:`1px solid ${T.border}`, background:'transparent', color:T.textSecondary, fontSize:12.5, cursor:'pointer', fontWeight:500 }}>
           Cancelar
         </button>
-        <button onClick={salvar} disabled={!podeAvancar}
-          style={{ padding:'9px 18px', borderRadius:8, border:'none', background: podeAvancar?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: podeAvancar?'#fff':T.textDim, fontSize:12.5, cursor: podeAvancar?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:5, opacity: podeAvancar?1:.7 }}>
-          <i className="ti ti-check" style={{ fontSize:15 }} aria-hidden="true" /> Criar OS
+        <button onClick={salvar} disabled={!podeAvancar || salvando}
+          style={{ padding:'9px 18px', borderRadius:8, border:'none', background: (podeAvancar && !salvando)?`linear-gradient(135deg,${P.blue},#3a7bbf)`:T.cardAlt, color: (podeAvancar && !salvando)?'#fff':T.textDim, fontSize:12.5, cursor: (podeAvancar && !salvando)?'pointer':'not-allowed', fontWeight:600, display:'flex', alignItems:'center', gap:5, opacity: (podeAvancar && !salvando)?1:.7 }}>
+          <i className={`ti ${salvando ? 'ti-loader-2' : 'ti-check'}`} style={{ fontSize:15, animation: salvando ? 'idemaq-spin 0.8s linear infinite' : undefined }} aria-hidden="true" /> {salvando ? 'Salvando…' : 'Criar OS'}
         </button>
       </div>
 
