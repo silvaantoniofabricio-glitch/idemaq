@@ -166,8 +166,8 @@ RLS no banco também protege os dados sensíveis (defesa em camadas).
 - Mapeia snake_case ↔ camelCase via `dbToUi`/`uiToDb`
 - CRUD: `criar` ✅, `atualizar` ✅ (consumido pelo `PecaDetalheModal`), `excluir` (soft) ✅
 - `atualizar(id, patch)` aceita patch parcial em camelCase, retorna `{ data, error }` com a linha atualizada
-- `baixarItens(itens, ctx)` wrapper sobre `baixarItensDoEstoque` que dispara refetch após sucesso
-- Export named `baixarItensDoEstoque(itens, ctx)` standalone (usado pelo `useOS.js` sem precisar instanciar o hook)
+- `baixarItens(osId)` wrapper sobre `baixarItensDaOS` que dispara refetch após sucesso
+- Export named `baixarItensDaOS(osId)` standalone (usado pelo `useOS.js` sem precisar instanciar o hook) — idempotente via flag `os.itens_baixados`
 - 2ª query light separada pra KPIs/contagem global (não afetada pelo filtro)
 - Trata `modelos_compativeis` como array
 
@@ -175,24 +175,31 @@ RLS no banco também protege os dados sensíveis (defesa em camadas).
 
 ## 9. Baixa automática ao concluir OS (20/05/2026)
 
-Implementação client-side em 2 partes:
+Implementação client-side com **idempotência real via flag no banco**:
 
-- **`usePecas.js`** — exporta `baixarItensDoEstoque(itens, ctx)` (standalone, não-hook). Recebe `[{ nome, qtd }]`, para cada item:
-  - `peca` ILIKE `<nome>` exato (1 match → debita; 0 → vai pra `naoEncontradas`; >1 → erro `ambíguo`, pula pra não baixar peça errada)
-  - `UPDATE peca SET qtd_atual = max(0, qtd_atual - qtd)` (não vai negativo)
-  - Retorna `{ aplicadas, naoEncontradas, erros, osId, osNumero }`
-  - Wrapper `usePecas().baixarItens(itens, ctx)` chama o standalone + faz `fetchPecas()` pra UI refletir
-- **`useOS.js`** — dentro do `updateOS`, detecta transição `etapa !== 'concluido' → 'concluido'`. Após o UPDATE bem-sucedido, dispara fire-and-forget `baixarEstoqueAoConcluir(osId, osNumero)`:
-  - SELECT `os_item` da OS filtrado por `tipo = 'peca'` e `deleted_at IS NULL`
-  - Chama `baixarItensDoEstoque` e loga resultado no console (sem toast, pra não poluir o Kanban)
+- **Schema (`sql/07-os-itens-baixados.sql`)** — precisa ser aplicado **uma vez** no SQL Editor do Supabase (publishable key não roda DDL):
+  - `os.itens_baixados boolean NOT NULL DEFAULT false` — flag de "estoque já debitou"
+  - `os_item.peca_id uuid REFERENCES peca(id)` — FK opcional pra peça do catálogo; NULL = item avulso (texto livre), ignorado na baixa
+  - Index parcial em `os_item.peca_id WHERE deleted_at IS NULL`
 
-**Idempotência (frágil)**: como ainda não temos `peca_movimentacao`, a única proteção contra dupla-baixa é o caller — só dispara em transição real (etapa anterior `!= 'concluido'`). Se duas sessões empurram a mesma OS pro Concluído ao mesmo tempo (race), ou se alguém volta a OS pra outra etapa e empurra de novo, pode baixar duplo. Aceito como trade-off até subir `peca_movimentacao` (idempotente via UNIQUE `(os_id, peca_id)`).
+- **`usePecas.js`** — exporta `baixarItensDaOS(osId)` standalone + `usePecas().baixarItens(osId)` wrapper (faz `fetchPecas` no fim). Fluxo:
+  1. **Claim atômico**: `UPDATE os SET itens_baixados=true WHERE id=$1 AND itens_baixados=false RETURNING id, numero`. Se nada casou → outro side já baixou → `{ ja_baixado: true }`, sai sem mexer em estoque.
+  2. SELECT `os_item` da OS com `tipo='peca'` E `peca_id IS NOT NULL`
+  3. Pra cada item: SELECT da peça pelo id + UPDATE `qtd_atual = max(0, qtd_atual - qtd)` (nunca negativo)
+  4. Retorna `{ ok, ja_baixado, aplicadas, erros, osId, osNumero, motivo? }`
+  - Se schema 07 ainda não rodou: detecta `42703` ou `PGRST204`, loga `"rode sql/07..."` e retorna `{ ok:false, motivo:'schema-pendente:sql/07' }` sem quebrar.
 
-**Garantia e Fabricação**: dão baixa normal — a peça saiu do estoque independente de cobrar do cliente ou destinar pra revenda.
+- **`useOS.js`** — `updateOS` detecta transição `etapa !== 'concluido' → 'concluido'` e, após o UPDATE bem-sucedido, dispara fire-and-forget `baixarEstoqueAoConcluir(osId, osNumero)` (helper local que chama `baixarItensDaOS` e loga). Best-effort: erros vão pro console, não travam o avanço do Kanban.
 
-**Matching por nome**: hoje `os_item` não tem `peca_id`. Mudanças futuras pra robustez:
-- Adicionar `peca_id uuid` em `os_item` (selecionar peça do catálogo no orçamento em vez de digitar nome livre)
-- Criar `peca_movimentacao(peca_id, delta, tipo, os_id, …)` com UNIQUE `(os_id, peca_id)` pra idempotência real + histórico verdadeiro (substitui o mock do `PecaDetalheModal`)
+**Itens avulsos**: peça digitada manualmente no orçamento (sem vínculo com catálogo) tem `peca_id = NULL` e **não mexe no estoque**. Quando o orçamento ganhar dropdown do catálogo, a baixa passa a ser automática pra esses itens também.
+
+**Garantia e Fabricação**: dão baixa normal — peça saiu do estoque independente de cobrar do cliente ou destinar pra revenda.
+
+**Race / re-conclusão**: a flag `os.itens_baixados` é claim-once. Drag duplicado, 2 dispositivos concorrentes, ou reabrir+concluir de novo: tudo cobre — só roda uma vez por OS na vida.
+
+**Pendentes**:
+- Tabela `peca_movimentacao(peca_id, delta, tipo, os_id, …)` pra histórico real (hoje o histórico do `PecaDetalheModal` ainda é mock)
+- Dropdown de peças no orçamento (`AcaoOrcamento`) pra preencher `peca_id` automaticamente
 
 Cruza com OS — ver `contexto-os.md`. Detalhe operacional + cuidados em `PENDENCIAS-ROTAS.md`.
 

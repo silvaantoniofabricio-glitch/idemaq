@@ -46,6 +46,7 @@
 ## 2. Próximos passos
 
 1. **Aplicar `sql/05-schema-parte-2-checklist-falha.sql` no Supabase SQL Editor** se ainda não foi (publishable key não roda DDL). Sem isso, escritas em checklist_etapa/falha_teste falham silenciosamente.
+1b. **Aplicar `sql/07-os-itens-baixados.sql`** (mesmo motivo): adiciona `os.itens_baixados` + `os_item.peca_id` pra baixa automática de estoque. Enquanto não rodar, a baixa só loga "schema-pendente" no console — OS conclui normal mas estoque não decrementa.
 2. **Foto da coleta → Supabase Storage privado** (`idemaq-privado/os/{id}/coleta/`). Hoje base64 em memória no jsonb local `os.pre_diagnostico.foto`. Header e AcaoRecebido leem desse mesmo jsonb.
 3. **Adicionar colunas pros campos pendentes em `os`**: `entrega_*` (data/hora/responsavel/obs), `observacoes` global (ver PENDENCIAS-ROTAS).
 4. **AcaoOrçamento → lançamento real de itens via `useOSItens.addItem/updateItem/removeItem`** (hoje ainda escreve só local).
@@ -312,7 +313,7 @@ Helper `itensMarcadosDoDiag` + map `ITENS_DIAG`.
 ## 14. Interseções com outras áreas
 
 - **Clientes**: NovaOSModal usa `criarClientePersist` standalone. Ver `contexto-clientes.md`
-- **Estoque**: ✅ baixa automática ao concluir OS (20/05/2026) — `useOS.updateOS` dispara `baixarEstoqueAoConcluir(osId, osNumero)` fire-and-forget na transição pra `concluido`, que chama `baixarItensDoEstoque` de `usePecas.js` (match por nome ILIKE). Categorias de peça espelham `ITENS_DIAG`. Ver `contexto-estoque.md` §9
+- **Estoque**: ✅ baixa automática ao concluir OS (20/05/2026) — `useOS.updateOS` dispara `baixarEstoqueAoConcluir(osId, osNumero)` fire-and-forget na transição pra `concluido`, que chama `baixarItensDaOS(osId)` de `usePecas.js`. **Idempotente** via claim atômico `UPDATE os SET itens_baixados=true WHERE itens_baixados=false`. Decremento via `os_item.peca_id` (avulsos com peca_id NULL são ignorados). Pré-requisito: aplicar `sql/07-os-itens-baixados.sql` no SQL Editor do Supabase. Categorias de peça espelham `ITENS_DIAG`. Ver `contexto-estoque.md` §9
 - **Financeiro**: pagamento gera lançamento em `lancamento_financeiro` (schema parte 2 pendente). Ver `contexto-financeiro.md`
 - **Geral / cross-area**: ✅ `checklist_etapa` + `falha_teste` aplicados (19/05/2026 via sql/05). `retorno_garantia` ainda pendente.
 

@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabase'
 import { normalizePatchOS } from '../utils/osPatch'
-import { baixarItensDoEstoque } from './usePecas'
+import { baixarItensDaOS } from './usePecas'
 
 // Traduz etapa do banco (DB) para o valor usado na UI
 function dbEtapaToUI(tipo, dbEtapa) {
@@ -204,39 +204,33 @@ export function useOS(buscando = false) {
 }
 
 // =============================================================================
-// baixarEstoqueAoConcluir — busca itens com tipo='peca' da OS e debita estoque
+// baixarEstoqueAoConcluir — delega pro baixarItensDaOS (idempotente via flag DB)
 // =============================================================================
 // Disparada (fire-and-forget) pelo updateOS quando a OS entra em 'concluido'.
 // Best-effort: logs no console — não interrompe o UPDATE da OS nem mostra
 // toast (pra não poluir; UX da baixa fica em relatórios/PecaDetalheModal).
-// Idempotência: o caller só dispara em transição real (etapa anterior != 'concluido'),
-// então re-baixa precisa que alguém volte a OS pra outra etapa e empurre de novo.
-// Quando subir `peca_movimentacao`, a função muda pra: registra movimentação e
-// vira idempotente por (os_id, peca_id) único.
+//
+// Idempotência real: `baixarItensDaOS` reivindica `os.itens_baixados=true` via
+// UPDATE atômico antes de mexer em estoque, então 2 chamadas concorrentes
+// (race entre devices/tabs) só fazem trabalho uma vez. Pré-requisito:
+// sql/07-os-itens-baixados.sql aplicado.
 async function baixarEstoqueAoConcluir(osId, osNumero) {
   try {
-    const { data: itens, error } = await supabase
-      .from('os_item')
-      .select('nome, qtd')
-      .eq('os_id', osId)
-      .eq('tipo', 'peca')
-      .is('deleted_at', null)
-
-    if (error) {
-      console.error(`[baixaAuto] OS #${osNumero} falha buscando os_item:`, error)
+    const res = await baixarItensDaOS(osId)
+    if (!res?.ok) {
+      console.warn(`[baixaAuto] OS #${osNumero}: ${res?.motivo || 'falhou'}`)
       return
     }
-    if (!itens || itens.length === 0) return
-
-    const res = await baixarItensDoEstoque(itens, { osId, osNumero })
-
-    if (res.aplicadas.length) {
+    if (res.ja_baixado) {
+      console.log(`[baixaAuto] OS #${osNumero}: já foi baixada antes (os.itens_baixados=true)`)
+      return
+    }
+    if (res.aplicadas?.length) {
       console.log(`[baixaAuto] OS #${osNumero}: ${res.aplicadas.length} peça(s) baixada(s)`, res.aplicadas)
+    } else {
+      console.log(`[baixaAuto] OS #${osNumero}: nenhum item com peca_id pra baixar`)
     }
-    if (res.naoEncontradas.length) {
-      console.warn(`[baixaAuto] OS #${osNumero}: itens sem match no catálogo:`, res.naoEncontradas)
-    }
-    if (res.erros.length) {
+    if (res.erros?.length) {
       console.warn(`[baixaAuto] OS #${osNumero}: erros parciais:`, res.erros)
     }
   } catch (e) {

@@ -186,12 +186,12 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
   }
 
   /**
-   * Baixa automatica ao concluir OS. Wrapper sobre `baixarItensDoEstoque`
-   * que ainda dispara refetch local pra UI refletir as novas quantidades.
+   * Wrapper de `baixarItensDaOS` que ainda dispara refetch local pra UI
+   * refletir as novas quantidades sem precisar trocar de página.
    */
-  async function baixarItens(itens, ctx) {
-    const res = await baixarItensDoEstoque(itens, ctx)
-    if (res.aplicadas.length) await fetchPecas()
+  async function baixarItens(osId) {
+    const res = await baixarItensDaOS(osId)
+    if (res?.aplicadas?.length) await fetchPecas()
     return res
   }
 
@@ -199,53 +199,99 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
 }
 
 // =============================================================================
-// baixarItensDoEstoque — standalone, sem hook
+// baixarItensDaOS — standalone, sem hook
 // =============================================================================
-// Chamado pelo useOS quando uma OS entra em 'concluido' (e tambem disponivel
-// via usePecas().baixarItens). Para cada item da OS com tipo='peca', tenta
-// achar a peca correspondente por nome (ILIKE exato) e decrementa qtd_atual.
+// Chamada pelo useOS quando uma OS entra em 'concluido' (e também exposta via
+// usePecas().baixarItens). Faz 3 passos:
 //
-// Matching:
-//   - nome.ilike '<nome do item>'  (case/diacriticos pelo collation do Postgres)
-//   - >1 match  -> erro 'ambiguo', baixa nao aplicada (evita pegar peca errada)
-//   - 0 matches -> 'naoEncontradas' (provavelmente item de texto livre criado
-//                  no orcamento sem vinculo com o catalogo)
+//   1) CLAIM ATÔMICO de idempotência:
+//      UPDATE os SET itens_baixados=true WHERE id=$1 AND itens_baixados=false
+//      Se ninguém casou → outro side já baixou → retorna { ja_baixado: true }
+//      sem tocar em estoque.
 //
-// Idempotencia: nao temos tabela peca_movimentacao ainda, entao a protecao
-// contra dupla-baixa vem do *caller* (useOS so dispara em transicao real
-// para 'concluido', nunca estando ja em 'concluido'). Trade-off documentado
-// em PENDENCIAS-ROTAS.md.
+//   2) Busca itens da OS com tipo='peca' E peca_id NOT NULL
+//      (item avulso = peca_id NULL = texto livre criado no orçamento, ignora).
 //
-// Retorno: { aplicadas, naoEncontradas, erros, osId, osNumero }
+//   3) Para cada item: SELECT peca pelo id (filtra deleted_at) e
+//      UPDATE peca SET qtd_atual = max(0, qtd_atual - qtd_do_item).
 //
-// @param {Array<{nome:string, qtd:number}>} itens
-// @param {object} [ctx]  { osId, osNumero } — usados so no log/retorno
-export async function baixarItensDoEstoque(itens, ctx = {}) {
+// Pré-requisito de schema: sql/07-os-itens-baixados.sql aplicado
+// (colunas os.itens_baixados + os_item.peca_id). Se não tiver, a função
+// detecta o erro 42703 e retorna { ok:false, motivo:'schema-pendente:sql/07' }
+// sem quebrar nada.
+//
+// Retorno:
+//   { ok, ja_baixado?, motivo?, aplicadas, erros, osId, osNumero? }
+//   - aplicadas: [{ peca_id, nome, delta, qtd_antes, qtd_depois }]
+//   - erros:     [{ peca_id?, nome?, msg }]
+//
+// @param {string} osId  UUID da OS
+export async function baixarItensDaOS(osId) {
+  if (!osId) return { ok: false, motivo: 'osId vazio', aplicadas: [], erros: [] }
+
+  // 1) Claim atômico — só prossegue quem conseguir virar a flag false→true.
+  const { data: claimed, error: errClaim } = await supabase
+    .from('os')
+    .update({ itens_baixados: true })
+    .eq('id', osId)
+    .eq('itens_baixados', false)
+    .select('id, numero')
+    .maybeSingle()
+
+  if (errClaim) {
+    if (errClaim.code === '42703' || errClaim.code === 'PGRST204') {
+      console.warn('[baixaAuto] coluna os.itens_baixados não existe — rode sql/07-os-itens-baixados.sql no Supabase')
+      return { ok: false, motivo: 'schema-pendente:sql/07', aplicadas: [], erros: [] }
+    }
+    console.error('[baixaAuto] falha reivindicando itens_baixados:', errClaim)
+    return { ok: false, motivo: errClaim.message, aplicadas: [], erros: [] }
+  }
+
+  if (!claimed) {
+    // ninguém casou: já tava true antes, ou OS não existe
+    return { ok: true, ja_baixado: true, osId, aplicadas: [], erros: [] }
+  }
+
+  const osNumero = claimed.numero
   const aplicadas = []
-  const naoEncontradas = []
   const erros = []
 
-  for (const item of (itens || [])) {
-    const nome = String(item?.nome || '').trim()
-    const qtd  = Number(item?.qtd) || 0
-    if (!nome || qtd <= 0) continue
+  // 2) Itens elegíveis: tipo='peca' E peca_id NOT NULL (avulsos ficam de fora).
+  const { data: itens, error: errIt } = await supabase
+    .from('os_item')
+    .select('peca_id, nome, qtd')
+    .eq('os_id', osId)
+    .eq('tipo', 'peca')
+    .not('peca_id', 'is', null)
+    .is('deleted_at', null)
 
-    // PostgREST escapa o ILIKE; nome com % ou _ fica literal de qualquer jeito
-    const { data: matches, error: errSel } = await supabase
+  if (errIt) {
+    if (errIt.code === '42703' || errIt.code === 'PGRST204') {
+      console.warn('[baixaAuto] coluna os_item.peca_id não existe — rode sql/07-os-itens-baixados.sql')
+      return { ok: false, ja_baixado: false, motivo: 'schema-pendente:sql/07', aplicadas: [], erros: [], osId, osNumero }
+    }
+    return { ok: false, ja_baixado: false, motivo: errIt.message, aplicadas: [], erros: [], osId, osNumero }
+  }
+
+  if (!itens || itens.length === 0) {
+    return { ok: true, ja_baixado: false, aplicadas: [], erros: [], osId, osNumero }
+  }
+
+  // 3) Debita cada peça.
+  for (const item of itens) {
+    const qtd = Number(item.qtd) || 0
+    if (qtd <= 0) continue
+
+    const { data: peca, error: errSel } = await supabase
       .from('peca')
       .select('id, nome, qtd_atual')
+      .eq('id', item.peca_id)
       .is('deleted_at', null)
-      .ilike('nome', nome)
-      .limit(2)
+      .maybeSingle()
 
-    if (errSel) { erros.push({ nome, msg: errSel.message }); continue }
-    if (!matches || matches.length === 0) { naoEncontradas.push(nome); continue }
-    if (matches.length > 1) {
-      erros.push({ nome, msg: `mais de 1 peca com nome "${nome}" — baixa nao aplicada (ambiguo)` })
-      continue
-    }
+    if (errSel) { erros.push({ peca_id: item.peca_id, nome: item.nome, msg: errSel.message }); continue }
+    if (!peca)  { erros.push({ peca_id: item.peca_id, nome: item.nome, msg: 'peça não encontrada (soft-deletada?)' }); continue }
 
-    const peca = matches[0]
     const atual = Number(peca.qtd_atual) || 0
     const novo = Math.max(0, atual - qtd)
 
@@ -254,7 +300,7 @@ export async function baixarItensDoEstoque(itens, ctx = {}) {
       .update({ qtd_atual: novo })
       .eq('id', peca.id)
 
-    if (errUp) { erros.push({ nome, msg: errUp.message }); continue }
+    if (errUp) { erros.push({ peca_id: peca.id, nome: peca.nome, msg: errUp.message }); continue }
 
     aplicadas.push({
       peca_id:    peca.id,
@@ -265,5 +311,5 @@ export async function baixarItensDoEstoque(itens, ctx = {}) {
     })
   }
 
-  return { aplicadas, naoEncontradas, erros, osId: ctx.osId || null, osNumero: ctx.osNumero || null }
+  return { ok: true, ja_baixado: false, aplicadas, erros, osId, osNumero }
 }
