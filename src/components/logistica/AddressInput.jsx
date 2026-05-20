@@ -23,9 +23,9 @@ import { corEtapa } from '../../utils/colors'
 const MAPS_KEY = import.meta.env?.VITE_GOOGLE_MAPS_KEY || ''
 const MAPS_ENABLED = Boolean(MAPS_KEY)
 
-// ─── Loader singleton do script ────────────────────────────────────────────
+// ─── Loader singleton do script (exportado pra reuso em MapaLogistica) ─────
 let mapsScriptPromise = null
-function loadMapsScript() {
+export function loadMapsScript() {
   if (!MAPS_ENABLED) return Promise.reject(new Error('VITE_GOOGLE_MAPS_KEY ausente'))
   if (typeof window === 'undefined') return Promise.reject(new Error('SSR'))
   if (window.google?.maps?.places) return Promise.resolve(window.google)
@@ -45,6 +45,8 @@ function loadMapsScript() {
   })
   return mapsScriptPromise
 }
+
+export const MAPS_KEY_DISPONIVEL = MAPS_ENABLED
 
 /**
  * @param {object} props

@@ -15,6 +15,7 @@ import { ChipToggle } from '../components/ui/Tabs'
 import { useRotas } from '../hooks/useRotas'
 import NovaRotaModal from '../components/logistica/NovaRotaModal'
 import RotaDetalheModal from '../components/logistica/RotaDetalheModal'
+import MapaLogistica from '../components/logistica/MapaLogistica'
 
 // Datas-âncora pro filtro (hoje / amanhã / semana) — coerentes em qualquer dia.
 const HOJE = new Date().toISOString().slice(0, 10)
@@ -431,76 +432,34 @@ export default function Logistica({ T, dark }) {
           </Card>
         )}
 
-        {/* Coluna direita — placeholder do mapa */}
+        {/* Coluna direita — Mapa Google Maps real (Naviraí-MS) */}
         <Card T={T} dark={dark} padding={0}>
-          <div style={{ padding: '12px 16px 10px' }}>
-            <SectionHeader T={T} dark={dark} icon="ti-map" mb={0}
-              action={
-                <span style={{ fontSize: 11, color: T.textMuted }}>
-                  Integração Google Maps · em breve
-                </span>
-              }
-            >Mapa da rota</SectionHeader>
+          <div style={{ padding: '12px 16px 10px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <SectionHeader T={T} dark={dark} icon="ti-map" mb={0}>Mapa</SectionHeader>
+            <Button variant="ghost" size="sm" T={T} dark={dark}
+              iconLeft="ti-external-link"
+              onClick={abrirRotaCompleta}>
+              Rota no Maps
+            </Button>
           </div>
-          <div style={{
-            position: 'relative',
-            minHeight: 460,
-            background: cor('#1a1a1d', '#f7f7f9'),
-            backgroundImage: `linear-gradient(${T.border} 1px, transparent 1px), linear-gradient(90deg, ${T.border} 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            gap: 16, padding: 28, textAlign: 'center',
-            borderBottomLeftRadius: 11, borderBottomRightRadius: 11,
-          }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: 18,
-              background: bgEtapa('blue', dark),
-              border: `1px solid ${azul}33`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <i className="ti ti-map" style={{ fontSize: 32, color: azul }} aria-hidden="true" />
-            </div>
-            <div style={{ maxWidth: 380 }}>
-              <div style={{
-                fontSize: 15, fontWeight: 600,
-                color: corHero(dark), marginBottom: 6,
-              }}>
-                Mapa interativo em breve
-              </div>
-              <div style={{ fontSize: 12, color: T.textMuted, lineHeight: 1.45 }}>
-                A integração com Google Maps Places mostrará pinos de
-                {' '}<strong style={{ color: azul }}>coleta</strong> e
-                {' '}<strong style={{ color: azulClaro }}>entrega</strong>
-                {' '}com rota otimizada. Por enquanto, use os botões em cada parada
-                ou abra a rota completa abaixo.
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Button variant="secondary" T={T} dark={dark}
-                iconLeft="ti-external-link"
-                onClick={abrirRotaCompleta}>
-                Abrir rota completa no Maps
-              </Button>
-            </div>
 
-            {/* Legenda de cores */}
-            <div style={{
-              position: 'absolute', bottom: 14, left: 14,
-              display: 'flex', gap: 12,
-              padding: '6px 10px',
-              borderRadius: 8,
-              background: T.card,
-              border: `1px solid ${T.border}`,
-              fontSize: 11,
-            }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: T.textMuted }}>
+          <MapaLogistica T={T} dark={dark} height={460} />
+
+          {/* (mantido fora do mapa pra não cobrir a UI do Google) */}
+          <div style={{ padding: '10px 14px', borderTop: `1px solid ${T.border}` }}>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: T.textMuted, flexWrap: 'wrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <i className="ti ti-arrow-down-circle" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
                 Coleta
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: T.textMuted }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <i className="ti ti-truck-delivery" style={{ fontSize: 13, color: azulClaro }} aria-hidden="true" />
                 Entrega
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto', color: T.textDim }}>
+                <i className="ti ti-pin" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
+                Naviraí · oficina marcada no mapa
               </span>
             </div>
           </div>
