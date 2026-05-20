@@ -97,13 +97,16 @@ export default function AddressInput({
     if (acServiceRef.current && placesServiceRef.current) return true
     try {
       const google = await loadMapsScript()
-      acServiceRef.current = new google.maps.places.AutocompleteService()
+      // Com loading=async, importLibrary é o jeito oficial de esperar a
+      // sub-lib estar pronta antes de instanciar classes dela.
+      const places = await google.maps.importLibrary('places')
+      acServiceRef.current = new places.AutocompleteService()
       // PlacesService precisa de um nó DOM mesmo invisível
       if (!placesDivRef.current) {
         placesDivRef.current = document.createElement('div')
       }
-      placesServiceRef.current = new google.maps.places.PlacesService(placesDivRef.current)
-      sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken()
+      placesServiceRef.current = new places.PlacesService(placesDivRef.current)
+      sessionTokenRef.current = new places.AutocompleteSessionToken()
       return true
     } catch (e) {
       console.warn('AddressInput: Maps indisponível —', e.message)

@@ -46,7 +46,14 @@ export default function MapaLogistica({
         const google = await loadMapsScript()
         if (cancelado || !containerRef.current) return
 
-        mapaRef.current = new google.maps.Map(containerRef.current, {
+        // Com loading=async, o script.onload pode disparar antes do
+        // google.maps.Map estar disponível. importLibrary garante que a
+        // lib específica está carregada antes de instanciar.
+        const { Map } = await google.maps.importLibrary('maps')
+        const { Marker } = await google.maps.importLibrary('marker')
+        if (cancelado || !containerRef.current) return
+
+        mapaRef.current = new Map(containerRef.current, {
           center,
           zoom,
           disableDefaultUI: false,
@@ -57,18 +64,10 @@ export default function MapaLogistica({
         })
 
         // Marcador fixo da oficina (sempre visível)
-        new google.maps.Marker({
+        new Marker({
           position: NAVIRAI_CENTER,
           map: mapaRef.current,
           title: 'Oficina Idemaq · Naviraí/MS',
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: '#5B9BD5',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2,
-          },
         })
 
         setStatus('ok')
