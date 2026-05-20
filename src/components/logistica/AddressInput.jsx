@@ -24,26 +24,79 @@ const MAPS_KEY = import.meta.env?.VITE_GOOGLE_MAPS_KEY || ''
 const MAPS_ENABLED = Boolean(MAPS_KEY)
 
 // ─── Loader singleton do script (exportado pra reuso em MapaLogistica) ─────
-let mapsScriptPromise = null
+//
+// Usa o "Inline Bootstrap Loader" oficial do Google
+// (https://goo.gle/js-api-loader). Esse snippet registra
+// `google.maps.importLibrary` IMEDIATAMENTE como uma fila — quando você
+// chama importLibrary('maps') antes do script principal carregar, a
+// chamada fica em queue até o script chegar. Sem race condition entre
+// `script.onload` e disponibilidade do `google.maps.Map`.
+let mapsBootstrapInicializado = false
+function inicializarBootstrap() {
+  if (mapsBootstrapInicializado || !MAPS_ENABLED) return
+  if (typeof window === 'undefined') return
+  if (window.google?.maps?.importLibrary) {
+    mapsBootstrapInicializado = true
+    return
+  }
+  mapsBootstrapInicializado = true
+  // Snippet oficial do Google — não mexer (versão minificada do site deles).
+  /* eslint-disable */
+  ;((g) => {
+    var h, a, k,
+      p = 'The Google Maps JavaScript API',
+      c = 'google',
+      l = 'importLibrary',
+      q = '__ib__',
+      m = document,
+      b = window
+    b = b[c] || (b[c] = {})
+    var d = b.maps || (b.maps = {}),
+      r = new Set(),
+      e = new URLSearchParams(),
+      u = () =>
+        h ||
+        (h = new Promise(async (f, n) => {
+          await (a = m.createElement('script'))
+          e.set('libraries', [...r] + '')
+          for (k in g) e.set(k.replace(/[A-Z]/g, (t) => '_' + t[0].toLowerCase()), g[k])
+          e.set('callback', c + '.maps.' + q)
+          a.src = `https://maps.${c}apis.com/maps/api/js?` + e
+          d[q] = f
+          a.onerror = () => (h = n(Error(p + ' could not load.')))
+          a.nonce = m.querySelector('script[nonce]')?.nonce || ''
+          m.head.append(a)
+        }))
+    d[l]
+      ? console.warn(p + ' only loads once. Ignoring:', g)
+      : (d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)))
+  })({
+    key: MAPS_KEY,
+    v: 'weekly',
+    language: 'pt-BR',
+    region: 'BR',
+  })
+  /* eslint-enable */
+}
+
 export function loadMapsScript() {
   if (!MAPS_ENABLED) return Promise.reject(new Error('VITE_GOOGLE_MAPS_KEY ausente'))
   if (typeof window === 'undefined') return Promise.reject(new Error('SSR'))
-  if (window.google?.maps?.places) return Promise.resolve(window.google)
-  if (mapsScriptPromise) return mapsScriptPromise
-
-  mapsScriptPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script')
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(MAPS_KEY)}&libraries=places&language=pt-BR&region=BR&loading=async`
-    s.async = true
-    s.defer = true
-    s.onload = () => resolve(window.google)
-    s.onerror = () => {
-      mapsScriptPromise = null
-      reject(new Error('Falha ao carregar Google Maps'))
+  inicializarBootstrap()
+  // Após o bootstrap, `window.google.maps.importLibrary` está sempre
+  // disponível (mesmo antes do script principal carregar). Resolve direto.
+  if (window.google?.maps?.importLibrary) return Promise.resolve(window.google)
+  // Fallback paranoico — espera o bootstrap registrar a função (sincrono
+  // em condições normais, mas garante via micro-poll).
+  return new Promise((resolve, reject) => {
+    const start = Date.now()
+    const tick = () => {
+      if (window.google?.maps?.importLibrary) return resolve(window.google)
+      if (Date.now() - start > 3000) return reject(new Error('Bootstrap do Maps demorou demais'))
+      setTimeout(tick, 30)
     }
-    document.head.appendChild(s)
+    tick()
   })
-  return mapsScriptPromise
 }
 
 export const MAPS_KEY_DISPONIVEL = MAPS_ENABLED
