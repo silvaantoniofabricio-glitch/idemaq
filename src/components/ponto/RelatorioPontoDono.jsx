@@ -61,7 +61,7 @@ function AbaVisao({ T, dark, setAba }) {
   for (const f of FUNCIONARIOS_PONTO) {
     const ultima = ultimaBatidaHoje(f.id)
     if (ultima && ultima.tipo === 'entrada') {
-      const entrada = new Date(ultima.data_hora)
+      const entrada = new Date(ultima.bateu_em)
       const padrao = new Date(entrada)
       padrao.setHours(7, 40, 0, 0)  // 07:30 + 10min tolerância
       if (entrada > padrao) {
@@ -69,7 +69,7 @@ function AbaVisao({ T, dark, setAba }) {
         alertas.push({
           funcionario: f,
           tipo: 'atraso',
-          texto: `atrasou ${atrasoMin}min na entrada (chegou ${fmtHora(ultima.data_hora)})`,
+          texto: `atrasou ${atrasoMin}min na entrada (chegou ${fmtHora(ultima.bateu_em)})`,
         })
       }
     }
@@ -120,9 +120,9 @@ function AbaVisao({ T, dark, setAba }) {
                   <span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted }}>· {f.papel}</span>
                 </div>
                 <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 3 }}>
-                  {status.codigo === 'trabalhando' && `Trabalhando há ${fmtDuracao(minTrab)} · Entrada ${fmtHora(batidasDeHoje(f.id)[0]?.data_hora)}`}
-                  {status.codigo === 'almoco' && `Em almoço desde ${fmtHora(ultima?.data_hora)}`}
-                  {status.codigo === 'encerrado' && `Encerrou às ${fmtHora(ultima?.data_hora)} · ${fmtDuracao(minTrab)} hoje`}
+                  {status.codigo === 'trabalhando' && `Trabalhando há ${fmtDuracao(minTrab)} · Entrada ${fmtHora(batidasDeHoje(f.id)[0]?.bateu_em)}`}
+                  {status.codigo === 'almoco' && `Em almoço desde ${fmtHora(ultima?.bateu_em)}`}
+                  {status.codigo === 'encerrado' && `Encerrou às ${fmtHora(ultima?.bateu_em)} · ${fmtDuracao(minTrab)} hoje`}
                   {status.codigo === 'ausente' && 'Sem batida hoje'}
                 </div>
               </div>

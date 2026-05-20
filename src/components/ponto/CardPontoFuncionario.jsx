@@ -34,10 +34,10 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
   let statusTxt = 'Pronto pra iniciar o dia'
   let statusCor = T.textMuted
   if (ultima) {
-    if (ultima.tipo === 'entrada' || ultima.tipo === 'almoco_fim') {
+    if (ultima.tipo === 'entrada' || ultima.tipo === 'volta_almoco') {
       statusTxt = `Trabalhando há ${fmtDuracao(minTrab)}`
       statusCor = verde
-    } else if (ultima.tipo === 'almoco_inicio') {
+    } else if (ultima.tipo === 'saida_almoco') {
       statusTxt = 'Em almoço'
       statusCor = amarelo
     } else if (ultima.tipo === 'saida') {
@@ -46,25 +46,27 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
     }
   }
 
-  async function bater({ tipo, endereco, latitude, longitude }) {
+  async function bater({ tipo, endereco_aproximado, lat, lng }) {
+    // TODO(ponto): trocar state local por INSERT em `ponto_registro` via usePonto.bater().
+    // Spec em idemaq-modulo-ponto-CLAUDE-CODE.md; schema em sql/09-ponto-schema.sql.
     const novaBatida = {
       id: Date.now(),
       tipo,
-      data_hora: new Date().toISOString(),
-      latitude, longitude, endereco,
+      bateu_em: new Date().toISOString(),
+      lat, lng, endereco_aproximado,
     }
     setBatidasLocais(prev => ({
       ...prev,
       [funcionario.id]: [...(prev[funcionario.id] || []), novaBatida],
     }))
     const cfg = TIPOS_BATIDA[tipo]
-    notify('ok', `${cfg.label} registrada às ${fmtHora(novaBatida.data_hora)} · ${endereco}`)
+    notify('ok', `${cfg.label} registrada às ${fmtHora(novaBatida.bateu_em)} · ${endereco_aproximado}`)
   }
 
   // Última batida pra mostrar no card
   const primeiraEntrada = (batidasLocais[funcionario.id] || [])
-    .filter(b => b.tipo === 'entrada' && new Date(b.data_hora).toDateString() === new Date().toDateString())
-    .sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora))[0]
+    .filter(b => b.tipo === 'entrada' && new Date(b.bateu_em).toDateString() === new Date().toDateString())
+    .sort((a, b) => new Date(a.bateu_em) - new Date(b.bateu_em))[0]
 
   return (
     <div className="idemaq-card" style={{
@@ -99,7 +101,7 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
             <div style={{
               fontSize: 14, fontWeight: 700, color: corHero(dark),
               fontVariantNumeric: 'tabular-nums',
-            }}>{fmtHora(primeiraEntrada.data_hora)}</div>
+            }}>{fmtHora(primeiraEntrada.bateu_em)}</div>
           </div>
         )}
       </div>
@@ -118,7 +120,7 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
           display: 'inline-flex', alignItems: 'center', gap: 6,
         }}>
           <i className={`ti ${
-            ultima?.tipo === 'almoco_inicio' ? 'ti-coffee'
+            ultima?.tipo === 'saida_almoco' ? 'ti-coffee'
             : ultima?.tipo === 'saida' ? 'ti-check'
             : ultima ? 'ti-activity' : 'ti-clock-hour-8'
           }`} style={{ fontSize: 15 }} aria-hidden="true" />

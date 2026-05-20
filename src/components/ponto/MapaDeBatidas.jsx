@@ -28,13 +28,13 @@ export default function MapaDeBatidas({ T, dark }) {
       batidas.push({ ...b, funcionario: f })
     }
   }
-  batidas.sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora))
+  batidas.sort((a, b) => new Date(a.bateu_em) - new Date(b.bateu_em))
 
   function abrirRotaMaps() {
     if (batidas.length === 0) return
     const enderecos = batidas
-      .filter(b => b.endereco)
-      .map(b => encodeURIComponent(b.endereco))
+      .filter(b => b.endereco_aproximado)
+      .map(b => encodeURIComponent(b.endereco_aproximado))
     if (enderecos.length === 0) return
     window.open(`https://www.google.com/maps/dir/${enderecos.join('/')}`,
       '_blank', 'noopener,noreferrer')
@@ -120,14 +120,14 @@ export default function MapaDeBatidas({ T, dark }) {
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     <i className="ti ti-map-pin" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
-                    {b.endereco || `${b.latitude}, ${b.longitude}`}
+                    {b.endereco_aproximado || `${b.lat}, ${b.lng}`}
                   </div>
                 </div>
                 <span style={{
                   fontSize: 11, color: T.textSecondary, fontWeight: 600,
                   fontVariantNumeric: 'tabular-nums',
                 }}>
-                  {fmtHora(b.data_hora)}
+                  {fmtHora(b.bateu_em)}
                 </span>
               </div>
             )

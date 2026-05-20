@@ -13,9 +13,9 @@ async function capturarLocalizacaoMock() {
   // 5% chance de "negar" pra mostrar UX de erro
   if (Math.random() < 0.05) throw new Error('Permissão negada')
   return {
-    latitude: -23.0653,
-    longitude: -54.1903,
-    endereco: 'Oficina Idemaq · Naviraí/MS',
+    lat: -23.0653,
+    lng: -54.1903,
+    endereco_aproximado: 'Oficina Idemaq · Naviraí/MS',
   }
 }
 

@@ -21,17 +21,17 @@ function agregarMes(funcId, ano, mes) {
   const batidas = BATIDAS_MOCK[funcId] || []
   // Pega batidas do mês
   const doMes = batidas.filter(b => {
-    const d = new Date(b.data_hora)
+    const d = new Date(b.bateu_em)
     return d.getFullYear() === ano && d.getMonth() === mes
   })
 
-  // Agrupa por dia
+  // Agrupa por dia (mapa tipo→timestamp)
   const porDia = {}
   for (const b of doMes) {
-    const d = new Date(b.data_hora)
+    const d = new Date(b.bateu_em)
     const dia = d.getDate()
     if (!porDia[dia]) porDia[dia] = {}
-    porDia[dia][b.tipo] = b.data_hora
+    porDia[dia][b.tipo] = b.bateu_em
   }
 
   // Monta linhas pra todos os dias do mês
@@ -44,11 +44,11 @@ function agregarMes(funcId, ano, mes) {
     const batidasDia = porDia[dia] || {}
 
     let totalMin = 0
-    if (batidasDia.entrada && batidasDia.almoco_inicio) {
-      totalMin += (new Date(batidasDia.almoco_inicio) - new Date(batidasDia.entrada)) / 60000
+    if (batidasDia.entrada && batidasDia.saida_almoco) {
+      totalMin += (new Date(batidasDia.saida_almoco) - new Date(batidasDia.entrada)) / 60000
     }
-    if (batidasDia.almoco_fim && batidasDia.saida) {
-      totalMin += (new Date(batidasDia.saida) - new Date(batidasDia.almoco_fim)) / 60000
+    if (batidasDia.volta_almoco && batidasDia.saida) {
+      totalMin += (new Date(batidasDia.saida) - new Date(batidasDia.volta_almoco)) / 60000
     }
     totalMin = Math.round(totalMin)
 
@@ -67,10 +67,10 @@ function agregarMes(funcId, ano, mes) {
 
     linhas.push({
       dia, diaSemana, ehFds,
-      entrada: batidasDia.entrada,
-      almocoInicio: batidasDia.almoco_inicio,
-      almocoFim: batidasDia.almoco_fim,
-      saida: batidasDia.saida,
+      entrada:      batidasDia.entrada,
+      saidaAlmoco:  batidasDia.saida_almoco,
+      voltaAlmoco:  batidasDia.volta_almoco,
+      saida:        batidasDia.saida,
       totalMin,
       status,
     })
@@ -212,10 +212,10 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
                 {fmtHora(l.entrada)}
               </div>
               <div style={{ textAlign: 'center', color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                {fmtHora(l.almocoInicio)}
+                {fmtHora(l.saidaAlmoco)}
               </div>
               <div style={{ textAlign: 'center', color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                {fmtHora(l.almocoFim)}
+                {fmtHora(l.voltaAlmoco)}
               </div>
               <div style={{ textAlign: 'center', color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
                 {fmtHora(l.saida)}
