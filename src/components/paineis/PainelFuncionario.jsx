@@ -10,24 +10,7 @@ import { Card, Badge, Button, SectionHeader } from '../ui'
 import CardPontoFuncionario from '../ponto/CardPontoFuncionario'
 import EspelhoPonto from '../ponto/EspelhoPonto'
 import { FUNCIONARIOS_PONTO } from '../ponto/_mocks'
-
-// Mocks visuais — futuro: query nas tabelas os, avisos, etc.
-const OS_DO_DIA_MOCK = [
-  { numero: 1247, cliente: 'Ana Reis',     etapa: 'agendado',   hora: '14:00', tipo: 'atendimento' },
-  { numero: 1245, cliente: 'João Costa',   etapa: 'diagnostico', tipo: 'atendimento' },
-  { numero: 1244, cliente: 'Maria Silva',  etapa: 'oficina',    tipo: 'atendimento' },
-]
-
-const AVISOS_MOCK = [
-  { id: 1, texto: 'Reunião terça 8h sobre meta do mês',  icon: 'ti-calendar-event', cor: 'blue' },
-  { id: 2, texto: 'Estoque de mangueira no mínimo',      icon: 'ti-alert-triangle', cor: 'yellow' },
-]
-
-const DESEMPENHO_MOCK = {
-  osConcluidas: 18,
-  tempoMedio: '3h22',
-  pontualidade: '94%',
-}
+import { usePainelFuncionario } from '../../hooks/usePainelFuncionario'
 
 export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
   const cor = (d, c) => dark ? d : c
@@ -36,6 +19,9 @@ export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
   const [verEspelho, setVerEspelho] = useState(false)
 
   const funcionario = FUNCIONARIOS_PONTO.find(f => f.id === funcId) || FUNCIONARIOS_PONTO[0]
+
+  // Dados reais (OS ativas + KPIs do mês + pontualidade do funcionário)
+  const { osDoDia, desempenho, loading: loadingPainel } = usePainelFuncionario(funcId)
 
   // Data formatada pro header
   const hoje = new Date()
@@ -87,18 +73,29 @@ export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
       <CardPontoFuncionario T={T} dark={dark} funcionario={funcionario}
         onAbrirEspelho={() => setVerEspelho(true)} />
 
-      {/* Minhas OS de hoje */}
+      {/* OS ativas no Kanban (não concluídas/recusadas) — agendadas pra hoje primeiro */}
       <Card T={T} dark={dark} padding={0}>
         <div style={{ padding: '12px 14px 8px' }}>
           <SectionHeader T={T} dark={dark} icon="ti-clipboard-list" mb={0}
             action={
               <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                {OS_DO_DIA_MOCK.length} OS
+                {loadingPainel ? '…' : `${osDoDia.length} OS`}
               </span>
             }
-          >Minhas OS de hoje</SectionHeader>
+          >OS abertas</SectionHeader>
         </div>
-        {OS_DO_DIA_MOCK.map((os, i) => (
+        {loadingPainel && (
+          <div style={{ padding: '14px', fontSize: 12, color: T.textMuted }}>
+            Carregando…
+          </div>
+        )}
+        {!loadingPainel && osDoDia.length === 0 && (
+          <div style={{ padding: '14px', fontSize: 12, color: T.textMuted, textAlign: 'center' }}>
+            <i className="ti ti-circle-check" style={{ fontSize: 16, color: corEtapa('green', dark), marginRight: 6 }} aria-hidden="true" />
+            Nenhuma OS aberta no momento
+          </div>
+        )}
+        {!loadingPainel && osDoDia.map((os) => (
           <div key={os.numero} style={{
             display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
             gap: 10, alignItems: 'center',
@@ -140,35 +137,18 @@ export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
         ))}
       </Card>
 
-      {/* Avisos */}
-      <Card T={T} dark={dark} padding={0}>
-        <div style={{ padding: '12px 14px 8px' }}>
-          <SectionHeader T={T} dark={dark} icon="ti-megaphone" mb={0}>Avisos</SectionHeader>
-        </div>
-        {AVISOS_MOCK.map(av => {
-          const corAv = corEtapa(av.cor, dark)
-          return (
-            <div key={av.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '11px 14px',
-              borderTop: `1px solid ${T.border}`,
-            }}>
-              <i className={`ti ${av.icon}`} style={{ fontSize: 16, color: corAv }} aria-hidden="true" />
-              <span style={{ fontSize: 12.5, color: T.textPrimary, flex: 1 }}>{av.texto}</span>
-            </div>
-          )
-        })}
-      </Card>
-
-      {/* Desempenho — só números operacionais, ZERO financeiro */}
+      {/* Desempenho — números operacionais reais do mês, ZERO financeiro.
+          osConcluidas + tempoMedio são GLOBAIS (todos funcionários) por ora —
+          quando os_historico.funcionario_id estiver populado pra todos, dá pra
+          filtrar por funcionário. Pontualidade já é específica via jornada_funcionario. */}
       <Card T={T} dark={dark}>
         <SectionHeader T={T} dark={dark} icon="ti-chart-line" mb={12}>
-          Meu desempenho no mês
+          Desempenho no mês
         </SectionHeader>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <KPI T={T} dark={dark} label="OS concluídas" valor={DESEMPENHO_MOCK.osConcluidas} cor={azul} />
-          <KPI T={T} dark={dark} label="Tempo médio" valor={DESEMPENHO_MOCK.tempoMedio} cor={corHero(dark)} />
-          <KPI T={T} dark={dark} label="Pontualidade" valor={DESEMPENHO_MOCK.pontualidade} cor={corEtapa('green', dark)} />
+          <KPI T={T} dark={dark} label="OS concluídas" valor={loadingPainel ? '—' : desempenho.osConcluidas} cor={azul} />
+          <KPI T={T} dark={dark} label="Tempo médio" valor={loadingPainel ? '—' : desempenho.tempoMedio} cor={corHero(dark)} />
+          <KPI T={T} dark={dark} label="Pontualidade" valor={loadingPainel ? '—' : desempenho.pontualidade} cor={azul} />
         </div>
       </Card>
     </div>

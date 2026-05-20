@@ -7,11 +7,16 @@
 
 ## 1. Status atual
 
-✅ **Implementado** (MVP visual). Renderizado pela rota `/` quando o usuário logado não é dono — switch fica em `src/App.jsx` no componente `PainelPorPerfil` (linhas ~91–96). Também acessível em `/painel-func`.
+✅ **Real ponta a ponta** (20/05/2026, sessão `geral`). Renderizado pela rota `/` quando o usuário logado não é dono — switch fica em `src/App.jsx` no componente `PainelPorPerfil`. Também acessível em `/painel-func`.
 
-**Importante:** não existe arquivo `src/pages/PainelFuncionarios.jsx`. A página principal segue sendo `src/pages/Painel.jsx` (do dono); o conteúdo do funcionário vive em `src/components/paineis/PainelFuncionario.jsx`, montado como alternativa pelo `PainelPorPerfil`. Não criar página separada — a roteamento é por papel, não por path.
+**Importante:** não existe arquivo `src/pages/PainelFuncionarios.jsx`. A página principal segue sendo `src/pages/Painel.jsx` (do dono); o conteúdo do funcionário vive em `src/components/paineis/PainelFuncionario.jsx`, montado como alternativa pelo `PainelPorPerfil`. Não criar página separada — o roteamento é por papel, não por path.
 
-Hoje todas as fontes de dados são mocks (`src/components/ponto/_mocks.js` + arrays inline no próprio componente). Funcional pra demo, esperando schema real do módulo Ponto.
+**O que mudou em 20/05/2026:**
+- Removidos os 3 mocks (`OS_DO_DIA_MOCK`, `AVISOS_MOCK`, `DESEMPENHO_MOCK`).
+- Novo hook `src/hooks/usePainelFuncionario.js` agrega: OS ativas do Kanban (não concluído/recusado, agendadas pra hoje primeiro) + desempenho do mês (OS concluídas + tempo médio — globais) + pontualidade do funcionário (% presente em `jornada_funcionario` no mês).
+- Card de **Avisos removido** — fonte real não existia (era inline-mock). Recoloca quando houver tabela `aviso` ou agregador automático (estoque baixo / OS atrasadas).
+- Lookup de `funcionario_id` por email (`func1@idemaq.com` → uuid em `usuarios`) com cache em memória.
+- Loading/empty states: "Carregando…" enquanto consulta, "Nenhuma OS aberta no momento" quando lista vazia.
 
 ---
 
