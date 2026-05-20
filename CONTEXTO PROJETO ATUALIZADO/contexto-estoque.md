@@ -54,7 +54,7 @@
 5. Máquinas: ligar ao Supabase (Módulo 07)
 6. Entrada por nota fiscal (futuro): upload PDF/foto/Excel → Claude API lê → revisão → salva
 7. Edição de categoria/marca/tipo/referência/modelos compatíveis no modal (chat seguinte — hoje só identificação básica + qtds + preços)
-8. Criar tabela `peca_movimentacao` (peca_id, delta, motivo, observacao, os_id, criado_em, criado_por) — destrava: histórico real no PecaDetalheModal (hoje mock) + INSERT pelo ajuste manual + INSERT pela baixa automática de OS (ver §9 e §12)
+8. ~~Criar tabela `peca_movimentacao`~~ ✅ feito 20/05/2026 (sql/11 + INSERTs no `ajustarEstoque` e `baixarItensDaOS` + histórico real no PecaDetalheModal — ver §12). **Pendente Toni rodar `sql/11-peca-movimentacao.sql` no Supabase SQL Editor** pra ativar (até lá, INSERTs são silenciados com 42P01 e o histórico mostra empty state "habilitar via sql/11").
 
 ---
 
@@ -244,4 +244,16 @@ Caso de uso: contagem mensal acha divergência, peça quebrada no manuseio, devo
 
 - **Visibilidade**: botão "Ajustar estoque" só aparece quando `mostraValores = isAdmin(user)`. Funcionário não ajusta — só vê. RLS no banco reforça (defesa em 3 camadas, igual aos custos do estoque).
 
-- **Pendente** (item 8 da §2): tabela `peca_movimentacao(peca_id, delta, motivo, observacao, os_id?, criado_em, criado_por)`. Quando existir, o hook insere lá além do UPDATE, e o histórico real substitui o `movsMock` do `PecaDetalheModal`. A baixa automática da OS (§9) também passa a inserir nessa mesma tabela com `motivo='baixa_os'` + `os_id` preenchido.
+- **Histórico real (20/05/2026)**: `sql/11-peca-movimentacao.sql` cria a tabela `peca_movimentacao(id, peca_id, tipo, delta, qtd_antes, qtd_depois, motivo, observacao, os_id?, auditoria padrão)`.
+  - `tipo` é CHECK em `'baixa_os' | 'ajuste_manual' | 'entrada_compra' | 'devolucao'`
+  - `delta = qtd_depois - qtd_antes` (positivo entrada, negativo saída)
+  - `motivo` livre — convenção pra `ajuste_manual`: `contagem | perda | ganho | devolucao | outro`
+  - Index `(peca_id, criado_em DESC)` pro lookup do histórico no modal
+  - RLS: `SELECT` pra authenticated, `INSERT/UPDATE/DELETE` só pra dono via `is_dono()`
+  - Sem trigger AFTER em `peca` — o INSERT acontece no front pra carregar contexto (`os_id`, `motivo`, `observacao`). Quem garante "não duplica" é o claim de `os.itens_baixados` em `baixarItensDaOS` (sql/07)
+- **Onde grava** (helper `logMovimentacao` em `usePecas.js`):
+  - `ajustarEstoque` → INSERT `tipo='ajuste_manual'` + motivo + observação
+  - `baixarItensDaOS` → INSERT `tipo='baixa_os'` por peça baixada + `os_id` preenchido + observação `"OS #${numero}"`
+  - Best-effort: se `sql/11` não rodou, detecta 42P01/PGRST205 e ignora — UPDATE em peca continua valendo
+- **Histórico no PecaDetalheModal**: hook local `useHistoricoPeca(pecaId)` faz `select id, tipo, delta, qtd_antes, qtd_depois, motivo, observacao, os_id, criado_em from peca_movimentacao where peca_id=$ and deleted_at is null order by criado_em desc limit 20`. Substitui o mock antigo. Render: ícone por tipo + label (com motivo entre parênteses pra ajuste manual) + data + saldo (`qtd_depois`) + observação + delta. Estados: skeleton 3 linhas (loading), empty state suave (`Sem movimentações registradas`), empty state com link pro SQL 11 (schemaPendente=42P01), erro inline (outros erros).
+- **Futuro**: `entrada_compra` (entrada por nota fiscal/compra) ainda não grava nada — depende do módulo de NF que vai aterrissar peças no estoque. `devolucao` é o caminho oposto ao `baixa_os` (cliente devolve peça).

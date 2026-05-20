@@ -1,38 +1,91 @@
 // idemaq-src/components/estoque/PecaDetalheModal.jsx
-// Detalhe de uma peça — ficha visual + histórico (mock) + modo edição inline.
+// Detalhe de uma peça — ficha visual + histórico real + modo edição inline.
 // Botão "Editar peça" alterna entre leitura e formulário; "Salvar" persiste
 // via callback onSalvar (chama usePecas.atualizar em Estoque.jsx).
 //
 // Visibilidade: quando mostraValores=false (funcionário), custo/lucro ficam
 // ocultos e não editáveis. O patch enviado não inclui campos financeiros.
+//
+// Histórico real: SELECT em peca_movimentacao (sql/11) — se a tabela ainda
+// não existir (42P01/PGRST205), mostra empty state suave em vez de quebrar.
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../../supabase'
 import { corEtapa, corHero } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
 import { Modal, Button, Badge, Input, useToast } from '../ui'
 import AjusteEstoqueModal from './AjusteEstoqueModal'
 
-// ─── Mock de movimentações (substituir quando entrar baixa automática) ─────
+// ─── Tipos de movimentação (espelha CHECK em peca_movimentacao.tipo) ───────
 const TIPOS_MOV = {
-  entrada_manual: { label: 'Entrada manual', icon: 'ti-package-import',  cor: 'green'  },
-  entrada_nf:     { label: 'Entrada por NF', icon: 'ti-file-invoice',    cor: 'green'  },
-  baixa_os:       { label: 'Baixa em OS',    icon: 'ti-arrow-down-right',cor: 'yellow' },
-  ajuste:         { label: 'Ajuste manual',  icon: 'ti-pencil',          cor: 'neutro' },
+  ajuste_manual:   { label: 'Ajuste manual',     icon: 'ti-adjustments-alt', cor: 'neutro' },
+  baixa_os:        { label: 'Baixa em OS',       icon: 'ti-arrow-down-right', cor: 'yellow' },
+  entrada_compra:  { label: 'Entrada por compra', icon: 'ti-package-import', cor: 'green'  },
+  devolucao:       { label: 'Devolução',         icon: 'ti-arrow-back-up',   cor: 'blue'   },
 }
 
-function movsMock(peca) {
-  // Hash determinístico do id (uuid string) — mantém mock estável por peça.
-  let h = 0
-  const s = String(peca.id || '')
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
-  const base = Math.abs(h) % 100
-  return [
-    { id: 1, tipo: 'entrada_nf',     delta: +12, data: '2026-04-12 09:14', responsavel: 'Toni',       obs: `NF #${1820 + base} · Atacado MS` },
-    { id: 2, tipo: 'baixa_os',       delta: -2,  data: '2026-04-22 14:30', responsavel: 'Guilherme',  obs: `OS #${1090 + base}` },
-    { id: 3, tipo: 'baixa_os',       delta: -1,  data: '2026-05-03 10:05', responsavel: 'Guilherme',  obs: `OS #${1102 + base}` },
-    { id: 4, tipo: 'ajuste',         delta: -1,  data: '2026-05-08 17:40', responsavel: 'Toni',       obs: 'Peça quebrada no manuseio' },
-    { id: 5, tipo: 'entrada_manual', delta: +5,  data: '2026-05-14 11:20', responsavel: 'Alessandro', obs: 'Compra avulsa ML' },
-  ]
+// Sub-motivo do tipo='ajuste_manual' → label legível.
+const MOTIVO_LABEL = {
+  contagem:  'contagem',
+  perda:     'perda',
+  ganho:     'ganho',
+  devolucao: 'devolução',
+  outro:     'outro',
+}
+
+// Formata criado_em (ISO/timestamptz) → "dd/mm/aa".
+function fmtData(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = String(d.getFullYear()).slice(-2)
+  return `${dd}/${mm}/${yy}`
+}
+
+// Hook local — busca últimas 20 movimentações da peça.
+// Detecta tabela inexistente (42P01) e sinaliza `schemaPendente` sem quebrar.
+function useHistoricoPeca(pecaId) {
+  const [movs, setMovs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [schemaPendente, setSchemaPendente] = useState(false)
+  const [erro, setErro] = useState(null)
+
+  useEffect(() => {
+    if (!pecaId) { setMovs([]); setLoading(false); return }
+    let alive = true
+    setLoading(true)
+    setSchemaPendente(false)
+    setErro(null)
+
+    supabase
+      .from('peca_movimentacao')
+      .select('id, tipo, delta, qtd_antes, qtd_depois, motivo, observacao, os_id, criado_em')
+      .eq('peca_id', pecaId)
+      .is('deleted_at', null)
+      .order('criado_em', { ascending: false })
+      .limit(20)
+      .then(({ data, error }) => {
+        if (!alive) return
+        if (error) {
+          if (error.code === '42P01' || error.code === 'PGRST205' || error.code === 'PGRST204') {
+            setSchemaPendente(true)
+          } else {
+            setErro(error.message || String(error))
+          }
+          setMovs([])
+          setLoading(false)
+          return
+        }
+        setMovs(data || [])
+        setLoading(false)
+      })
+
+    return () => { alive = false }
+  }, [pecaId])
+
+  return { movs, loading, schemaPendente, erro }
 }
 
 function nivel(qtd, min) {
@@ -117,7 +170,11 @@ export default function PecaDetalheModal({
   const nv = nivel(view.qtdAtual, view.qtdMinima)
   const lucro = pctLucro(view.custoAtual, view.precoVenda)
   const margemRS = view.precoVenda - view.custoAtual
-  const movs = movsMock(peca)
+
+  // Histórico real — re-fetcha se a peça muda (e quando o ajuste/edição
+  // dispara fetchPecas() em Estoque.jsx, este modal já é re-renderizado com
+  // a peça atualizada → useEffect rebusca o histórico).
+  const { movs, loading: loadingMovs, schemaPendente, erro: errMovs } = useHistoricoPeca(peca.id)
 
   const range = Math.max(1, view.qtdMaxima - 0)
   const pctAtual = Math.min(100, Math.max(0, (view.qtdAtual / range) * 100))
@@ -456,59 +513,22 @@ export default function PecaDetalheModal({
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                 <i className="ti ti-history" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
                 <span style={sectionLabel}>Movimentações</span>
-                <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                  últimas {movs.length}
-                </span>
+                {!loadingMovs && !schemaPendente && !errMovs && (
+                  <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                    {movs.length === 0
+                      ? 'nenhuma ainda'
+                      : `últimas ${movs.length}`}
+                  </span>
+                )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {movs.map(m => {
-                  const t = TIPOS_MOV[m.tipo]
-                  const corDelta = m.delta > 0 ? verde : m.delta < 0 ? amarelo : T.textMuted
-                  return (
-                    <div key={m.id} style={{
-                      display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center',
-                      padding: '10px 12px',
-                      background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 8,
-                    }}>
-                      <div style={{
-                        width: 30, height: 30, borderRadius: 8,
-                        background: corEtapa(t.cor === 'neutro' ? 'blue' : t.cor, dark) + '22',
-                        color: corEtapa(t.cor === 'neutro' ? 'blue' : t.cor, dark),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 15,
-                      }} aria-hidden="true">
-                        <i className={`ti ${t.icon}`} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: T.textPrimary }}>
-                            {t.label}
-                          </span>
-                          <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                            · {m.data.slice(0, 10).split('-').reverse().join('/')}
-                          </span>
-                          <span style={{ fontSize: 11, color: T.textMuted }}>
-                            · {m.responsavel}
-                          </span>
-                        </div>
-                        <div style={{
-                          fontSize: 11, color: T.textMuted, marginTop: 2,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {m.obs}
-                        </div>
-                      </div>
-                      <div style={{
-                        fontSize: 14, fontWeight: 700, color: corDelta,
-                        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-                      }}>
-                        {m.delta > 0 ? '+' : ''}{m.delta}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <Movimentacoes
+                T={T} dark={dark}
+                movs={movs}
+                loading={loadingMovs}
+                schemaPendente={schemaPendente}
+                erro={errMovs}
+              />
             </div>
           </>
         )}
@@ -688,6 +708,148 @@ function EspecTecnica({ T, dark, peca, sectionLabel }) {
       </div>
       <div style={{ height: 1, background: T.border, margin: '16px 0' }} />
     </>
+  )
+}
+
+// ─── Movimentações — lista do histórico real (peca_movimentacao) ───────────
+// Estados:
+//   loading        → skeleton de 3 linhas
+//   schemaPendente → empty state "histórico ainda não habilitado" (sql/11)
+//   erro           → empty state com mensagem
+//   movs.length=0  → empty state "Sem movimentações"
+//   default        → lista com tipo, motivo (se ajuste), data, observação, delta, saldo
+function Movimentacoes({ T, dark, movs, loading, schemaPendente, erro }) {
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+  const amarelo = corEtapa('yellow', dark)
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} style={{
+            display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center',
+            padding: '10px 12px',
+            background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 8,
+            opacity: 0.6,
+          }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: T.border }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ height: 10, width: '40%', borderRadius: 4, background: T.border }} />
+              <div style={{ height: 9, width: '65%', borderRadius: 4, background: T.border }} />
+            </div>
+            <div style={{ height: 14, width: 30, borderRadius: 4, background: T.border }} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (schemaPendente) {
+    return (
+      <div style={{
+        padding: '14px 16px',
+        background: T.cardAlt, border: `1px dashed ${T.border}`, borderRadius: 8,
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <i className="ti ti-database-off" style={{ fontSize: 18, color: T.textMuted }} aria-hidden="true" />
+        <div style={{ fontSize: 11.5, color: T.textMuted, lineHeight: 1.4 }}>
+          Histórico ainda não habilitado.
+          <br />
+          <span style={{ fontSize: 10.5 }}>Rode <code style={{ fontFamily: 'inherit', color: azul }}>sql/11-peca-movimentacao.sql</code> no Supabase pra ativar.</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (erro) {
+    return (
+      <div style={{
+        padding: '14px 16px',
+        background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 8,
+        fontSize: 11.5, color: T.textMuted,
+      }}>
+        <i className="ti ti-alert-triangle" style={{ fontSize: 14, color: amarelo, marginRight: 6 }} aria-hidden="true" />
+        Não foi possível carregar o histórico: {erro}
+      </div>
+    )
+  }
+
+  if (movs.length === 0) {
+    return (
+      <div style={{
+        padding: '14px 16px',
+        background: T.cardAlt, border: `1px dashed ${T.border}`, borderRadius: 8,
+        fontSize: 11.5, color: T.textMuted,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-history" style={{ fontSize: 14 }} aria-hidden="true" />
+        Sem movimentações registradas pra essa peça ainda.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {movs.map(m => {
+        const t = TIPOS_MOV[m.tipo] || { label: m.tipo, icon: 'ti-dots', cor: 'neutro' }
+        const corDelta = m.delta > 0 ? verde : m.delta < 0 ? amarelo : T.textMuted
+        const corIcon = corEtapa(t.cor === 'neutro' ? 'blue' : t.cor, dark)
+
+        // Label: "Ajuste manual (perda)" pra ajuste_manual com motivo; só "Ajuste manual" sem motivo.
+        const motivoLabel = m.tipo === 'ajuste_manual' && m.motivo
+          ? (MOTIVO_LABEL[m.motivo] || m.motivo)
+          : null
+
+        // Linha de baixo: observação se houver, senão saldo + delta.
+        const obs = m.observacao && String(m.observacao).trim() ? m.observacao : null
+
+        return (
+          <div key={m.id} style={{
+            display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center',
+            padding: '10px 12px',
+            background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 8,
+          }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 8,
+              background: corIcon + '22',
+              color: corIcon,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 15,
+            }} aria-hidden="true">
+              <i className={`ti ${t.icon}`} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.textPrimary }}>
+                  {t.label}{motivoLabel ? ` (${motivoLabel})` : ''}
+                </span>
+                <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                  · {fmtData(m.criado_em)}
+                </span>
+                <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                  · saldo {m.qtd_depois}
+                </span>
+              </div>
+              {obs && (
+                <div style={{
+                  fontSize: 11, color: T.textMuted, marginTop: 2,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {obs}
+                </div>
+              )}
+            </div>
+            <div style={{
+              fontSize: 14, fontWeight: 700, color: corDelta,
+              fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+            }}>
+              {m.delta > 0 ? '+' : ''}{m.delta}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

@@ -53,6 +53,42 @@ function dbToUi(row) {
   }
 }
 
+// =============================================================================
+// peca_movimentacao — histórico real de mudanças em peca.qtd_atual
+// =============================================================================
+// Helper standalone que registra UMA movimentação. Idempotência fica por conta
+// do chamador (claim atômico em baixarItensDaOS, ajuste delta!=0 no modal).
+// Silencia 42P01 (tabela ainda não criada) — convivência com bases que ainda
+// não rodaram sql/11. Outros erros sobem como console.warn pra não atrapalhar
+// o fluxo principal (a movimentação é auditoria; o estoque já mudou).
+//
+// @param {{ peca_id: string, tipo: 'baixa_os'|'ajuste_manual'|'entrada_compra'|'devolucao',
+//           delta: number, qtd_antes: number, qtd_depois: number,
+//           motivo?: string|null, observacao?: string|null, os_id?: string|null }} mov
+async function logMovimentacao(mov) {
+  if (!mov?.peca_id || !mov?.tipo) return { ok: false, motivo: 'payload incompleto' }
+  const { error } = await supabase.from('peca_movimentacao').insert({
+    peca_id:    mov.peca_id,
+    tipo:       mov.tipo,
+    delta:      Math.trunc(Number(mov.delta) || 0),
+    qtd_antes:  Math.max(0, Math.trunc(Number(mov.qtd_antes)  || 0)),
+    qtd_depois: Math.max(0, Math.trunc(Number(mov.qtd_depois) || 0)),
+    motivo:     mov.motivo     ?? null,
+    observacao: mov.observacao ?? null,
+    os_id:      mov.os_id      ?? null,
+  })
+  if (error) {
+    // 42P01 = tabela não existe. PGRST205/PGRST204 = schema cache PostgREST.
+    if (error.code === '42P01' || error.code === 'PGRST205' || error.code === 'PGRST204') {
+      // silencioso — quando rodarem sql/11, passa a gravar automaticamente
+      return { ok: false, motivo: 'schema-pendente:sql/11' }
+    }
+    console.warn('[peca_movimentacao] INSERT falhou:', error)
+    return { ok: false, motivo: error.message }
+  }
+  return { ok: true }
+}
+
 function uiToDb(patch) {
   const map = {
     nome:               'nome',
@@ -197,9 +233,10 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
 
   /**
    * Ajuste manual de estoque (contagem / perda / ganho / devolução / outro).
-   * Persiste só o UPDATE de `qtd_atual` por enquanto — quando a tabela
-   * `peca_movimentacao` existir, o INSERT do histórico entra aqui também.
-   * Loga o delta no console pra rastreio durante essa fase de transição.
+   * Faz o UPDATE de `qtd_atual` e registra a movimentação em
+   * `peca_movimentacao` (tipo='ajuste_manual'). Se a tabela ainda não existir
+   * (sql/11 não rodou), o INSERT do histórico é silencioso — o UPDATE em
+   * peca segue valendo, só não temos auditoria até o SQL ser aplicado.
    *
    * @param {string} pecaId
    * @param {{ qtdNova: number, motivo: string, observacao?: string|null }} payload
@@ -209,8 +246,8 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
     if (!pecaId) return { data: null, error: new Error('pecaId vazio') }
     const nova = Math.max(0, Math.trunc(Number(qtdNova) || 0))
 
-    // SELECT antes pro log do delta — quem chama já tem o valor atual em UI,
-    // mas conferimos no banco pra evitar race com outra sessão.
+    // SELECT antes — captura qtd_antes pro registro de auditoria e evita
+    // basear o delta em valor stale da UI (outra sessão pode ter mexido).
     const { data: antes, error: errSel } = await supabase
       .from('peca')
       .select('id, nome, qtd_atual')
@@ -231,15 +268,15 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
       .single()
     if (err) return { data: null, error: err }
 
-    // TODO(peca_movimentacao): quando a tabela existir, INSERT aqui:
-    //   await supabase.from('peca_movimentacao').insert({
-    //     peca_id: pecaId, delta, motivo, observacao,
-    //   })
-    // Hoje só logamos pra ter rastro durante a transição.
-    console.log('[ajusteEstoque]', {
-      pecaId, nome: antes.nome,
-      qtd_antes: qtdAntes, qtd_depois: nova, delta,
-      motivo, observacao,
+    // Auditoria — best-effort. Falha aqui não desfaz o UPDATE.
+    await logMovimentacao({
+      peca_id:    pecaId,
+      tipo:       'ajuste_manual',
+      delta,
+      qtd_antes:  qtdAntes,
+      qtd_depois: nova,
+      motivo,
+      observacao,
     })
 
     await fetchPecas()
@@ -353,6 +390,17 @@ export async function baixarItensDaOS(osId) {
       .eq('id', peca.id)
 
     if (errUp) { erros.push({ peca_id: peca.id, nome: peca.nome, msg: errUp.message }); continue }
+
+    // Auditoria — best-effort. Silenciosa se sql/11 ainda não rodou.
+    await logMovimentacao({
+      peca_id:    peca.id,
+      tipo:       'baixa_os',
+      delta:      -qtd,
+      qtd_antes:  atual,
+      qtd_depois: novo,
+      observacao: osNumero ? `OS #${osNumero}` : null,
+      os_id:      osId,
+    })
 
     aplicadas.push({
       peca_id:    peca.id,
