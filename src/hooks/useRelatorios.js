@@ -1,17 +1,24 @@
 // src/hooks/useRelatorios.js
-// 4 hooks reais pros relatórios sem IA — Geral, Operacional, Estoque, Vendas.
-// Os 2 com IA (DRE Financeiro, Funcionários) continuam em mock pelo Relatorios.jsx
-// e dependem da edge function do Claude API + schema parte 2 (lancamento_financeiro).
+// 6 hooks reais pros relatórios — Geral, Operacional, Estoque, Vendas, DRE, Funcionários.
+// Os 2 que alimentam a IA (DRE, Funcionários) também são reais agora; o botão
+// "Gerar análise" continua gateado por IA_DEPLOYED no Relatorios.jsx até o
+// deploy da edge function `relatorio-ia`.
 //
 // Cada hook é lazy: só faz fetch quando montado (i.e., quando o usuário abre
 // o relatório). Re-fetch ao mudar o período. Sem realtime — relatório é foto.
 //
 // Schema das tabelas (em uso aqui):
-//   os         (criado_em, data_conclusao, etapa, tipo, valor_total, desconto,
-//               garantia, recusada, deleted_at, cliente_id)
-//   os_item    (os_id, tipo[peca|servico], nome, qtd, valor_unitario, valor_total)
-//   os_historico (os_id, etapa_de, etapa_para, data, duracao_segundos)
-//   peca       (qtd_atual, qtd_minima, custo_atual, custo_medio, categoria)
+//   os                    (criado_em, data_conclusao, etapa, tipo, valor_total,
+//                          desconto, garantia, recusada, deleted_at, cliente_id)
+//   os_item               (os_id, peca_id, nome, quantidade, valor_unitario,
+//                          valor_total, criado_em, deleted_at)
+//   os_historico          (os_id, etapa_de, etapa_para, data, duracao_segundos,
+//                          funcionario_id)
+//   peca                  (qtd_atual, qtd_minima, custo_atual, custo_medio, categoria)
+//   lancamento_financeiro (tipo, valor, categoria, descricao, conta_id,
+//                          vencimento, pago_em, taxa_pct, forma_pagamento,
+//                          os_id, deleted_at)
+//   usuarios              (id, apelido, papel)
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
@@ -552,6 +559,224 @@ export function useRelatorioVendas({ iniIso, fimIso }) {
         })
       } catch (e) {
         if (!cancelado) setError(e?.message || 'Erro ao carregar relatório')
+      } finally {
+        if (!cancelado) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelado = true }
+  }, [iniIso, fimIso])
+
+  return { data, loading, error }
+}
+
+// =============================================================================
+// useRelatorioDRE — agrega `lancamento_financeiro` no período (por categoria)
+// Considera o regime de caixa: filtra `pago_em` no range (não `vencimento`),
+// porque o DRE da Idemaq é caixa, não competência. Ignora lançamentos abertos
+// (pago_em IS NULL) — eles aparecem nos relatórios "A Receber/A Pagar" do
+// Financeiro, não no DRE.
+// =============================================================================
+export function useRelatorioDRE({ iniIso, fimIso }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelado = false
+    async function run() {
+      setLoading(true); setError(null)
+      try {
+        const iniDate = iniIso.slice(0, 10)
+        const fimDate = fimIso.slice(0, 10)
+
+        const { data: lancs, error: errL } = await supabase
+          .from('lancamento_financeiro')
+          .select('tipo, valor, categoria, pago_em, taxa_pct')
+          .is('deleted_at', null)
+          .not('pago_em', 'is', null)
+          .gte('pago_em', iniDate)
+          .lte('pago_em', fimDate)
+        if (errL) throw errL
+
+        if (cancelado) return
+
+        let receitas = 0
+        let despesas = 0
+        const receitasPorCat = {}
+        const despesasPorCat = {}
+
+        for (const l of lancs || []) {
+          const valor = Number(l.valor || 0)
+          const cat = (l.categoria || '').trim() || 'Sem categoria'
+          if (l.tipo === 'receita') {
+            receitas += valor
+            receitasPorCat[cat] = (receitasPorCat[cat] || 0) + valor
+          } else if (l.tipo === 'despesa') {
+            despesas += valor
+            despesasPorCat[cat] = (despesasPorCat[cat] || 0) + valor
+          }
+        }
+
+        const lucro = receitas - despesas
+        const margem = receitas > 0 ? Math.round((lucro / receitas) * 100) : 0
+
+        const sortDesc = (a, b) => b.valor - a.valor
+        const receitasDetalhe = Object.entries(receitasPorCat)
+          .map(([categoria, valor]) => ({ categoria, valor }))
+          .sort(sortDesc)
+        const despesasDetalhe = Object.entries(despesasPorCat)
+          .map(([categoria, valor]) => ({ categoria, valor }))
+          .sort(sortDesc)
+
+        setData({
+          receitas,
+          despesas,
+          lucro,
+          margem,
+          receitasDetalhe,
+          despesasDetalhe,
+          totalLancamentos: (lancs || []).length,
+        })
+      } catch (e) {
+        if (!cancelado) setError(e?.message || 'Erro ao carregar DRE')
+      } finally {
+        if (!cancelado) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelado = true }
+  }, [iniIso, fimIso])
+
+  return { data, loading, error }
+}
+
+// =============================================================================
+// useRelatorioFuncionarios — agrega `os_historico` + `usuarios` no período.
+// Por funcionário:
+//   - etapasFeitas: linhas do histórico com funcionario_id no período
+//   - tempoMedio: média de duracao_segundos das etapas
+//   - osTotal: distintos os_id que ele tocou (participação)
+//   - osFinalizadas: das OS que ele tocou, quantas concluíram no período
+//   - faturamento + ticketMedio: das OS finalizadas (valor_total - desconto)
+// =============================================================================
+export function useRelatorioFuncionarios({ iniIso, fimIso }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelado = false
+    async function run() {
+      setLoading(true); setError(null)
+      try {
+        // 1) Histórico no período com join de usuarios
+        const { data: hist, error: errH } = await supabase
+          .from('os_historico')
+          .select(`
+            os_id, etapa_de, etapa_para, duracao_segundos, data, funcionario_id,
+            usuarios:funcionario_id ( id, apelido, papel )
+          `)
+          .gte('data', iniIso)
+          .lte('data', fimIso)
+          .not('funcionario_id', 'is', null)
+        if (errH) throw errH
+
+        // 2) Pra ticket médio — OS concluídas no período (valor_total - desconto)
+        const { data: osConcl, error: errO } = await supabase
+          .from('os')
+          .select('id, valor_total, desconto, data_conclusao')
+          .is('deleted_at', null)
+          .eq('etapa', 'concluido')
+          .not('data_conclusao', 'is', null)
+          .gte('data_conclusao', iniIso)
+          .lte('data_conclusao', fimIso)
+        if (errO) throw errO
+
+        if (cancelado) return
+
+        const osValorPorId = {}
+        for (const o of osConcl || []) {
+          osValorPorId[o.id] = Number(o.valor_total || 0) - Number(o.desconto || 0)
+        }
+
+        // Agrega por funcionario_id
+        const porFunc = {}
+        for (const h of hist || []) {
+          const fid = h.funcionario_id
+          if (!fid) continue
+          if (!porFunc[fid]) {
+            porFunc[fid] = {
+              id: fid,
+              nome: h.usuarios?.apelido || 'desconhecido',
+              papel: h.usuarios?.papel || null,
+              etapasFeitas: 0,
+              somaDuracao: 0,
+              durCount: 0,
+              osSet: new Set(),
+              porEtapa: {}, // { etapa_de: { soma, n } }
+            }
+          }
+          const f = porFunc[fid]
+          f.etapasFeitas += 1
+          if (h.duracao_segundos != null && h.duracao_segundos > 0) {
+            f.somaDuracao += Number(h.duracao_segundos)
+            f.durCount += 1
+          }
+          if (h.os_id) f.osSet.add(h.os_id)
+          if (h.etapa_de) {
+            if (!f.porEtapa[h.etapa_de]) f.porEtapa[h.etapa_de] = { soma: 0, n: 0 }
+            if (h.duracao_segundos != null && h.duracao_segundos > 0) {
+              f.porEtapa[h.etapa_de].soma += Number(h.duracao_segundos)
+              f.porEtapa[h.etapa_de].n += 1
+            }
+          }
+        }
+
+        // Constrói shape final
+        const equipe = Object.values(porFunc).map(f => {
+          const osIds = Array.from(f.osSet)
+          const osFinalizadasIds = osIds.filter(id => osValorPorId[id] != null)
+          const faturamento = osFinalizadasIds.reduce((s, id) => s + osValorPorId[id], 0)
+          const ticketMedio = osFinalizadasIds.length > 0 ? faturamento / osFinalizadasIds.length : 0
+          const tempoMedioSegs = f.durCount > 0 ? f.somaDuracao / f.durCount : 0
+
+          // Top etapa onde ele mais gasta tempo (gargalo individual)
+          const etapaMaisDemorada = Object.entries(f.porEtapa)
+            .filter(([, v]) => v.n > 0)
+            .map(([etapa, v]) => ({ etapa, label: LABEL_ETAPA[etapa] || etapa, media: v.soma / v.n }))
+            .sort((a, b) => b.media - a.media)[0] || null
+
+          return {
+            id: f.id,
+            nome: f.nome,
+            papel: f.papel,
+            osTotal: osIds.length,
+            osFinalizadas: osFinalizadasIds.length,
+            etapasFeitas: f.etapasFeitas,
+            tempoMedioSegs,
+            tempoMedio: fmtDuracao(tempoMedioSegs),
+            faturamento,
+            ticketMedio,
+            etapaMaisDemorada: etapaMaisDemorada ? {
+              label: etapaMaisDemorada.label,
+              tempo: fmtDuracao(etapaMaisDemorada.media),
+            } : null,
+          }
+        }).sort((a, b) => b.etapasFeitas - a.etapasFeitas)
+
+        const totalEtapas = equipe.reduce((s, f) => s + f.etapasFeitas, 0)
+        const totalOSDistintas = new Set()
+        for (const h of hist || []) if (h.os_id) totalOSDistintas.add(h.os_id)
+
+        setData({
+          equipe,
+          totalEtapas,
+          totalOSAtendidas: totalOSDistintas.size,
+          totalFuncionarios: equipe.length,
+        })
+      } catch (e) {
+        if (!cancelado) setError(e?.message || 'Erro ao carregar relatório de funcionários')
       } finally {
         if (!cancelado) setLoading(false)
       }

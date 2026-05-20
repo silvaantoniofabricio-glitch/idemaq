@@ -23,6 +23,8 @@ import {
   useRelatorioOperacional,
   useRelatorioEstoque,
   useRelatorioVendas,
+  useRelatorioDRE,
+  useRelatorioFuncionarios,
   fmtDuracao,
 } from '../hooks/useRelatorios'
 import { useRelatorioIA } from '../hooks/useRelatorioIA'
@@ -53,10 +55,6 @@ const PERIODOS = [
 // Antes do flip o invoke trava ~25-30s no timeout do Supabase Functions, então mantemos
 // off de propósito (Toni reportou esse freeze em prod).
 const IA_DEPLOYED = false
-
-// Sparkline 12m vem do hook real (`useRelatorioGeral`). Mantemos só o fallback
-// abaixo pros relatórios em mock (DRE/Funcionários), pra evitar tela vazia.
-const FAT_12M = [13800, 14200, 15100, 15600, 14900, 16200, 17000, 17500, 16800, 17900, 18200, 17500]
 
 const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
 
@@ -154,10 +152,10 @@ export default function Relatorios({ T, dark }) {
                 variant="segmented"
               />
               <div style={{ flex: 1, fontSize: 11, color: T.textMuted, textAlign: 'right' }}>
-                {(relAtivo === 'financeiro' || relAtivo === 'funcionarios') ? (
+                {(relAtivo === 'financeiro' || relAtivo === 'funcionarios') && !IA_DEPLOYED ? (
                   <>
                     <i className="ti ti-sparkles" style={{ marginRight: 4 }} aria-hidden="true" />
-                    Análise via Claude API — em breve. Dados ainda são de exemplo.
+                    Análise via Claude API — em breve. Dados são reais do Supabase.
                   </>
                 ) : (
                   <>
@@ -186,8 +184,8 @@ export default function Relatorios({ T, dark }) {
           {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} />}
-          {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} />}
+          {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'ponto'        && <RelatorioPontoDono    T={T} dark={dark} />}
         </>
       )}
@@ -490,36 +488,122 @@ function RelatorioVendas({ T, dark, iniIso, fimIso }) {
 }
 
 // =============================================================================
-// FINANCEIRO (DRE) + IA — mock
-// TODO[ia]: trocar dados deste relatório por:
-//   1) Query real em `lancamento_financeiro` (depende do schema parte 2 — sql/01)
-//   2) Edge function que chame a Claude API (claude-sonnet-4-6 padrão,
-//      claude-opus-4-7 pra análises profundas) com prompt caching ativado.
-//      Front NÃO chama a Claude API direto — vaza a chave.
-//   Ver `contexto-relatorios.md` seção 4.
+// FINANCEIRO (DRE) — dados reais (lancamento_financeiro)
+// Regime de caixa: receitas/despesas pagas no período (pago_em). Lançamentos
+// abertos (vencidos ou futuros) NÃO entram no DRE — eles vivem em A Receber/
+// A Pagar do módulo Financeiro.
 // =============================================================================
-function RelatorioFinanceiro({ T, dark }) {
+function RelatorioFinanceiro({ T, dark, iniIso, fimIso }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
-  const verde = corEtapa('green', dark)
+  const { data, loading, error } = useRelatorioDRE({ iniIso, fimIso })
+  const { markdown, loading: loadingIA, error: errorIA, gerar } = useRelatorioIA()
 
-  const receitas = 17500
-  const despesas = 11540
-  const lucro = receitas - despesas
-  const margem = Math.round((lucro / receitas) * 100)
+  if (loading) return <RelatorioLoading T={T} />
+  if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
+  if (!data)   return null
 
-  const { markdown, loading, error, gerar } = useRelatorioIA()
+  const { receitas, despesas, lucro, margem, receitasDetalhe, despesasDetalhe } = data
+  const meta = 20000 // TODO Módulo 09: ler da tabela `configuracoes`
+
+  // Monta as linhas do DRE com base nas categorias agregadas
+  const linhasDRE = [
+    ...receitasDetalhe.map(r => ({ label: `Receita — ${r.categoria}`, valor: r.valor, tipo: 'receita' })),
+    { label: 'Subtotal receitas', valor: receitas, tipo: 'subtotal' },
+    ...despesasDetalhe.map(d => ({ label: `Despesa — ${d.categoria}`, valor: -d.valor, tipo: 'despesa' })),
+    { label: 'Subtotal despesas', valor: -despesas, tipo: 'subtotal' },
+    { label: 'Lucro líquido', valor: lucro, tipo: 'total' },
+  ]
+
+  // Payload pra IA — categorias agregadas + meta
   const dadosIA = {
-    periodo: 'mock (DRE de exemplo — schema parte 2 pendente)',
+    periodo: { ini: iniIso, fim: fimIso },
     receitas, despesas, lucro, margem,
-    receitasDetalhe: {
-      manutencao: 5920, limpeza: 5180, vendaMaquinas: 2600, pecas: 2400, taxaDiagnostico: 1400,
-    },
-    despesasDetalhe: {
-      funcionarios: 3300, pecasML: 2840, combustivel: 680, trafegoPago: 500,
-      utilidades: 890, impostos: 2400, outras: 930,
-    },
-    meta: 20000,
+    receitasDetalhe: Object.fromEntries(receitasDetalhe.map(r => [r.categoria, r.valor])),
+    despesasDetalhe: Object.fromEntries(despesasDetalhe.map(d => [d.categoria, d.valor])),
+    totalLancamentos: data.totalLancamentos,
+    meta,
+  }
+
+  const semDados = data.totalLancamentos === 0
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{
+        display: 'grid', gap: 12,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      }}>
+        <KPI T={T} dark={dark} label="Receita (regime caixa)" valor={fmtBRL(receitas)} cor={azul}
+          icon="ti-arrow-down-circle" />
+        <KPI T={T} dark={dark} label="Despesas pagas" valor={fmtBRL(despesas)} cor={amarelo}
+          icon="ti-arrow-up-circle" />
+        <KPI T={T} dark={dark} label="Lucro líquido" valor={fmtBRL(lucro)} cor={corHero(dark)}
+          icon="ti-trending-up" />
+        <KPI T={T} dark={dark} label="Margem" valor={`${margem}%`} cor={azul}
+          icon="ti-percentage" />
+      </div>
+
+      <Card T={T} dark={dark}>
+        <SectionHeader T={T} dark={dark} icon="ti-file-invoice" mb={14}>
+          DRE simplificado
+        </SectionHeader>
+        {!semDados ? (
+          <DRELinhas T={T} dark={dark} linhas={linhasDRE} />
+        ) : (
+          <EmptyState T={T} compact icon="ti-file-invoice"
+            title="Sem lançamentos pagos no período"
+            description="DRE usa regime de caixa — só entram lançamentos com pago_em dentro do intervalo. Ajuste o filtro ou registre baixas no Financeiro." />
+        )}
+      </Card>
+
+      <InsightIA T={T} dark={dark}
+        markdown={markdown} loading={loadingIA} error={errorIA}
+        onGerar={IA_DEPLOYED && !semDados ? () => gerar('dre', dadosIA) : undefined}
+        previewTexto={semDados
+          ? 'Sem dados pagos no período — a análise IA vai habilitar quando houver lançamentos baixados.'
+          : `A IA vai analisar ${receitasDetalhe.length} categoria(s) de receita e ${despesasDetalhe.length} de despesa — destacando o que puxou pra cima, o que puxou pra baixo e ações pra atingir a meta de R$ 20.000.`} />
+    </div>
+  )
+}
+
+// =============================================================================
+// FUNCIONÁRIOS — dados reais (os_historico + usuarios + os)
+// Por funcionário: etapas feitas, tempo médio, OS participadas, OS finalizadas
+// no período, ticket médio e gargalo individual (etapa onde mais demora).
+// =============================================================================
+function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
+  const azul = corEtapa('blue', dark)
+  const { data, loading, error } = useRelatorioFuncionarios({ iniIso, fimIso })
+  const { markdown, loading: loadingIA, error: errorIA, gerar } = useRelatorioIA()
+
+  if (loading) return <RelatorioLoading T={T} />
+  if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
+  if (!data)   return null
+
+  const equipe = data.equipe || []
+  const semDados = equipe.length === 0
+
+  // Label amigável de papel
+  const labelPapel = {
+    dono: 'Dono', logistica: 'Logística', oficina: 'Oficina',
+  }
+
+  // Payload pra IA — campos legíveis
+  const dadosIA = {
+    periodo: { ini: iniIso, fim: fimIso },
+    totalEtapas: data.totalEtapas,
+    totalOSAtendidas: data.totalOSAtendidas,
+    equipe: equipe.map(f => ({
+      nome: f.nome,
+      papel: f.papel,
+      osParticipadas: f.osTotal,
+      osFinalizadas: f.osFinalizadas,
+      etapasFeitas: f.etapasFeitas,
+      tempoMedio: f.tempoMedio,
+      faturamento: f.faturamento,
+      ticketMedio: f.ticketMedio,
+      etapaMaisDemorada: f.etapaMaisDemorada,
+    })),
   }
 
   return (
@@ -528,120 +612,90 @@ function RelatorioFinanceiro({ T, dark }) {
         display: 'grid', gap: 12,
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
       }}>
-        <KPI T={T} dark={dark} label="Receita bruta" valor={fmtBRL(receitas)} delta={4} cor={azul}
-          sparkData={FAT_12M} sparkCor={azul} icon="ti-arrow-down-circle" />
-        <KPI T={T} dark={dark} label="Despesas totais" valor={fmtBRL(despesas)} delta={-2} cor={amarelo}
-          icon="ti-arrow-up-circle" deltaInverso />
-        <KPI T={T} dark={dark} label="Lucro líquido" valor={fmtBRL(lucro)} delta={9} cor={corHero(dark)}
-          icon="ti-trending-up" />
-        <KPI T={T} dark={dark} label="Margem" valor={`${margem}%`} delta={3} cor={azul}
-          icon="ti-percentage" />
+        <KPI T={T} dark={dark} label="Pessoas com atividade" valor={data.totalFuncionarios} cor={corHero(dark)}
+          icon="ti-users" />
+        <KPI T={T} dark={dark} label="Etapas registradas" valor={data.totalEtapas} cor={azul}
+          icon="ti-clipboard-check" />
+        <KPI T={T} dark={dark} label="OS atendidas" valor={data.totalOSAtendidas} cor={corHero(dark)}
+          icon="ti-clipboard-list" />
       </div>
 
-      <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-file-invoice" mb={14}>
-          DRE simplificado
-        </SectionHeader>
-        <DRELinhas T={T} dark={dark} linhas={[
-          { label: 'Receita — Manutenção',        valor:  5920, tipo: 'receita' },
-          { label: 'Receita — Limpeza',           valor:  5180, tipo: 'receita' },
-          { label: 'Receita — Venda de máquinas', valor:  2600, tipo: 'receita' },
-          { label: 'Receita — Peças',             valor:  2400, tipo: 'receita' },
-          { label: 'Receita — Taxa diagnóstico',  valor:  1400, tipo: 'receita' },
-          { label: 'Subtotal receitas',           valor: receitas, tipo: 'subtotal' },
-          { label: 'Despesa — Funcionários',      valor: -3300, tipo: 'despesa' },
-          { label: 'Despesa — Peças ML',          valor: -2840, tipo: 'despesa' },
-          { label: 'Despesa — Combustível',       valor:  -680, tipo: 'despesa' },
-          { label: 'Despesa — Tráfego pago',      valor:  -500, tipo: 'despesa' },
-          { label: 'Despesa — Utilidades',        valor:  -890, tipo: 'despesa' },
-          { label: 'Despesa — Impostos',          valor: -2400, tipo: 'despesa' },
-          { label: 'Despesa — Outras',            valor:  -930, tipo: 'despesa' },
-          { label: 'Subtotal despesas',           valor: -despesas, tipo: 'subtotal' },
-          { label: 'Lucro líquido',               valor: lucro, tipo: 'total' },
-        ]} />
-      </Card>
-
-      <InsightIA T={T} dark={dark}
-        markdown={markdown} loading={loading} error={error}
-        onGerar={IA_DEPLOYED ? () => gerar('dre', dadosIA) : undefined}
-        previewTexto="A IA vai analisar receitas, despesas e margem — destacando o que puxou pra cima, o que puxou pra baixo e ações pra atingir a meta de R$ 20.000." />
-    </div>
-  )
-}
-
-// =============================================================================
-// FUNCIONÁRIOS + IA — mock
-// TODO[ia]: trocar dados por agregação real de `os_historico` por
-//   funcionario_id (junto com `usuarios`) + edge function Claude API
-//   pra análise individual. Ver `contexto-relatorios.md` seção 4.
-// =============================================================================
-function RelatorioFuncionarios({ T, dark }) {
-  const azul = corEtapa('blue', dark)
-
-  const funcs = [
-    { nome: 'Toni',       papel: 'Dono',      osTotal: 50, etapasFeitas: 145, tempoMedio: '0d 8h', pontuacao: 95 },
-    { nome: 'Alessandro', papel: 'Logística', osTotal: 38, etapasFeitas:  76, tempoMedio: '0d 6h', pontuacao: 88 },
-    { nome: 'Guilherme',  papel: 'Oficina',   osTotal: 42, etapasFeitas: 112, tempoMedio: '1d 4h', pontuacao: 91 },
-  ]
-
-  const { markdown, loading, error, gerar } = useRelatorioIA()
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <Card T={T} dark={dark} padding={0}>
         <div style={{ padding: '12px 16px 10px' }}>
           <SectionHeader T={T} dark={dark} icon="ti-users" mb={0}>
             Performance da equipe
           </SectionHeader>
         </div>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 90px 110px 110px 90px',
-          gap: 10, padding: '8px 16px',
-          borderTop: `1px solid ${T.border}`,
-          background: T.cardAlt,
-          fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-          textTransform: 'uppercase', letterSpacing: '0.04em',
-        }}>
-          <div>Pessoa</div>
-          <div style={{ textAlign: 'right' }}>OS</div>
-          <div style={{ textAlign: 'right' }}>Etapas</div>
-          <div style={{ textAlign: 'right' }}>Tempo médio</div>
-          <div style={{ textAlign: 'right' }}>Score</div>
-        </div>
 
-        {funcs.map(f => (
-          <div key={f.nome} style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 90px 110px 110px 90px',
-            gap: 10, alignItems: 'center',
-            padding: '14px 16px',
-            borderTop: `1px solid ${T.border}`,
-          }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: corHero(dark) }}>{f.nome}</div>
-              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{f.papel}</div>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
-              {f.osTotal}
-            </div>
-            <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-              {f.etapasFeitas}
-            </div>
-            <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-              {f.tempoMedio}
-            </div>
-            <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 700, color: azul, fontVariantNumeric: 'tabular-nums' }}>
-              {f.pontuacao}
-            </div>
+        {semDados ? (
+          <div style={{ padding: '8px 16px 18px' }}>
+            <EmptyState T={T} compact icon="ti-users"
+              title="Sem atuação registrada no período"
+              description="Funcionários aparecem aqui quando movem OS de etapa (registros em os_historico)." />
           </div>
-        ))}
+        ) : (
+          <>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1.2fr 80px 90px 100px 110px 110px',
+              gap: 10, padding: '8px 16px',
+              borderTop: `1px solid ${T.border}`,
+              background: T.cardAlt,
+              fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+              textTransform: 'uppercase', letterSpacing: '0.04em',
+            }}>
+              <div>Pessoa</div>
+              <div style={{ textAlign: 'right' }}>Etapas</div>
+              <div style={{ textAlign: 'right' }}>OS</div>
+              <div style={{ textAlign: 'right' }}>Finalizadas</div>
+              <div style={{ textAlign: 'right' }}>Tempo médio</div>
+              <div style={{ textAlign: 'right' }}>Ticket médio</div>
+            </div>
+
+            {equipe.map(f => (
+              <div key={f.id} style={{
+                display: 'grid',
+                gridTemplateColumns: '1.2fr 80px 90px 100px 110px 110px',
+                gap: 10, alignItems: 'center',
+                padding: '14px 16px',
+                borderTop: `1px solid ${T.border}`,
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: corHero(dark) }}>{f.nome}</div>
+                  <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
+                    {labelPapel[f.papel] || f.papel || '—'}
+                    {f.etapaMaisDemorada && (
+                      <> · gargalo: {f.etapaMaisDemorada.label} ({f.etapaMaisDemorada.tempo})</>
+                    )}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: azul, fontVariantNumeric: 'tabular-nums' }}>
+                  {f.etapasFeitas}
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                  {f.osTotal}
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                  {f.osFinalizadas}
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                  {f.tempoMedio}
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
+                  {fmtBRL(f.ticketMedio)}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
       </Card>
 
       <InsightIA T={T} dark={dark}
-        markdown={markdown} loading={loading} error={error}
-        onGerar={IA_DEPLOYED ? () => gerar('funcionarios', { equipe: funcs }) : undefined}
-        previewTexto="A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números da tabela acima." />
+        markdown={markdown} loading={loadingIA} error={errorIA}
+        onGerar={IA_DEPLOYED && !semDados ? () => gerar('funcionarios', dadosIA) : undefined}
+        previewTexto={semDados
+          ? 'Sem atuação no período — a análise IA habilita quando houver movimentações em os_historico.'
+          : 'A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números da tabela acima.'} />
     </div>
   )
 }

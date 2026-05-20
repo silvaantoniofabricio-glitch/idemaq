@@ -7,8 +7,8 @@
 
 ## 1. Status atual
 
-🟢 **4 relatórios com dados reais** (Geral, OS Operacional, Estoque, Vendas)
-🟡 **2 relatórios em mock** (DRE e Funcionários): código IA pronto (edge function + hook + UI) mas **botão "Gerar análise" gateado por `IA_DEPLOYED=false`** — ativa quando o deploy da edge function for feito. Antes do flip, o `supabase.functions.invoke` trava ~25-30s no timeout.
+🟢 **6 relatórios com dados reais** (Geral, OS Operacional, Estoque, Vendas, **DRE**, **Funcionários** — IA plugada em 20/05/2026 noite).
+🟡 **Botão "Gerar análise IA" ainda gateado por `IA_DEPLOYED=false`** nos 2 relatórios com Claude (DRE, Funcionários) — ativa quando o deploy da edge function for feito. Os números/tabelas/KPIs já vêm reais; só falta o resumo gerado por IA. Antes do flip, o `supabase.functions.invoke` trava ~25-30s no timeout.
 
 ### O que está pronto
 - Hub com 6 cards de entrada + badge **IA** nos 2 com Claude
@@ -23,7 +23,7 @@
 
 ### O que falta
 - **Deploy da edge function**: `supabase functions deploy relatorio-ia --no-verify-jwt` + `supabase secrets set ANTHROPIC_API_KEY=...` (código pronto, mas a function ainda não foi deployada — Toni roda quando quiser ativar)
-- Trocar dados mock dos 2 relatórios IA por queries reais (DRE precisa do schema parte 2 / `lancamento_financeiro`; Funcionários precisa de agregação de `os_historico`)
+- ~~Trocar dados mock dos 2 relatórios IA por queries reais~~ ✅ **feito 20/05/2026 noite** (ver seção 3)
 - Exportação (PDF/Excel)
 - Sparkline de delta vs período anterior (decidi não calcular agora — só sparkline 12m absoluto no Geral)
 
@@ -37,8 +37,8 @@
 | 2 | OS Operacional | Não | `os`, `os_historico` | ✅ real |
 | 3 | Estoque | Não | `peca`, `os_item` (consumo) | ✅ real |
 | 4 | Vendas | Não | `os`, `os_item`, `os_historico` | ✅ real |
-| 5 | DRE | **Sim** | `lancamento_financeiro` (schema parte 2) | 🟡 mock (TODO[ia] no código) |
-| 6 | Funcionários | **Sim** | `os_historico` + `usuarios` | 🟡 mock (TODO[ia] no código) |
+| 5 | DRE | **Sim** | `lancamento_financeiro` (schema parte 2) | ✅ real (botão IA gateado por `IA_DEPLOYED`) |
+| 6 | Funcionários | **Sim** | `os_historico` + `usuarios` + `os` | ✅ real (botão IA gateado por `IA_DEPLOYED`) |
 
 > ⚠️ Conferir os números reais contra Supabase via SQL editor — em ambiente de produção podem aparecer divergências (ex: OS antigas migradas sem `data_conclusao` preenchido).
 
@@ -66,6 +66,30 @@
   - Top 5 peças mais usadas (group by `nome`, soma `quantidade`)
   - Peças paradas: `qtd_atual > 0` AND não aparecem em `os_item` do período (ordenado por capital parado)
 - Giro médio não calculado (sem histórico de movimentação)
+
+### `useRelatorioDRE({ iniIso, fimIso })` — adicionado 20/05/2026
+- **Regime de caixa**: filtra `pago_em` BETWEEN ini AND fim (NÃO `vencimento`). Lançamentos abertos (pago_em IS NULL) NÃO entram no DRE — eles ficam em A Receber/A Pagar do módulo Financeiro.
+- Receitas: SUM(valor) WHERE `tipo='receita'` (group by `categoria` text livre — entrega `receitasDetalhe[{categoria, valor}]` ordenado decrescente)
+- Despesas: SUM(valor) WHERE `tipo='despesa'` (idem `despesasDetalhe`)
+- Lucro: receitas − despesas
+- Margem: round(lucro / receitas × 100); 0 quando receitas=0
+- `totalLancamentos` pra detectar período vazio e gatear UI/botão IA
+- Filtra `deleted_at IS NULL`
+
+### `useRelatorioFuncionarios({ iniIso, fimIso })` — adicionado 20/05/2026
+- 2 queries:
+  1. `os_historico` no período (com `funcionario_id NOT NULL`) + join `usuarios:funcionario_id (id, apelido, papel)`
+  2. `os` concluídas no período (id, valor_total, desconto, data_conclusao) — pra ticket médio
+- Por funcionário agrega:
+  - `etapasFeitas` (count das linhas de histórico dele)
+  - `tempoMedioSegs` (avg de `duracao_segundos` quando > 0)
+  - `osTotal` (distintos `os_id` que ele tocou)
+  - `osFinalizadas` (interseção de `osTotal` com OS concluídas no período)
+  - `faturamento` + `ticketMedio` (valor_total − desconto das OS finalizadas dele)
+  - `etapaMaisDemorada` (gargalo individual — etapa onde ele mais demora em média)
+- Agregados globais: `totalEtapas`, `totalOSAtendidas`, `totalFuncionarios`
+- Ordenado por `etapasFeitas` decrescente
+- **Sem soft-delete em `os_historico`** (tabela append-only) — não filtrar `deleted_at` aí
 
 ### `useRelatorioVendas({ iniIso, fimIso })`
 - Conversão orçamento = (OS que passaram por etapa pós-orçamento) / (OS que chegaram em orçamento)
@@ -190,10 +214,11 @@ Estratégias se ficar pesado:
 3. ~~OS Operacional~~ ✅
 4. ~~Estoque~~ ✅
 5. ~~Vendas~~ ✅
-6. **DRE com IA** — depende de Financeiro real + edge function Claude
-7. **Funcionários com IA** — depende de `os_historico` ter volume + edge function Claude
+6. ~~**DRE com IA**~~ ✅ **dados reais ligados** (20/05) — só falta `IA_DEPLOYED=true` + deploy da edge function pra liberar o botão
+7. ~~**Funcionários com IA**~~ ✅ **dados reais ligados** (20/05) — idem
 8. Exportação PDF/Excel
 9. Relógio de Ponto (módulo Ponto entregar primeiro)
+10. **Deploy edge function `relatorio-ia`** + flip de `IA_DEPLOYED` pra true em `src/pages/Relatorios.jsx` (linha ~50)
 
 ---
 
@@ -252,3 +277,5 @@ Estoque e Vendas voltaram a puxar números reais. Geral e Operacional não tocav
 7. **Renderer Markdown inline** (`parseMarkdown` + `renderInline` em `Relatorios.jsx`) em vez de adicionar `react-markdown`. Cobre `## h2`, listas, **negrito** e `código` — suficiente pro estilo dos prompts. Mantém a regra "sem `npm i` sem aprovação".
 8. **Modelo único `claude-opus-4-7`** (Toni pediu Opus pra análises mais profundas). Caro, mas só dispara via botão. Trocar pra Sonnet é mudança de 1 linha (constante `MODEL` no `index.ts`).
 9. **Cache duplo no system** — `SYSTEM_BASE` (persona) + `PROMPTS[tipo]` (estrutura), ambos com `cache_control: ephemeral`. Só o JSON do usuário não é cacheado.
+10. **DRE em regime de caixa, não competência** (20/05/2026) — filtro por `pago_em` BETWEEN ini AND fim. Razão: o módulo Financeiro já mostra contas a receber/pagar separadamente; misturar competência no DRE confundiria o dono. Lucro = caixa que efetivamente entrou menos caixa que efetivamente saiu.
+11. **Funcionários sem "Score"** (20/05/2026) — removi a coluna `pontuacao` (era arbitrária no mock). As 6 colunas reais (Pessoa · Etapas · OS · Finalizadas · Tempo médio · Ticket médio) já dão leitura de performance sem precisar inventar fórmula. Gargalo individual aparece como subtítulo abaixo do nome ("gargalo: <etapa> (<tempo>)").
