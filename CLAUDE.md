@@ -231,7 +231,9 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | Ponto | ✅ Schema aplicado + hook + componentes (20/05) | Funcionários começarem a bater pra povoar o histórico |
 | Schema parte 2 | ✅ Todos aplicados (01/05/06/07/08/09/10) | — |
 | Storage idemaq-privado | ✅ Bucket criado + foto coleta plugada (20/05) | — |
-| Env vars Vercel | 🟡 Dívida técnica | Migrar URL/anon key do `src/supabase.js` hardcoded pra `VITE_SUPABASE_*` no Vercel |
+| Env vars Vercel | ✅ Código pronto, fallback hardcoded até Toni setar no Vercel (20/05) | Toni adicionar `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no painel Vercel |
+| Edge function `relatorio-ia` | ✅ Código pronto + guia em `docs/deploy-edge-function-ia.md` | Toni rodar `supabase functions deploy` (~5 min) |
+| Google Maps Places | ✅ Guia em `docs/setup-google-maps.md` | Toni criar API key + setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
 
 ---
 
