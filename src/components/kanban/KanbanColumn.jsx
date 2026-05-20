@@ -33,9 +33,6 @@ export default function KanbanColumn({
   const bg = bgEtapa(etapa.cor, dark)
   const isHover = colunaHover === etapa.id && arrastando
 
-  // Soma de valor total da coluna
-  const totalValor = osList.reduce((s, o) => s + ((o.valor || 0) - (o.desconto || 0)), 0)
-
   return (
     <div
       onDragOver={e => { e.preventDefault(); onDragOverCol?.(etapa.id) }}
@@ -81,12 +78,6 @@ export default function KanbanColumn({
             fontVariantNumeric: 'tabular-nums',
           }}>{osList.length}</span>
         </div>
-        {totalValor > 0 && (
-          <div style={{
-            fontSize: 10.5, color: T.textMuted, marginTop: 4,
-            fontVariantNumeric: 'tabular-nums',
-          }}>R$ {totalValor.toLocaleString('pt-BR')}</div>
-        )}
       </div>
 
       {/* Body */}
