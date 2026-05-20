@@ -34,9 +34,16 @@ h1, h2, h3, h4 { margin: 0; font-weight: 500; }
 @keyframes idemaq-spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes idemaq-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 @keyframes idemaq-pulse { 0%,100%{opacity:.5} 50%{opacity:.25} }
+@keyframes idemaq-shimmer { 0% { background-position: -240px 0; } 100% { background-position: 240px 0; } }
 
 .idemaq-shake    { animation: idemaq-shake .3s ease both !important; }
 .idemaq-skeleton { animation: idemaq-pulse 1.4s ease-in-out infinite; border-radius: 6px; }
+.idemaq-shimmer  {
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(127,127,127,.08) 0%, rgba(127,127,127,.22) 50%, rgba(127,127,127,.08) 100%);
+  background-size: 480px 100%;
+  animation: idemaq-shimmer 1.4s linear infinite;
+}
 
 /*
  * Estilo "Conta Azul" no light mode: cards com sombra suave em vez de bordas.

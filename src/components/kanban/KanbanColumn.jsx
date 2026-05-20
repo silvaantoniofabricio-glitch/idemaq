@@ -5,6 +5,19 @@ import { corEtapa, bgEtapa } from '../../utils/colors'
 import KanbanCard from './KanbanCard'
 import KanbanSkeleton from './KanbanSkeleton'
 
+const EMPTY_BY_ETAPA = {
+  ag_agendamento: { icon: 'ti-calendar-off',      text: 'Sem agendamentos pendentes' },
+  agendamento:    { icon: 'ti-calendar-event',    text: 'Sem visitas agendadas' },
+  recebido:       { icon: 'ti-package',           text: 'Nada recebido na bancada' },
+  diagnostico:    { icon: 'ti-stethoscope',       text: 'Sem diagnósticos abertos' },
+  orcamento:      { icon: 'ti-file-dollar',       text: 'Sem orçamentos pendentes' },
+  oficina:        { icon: 'ti-tools',             text: 'Oficina livre' },
+  teste_final:    { icon: 'ti-checks',            text: 'Sem testes finais' },
+  entrega:        { icon: 'ti-truck-delivery',    text: 'Sem entregas pendentes' },
+  pagamento:      { icon: 'ti-cash',              text: 'Sem pagamentos em aberto' },
+  concluido:      { icon: 'ti-circle-check',      text: 'Nenhuma OS concluída no mês' },
+}
+
 export default function KanbanColumn({
   etapa, osList = [], T, dark, tipoCor,
   modoTodos = true,
@@ -82,14 +95,32 @@ export default function KanbanColumn({
         padding: 8, display: 'flex', flexDirection: 'column', gap: 8,
       }}>
         {loading && <KanbanSkeleton T={T} />}
-        {!loading && osList.length === 0 && (
-          <div style={{
-            padding: '1.2rem .5rem', textAlign: 'center',
-            color: T.textDim, fontSize: 11, fontStyle: 'italic',
-          }}>
-            {isHover ? 'Solte aqui' : 'vazio'}
-          </div>
-        )}
+        {!loading && osList.length === 0 && (() => {
+          const empty = EMPTY_BY_ETAPA[etapa.id] || { icon: 'ti-circle-dashed', text: 'Vazio' }
+          if (isHover) {
+            return (
+              <div style={{
+                padding: '1.4rem .5rem', textAlign: 'center',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                color: c,
+              }}>
+                <i className="ti ti-arrow-down-to-arc" style={{ fontSize: 24 }} aria-hidden="true" />
+                <div style={{ fontSize: 12, fontWeight: 600 }}>Solte aqui</div>
+              </div>
+            )
+          }
+          return (
+            <div style={{
+              padding: '1.4rem .5rem', textAlign: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+              color: T.textDim,
+              opacity: 0.85,
+            }}>
+              <i className={`ti ${empty.icon}`} style={{ fontSize: 22, opacity: 0.6 }} aria-hidden="true" />
+              <div style={{ fontSize: 11.5, lineHeight: 1.3 }}>{empty.text}</div>
+            </div>
+          )
+        })()}
         {!loading && osList.map(os => (
           <KanbanCard key={os.numero} os={os} T={T} dark={dark}
             tipoCor={tipoCor} modoTodos={modoTodos}
