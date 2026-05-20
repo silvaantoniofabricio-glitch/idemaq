@@ -41,7 +41,7 @@ export function useRotas(filtros = {}) {
     try {
       let q = supabase
         .from('rota')
-        .select(`*, motorista:motorista_id (id, nome)`)
+        .select(`*, motorista:motorista_id (id, apelido)`)
         .is('deleted_at', null)
       if (filtros.data)         q = q.eq('data', filtros.data)
       if (filtros.motorista_id) q = q.eq('motorista_id', filtros.motorista_id)
@@ -62,7 +62,7 @@ export function useRotas(filtros = {}) {
       // Achata `motorista` da join pra `motorista_nome` (compat com UI)
       const normalizadas = (data || []).map(r => ({
         ...r,
-        motorista_nome: r.motorista?.nome || null,
+        motorista_nome: r.motorista?.apelido || null,
         paradas: Array.isArray(r.paradas) ? r.paradas : [],
       }))
       setRotas(normalizadas)
