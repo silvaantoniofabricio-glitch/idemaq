@@ -7,9 +7,14 @@
 
 ## 1. Status atual
 
-🟢 **Hook + página + SQL alinhados (19/05/2026)** — falta apenas Toni rodar `sql/01-lancamento-financeiro.sql` no Supabase pra UI sair do modo demo automaticamente.
+🟡 **Bug em prod (19/05/2026 noite)**: UI mostrava ZERO lançamentos em todos filtros e KPIs em R$ 0. Causa raiz confirmada via `scripts/probe-financeiro.mjs`:
+- A tabela `lancamento_financeiro` JÁ existia em prod com **schema antigo v1** (FK `categoria_id`, `data_vencimento`, `data_pagamento`, enums de status/natureza/forma_pagamento).
+- O hook (e o SQL atualizado em 19/05) usa **schema v2** (categoria text livre, `vencimento`/`pago_em`, `taxa_pct`, sem enums).
+- SELECT do hook falhava com `42703 column "vencimento" does not exist`. O fallback de mock só dispara em builds pós-`9787a67`; em prod antes do redeploy a UI ficava simplesmente vazia.
 
-✅ **`src/utils/financeiro.js` criado (19/05/2026)** — exporta `calcularD1Util()`, `calcularD1UtilISO()`, `ehFeriadoBancario()`, `ehFimDeSemana()`. Pronto pra ser consumido pela integração OS→Financeiro (taxa da maquininha em D+1 útil automática).
+**Fix aplicado**: `sql/01-lancamento-financeiro.sql` virou MIGRAÇÃO FORÇADA — DROP CASCADE das 3 tabelas antigas + 4 enums + recriação no schema v2 + SEED de 8 lançamentos (3 a receber, 2 a pagar, 3 caixa). Toni cola no SQL Editor e UI passa a ler dados reais imediatamente.
+
+🟢 **`src/utils/financeiro.js` criado (19/05/2026)** — exporta `calcularD1Util()`, `calcularD1UtilISO()`, `ehFeriadoBancario()`, `ehFimDeSemana()`. Pronto pra ser consumido pela integração OS→Financeiro (taxa da maquininha em D+1 útil automática).
 
 ### Decisões de negócio confirmadas (20/05/2026)
 - ✅ **A Receber**: gerado ao concluir Entrega (receita real, não prevista no orçamento)
@@ -58,16 +63,20 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 - **Banner amarelo discreto** "Schema parte 2 ainda não aplicado" quando `tabelaAusente: true` — some sozinho quando o SQL roda
 
 ### O que falta
-- SQL ser aplicado no Supabase (Toni roda no SQL Editor — `sql/01-lancamento-financeiro.sql` já está alinhado com o schema do hook)
+- **Toni rodar `sql/01-lancamento-financeiro.sql`** no SQL Editor (migração v1→v2 forçada com seed). Verificar pós-execução: `SELECT count(*) FROM lancamento_financeiro;` deve retornar 8.
 - `LancamentoDetalheModal` ainda usa baixa via callback in-memory — quando SQL rodar e `usandoBanco=true`, a página já roteia pro hook real (testado via build)
 - `NovoLancamentoModal` (avulso/parcelado/recorrente)
 - ✅ ~~`utils/financeiro.js` (`calcularD1Util` + `ehFeriadoBancario`)~~ — **feito** (19/05/2026)
+
+### Diagnóstico (script reutilizável)
+
+`scripts/probe-financeiro.mjs` consulta a base usando a publishable key e mostra qual schema (v1 ou v2) está em vigor. Rodar `node scripts/probe-financeiro.mjs` antes de codar mudanças no financeiro pra evitar surpresa de drift entre código e banco.
 
 ---
 
 ## 2. Pendências (ordem)
 
-1. **Rodar `sql/01-lancamento-financeiro.sql` no Supabase** (Toni cola no SQL Editor) — UI sai do modo demo automaticamente
+1. **Rodar `sql/01-lancamento-financeiro.sql` no Supabase** (Toni cola no SQL Editor) — migração v1→v2 forçada + seed de 8 lançamentos. UI sai do modo demo automaticamente
 2. ✅ ~~Criar hook `useFinanceiro`~~ — **feito** (refatorado 20/05/2026 pro schema esperado + filtros server-side + mock fallback)
 3. ✅ ~~Ligar `FinanceiroPage` ao hook real~~ — **feito** (commit `12f9857` + refator 20/05/2026)
 4. ✅ ~~Criar `src/utils/financeiro.js`~~ — **feito** (19/05/2026): `calcularD1Util`, `calcularD1UtilISO`, `ehFeriadoBancario`, `ehFimDeSemana`
