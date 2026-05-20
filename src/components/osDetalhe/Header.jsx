@@ -20,7 +20,7 @@ import {
   calcStatusPrazo, diasPrazo,
 } from '../../utils/osHelpers'
 import {
-  uploadFotoColeta, resolverFotoUrl, FOTO_STORAGE_MARKER,
+  uploadFotoColeta, removerFotoColeta, resolverFotoUrl, FOTO_STORAGE_MARKER,
 } from '../../utils/osStorage'
 import { useToast } from '../ui'
 import Timeline from './Timeline'
@@ -141,6 +141,26 @@ export default function Header({
     if (uploading) return
     if (fotoUrl) setFotoAmpliada(true)
     else inputFotoRef.current?.click()
+  }
+
+  async function removerFoto(e) {
+    e?.stopPropagation()
+    if (!window.confirm('Remover a foto da coleta?')) return
+    const res = await removerFotoColeta(os.id)
+    if (!res.ok) {
+      notify('erro', `Falha ao remover: ${res.error}`)
+      return
+    }
+    setFotoUrl(null)
+    // Limpa o marker no banco (mantém o resto do pre_diagnostico)
+    const { foto, ...resto } = os.pre_diagnostico || {}
+    onUpdateOS?.(os.numero, { pre_diagnostico: resto })
+    notify('ok', 'Foto removida')
+  }
+
+  function trocarFoto(e) {
+    e?.stopPropagation()
+    inputFotoRef.current?.click()
   }
 
   // === Cliques placeholder de cadastro ===
@@ -343,14 +363,54 @@ export default function Header({
               aria-hidden="true" />
           )}
           {fotoUrl && (
-            <div style={{
-              position: 'absolute', bottom: 4, right: 4,
-              width: 18, height: 18, borderRadius: 4,
-              background: 'rgba(0,0,0,0.7)', color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <i className="ti ti-arrows-maximize" style={{ fontSize: 10 }} aria-hidden="true" />
-            </div>
+            <>
+              {/* Ícone "ampliar" no canto inferior — sempre visível */}
+              <div style={{
+                position: 'absolute', bottom: 4, right: 4,
+                width: 18, height: 18, borderRadius: 4,
+                background: 'rgba(0,0,0,0.7)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}>
+                <i className="ti ti-arrows-maximize" style={{ fontSize: 10 }} aria-hidden="true" />
+              </div>
+
+              {/* Botões trocar / excluir — só no hover */}
+              {fotoHover && (
+                <div style={{
+                  position: 'absolute', top: 4, right: 4,
+                  display: 'flex', gap: 3,
+                }}>
+                  <button
+                    type="button"
+                    onClick={trocarFoto}
+                    disabled={uploading}
+                    title={uploading ? 'Enviando...' : 'Trocar foto'}
+                    style={{
+                      width: 22, height: 22, borderRadius: 4,
+                      background: 'rgba(0,0,0,0.75)', color: '#fff',
+                      border: 'none', cursor: uploading ? 'wait' : 'pointer',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 0,
+                    }}>
+                    <i className={`ti ${uploading ? 'ti-loader-2' : 'ti-camera'}`} style={{ fontSize: 12 }} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={removerFoto}
+                    title="Remover foto"
+                    style={{
+                      width: 22, height: 22, borderRadius: 4,
+                      background: 'rgba(192,66,66,0.85)', color: '#fff',
+                      border: 'none', cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 0,
+                    }}>
+                    <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           <input
