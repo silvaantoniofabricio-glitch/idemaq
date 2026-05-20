@@ -48,8 +48,9 @@
 
 1. ✅ ~~**Aplicar `sql/05-schema-parte-2-checklist-falha.sql` no Supabase SQL Editor**~~ — **APLICADO em 19/05/2026** (Onda 2). checklist_etapa + falha_teste em produção.
 1b. ✅ ~~Aplicar `sql/07-os-itens-baixados.sql`~~ — **APLICADO em 20/05/2026** (sessão `geral`). Verificador: `node scripts/verificar-sql-07.mjs`. Baixa automática de estoque agora roda end-to-end (idempotente via flag `os.itens_baixados`). Drift colateral em `usePecas.baixarItensDaOS` (filtrava coluna `tipo` removida na Onda 4 + usava `qtd` em vez de `quantidade`) **corrigido na mesma sessão**, igual em `AcaoOrcamento.salvar()` e `PagamentoTab.salvar()`.
+1c. ✅ ~~Cadastro cliente + equipamento inline via Header do OSDetalhe~~ — **plugado em 20/05/2026** (Onda 5). Antes os 2 clicks (nome do cliente / linha do equipamento) só mostravam toast "em breve". Agora abrem `FormClienteEdit` e `FormEquipamentoEdit` (`src/components/osDetalhe/`). Cliente: SELECT fresco por `id` na abertura (useOS só traz nome+telefone) + parser do endereço gravado por `criarClientePersist` (split em ` — `) + concat de volta no save + `UPDATE cliente WHERE id=os.cliente_id`. Após save, `onSalvarOk` dispara `osRefetch` propagado por Kanban→OSDetalhe→Header (useOS subscreve só `os`, não `cliente` — sem refetch o nome no Header ficaria stale). Equipamento: patch direto via `onUpdateOS` (optimistic do useOS); marca/modelo/defeito persistem via `normalizePatchOS`; `serie` ainda fica só em memória (falta whitelist no osPatch + coluna no banco).
 2. ✅ ~~Foto da coleta → Supabase Storage privado~~ — **plugada em 20/05/2026** (sessão `geral`). Bucket `idemaq-privado`, path `os/{osId}/coleta.jpg` (1 foto por OS, upsert). Helper em `src/utils/osStorage.js` faz compressão client-side via Canvas (max 1600px JPEG 85% — fotos de 5MB caem pra ~500KB) + upload + signed URL (TTL 1h) + remoção. `pre_diagnostico.foto` no banco agora guarda o marker `'storage'` em vez de base64 (URL é gerada on-demand). Retro-compatível: base64 legacy (`data:...`) continua sendo exibido direto via `resolverFotoUrl()`. **Pré-requisitos manuais (1x)**: criar o bucket `idemaq-privado` (private) no Supabase Dashboard + rodar `sql/08-storage-os-coleta.sql` pra criar as 4 policies (SELECT/INSERT/UPDATE/DELETE pra `authenticated`).
-3. **Adicionar colunas pros campos pendentes em `os`**: `entrega_*` (data/hora/responsavel/obs), `observacoes` global (ver PENDENCIAS-ROTAS).
+3. **Adicionar colunas pros campos pendentes em `os`**: `entrega_*` (data/hora/responsavel/obs), `observacoes` global (ver PENDENCIAS-ROTAS), `numero_serie` (precondição pro Equipamento Edit gravar `serie`).
 4. **AcaoOrçamento → lançamento real de itens via `useOSItens.addItem/updateItem/removeItem`** (hoje ainda escreve só local).
 5. ✅ Schema parte 2 plugado (19/05/2026 — checklist_etapa + falha_teste em Recebido/Oficina/Teste).
 6. ✅ OS de garantia (19/05/2026 — AcaoConcluido).
@@ -179,9 +180,9 @@ Linha 2 do header: foto da máquina + bloco info estruturado.
   - Click em placeholder vazio → abre input file (mesma lógica do AcaoRecebido)
   - Salva via `onUpdateOS`
 - **Bloco info** à direita (3 linhas):
-  1. Nome cliente grande (17px, fonte 700) — clique abre toast "Cadastro do cliente em breve" (TODO `FormClienteEdit`)
+  1. Nome cliente grande (17px, fonte 700) — clique abre `FormClienteEdit` (20/05/2026, Onda 5)
   2. Contato 11.5px cinza — `ti-phone` + telefone (click WhatsApp) · `ti-map-pin` + endereço (click Maps). Chunks individuais clicáveis
-  3. Equipamento 12px — `ti-device-washing-machine` azul + Marca·Modelo (strong) + (série) cinza + · defeito. Click abre toast (TODO `FormEquipamentoEdit`)
+  3. Equipamento 12px — `ti-device-washing-machine` azul + Marca·Modelo (strong) + (série) cinza + · defeito. Click abre `FormEquipamentoEdit` (20/05/2026, Onda 5)
 - Timeline com `border-top` separando do bloco novo
 
 ### Botão ⋮ "Mais ações" (20/05/2026)

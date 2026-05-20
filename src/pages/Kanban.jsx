@@ -412,7 +412,8 @@ export default function Kanban({ T, dark, user }) {
         onAbrirOS={(num)=>{ const o = osList.find(x=>x.numero===num); if(o) setDetalhe(o) }}
         onMoverOS={moverOS}
         onUpdateOS={updateOS}
-        onExcluir={excluirOS} />}
+        onExcluir={excluirOS}
+        onRefetchOS={osRefetch} />}
     </>
   )
 }

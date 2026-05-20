@@ -223,6 +223,7 @@ export default function OSMobile({ T, dark, user }) {
           }}
           onMoverOS={moverOS}
           onUpdateOS={updateOS}
+          onRefetchOS={refetch}
         />
       )}
     </div>

@@ -25,6 +25,8 @@ import {
 import { useToast } from '../ui'
 import Timeline from './Timeline'
 import FotoAmpliadaModal from './FotoAmpliadaModal'
+import FormClienteEdit from './FormClienteEdit'
+import FormEquipamentoEdit from './FormEquipamentoEdit'
 
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
@@ -37,6 +39,7 @@ export default function Header({
   aba, setAba,
   onShowHistorico, onClose,
   onUpdateOS, onExcluir,
+  onRefetchOS,
   mobile = false,
 }) {
   const cor = (d, c) => dark ? d : c
@@ -163,15 +166,18 @@ export default function Header({
     inputFotoRef.current?.click()
   }
 
-  // === Cliques placeholder de cadastro ===
-  // FormClienteEdit / FormEquipamentoEdit não existem ainda — mantém toast
-  // ("recomendação A" da resposta anterior). Quando esses modais forem criados,
-  // trocar `notify(...)` por `setModalAberto(...)`.
+  // === Modais de edição inline (cliente + equipamento) ===
+  const [modalCliente, setModalCliente] = useState(false)
+  const [modalEquipamento, setModalEquipamento] = useState(false)
   function abrirCadastroCliente() {
-    notify('info', 'Cadastro do cliente em breve')
+    if (!os?.cliente_id) {
+      notify('info', 'Esta OS não tem cliente vinculado')
+      return
+    }
+    setModalCliente(true)
   }
   function abrirCadastroEquipamento() {
-    notify('info', 'Cadastro do equipamento em breve')
+    setModalEquipamento(true)
   }
   function abrirWhatsApp(fone) {
     const digits = (fone || '').replace(/\D/g, '')
@@ -496,6 +502,26 @@ export default function Header({
           src={fotoUrl}
           alt={`Foto da OS #${os.numero}`}
           onClose={() => setFotoAmpliada(false)}
+        />
+      )}
+
+      {/* Modal de edição do cliente vinculado */}
+      {modalCliente && (
+        <FormClienteEdit
+          T={T} dark={dark} mobile={mobile}
+          os={os}
+          onClose={() => setModalCliente(false)}
+          onSalvarOk={() => onRefetchOS?.()}
+        />
+      )}
+
+      {/* Modal de edição do equipamento da OS */}
+      {modalEquipamento && (
+        <FormEquipamentoEdit
+          T={T} dark={dark} mobile={mobile}
+          os={os}
+          onClose={() => setModalEquipamento(false)}
+          onUpdateOS={onUpdateOS}
         />
       )}
     </div>

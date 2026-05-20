@@ -42,6 +42,7 @@ export default function OSDetalhe({
   onMoverOS,
   onUpdateOS,
   onExcluir,
+  onRefetchOS,
   mobile = false,
 }) {
   const admin = isAdmin(user)
@@ -110,6 +111,7 @@ export default function OSDetalhe({
             onClose={onClose}
             onUpdateOS={onUpdateOS}
             onExcluir={onExcluir}
+            onRefetchOS={onRefetchOS}
             mobile={mobile}
           />
 
