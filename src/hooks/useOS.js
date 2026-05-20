@@ -62,7 +62,6 @@ export function useOS(buscando = false) {
           recusada, aguardando_peca,
           prazo, data_conclusao, criado_em, atualizado_em,
           cliente_id,
-          marca_equipamento, modelo_equipamento, defeito_relatado,
           pre_diagnostico, observacoes,
           cliente:cliente_id(id, nome, telefone, deleted_at),
           os_item(count),
@@ -96,14 +95,15 @@ export function useOS(buscando = false) {
           cliente: os.cliente?.nome || '',
           fone: os.cliente?.telefone || '',
           cliente_id: os.cliente?.id || null,
-          // Equipamento: colunas reais existem em `os` (marca_equipamento,
-          // modelo_equipamento, defeito_relatado). `serie` e `endereco` ainda
-          // não têm coluna — ficam vazios até o schema avançar.
+          // Equipamento: colunas (marca_equipamento, modelo_equipamento,
+          // defeito_relatado, numero_serie) AINDA NÃO EXISTEM no banco —
+          // confirmado em prod via probe (PostgREST 42703 / PGRST204).
+          // Sair pra '' até `sql/10-os-equipamento.sql` ser aplicado.
           equipamento: '',
-          marca: os.marca_equipamento || '',
-          modelo: os.modelo_equipamento || '',
+          marca: '',
+          modelo: '',
           serie: '',
-          defeito: os.defeito_relatado || '',
+          defeito: '',
           endereco: '',
           fotos: 0,
           observacoes: os.observacoes || '',
