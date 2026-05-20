@@ -7,13 +7,43 @@
 
 ## 1. Status atual
 
-🟡 **Mock reformulado Bling-style (17/05/2026 · commit `227af93`)** — visualmente pronto, falta banco.
+🟢 **Hook + página + SQL alinhados (19/05/2026)** — falta apenas Toni rodar `sql/01-lancamento-financeiro.sql` no Supabase pra UI sair do modo demo automaticamente.
+
+✅ **`src/utils/financeiro.js` criado (19/05/2026)** — exporta `calcularD1Util()`, `calcularD1UtilISO()`, `ehFeriadoBancario()`, `ehFimDeSemana()`. Pronto pra ser consumido pela integração OS→Financeiro (taxa da maquininha em D+1 útil automática).
 
 ### Decisões de negócio confirmadas (20/05/2026)
 - ✅ **A Receber**: gerado ao concluir Entrega (receita real, não prevista no orçamento)
 - ✅ **Caixa automático**: ao confirmar pagamento na OS, gera entrada no Caixa direto
 - ✅ **Pagamento misto**: N lançamentos separados (1 por forma de pagamento)
 - ✅ **Taxa da maquininha**: despesa automática em D+1 útil (pula FDS + feriados)
+
+### Refatoração do hook (20/05/2026 noite)
+
+**Schema esperado** da tabela `lancamento_financeiro`:
+```
+id uuid · tipo text ('receita'|'despesa') · valor numeric
+conta_id uuid FK conta_bancaria · categoria text · descricao text
+vencimento date · pago_em date|null · taxa_pct numeric
+forma_pagamento text · os_id uuid|null · deleted_at timestamptz
+```
+
+`categoria` virou **text livre** (não FK pra `categoria_financeira`). Status implícito em `pago_em IS NULL`. `taxa_pct` por lançamento (preparado pra taxa da maquininha).
+
+**`src/hooks/useFinanceiro.js`** ([commit pendente]):
+- **Filtros server-side**: `{ tipo?, conta_id?, status?: 'pago'|'aberto', dataInicio?, dataFim? }` → traduzidos pra `.eq/.is/.not/.gte/.lte` no SELECT.
+- **Mock embutido** (10 a receber + 8 a pagar + 10 caixa) no MESMO shape do banco — fallback automático quando `SQLSTATE 42P01` (tabela não existe). Sinaliza `tabelaAusente: true`.
+- **Join lateral** `conta:conta_id (id, nome, tipo)` evita 2ª round-trip.
+- **CRUD**: `criar / darBaixa / excluir`. Em modo demo (tabelaAusente), retornam `{ error: { code: 'OFFLINE' } }` pra UI cair no comportamento in-memory.
+- **`darBaixa(id, { pago_em?, forma_pagamento?, taxa_pct?, conta_id? })`** — `pago_em` defaulta pra hoje, taxa pode mudar na baixa.
+- **Exporta `CATEGORIAS_SUGESTAO`** (receita/despesa) como autocomplete pros selects da página.
+
+**`src/pages/Financeiro.jsx`** ([commit pendente]):
+- Mocks `A_RECEBER_MOCK/A_PAGAR_MOCK/CAIXA_MOCK` REMOVIDOS — agora vem do hook.
+- Adapter `adaptarBancoParaUI` atualizado pro novo shape: `vencimento`, `pago_em`, `categoria` text, `taxa_pct`, `forma_enum`.
+- Helper `labelForma` (enum → label amigável: `pix` → "PIX", `credito_1x` → "Cartão 1x").
+- `useEffect` sincroniza state local SEMPRE (real ou mock) — split por tipo/`pago_em`.
+- Lista de contas do dropdown vem dinamicamente de `contasReais` do hook.
+- `baixarReceber/baixarPagar`: em real chama `darBaixa({ forma_pagamento, taxa_pct })`; em demo, optimistic local (move item de receber/pagar pro caixa).
 
 ### O que está pronto (UI)
 - Barra de filtros horizontal: período (5 presets + custom) · chips de status · busca · categoria · conta bancária · Limpar
@@ -25,42 +55,58 @@
 - Tabs com badge contador
 - `LancamentoDetalheModal` (3 tipos: receber/pagar/caixa) com baixa/excluir e **confirmação anti-clique-acidental** ([Voltar] no rodapé)
 - Visão geral
+- **Banner amarelo discreto** "Schema parte 2 ainda não aplicado" quando `tabelaAusente: true` — some sozinho quando o SQL roda
 
 ### O que falta
-- **Schema parte 2 pendente** — SQL pronto em `sql/01-lancamento-financeiro.sql` (lancamento_financeiro + categoria_financeira + conta_bancaria + 4 ENUMs)
-- Hook `useFinanceiro` ainda consome mock
-- Conexão real com tabela
+- SQL ser aplicado no Supabase (Toni roda no SQL Editor — `sql/01-lancamento-financeiro.sql` já está alinhado com o schema do hook)
+- `LancamentoDetalheModal` ainda usa baixa via callback in-memory — quando SQL rodar e `usandoBanco=true`, a página já roteia pro hook real (testado via build)
+- `NovoLancamentoModal` (avulso/parcelado/recorrente)
+- ✅ ~~`utils/financeiro.js` (`calcularD1Util` + `ehFeriadoBancario`)~~ — **feito** (19/05/2026)
 
 ---
 
 ## 2. Pendências (ordem)
 
-1. **Rodar `sql/01-lancamento-financeiro.sql` no Supabase** (cria 3 tabelas + 4 enums)
-2. **Criar `src/utils/financeiro.js`** com função `calcularD1Util()`
-3. **Criar hook `useFinanceiro`** (CRUD + soft-delete)
-4. **Ligar `FinanceiroPage` ao hook real** (substituir mocks)
-5. **Ligar `LancamentoDetalheModal` ao Supabase** (baixa, excluir, criar)
+1. **Rodar `sql/01-lancamento-financeiro.sql` no Supabase** (Toni cola no SQL Editor) — UI sai do modo demo automaticamente
+2. ✅ ~~Criar hook `useFinanceiro`~~ — **feito** (refatorado 20/05/2026 pro schema esperado + filtros server-side + mock fallback)
+3. ✅ ~~Ligar `FinanceiroPage` ao hook real~~ — **feito** (commit `12f9857` + refator 20/05/2026)
+4. ✅ ~~Criar `src/utils/financeiro.js`~~ — **feito** (19/05/2026): `calcularD1Util`, `calcularD1UtilISO`, `ehFeriadoBancario`, `ehFimDeSemana`
+5. **Ligar `LancamentoDetalheModal` ao Supabase de fato** (edição inline, hoje só placeholder — `onEditar` mostra toast)
 6. **Criar `NovoLancamentoModal`** (avulso/parcelado/recorrente)
-7. **Integração OS → Financeiro**: Entrega → A Receber, Pagamento → Caixa + Taxa
+7. **Integração OS → Financeiro**: Entrega → A Receber, Pagamento → Caixa + Taxa (em D+1 útil via `calcularD1Util`)
 
 ---
 
 ## 3. Schema parte 2 — Financeiro (pendente aplicar)
 
-SQL em `sql/01-lancamento-financeiro.sql`.
+SQL em `sql/01-lancamento-financeiro.sql` (**alinhado com o hook em 19/05/2026** — schema simplificado abaixo).
 
-### `lancamento_financeiro`
+### Schema atual (sql/01)
+
+O SQL agora bate exatamente com o que o hook consome:
+- `categoria` é **text livre** (sem tabela `categoria_financeira`)
+- `status` é derivado de `pago_em IS NULL`
+- `tipo` text simples (`'receita'|'despesa'`)
+- `taxa_pct numeric(6,3)` por lançamento (taxa da maquininha)
+- `forma_pagamento` text livre (convenção de enum: `pix/dinheiro/debito/credito_1x/credito_parcelado/link_pagamento/boleto/transferencia/a_prazo`)
+- Recorrência/parcelamento fora de escopo — tabela separada futura
+
+O SQL usa `CREATE TABLE IF NOT EXISTS` + `DROP TRIGGER/POLICY IF EXISTS` pra ser idempotente. Pode ser colado direto no SQL Editor do Supabase sem medo de quebrar caso já tenha rodado antes.
+
+### `lancamento_financeiro` (schema esperado pelo hook)
 - `id uuid` PK
-- `tipo` enum: `receber | pagar | caixa`
-- `valor numeric(10,2)`
-- `vencimento timestamptz`, `pago_em timestamptz`
-- `status` enum
-- `categoria_id uuid` FK
-- `conta_id uuid` FK
-- `os_id uuid` FK (NULL se avulso)
-- `descricao` text
-- Recorrência: `parcela_id uuid` (ID único da compra parcelada — gera parcelas anteriores e futuras), `recorrente_id uuid`, `dia_recorrencia int`
-- Soft-delete + auditoria
+- `tipo text` ('receita'|'despesa')
+- `valor numeric`
+- `conta_id uuid` FK conta_bancaria
+- `categoria text` (livre — sugestões em `CATEGORIAS_SUGESTAO` do hook)
+- `descricao text`
+- `vencimento date`
+- `pago_em date|null`
+- `taxa_pct numeric` (taxa da maquininha por lançamento, default 0)
+- `forma_pagamento text` (enum por convenção)
+- `os_id uuid|null` FK os
+- Soft-delete (`deleted_at timestamptz` + `excluido_por uuid`) + auditoria padrão Idemaq
+- Recorrência **fora de escopo do schema simplificado** — quando vier, usar tabela separada `lancamento_recorrencia` (decisão futura)
 
 ### `categoria_financeira`
 - Receitas: Limpeza, Manutenção, Peças, Venda de máquinas, Taxa diagnóstico, Outros
@@ -101,68 +147,20 @@ Aplica-se a: Visão geral, Receber, Pagar, Caixa.
 | Sábado | Segunda |
 | Feriado quinta | Sexta (ou segunda se sexta for feriado) |
 
-**Função helper em `src/utils/financeiro.js`:**
+**Implementado em `src/utils/financeiro.js`** (19/05/2026). API exportada:
 
 ```javascript
-/**
- * Calcula D+1 útil (pula fins de semana E feriados bancários)
- * @param {Date} data - Data base (pagamento)
- * @returns {Date} - Data D+1 útil
- */
-export function calcularD1Util(data) {
-  const resultado = new Date(data);
-  resultado.setDate(resultado.getDate() + 1); // +1 dia
+import { calcularD1Util, calcularD1UtilISO, ehFeriadoBancario, ehFimDeSemana } from '../utils/financeiro'
 
-  // Pula fins de semana
-  let diaSemana = resultado.getDay(); // 0=dom, 6=sáb
-  if (diaSemana === 0) {
-    resultado.setDate(resultado.getDate() + 1); // Dom → Seg
-  } else if (diaSemana === 6) {
-    resultado.setDate(resultado.getDate() + 2); // Sáb → Seg
-  }
-
-  // Pula feriados bancários
-  while (ehFeriadoBancario(resultado)) {
-    resultado.setDate(resultado.getDate() + 1);
-    // Se cair em FDS, pula de novo
-    diaSemana = resultado.getDay();
-    if (diaSemana === 0) resultado.setDate(resultado.getDate() + 1);
-    else if (diaSemana === 6) resultado.setDate(resultado.getDate() + 2);
-  }
-
-  return resultado;
-}
-
-/**
- * Verifica se a data é feriado bancário nacional
- * TODO: migrar pra tabela `configuracoes` no Módulo 09
- */
-function ehFeriadoBancario(data) {
-  const dia = data.getDate();
-  const mes = data.getMonth() + 1; // 1-12
-
-  // Feriados fixos
-  const feriadosFixos = [
-    '01/01', // Ano Novo
-    '21/04', // Tiradentes
-    '01/05', // Dia do Trabalho
-    '07/09', // Independência
-    '12/10', // Nossa Senhora Aparecida
-    '02/11', // Finados
-    '15/11', // Proclamação da República
-    '20/11', // Consciência Negra (nacional desde 2024)
-    '25/12', // Natal
-  ];
-
-  const dataStr = `${dia.toString().padStart(2,'0')}/${mes.toString().padStart(2,'0')}`;
-  if (feriadosFixos.includes(dataStr)) return true;
-
-  // Feriados móveis (Carnaval, Sexta-feira Santa, Corpus Christi)
-  // TODO: calcular via algoritmo ou tabela
-
-  return false;
-}
+calcularD1Util(new Date())         // → Date (objeto)
+calcularD1UtilISO('2026-05-19')    // → '2026-05-20' (string ISO)
+ehFeriadoBancario(new Date())      // → boolean
+ehFimDeSemana(new Date())          // → boolean
 ```
+
+`calcularD1Util` aceita `Date` ou ISO `'YYYY-MM-DD'`, soma +1 dia e itera enquanto for FDS ou feriado bancário (com guarda de 10 iterações). Não muta o input.
+
+Feriados nacionais fixos atualmente cobertos (Lei 14.759/2023 inclusive): 01/01, 21/04, 01/05, 07/09, 12/10, 02/11, 15/11, **20/11 (Consciência Negra)**, 25/12. Feriados móveis (Carnaval, Sexta Santa, Corpus Christi) e municipais (06/11 Naviraí) ainda não — TODO Módulo 09 via tabela `configuracoes`.
 
 **Versão futura (Módulo 09):**
 - Ler feriados da tabela `configuracoes`

@@ -17,18 +17,38 @@ import LancamentoDetalheModal from '../components/financeiro/LancamentoDetalheMo
 import { useFinanceiro } from '../hooks/useFinanceiro'
 
 // ============================================================================
-// ADAPTADOR de shape: banco real → UI atual (que veio do mock Bling-style)
+// ADAPTADOR de shape: banco/hook → UI atual (Bling-style)
 // ============================================================================
-// O hook traz colunas snake_case + joins (categoria/conta como objetos). A UI
-// foi desenhada com o shape dos mocks (camelCase + strings). Esse adapter mapeia.
-// Quando o schema parte 2 for aplicado e dados reais existirem, a tela usa esse
-// shape via useEffect que popula os states locais.
-// Forma de pagamento da UI ("PIX", "Cartão 1x", "Boleto", ...) → enum do banco
+// O hook traz o shape do banco (snake_case + colunas do schema esperado:
+// vencimento, pago_em, categoria text, conta_id+conta{}, taxa_pct,
+// forma_pagamento). A UI espera camelCase com strings amigáveis pra forma de
+// pagamento. Esse adapter normaliza. Em modo demo (tabelaAusente=true) o hook
+// devolve mocks no MESMO shape — mesmo adapter, mesmo resultado.
+
+// Enum do banco → label amigável pra UI ("pix" → "PIX", "credito_1x" → "Cartão 1x")
+const LABEL_FORMA = {
+  pix: 'PIX',
+  dinheiro: 'Dinheiro',
+  debito: 'Débito',
+  credito_1x: 'Cartão 1x',
+  credito_parcelado: 'Cartão parcelado',
+  link_pagamento: 'Link InfinitePay',
+  boleto: 'Boleto',
+  transferencia: 'Transferência',
+  a_prazo: 'A prazo',
+}
+function labelForma(enumVal) {
+  if (!enumVal) return ''
+  return LABEL_FORMA[enumVal] || enumVal
+}
+
+// Label UI → enum do banco (caminho inverso, usado em mutações)
 const MAPA_FORMA_UI_BANCO = {
   'pix':'pix', 'dinheiro':'dinheiro', 'débito':'debito', 'debito':'debito',
   'cartão 1x':'credito_1x', 'cartao 1x':'credito_1x',
   'cartão 2x':'credito_parcelado', 'cartão 3x':'credito_parcelado',
   'cartao 2x':'credito_parcelado', 'cartao 3x':'credito_parcelado',
+  'cartão parcelado':'credito_parcelado', 'cartao parcelado':'credito_parcelado',
   'link infinitepay':'link_pagamento', 'link pagamento':'link_pagamento',
   'boleto':'boleto', 'transferência':'transferencia', 'transferencia':'transferencia',
   'a prazo':'a_prazo',
@@ -36,12 +56,14 @@ const MAPA_FORMA_UI_BANCO = {
 function mapearFormaUIparaEnum(formaUI) {
   if (!formaUI) return null
   const k = String(formaUI).toLowerCase().trim()
+  // se já é um enum válido, retorna direto
+  if (Object.values(MAPA_FORMA_UI_BANCO).includes(k)) return k
   return MAPA_FORMA_UI_BANCO[k] || 'pix' // fallback seguro
 }
 
 function adaptarBancoParaUI(lanc) {
   const ehReceita = lanc.tipo === 'receita'
-  const pago = lanc.status === 'pago'
+  const pago = lanc.pago_em != null
   return {
     id: lanc.id,
     // OS vinculada: o banco guarda os_id (uuid), não o numero. Resolve no chat 6.
@@ -49,14 +71,17 @@ function adaptarBancoParaUI(lanc) {
     cliente: ehReceita ? (lanc.descricao || '').split('—')[0]?.trim() : null,
     descricao: lanc.descricao || '',
     fornecedor: !ehReceita ? null : undefined,
-    categoria: lanc.categoria?.nome || 'Outros',
+    categoria: lanc.categoria || 'Outros',
     conta: lanc.conta?.nome || '',
+    conta_id: lanc.conta_id || null,
     valor: Number(lanc.valor) || 0,
-    vencimento: lanc.data_vencimento,
-    forma: lanc.forma_pagamento || '',
+    vencimento: lanc.vencimento,
+    forma: labelForma(lanc.forma_pagamento),
+    forma_enum: lanc.forma_pagamento || null,
+    taxa_pct: Number(lanc.taxa_pct) || 0,
     status: pago ? 'pago' : 'aberto',
-    dataPag: lanc.data_pagamento || null,
-    recorrente: lanc.natureza === 'recorrente',
+    dataPag: lanc.pago_em || null,
+    recorrente: false, // schema simplificado não tem natureza recorrente — reserva pra futuro
     tipo: lanc.tipo,
   }
 }
@@ -73,49 +98,16 @@ const isoMaisDias = (d) => {
   return x.toISOString().slice(0, 10)
 }
 
+// Listas pra dropdowns de filtro. Categorias agora são text livre no banco;
+// estas constantes são apenas SUGESTÕES pros selects (mesmas exportadas pelo
+// hook em `CATEGORIAS_SUGESTAO`). Contas vem do hook dinamicamente.
 const CATEGORIAS_RECEITA = ['Limpeza', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros']
 const CATEGORIAS_DESPESA = ['Funcionários', 'Peças', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento']
-const CONTAS = ['Cresol', 'Bradesco', 'Bradesco PJ', 'Mercado Pago', 'InfinitePay D+1', 'Cartão Inter PJ']
 const FORMAS = ['PIX', 'Dinheiro', 'Cartão 1x', 'Cartão 2x', 'Cartão 3x', 'Boleto', 'Link InfinitePay']
 
-// A receber — incluindo algumas já pagas pra demo do filtro de status
-const A_RECEBER_MOCK = [
-  { id:1, osNum:241, cliente:'Paula Mendes',     descricao:'Manutenção + Limpeza',    categoria:'Manutenção',      conta:'Bradesco',         valor:480, vencimento:isoMaisDias(-15), forma:'Boleto',            status:'aberto' },
-  { id:2, osNum:243, cliente:'Maria Silva',      descricao:'Limpeza combinada x2',    categoria:'Limpeza',         conta:'InfinitePay D+1',  valor:330, vencimento:isoMaisDias(-5),  forma:'Cartão 2x',         status:'aberto' },
-  { id:3, osNum:245, cliente:'Carlos Lima',      descricao:'Manutenção',              categoria:'Manutenção',      conta:'Cresol',           valor:185, vencimento:isoMaisDias(-1),  forma:'PIX',               status:'aberto' },
-  { id:4, osNum:247, cliente:'Ana Reis',         descricao:'Limpeza + capa',          categoria:'Limpeza',         conta:'InfinitePay D+1',  valor:270, vencimento:isoMaisDias(0),   forma:'Link InfinitePay',  status:'aberto' },
-  { id:5, osNum:248, cliente:'Roberto Dias',     descricao:'Manutenção + mangueira',  categoria:'Manutenção',      conta:'InfinitePay D+1',  valor:415, vencimento:isoMaisDias(1),   forma:'Cartão 1x',         status:'aberto' },
-  { id:6, osNum:249, cliente:'João Costa',       descricao:'Limpeza',                 categoria:'Limpeza',         conta:'Cresol',           valor:185, vencimento:isoMaisDias(3),   forma:'PIX',               status:'aberto' },
-  { id:7, osNum:250, cliente:'Igor Vasconcelos', descricao:'Venda máquina reformada', categoria:'Venda de máquina',conta:'InfinitePay D+1',  valor:650, vencimento:isoMaisDias(5),   forma:'Cartão 3x',         status:'aberto' },
-  { id:8, osNum:251, cliente:'Pedro Alves',      descricao:'Manutenção + Limpeza',    categoria:'Manutenção',      conta:'Bradesco',         valor:480, vencimento:isoMaisDias(7),   forma:'Boleto',            status:'aberto' },
-  { id:9, osNum:239, cliente:'Maria Silva',      descricao:'Limpeza',                 categoria:'Limpeza',         conta:'Bradesco',         valor:185, vencimento:isoMaisDias(-1),  forma:'PIX',               status:'pago', dataPag:isoMaisDias(-1) },
-  { id:10,osNum:240, cliente:'Pedro Alves',      descricao:'Manutenção',              categoria:'Manutenção',      conta:'Cresol',           valor:350, vencimento:isoMaisDias(-2),  forma:'PIX',               status:'pago', dataPag:isoMaisDias(-2) },
-]
-
-const A_PAGAR_MOCK = [
-  { id:1, descricao:'Salário Alessandro',   fornecedor:'Folha',           categoria:'Funcionários', conta:'Cresol',     valor:1650, vencimento:isoMaisDias(2),  forma:'PIX',        recorrente:true,  status:'aberto' },
-  { id:2, descricao:'Salário Guilherme',    fornecedor:'Folha',           categoria:'Funcionários', conta:'Cresol',     valor:1650, vencimento:isoMaisDias(2),  forma:'PIX',        recorrente:true,  status:'aberto' },
-  { id:3, descricao:'Tráfego pago Meta',    fornecedor:'Meta',            categoria:'Marketing',    conta:'Bradesco PJ',valor:500,  vencimento:isoMaisDias(5),  forma:'Cartão 1x',  recorrente:true,  status:'aberto' },
-  { id:4, descricao:'Compra de peças ML',   fornecedor:'Mercado Livre',   categoria:'Peças',     conta:'Bradesco PJ',valor:820,  vencimento:isoMaisDias(-2), forma:'Boleto',     recorrente:false, status:'aberto' },
-  { id:5, descricao:'Energia elétrica',     fornecedor:'Energisa',        categoria:'Utilidades',   conta:'Cresol',     valor:310,  vencimento:isoMaisDias(8),  forma:'Boleto',     recorrente:true,  status:'aberto' },
-  { id:6, descricao:'Internet + telefone',  fornecedor:'Vivo',            categoria:'Utilidades',   conta:'Bradesco',   valor:180,  vencimento:isoMaisDias(10), forma:'Boleto',     recorrente:true,  status:'aberto' },
-  { id:7, descricao:'Combustível',          fornecedor:'Posto Shell',     categoria:'Combustível',  conta:'Cartão Inter PJ', valor:420, vencimento:isoMaisDias(0), forma:'Cartão 1x', recorrente:false, status:'aberto' },
-  { id:8, descricao:'Material de limpeza',  fornecedor:'Atacado MS',      categoria:'Materiais',    conta:'Cresol',     valor:145,  vencimento:isoMaisDias(12), forma:'PIX',        recorrente:false, status:'aberto' },
-  { id:9, descricao:'Peças ML — abril',     fornecedor:'Mercado Livre',   categoria:'Peças',     conta:'Bradesco PJ',valor:620,  vencimento:isoMaisDias(-3), forma:'Boleto',     recorrente:false, status:'pago', dataPag:isoMaisDias(-3) },
-]
-
-const CAIXA_MOCK = [
-  { id:1,  tipo:'receita', descricao:'OS #239 — Maria Silva',     categoria:'Limpeza',     valor:185, data:isoMaisDias(-1), conta:'Bradesco',         forma:'PIX' },
-  { id:2,  tipo:'despesa', descricao:'Combustível semana',         categoria:'Combustível', valor:180, data:isoMaisDias(-1), conta:'Cartão Inter PJ',  forma:'Cartão 1x' },
-  { id:3,  tipo:'receita', descricao:'OS #240 — Pedro Alves',     categoria:'Manutenção',  valor:350, data:isoMaisDias(-2), conta:'Cresol',           forma:'PIX' },
-  { id:4,  tipo:'receita', descricao:'OS #238 — Ana Reis',        categoria:'Manutenção',  valor:480, data:isoMaisDias(-3), conta:'InfinitePay D+1', forma:'Cartão 2x' },
-  { id:5,  tipo:'despesa', descricao:'Peças ML — abril',           categoria:'Peças',    valor:620, data:isoMaisDias(-3), conta:'Bradesco PJ',     forma:'Boleto' },
-  { id:6,  tipo:'receita', descricao:'OS #237 — João Costa',      categoria:'Limpeza',     valor:185, data:isoMaisDias(-4), conta:'Bradesco',         forma:'PIX' },
-  { id:7,  tipo:'receita', descricao:'Venda M-201 — Carlos Lima', categoria:'Venda de máquina', valor:650, data:isoMaisDias(-5), conta:'InfinitePay D+1', forma:'Cartão 3x' },
-  { id:8,  tipo:'despesa', descricao:'Pró-labore parcial',         categoria:'Funcionários',valor:800, data:isoMaisDias(-6), conta:'Cresol',           forma:'PIX' },
-  { id:9,  tipo:'receita', descricao:'OS #236 — Roberto Dias',    categoria:'Manutenção',  valor:295, data:isoMaisDias(-7), conta:'Cresol',           forma:'PIX' },
-  { id:10, tipo:'receita', descricao:'OS #235 — Paula Mendes',    categoria:'Manutenção',  valor:415, data:isoMaisDias(-8), conta:'InfinitePay D+1', forma:'Cartão 2x' },
-]
+// Mocks de lançamentos vivem dentro do hook (`useFinanceiro`) e são devolvidos
+// quando a tabela `lancamento_financeiro` ainda não existir no Supabase. A
+// página consome `lancamentos` do hook → adapter → split em receber/pagar/caixa.
 
 const ABAS = [
   { id:'visao',   label:'Visão geral', icon:'ti-layout-dashboard' },
@@ -213,24 +205,30 @@ function labelPeriodo(periodo) {
 export default function Financeiro({ T, dark }) {
   const notify = useToast()
   const [aba, setAba] = useState('visao')
-  const [receber, setReceber] = useState(A_RECEBER_MOCK)
-  const [pagar, setPagar]     = useState(A_PAGAR_MOCK)
-  const [caixa, setCaixa]     = useState(CAIXA_MOCK)
+  const [receber, setReceber] = useState([])
+  const [pagar, setPagar]     = useState([])
+  const [caixa, setCaixa]     = useState([])
   const [selecionado, setSelecionado] = useState(null)
 
   // Hook real do Supabase. Schema parte 2 (`lancamento_financeiro`) ainda
-  // pode não existir — o hook trata graciosamente via `tabelaAusente`.
-  // Quando ausente: continua com os mocks (modo demo). Quando presente: dados reais.
+  // pode não existir — o hook trata graciosamente via `tabelaAusente` e
+  // devolve mocks no mesmo shape do banco. A página consome igual nos 2 casos.
   const {
-    lancamentos: lancsReal, loading: loadingHook, tabelaAusente,
+    lancamentos: lancsReal, contas: contasReais,
+    loading: loadingHook, tabelaAusente,
     darBaixa, excluir: excluirReal, refetch,
   } = useFinanceiro()
   const usandoBanco = !tabelaAusente
 
-  // Sincroniza states locais com dados reais quando o hook conecta com sucesso.
-  // Mantém a estrutura por aba (receber/pagar/caixa) que a UI já espera.
+  // Sincroniza states locais a partir do hook (real OU mock — mesmo shape).
+  // Split por tipo/status:
+  //   - receber  = receita não paga (pago_em null)
+  //   - pagar    = despesa não paga
+  //   - caixa    = tudo já pago (receita E despesa), com `data` = pago_em
+  // Em modo demo, baixarReceber/baixarPagar fazem update otimista local; como
+  // o hook não refaz fetch sem filtros mudando, o local não é resetado.
   useEffect(() => {
-    if (tabelaAusente || loadingHook) return
+    if (loadingHook) return
     const reais = lancsReal.map(adaptarBancoParaUI)
     setReceber(reais.filter(r => r.tipo === 'receita' && r.status !== 'pago'))
     setPagar(reais.filter(r => r.tipo === 'despesa' && r.status !== 'pago'))
@@ -238,7 +236,10 @@ export default function Financeiro({ T, dark }) {
       ...r,
       data: r.dataPag || r.vencimento,
     })))
-  }, [lancsReal, loadingHook, tabelaAusente])
+  }, [lancsReal, loadingHook])
+
+  // Lista de contas pra dropdowns dos filtros (vem do hook — real ou mock)
+  const CONTAS = useMemo(() => contasReais.map(c => c.nome), [contasReais])
 
   const azul     = corEtapa('blue', dark)
   const amarelo  = corEtapa('yellow', dark)
@@ -264,21 +265,22 @@ export default function Financeiro({ T, dark }) {
   async function baixarReceber(item) {
     if (usandoBanco) {
       const { error } = await darBaixa(item.id, {
-        valor_pago: item.valor,
-        forma_pagamento: mapearFormaUIparaEnum(item.forma),
+        forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+        taxa_pct: item.taxa_pct || 0,
       })
       if (error) { notify('erro', `Não foi possível baixar: ${error.message}`); return }
       notify('ok', `Recebimento de ${fmtBRL(item.valor)} confirmado`)
       setSelecionado(null)
       return
     }
-    // Demo (mock in-memory) — usado enquanto schema parte 2 não está aplicado
-    setReceber(prev => prev.map(r => r.id === item.id ? { ...r, status:'pago', dataPag:isoMaisDias(0) } : r))
+    // Demo (mock in-memory) — usado enquanto schema parte 2 não está aplicado.
+    // Move item de `receber` pra `caixa`; hook não refaz fetch sem filtros.
+    setReceber(prev => prev.filter(r => r.id !== item.id))
     setCaixa(prev => [{
-      id:`r-${Date.now()}-${item.id}`, tipo:'receita',
-      descricao:`OS #${item.osNum} — ${item.cliente}`,
-      categoria:item.categoria, valor:item.valor,
-      data:isoMaisDias(0), conta:item.conta, forma:item.forma,
+      ...item,
+      status: 'pago',
+      dataPag: isoMaisDias(0),
+      data: isoMaisDias(0),
     }, ...prev])
     notify('ok', `Recebimento de ${fmtBRL(item.valor)} confirmado`)
     setSelecionado(null)
@@ -287,19 +289,21 @@ export default function Financeiro({ T, dark }) {
   async function baixarPagar(item) {
     if (usandoBanco) {
       const { error } = await darBaixa(item.id, {
-        valor_pago: item.valor,
-        forma_pagamento: mapearFormaUIparaEnum(item.forma),
+        forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+        taxa_pct: item.taxa_pct || 0,
       })
       if (error) { notify('erro', `Não foi possível pagar: ${error.message}`); return }
       notify('ok', `Pagamento de ${fmtBRL(item.valor)} registrado`)
       setSelecionado(null)
       return
     }
-    setPagar(prev => prev.map(p => p.id === item.id ? { ...p, status:'pago', dataPag:isoMaisDias(0) } : p))
+    setPagar(prev => prev.filter(p => p.id !== item.id))
     setCaixa(prev => [{
-      id:`p-${Date.now()}-${item.id}`, tipo:'despesa',
-      descricao:item.descricao, categoria:item.categoria, valor:item.valor,
-      data:isoMaisDias(0), conta:item.conta, forma:item.forma,
+      ...item,
+      tipo: 'despesa',
+      status: 'pago',
+      dataPag: isoMaisDias(0),
+      data: isoMaisDias(0),
     }, ...prev])
     notify('ok', `Pagamento de ${fmtBRL(item.valor)} registrado`)
     setSelecionado(null)
