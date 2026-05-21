@@ -113,14 +113,23 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
         )}
       </div>
 
-      {/* Linha 2: cliente em destaque */}
+      {/* Linha 2: cliente em destaque (OS de fabricação não tem cliente por
+          design — mostra 'Fabricação interna' em vez de placeholder de erro). */}
       <div style={{
-        fontSize: 14.5, fontWeight: 700, color: corHero(dark),
+        fontSize: 14.5,
+        fontWeight: os.cliente ? 700 : 600,
+        color: os.cliente ? corHero(dark) : T.textMuted,
+        fontStyle: os.cliente ? 'normal' : 'italic',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         lineHeight: 1.2,
-      }}>{os.cliente || '— sem cliente —'}</div>
+      }}>
+        {os.cliente
+          || (os.tipo === 'fabricacao' ? 'Fabricação interna' : 'Cliente sem cadastro')}
+      </div>
 
-      {/* Linha 3: equipamento + prazo */}
+      {/* Linha 3: equipamento + prazo. Se não tem marca/modelo mas tem defeito
+          relatado, mostra o defeito (útil pra OS importadas do Trello que
+          vieram só com defeito). */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 10, fontSize: 11.5, color: T.textMuted,
@@ -131,7 +140,10 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
           minWidth: 0, flex: 1,
         }}>
           <i className="ti ti-device-washing-machine" style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
-          {[os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento || 'sem equipamento'}
+          {[os.marca, os.modelo].filter(Boolean).join(' · ')
+            || os.equipamento
+            || os.defeito
+            || 'Sem equipamento cadastrado'}
         </span>
 
         {os.prazo && (
