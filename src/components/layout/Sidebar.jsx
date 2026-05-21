@@ -10,6 +10,7 @@ import { P } from '../../theme'
 import { MENUS } from '../../utils/osData'
 import { isAdmin } from '../../utils/osHelpers'
 import NavItem from './NavItem'
+import LogoIdemaq from '../ui/LogoIdemaq'
 
 const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios', 'configuracoes', 'vendas']
 const PIN_KEY = 'idemaq.sidebar.pinned'
@@ -78,20 +79,10 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden', flex: 1, minWidth: 0 }}>
             {expanded ? (
-              // Logo oficial da Idemaq — PNG RGBA com a parte "Ide" TRANSPARENTE
-              // (só "Maq" + símbolo são verdes). Em dark a transparência fica
-              // legível no fundo escuro; em light fica invisível, então
-              // pintamos o background do <img> de azul Deutan pra ler "Ide" branco.
-              <img
-                src="/logo-idemaq.png"
-                alt="Idemaq"
-                style={{
-                  height: 28, width: 'auto', maxWidth: 160,
-                  objectFit: 'contain', display: 'block',
-                  background: dark ? 'transparent' : P.blue,
-                  borderRadius: 6,
-                  padding: dark ? 0 : '2px 6px',
-                }}
+              // Logo oficial — em light mode, LogoIdemaq tinge o branco "Ide" de azul marinho.
+              <LogoIdemaq
+                dark={dark}
+                style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block' }}
               />
             ) : (
               // Versão compacta (slot 56px): mantém o quadradinho azul + ícone
