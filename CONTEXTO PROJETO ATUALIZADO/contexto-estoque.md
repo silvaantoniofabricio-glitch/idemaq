@@ -55,7 +55,7 @@
 5. Máquinas: ligar ao Supabase (Módulo 07)
 6. Entrada por nota fiscal (futuro): upload PDF/foto/Excel → Claude API lê → revisão → salva
 7. Edição de categoria/marca/tipo/referência/modelos compatíveis no modal (chat seguinte — hoje só identificação básica + qtds + preços)
-8. ~~Criar tabela `peca_movimentacao`~~ ✅ feito 20/05/2026 (sql/11 + INSERTs no `ajustarEstoque` e `baixarItensDaOS` + histórico real no PecaDetalheModal — ver §12). **Pendente Toni rodar `sql/11-peca-movimentacao.sql` no Supabase SQL Editor** pra ativar (até lá, INSERTs são silenciados com 42P01 e o histórico mostra empty state "habilitar via sql/11").
+8. ~~Criar tabela `peca_movimentacao`~~ ✅ feito 20-21/05/2026. sql/11 versionado em 20/05 + **APLICADO no Supabase em 21/05/2026** (probe `node scripts/probe-sql-11.mjs` confirma). Histórico real do `PecaDetalheModal` + INSERTs em `ajustarEstoque`/`baixarItensDaOS` totalmente destravados — ver §12.
 
 ---
 
@@ -247,7 +247,7 @@ Caso de uso: contagem mensal acha divergência, peça quebrada no manuseio, devo
 
 - **Visibilidade**: botão "Ajustar estoque" só aparece quando `mostraValores = isAdmin(user)`. Funcionário não ajusta — só vê. RLS no banco reforça (defesa em 3 camadas, igual aos custos do estoque).
 
-- **Histórico real (20/05/2026)**: `sql/11-peca-movimentacao.sql` cria a tabela `peca_movimentacao(id, peca_id, tipo, delta, qtd_antes, qtd_depois, motivo, observacao, os_id?, auditoria padrão)`.
+- **Histórico real (20-21/05/2026)** — ✅ **APLICADO em 21/05/2026** (verificar: `node scripts/probe-sql-11.mjs`): `sql/11-peca-movimentacao.sql` cria a tabela `peca_movimentacao(id, peca_id, tipo, delta, qtd_antes, qtd_depois, motivo, observacao, os_id?, auditoria padrão)`.
   - `tipo` é CHECK em `'baixa_os' | 'ajuste_manual' | 'entrada_compra' | 'devolucao'`
   - `delta = qtd_depois - qtd_antes` (positivo entrada, negativo saída)
   - `motivo` livre — convenção pra `ajuste_manual`: `contagem | perda | ganho | devolucao | outro`
