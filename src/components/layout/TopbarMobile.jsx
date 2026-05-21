@@ -24,11 +24,18 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
     }}>
       {/* Esquerda: logo + página atual */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-        {/* Logo oficial da Idemaq — substitui o quadradinho azul + texto "Idemaq" */}
+        {/* Logo oficial da Idemaq — PNG RGBA com a parte "Ide" transparente.
+            Em light mode, pintamos o fundo do <img> de azul Deutan pra ler "Ide". */}
         <img
           src="/logo-idemaq.png"
           alt="Idemaq"
-          style={{ height: 26, width: 'auto', maxWidth: 110, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+          style={{
+            height: 26, width: 'auto', maxWidth: 110,
+            objectFit: 'contain', display: 'block', flexShrink: 0,
+            background: dark ? 'transparent' : P.blue,
+            borderRadius: 6,
+            padding: dark ? 0 : '2px 6px',
+          }}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <i className={`ti ${menu.icon}`} style={{ fontSize: 14, color: T.textDim }} aria-hidden="true" />

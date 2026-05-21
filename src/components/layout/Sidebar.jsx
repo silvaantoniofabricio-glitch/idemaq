@@ -78,13 +78,20 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden', flex: 1, minWidth: 0 }}>
             {expanded ? (
-              // Logo oficial da empresa (verde). PNG tem padding branco lateral,
-              // por isso usamos object-fit: contain + altura controlada pra caber
-              // no header de 56px sem distorcer.
+              // Logo oficial da Idemaq — PNG RGBA com a parte "Ide" TRANSPARENTE
+              // (só "Maq" + símbolo são verdes). Em dark a transparência fica
+              // legível no fundo escuro; em light fica invisível, então
+              // pintamos o background do <img> de azul Deutan pra ler "Ide" branco.
               <img
                 src="/logo-idemaq.png"
                 alt="Idemaq"
-                style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block' }}
+                style={{
+                  height: 28, width: 'auto', maxWidth: 160,
+                  objectFit: 'contain', display: 'block',
+                  background: dark ? 'transparent' : P.blue,
+                  borderRadius: 6,
+                  padding: dark ? 0 : '2px 6px',
+                }}
               />
             ) : (
               // Versão compacta (slot 56px): mantém o quadradinho azul + ícone

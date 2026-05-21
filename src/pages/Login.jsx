@@ -34,7 +34,8 @@ export default function Login({ dark, T }) {
         boxShadow: dark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.08)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          {/* Logo oficial da Idemaq — substitui o círculo azul + título "Idemaq". */}
+          {/* Logo oficial da Idemaq — PNG RGBA com a parte "Ide" transparente.
+              Em light mode, pintamos o fundo do <img> de azul Deutan pra ler "Ide". */}
           <img
             src="/logo-idemaq.png"
             alt="Idemaq"
@@ -45,6 +46,9 @@ export default function Login({ dark, T }) {
               maxWidth: 220,
               margin: '0 auto 10px',
               objectFit: 'contain',
+              background: dark ? 'transparent' : P.blue,
+              borderRadius: 10,
+              padding: dark ? 0 : '6px 14px',
             }}
           />
           <p style={{ color: T.textMuted, fontSize: 14 }}>Sistema de gestão</p>
