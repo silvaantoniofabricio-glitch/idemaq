@@ -15,6 +15,7 @@ const ROUTES = {
   painel:        '/',
   os:            '/os',
   clientes:      '/clientes',
+  vendas:        '/vendas',
   logistica:     '/logistica',
   estoque:       '/estoque',
   financeiro:    '/financeiro',
