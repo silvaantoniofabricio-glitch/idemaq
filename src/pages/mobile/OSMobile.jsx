@@ -324,15 +324,18 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
   const trilhoRef = useRef(null)
   const abaRefs = useRef({})  // { [id]: HTMLButtonElement }
 
-  // Centraliza a aba ativa quando muda (click ou swipe).
+  // Carrossel mobile: 3 abas visíveis por vez. Cada aba ocupa 1/3 da largura
+  // do trilho (flex: 0 0 calc(100%/3)), snap mandatory + align start → cada
+  // arraste paginal exatamente 1 aba pra esquerda/direita. Quando a aba ativa
+  // muda (click ou swipe), rola pro offsetLeft dela (alinhado ao start do
+  // trilho — combinando com o snap point).
   useEffect(() => {
     const trilho = trilhoRef.current
     const ativoEl = abaRefs.current[ativa]
     if (!trilho || !ativoEl) return
-    // Calcula o scrollLeft pra colocar o centro do botão no centro do trilho
-    const trilhoW = trilho.clientWidth
-    const alvoLeft = ativoEl.offsetLeft + (ativoEl.offsetWidth / 2) - (trilhoW / 2)
-    trilho.scrollTo({ left: Math.max(0, alvoLeft), behavior: 'smooth' })
+    // Pra aba ficar visível e enquadrada, posiciona o início dela no início
+    // do viewport do trilho. Snap se encarrega do alinhamento fino.
+    trilho.scrollTo({ left: Math.max(0, ativoEl.offsetLeft), behavior: 'smooth' })
   }, [ativa, abas.length])
 
   return (
@@ -346,8 +349,7 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
         style={{
           display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none',
-          padding: '0 14px',
-          scrollSnapType: 'x proximity',
+          scrollSnapType: 'x mandatory',
         }}>
         {abas.map(aba => {
           const isAtiva = ativa === aba.id
@@ -359,25 +361,30 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
               ref={(el) => { if (el) abaRefs.current[aba.id] = el }}
               onClick={() => onSelect(aba.id)}
               style={{
-                flexShrink: 0, padding: '10px 14px',
+                flex: '0 0 calc(100% / 3)',
+                minWidth: 0,
+                padding: '10px 6px',
                 background: 'transparent', border: 'none',
                 borderBottom: `2px solid ${isAtiva ? azul : 'transparent'}`,
                 color: isAtiva ? azul : T.textMuted,
                 fontSize: 12.5, fontWeight: isAtiva ? 700 : 500,
                 cursor: 'pointer', fontFamily: 'inherit',
                 whiteSpace: 'nowrap',
-                display: 'inline-flex', alignItems: 'center', gap: 6,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 transition: 'color .15s, border-color .15s',
-                scrollSnapAlign: 'center',
+                scrollSnapAlign: 'start',
+                overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-              {aba.curto}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {aba.curto}
+              </span>
               <span style={{
                 background: isAtiva ? azul : bg,
                 color: isAtiva ? '#fff' : cor,
                 fontSize: 10, fontWeight: 800,
                 minWidth: 18, height: 18, borderRadius: 9,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                padding: '0 5px',
+                padding: '0 5px', flexShrink: 0,
               }}>{aba.count}</span>
             </button>
           )
