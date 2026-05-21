@@ -204,7 +204,6 @@ export default function Header({
     <div style={{
       flexShrink: 0,
       borderBottom: `1px solid ${T.border}`,
-      background: tipoCor + '08',
     }}>
       {/* === LINHA 1 — badges + ícones === */}
       <div style={{
@@ -351,7 +350,7 @@ export default function Header({
           title={fotoUrl ? 'Ver foto ampliada' : 'Adicionar foto'}
           style={{
             position: 'relative',
-            width: 72, height: 72, flexShrink: 0,
+            width: 64, height: 64, flexShrink: 0,
             borderRadius: 8,
             border: `1px solid ${fotoHover ? azul : T.border}`,
             background: fotoUrl
@@ -365,7 +364,7 @@ export default function Header({
         >
           {!fotoUrl && (
             <i className={`ti ${fotoHover ? 'ti-camera-plus' : 'ti-photo'}`}
-              style={{ fontSize: 28, color: '#5B9BD5', opacity: 0.6 }}
+              style={{ fontSize: 24, color: '#5B9BD5', opacity: 0.6 }}
               aria-hidden="true" />
           )}
           {fotoUrl && (
@@ -439,20 +438,20 @@ export default function Header({
             onClick={abrirCadastroCliente}
           />
 
-          {/* Linha 2 — Contato (telefone + endereço) */}
-          <LinhaContato T={T} azul={azul}
-            fone={os.fone}
-            endereco={os.endereco}
-            onWhats={() => abrirWhatsApp(os.fone)}
-            onMapa={() => abrirMapa(os.endereco)}
-          />
-
-          {/* Linha 3 — Equipamento */}
+          {/* Linha 2 — Equipamento + fone (fundidos) */}
           <LinhaEquipamento T={T} azul={azul}
             equipamento={equipamentoLabel}
             serie={os.serie}
             defeito={os.defeito}
+            fone={os.fone}
             onClick={abrirCadastroEquipamento}
+            onWhats={() => abrirWhatsApp(os.fone)}
+          />
+
+          {/* Linha 3 — Endereço */}
+          <LinhaEndereco T={T} azul={azul}
+            endereco={os.endereco}
+            onClick={() => abrirMapa(os.endereco)}
           />
         </div>
       </div>
@@ -468,26 +467,29 @@ export default function Header({
       )}
 
       {/* === LINHA 4 — Abas === */}
-      <div style={{ display: 'flex', padding: '0 8px', marginTop: 4 }}>
+      <div style={{
+        display: 'flex', padding: '0 8px', marginTop: 4,
+        borderTop: `1px solid ${T.border}`,
+      }}>
         {ABAS.map(a => {
           const ativo = aba === a.id
-          const azulBg = cor('#0d2035', '#e6f1fb')
           return (
             <button
               key={a.id}
               onClick={() => setAba(a.id)}
               style={{
                 flex: 1,
-                padding: '10px 8px',
+                padding: '11px 8px',
                 border: 'none',
                 borderBottom: `2px solid ${ativo ? azul : 'transparent'}`,
-                background: ativo ? azulBg : 'transparent',
+                background: 'transparent',
                 color: ativo ? azul : T.textMuted,
                 fontSize: 12.5, fontWeight: ativo ? 700 : 500,
                 cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                transition: 'background .12s, border-color .12s, color .12s',
+                transition: 'border-color .12s, color .12s',
                 fontFamily: 'inherit',
+                marginTop: -1,
               }}>
               <i className={`ti ${a.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
               {a.label}
@@ -563,74 +565,58 @@ function NomeCliente({ T, azul, nome, onClick }) {
   )
 }
 
-function LinhaContato({ T, azul, fone, endereco, onWhats, onMapa }) {
-  if (!fone && !endereco) {
-    return (
-      <div style={{ fontSize: 11.5, color: T.textDim, fontStyle: 'italic' }}>
-        Sem contato cadastrado
-      </div>
-    )
-  }
-  return (
-    <div style={{
-      fontSize: 11.5, color: T.textMuted,
-      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-    }}>
-      {fone && (
-        <ChunkClicavel T={T} azul={azul}
-          icon="ti-phone" texto={fone}
-          onClick={onWhats} title="Abrir conversa no WhatsApp"
-        />
-      )}
-      {fone && endereco && <SeparadorPonto />}
-      {endereco && (
-        <ChunkClicavel T={T} azul={azul}
-          icon="ti-map-pin" texto={endereco}
-          onClick={onMapa} title="Abrir no Google Maps"
-          truncar
-        />
-      )}
-    </div>
-  )
-}
-
-function LinhaEquipamento({ T, azul, equipamento, serie, defeito, onClick }) {
+function LinhaEquipamento({ T, azul, equipamento, serie, defeito, fone, onClick, onWhats }) {
   const [hover, setHover] = useState(false)
   const vazio = !equipamento
   return (
     <div
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      title="Abrir cadastro do equipamento"
       style={{
         marginTop: 4,
         fontSize: 12, color: T.textSecondary,
         display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-        cursor: 'pointer', transition: 'color .12s',
       }}
     >
       <i className="ti ti-device-washing-machine"
-        style={{ fontSize: 13, color: azul, flexShrink: 0 }} aria-hidden="true" />
+        onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        title="Abrir cadastro do equipamento"
+        style={{
+          fontSize: 13, color: azul, flexShrink: 0,
+          cursor: 'pointer',
+        }} aria-hidden="true" />
       {vazio ? (
-        <span style={{
-          color: hover ? azul : T.textMuted,
-          fontStyle: 'italic',
-        }}>
+        <span
+          onClick={onClick}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          title="Abrir cadastro do equipamento"
+          style={{
+            color: hover ? azul : T.textMuted,
+            fontStyle: 'italic',
+            cursor: 'pointer', transition: 'color .12s',
+          }}>
           Equipamento não preenchido — clique pra adicionar
         </span>
       ) : (
         <>
-          <strong style={{
-            color: hover ? azul : T.textPrimary,
-            fontWeight: 700,
-          }}>
+          <strong
+            onClick={onClick}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            title="Abrir cadastro do equipamento"
+            style={{
+              color: hover ? azul : T.textPrimary,
+              fontWeight: 700,
+              cursor: 'pointer', transition: 'color .12s',
+            }}>
             {equipamento}
           </strong>
           {serie && (
-            <span style={{ color: '#6a6a70', fontSize: 11 }}>
-              ({serie})
-            </span>
+            <span style={{
+              color: T.textMuted, fontSize: 10.5,
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            }}>S/N {serie}</span>
           )}
           {defeito && (
             <>
@@ -644,8 +630,48 @@ function LinhaEquipamento({ T, azul, equipamento, serie, defeito, onClick }) {
               </span>
             </>
           )}
+          {fone && (
+            <>
+              <SeparadorPonto />
+              <ChunkClicavel T={T} azul={azul}
+                icon="ti-phone" texto={fone}
+                onClick={onWhats} title="Abrir conversa no WhatsApp"
+              />
+            </>
+          )}
         </>
       )}
+    </div>
+  )
+}
+
+function LinhaEndereco({ T, azul, endereco, onClick }) {
+  const [hover, setHover] = useState(false)
+  if (!endereco) return null
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title="Abrir no Google Maps"
+      style={{
+        marginTop: 3,
+        fontSize: 11.5,
+        color: hover ? azul : T.textMuted,
+        display: 'flex', alignItems: 'center', gap: 5,
+        cursor: 'pointer', transition: 'color .12s',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}
+    >
+      <i className="ti ti-map-pin"
+        style={{
+          fontSize: 11, flexShrink: 0, opacity: 0.7,
+          color: hover ? azul : T.textDim,
+          transition: 'color .12s',
+        }} aria-hidden="true" />
+      <span style={{
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{endereco}</span>
     </div>
   )
 }

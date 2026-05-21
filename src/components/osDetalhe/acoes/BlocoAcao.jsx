@@ -6,7 +6,7 @@ import React from 'react'
 import { P } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 
-export default function BlocoAcao({ T, dark, icon, etapa, descricao, children, tom = 'amarelo' }) {
+export default function BlocoAcao({ T, dark, icon, etapa, descricao, children, tom = 'azul' }) {
   const cor = (d, c) => dark ? d : c
   const amarelo = cor(P.yellow, P.yellowDark)
   const azul = corEtapa('blue', dark)
