@@ -257,20 +257,21 @@ export default function Logistica({ T, dark }) {
         </div>
       </Card>
 
-      {/* Sidebar de OS disponíveis nas 4 etapas + Pagamento (planejamento) */}
-      <OSDisponiveisSidebar
-        T={T} dark={dark}
-        onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
-        onAbrirOSDetalhe={(os) => notify('info', `Abrir OS #${os.numero} pra edição — em breve`)}
-      />
-
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'minmax(380px, 1fr) 1.1fr',
         gap: 14,
         alignItems: 'start',
       }}>
-        {/* Coluna esquerda — lista de paradas */}
+        {/* Coluna esquerda — OS disponíveis (planejamento) + lista de paradas/rotas */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <OSDisponiveisSidebar
+            T={T} dark={dark}
+            onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
+            onAbrirOSDetalhe={(os) => notify('info', `Abrir OS #${os.numero} pra edição — em breve`)}
+          />
+
+          {/* Lista de paradas das rotas */}
         {ordenadas.length === 0 ? (
           <EmptyState T={T}
             icon={busca || !verColetas || !verEntregas ? 'ti-search-off' : 'ti-map-off'}
@@ -445,6 +446,7 @@ export default function Logistica({ T, dark }) {
             })}
           </Card>
         )}
+        </div>{/* fim coluna esquerda */}
 
         {/* Coluna direita — Mapa Google Maps real (Naviraí-MS) */}
         <Card T={T} dark={dark} padding={0}>
