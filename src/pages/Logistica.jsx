@@ -4,7 +4,7 @@
 // Botões "Maps" abrem Google Maps diretamente via link público (sem chave de API).
 // Visível pra Dono + Alessandro (RLS no banco vai bloquear acesso pra Guilherme).
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import {
   Card, Button, Badge, Input, Tabs,
@@ -62,6 +62,12 @@ export default function Logistica({ T, dark }) {
   const [rotaDetalhe, setRotaDetalhe] = useState(null) // rota selecionada p/ edição
   const [osParaAdicionarARota, setOsParaAdicionarARota] = useState(null) // OS da sidebar selecionada
   const [paradaAvulsaAberta, setParadaAvulsaAberta] = useState(false) // modal de parada avulsa
+  // OS "disponíveis" filtradas no Sidebar — atualizadas via callback junto com
+  // lat/lng geocodados. Usadas pra plotar pins extras no mapa (tipo 'disponivel').
+  const [osDisponiveisFiltradas, setOsDisponiveisFiltradas] = useState([])
+  const handleListaFiltrada = useCallback((lista) => {
+    setOsDisponiveisFiltradas(lista)
+  }, [])
 
   // OSDetalhe acessível de dentro da Logística — abre OS pra editar sem trocar de tela
   const { abrirOSPorId, modalProps: osDetalheProps } = useOSDetalheModal({ notify })
@@ -274,6 +280,7 @@ export default function Logistica({ T, dark }) {
             T={T} dark={dark}
             onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
             onAbrirOSDetalhe={(os) => abrirOSPorId(os.id)}
+            onListaFiltrada={handleListaFiltrada}
           />
 
           {/* Lista de paradas das rotas */}
@@ -468,19 +475,31 @@ export default function Logistica({ T, dark }) {
           <MapaLogistica
             T={T} dark={dark}
             height={460}
-            paradas={paradas
-              .filter(p => p.lat != null && p.lng != null)
-              .map(p => ({
-                lat: p.lat,
-                lng: p.lng,
-                tipo: p.tipo,
-                label: `${p.tipo === 'avulsa' ? 'Avulsa' : `OS #${p.osNum}`} · ${p.cliente_nome || p.cliente || 'Sem cliente'}`,
-                onClick: () => {
-                  const rotaAlvo = rotas.find(r => r.id === p.rotaId)
-                  if (rotaAlvo) setRotaDetalhe(rotaAlvo)
-                },
-              }))
-            }
+            paradas={[
+              // Paradas oficiais das rotas (coleta/entrega/cobrança/visita/avulsa)
+              ...paradas
+                .filter(p => p.lat != null && p.lng != null)
+                .map(p => ({
+                  lat: p.lat,
+                  lng: p.lng,
+                  tipo: p.tipo,
+                  label: `${p.tipo === 'avulsa' ? 'Avulsa' : `OS #${p.osNum}`} · ${p.cliente_nome || p.cliente || 'Sem cliente'}`,
+                  onClick: () => {
+                    const rotaAlvo = rotas.find(r => r.id === p.rotaId)
+                    if (rotaAlvo) setRotaDetalhe(rotaAlvo)
+                  },
+                })),
+              // OS "disponíveis" filtradas no Sidebar — pins tracejados (tipo 'disponivel')
+              ...osDisponiveisFiltradas
+                .filter(o => o.lat != null && o.lng != null)
+                .map(o => ({
+                  lat: o.lat,
+                  lng: o.lng,
+                  tipo: 'disponivel',
+                  label: `OS #${o.numero} · ${o.cliente_nome} · ${o.etapa_label}`,
+                  onClick: () => abrirOSPorId(o.id),
+                })),
+            ]}
           />
 
           {/* (mantido fora do mapa pra não cobrir a UI do Google) */}
@@ -493,6 +512,10 @@ export default function Logistica({ T, dark }) {
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <i className="ti ti-truck-delivery" style={{ fontSize: 13, color: azulClaro }} aria-hidden="true" />
                 Entrega
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <i className="ti ti-map-pin-question" style={{ fontSize: 13, color: '#1a3a6e' }} aria-hidden="true" />
+                Disponível (filtro do sidebar)
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto', color: T.textDim }}>
                 <i className="ti ti-pin" style={{ fontSize: 12, color: azul }} aria-hidden="true" />

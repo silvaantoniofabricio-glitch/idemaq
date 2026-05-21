@@ -19,17 +19,25 @@ const ZOOM_DEFAULT = 14
 
 // Cores Deutan + letra por tipo de parada
 const TIPO_VISUAL = {
-  coleta:   { cor: '#5B9BD5', letra: 'C' },
-  entrega:  { cor: '#8FBC55', letra: 'E' },
-  cobranca: { cor: '#FFD966', letra: '$' },
-  visita:   { cor: '#B8CCE4', letra: 'V' },
-  avulsa:   { cor: '#9CA3AF', letra: 'A' },
+  coleta:     { cor: '#5B9BD5', letra: 'C' },
+  entrega:    { cor: '#8FBC55', letra: 'E' },
+  cobranca:   { cor: '#FFD966', letra: '$' },
+  visita:     { cor: '#B8CCE4', letra: 'V' },
+  avulsa:     { cor: '#9CA3AF', letra: 'A' },
+  // OS na sidebar de "disponíveis" — ainda não viraram parada de rota.
+  // Pin contornado tracejado pra diferenciar visualmente das paradas oficiais.
+  disponivel: { cor: '#1a3a6e', letra: '?', tracejado: true },
 }
 
 // Gera data URL SVG dum pin colorido com letra dentro — sem dependência externa.
-function svgPin(cor, letra) {
+// `tracejado` = pin com borda branca tracejada (usado pra OS "disponível" — ainda
+// não virou parada de rota oficial).
+function svgPin(cor, letra, tracejado = false) {
+  const strokeProps = tracejado
+    ? 'stroke="#fff" stroke-width="2" stroke-dasharray="3,2"'
+    : 'stroke="#fff" stroke-width="2"'
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
-    <path d="M16 0 C7 0 0 7 0 16 C0 25 16 42 16 42 C16 42 32 25 32 16 C32 7 25 0 16 0 Z" fill="${cor}" stroke="#fff" stroke-width="2"/>
+    <path d="M16 0 C7 0 0 7 0 16 C0 25 16 42 16 42 C16 42 32 25 32 16 C32 7 25 0 16 0 Z" fill="${cor}" ${strokeProps}/>
     <text x="16" y="22" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="15" font-weight="700">${letra}</text>
   </svg>`
   return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg)
@@ -154,7 +162,7 @@ export default function MapaLogistica({
         map: mapaRef.current,
         title: p.label || p.tipo,
         icon: {
-          url: svgPin(visual.cor, visual.letra),
+          url: svgPin(visual.cor, visual.letra, visual.tracejado),
           scaledSize: new google.maps.Size(32, 42),
           anchor: new google.maps.Point(16, 42),
         },

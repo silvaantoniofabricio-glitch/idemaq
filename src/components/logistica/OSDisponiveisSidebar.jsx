@@ -3,10 +3,11 @@
 // Chips de filtro por etapa. Click numa OS → callback onSelecionar (que abre
 // modal "adicionar a rota" no parent).
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { Card, SectionHeader } from '../ui'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { useOSLogistica, FILTROS_ETAPA_LOGISTICA } from '../../hooks/useOSLogistica'
+import { useGeocodeEnderecos } from '../../hooks/useGeocodeEnderecos'
 
 // Default: as 4 etapas logísticas marcadas, Pagamento desmarcado.
 const ETAPAS_DEFAULT_ATIVAS = new Set([
@@ -20,6 +21,7 @@ export default function OSDisponiveisSidebar({
   T, dark,
   onSelecionarOS,         // (os) => abre modal "adicionar a rota"
   onAbrirOSDetalhe,       // (os) => abre OSDetalhe (botão alternativo no card)
+  onListaFiltrada,        // (osComCoords) => pai injeta no mapa
 }) {
   const azul = corEtapa('blue', dark)
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_ATIVAS)
@@ -40,6 +42,25 @@ export default function OSDisponiveisSidebar({
     () => osList.filter(os => etapasAtivas.has(os.etapa_db)),
     [osList, etapasAtivas]
   )
+
+  // Geocoda endereços das OS filtradas → mapa de coords cacheado.
+  // Não bloqueia a UI: os pins aparecem no mapa conforme cada endereço resolve.
+  const enderecos = useMemo(
+    () => filtradas.map(o => o.endereco).filter(Boolean),
+    [filtradas]
+  )
+  const coordsPorEndereco = useGeocodeEnderecos(enderecos)
+
+  // Anexa lat/lng (quando disponível) e dispara o callback pro pai.
+  // Mantém a mesma referência quando nada mudou pra evitar render loops no pai.
+  useEffect(() => {
+    if (!onListaFiltrada) return
+    const comCoords = filtradas.map(os => {
+      const c = os.endereco ? coordsPorEndereco[os.endereco] : null
+      return c ? { ...os, lat: c.lat, lng: c.lng } : os
+    })
+    onListaFiltrada(comCoords)
+  }, [filtradas, coordsPorEndereco, onListaFiltrada])
 
   return (
     <Card T={T} dark={dark} padding={0}>
