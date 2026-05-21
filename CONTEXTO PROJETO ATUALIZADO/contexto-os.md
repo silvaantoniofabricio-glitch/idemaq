@@ -50,7 +50,7 @@
 1b. ✅ ~~Aplicar `sql/07-os-itens-baixados.sql`~~ — **APLICADO em 20/05/2026** (sessão `geral`). Verificador: `node scripts/verificar-sql-07.mjs`. Baixa automática de estoque agora roda end-to-end (idempotente via flag `os.itens_baixados`). Drift colateral em `usePecas.baixarItensDaOS` (filtrava coluna `tipo` removida na Onda 4 + usava `qtd` em vez de `quantidade`) **corrigido na mesma sessão**, igual em `AcaoOrcamento.salvar()` e `PagamentoTab.salvar()`.
 1c. ✅ ~~Cadastro cliente + equipamento inline via Header do OSDetalhe~~ — **plugado em 20/05/2026** (Onda 5 + 3 ondas de fix). `FormClienteEdit` e `FormEquipamentoEdit` em `src/components/osDetalhe/`. Cliente: SELECT fresco por `id` na abertura (useOS só traz nome+telefone) + parser do endereço gravado por `criarClientePersist` (split em ` — `) + concat de volta no save + `UPDATE cliente WHERE id=os.cliente_id`. Após save, `onSalvarOk` dispara `osRefetch` propagado por Kanban→OSDetalhe→Header (useOS subscreve só `os`, não `cliente`). Equipamento: patch via `onUpdateOS` (optimistic do useOS) → `normalizePatchOS` traduz `marca/modelo/serie/defeito` pra `marca_equipamento/modelo_equipamento/numero_serie/defeito_relatado`. **Saga das colunas**: as 4 colunas de equipamento + `numero_serie` **não existiam em prod** (confirmado por probe — PostgREST 42703/PGRST204) apesar de o código referenciar em 4 lugares. Causou cascata quebrando o Kanban inteiro e expondo que o INSERT do NovaOSModal também já falhava silenciosamente. `sql/10-os-equipamento.sql` aplicado pelo Toni no Supabase → as 4 colunas criadas + `NOTIFY pgrst` → useOS SELECT+map, `osPatch.COLUNAS_SAFE` e payload do NovaOSModal **todos reativados**. Validador `scripts/probe-useos-select.mjs` no repo pra detectar regressão semelhante antes do push.
 2. ✅ ~~Foto da coleta → Supabase Storage privado~~ — **plugada em 20/05/2026** (sessão `geral`). Bucket `idemaq-privado`, path `os/{osId}/coleta.jpg` (1 foto por OS, upsert). Helper em `src/utils/osStorage.js` faz compressão client-side via Canvas (max 1600px JPEG 85% — fotos de 5MB caem pra ~500KB) + upload + signed URL (TTL 1h) + remoção. `pre_diagnostico.foto` no banco agora guarda o marker `'storage'` em vez de base64 (URL é gerada on-demand). Retro-compatível: base64 legacy (`data:...`) continua sendo exibido direto via `resolverFotoUrl()`. **Pré-requisitos manuais (1x)**: criar o bucket `idemaq-privado` (private) no Supabase Dashboard + rodar `sql/08-storage-os-coleta.sql` pra criar as 4 policies (SELECT/INSERT/UPDATE/DELETE pra `authenticated`).
-3. **Adicionar colunas pros campos pendentes em `os`**: `entrega_*` (data/hora/responsavel/obs), `observacoes` global (ver PENDENCIAS-ROTAS), `numero_serie` (precondição pro Equipamento Edit gravar `serie`).
+3. **Adicionar colunas pros campos pendentes em `os`**: `entrega_*` (data/hora/responsavel/obs), `observacoes` global (ver PENDENCIAS-ROTAS). ~~`numero_serie`~~ aplicado em 20/05 via `sql/10-os-equipamento.sql` junto das colunas de equipamento.
 4. **AcaoOrçamento → lançamento real de itens via `useOSItens.addItem/updateItem/removeItem`** (hoje ainda escreve só local).
 5. ✅ Schema parte 2 plugado (19/05/2026 — checklist_etapa + falha_teste em Recebido/Oficina/Teste).
 6. ✅ OS de garantia (19/05/2026 — AcaoConcluido).
@@ -348,3 +348,34 @@ Helper `itensMarcadosDoDiag` + map `ITENS_DIAG`.
 - Standalone (não depende do `useOS`) — Realtime do hook leva a OS nova pro Kanban
 - Faz 1 SELECT na OS origem pra puxar cliente/marca/modelo/defeito + INSERT com overrides
 - Usado em: AcaoConcluido (OS de garantia) e AcaoRecusada (conversão pra Fabricação)
+
+---
+
+## 16. Fechamento sessão 20/05/2026 (terminal `os` — noite)
+
+**Entregue:**
+- `src/components/osDetalhe/FormClienteEdit.jsx` — edita cliente vinculado à OS. SELECT fresco no mount (`useOS` só traz nome+telefone via join), parser do endereço gravado em formato `' — '` (cidade/UF + CEP), defaults Naviraí/MS, UPDATE em `cliente` por id. `onSalvarOk` dispara `osRefetch` (propagado Kanban→OSDetalhe→Header) pra o nome novo refletir.
+- `src/components/osDetalhe/FormEquipamentoEdit.jsx` — edita marca/modelo/série/defeito da OS. Patch via `onUpdateOS` (optimistic do useOS) + `normalizePatchOS` traduz `marca→marca_equipamento`, `modelo→modelo_equipamento`, `serie→numero_serie`, `defeito→defeito_relatado`.
+- `Header.jsx` — trocou os 2 `notify('info','...em breve')` por state que abre os modais; aceita prop `onRefetchOS`.
+- Chain `onRefetchOS`: `Kanban.osRefetch` → `OSDetalhe` → `Header` → `FormClienteEdit.onSalvarOk`. Mesma propagação no `OSMobile`.
+- `sql/10-os-equipamento.sql` — cria `marca_equipamento/modelo_equipamento/numero_serie/defeito_relatado` na tabela `os` + `NOTIFY pgrst reload schema`. Aplicado pelo Toni no Supabase SQL Editor.
+- `scripts/probe-useos-select.mjs` — reproduz exatamente o SELECT do `useOS` pra detectar regressão (coluna inexistente) antes do push.
+
+**Saga em 4 commits:**
+1. `0e2d9f8 feat(os)` — entrega inicial dos 2 modais + chain `onRefetchOS`.
+2. `b8ba5ff fix(os)` — hotfix tentando incluir `marca_equipamento` etc. no SELECT do `useOS`. **QUEBROU**: as colunas não existiam em prod → PostgREST 42703 → `osList` vazio → Kanban morto + criação de OS impossível.
+3. `2729546 fix(os)` — revert do hotfix + descoberta via probe de que o INSERT do `NovaOSModal` no `_legacy` também já falhava silenciosamente (PGRST204) há tempos. Tirou as 3 colunas do payload, omitiu da whitelist, criou o SQL.
+4. `552c31c feat(os)` — depois do Toni aplicar `sql/10`, reativou os 3 pontos: `useOS` SELECT+map, `osPatch.COLUNAS_SAFE`, payload do `NovaOSModal`.
+
+**Lições salvas em memória (para sessões futuras):**
+- `feedback_verificar_coluna_antes_select` — não confiar em código referenciando coluna; rodar probe primeiro.
+- `project_os_equipamento_pendente_schema` — saga resolvida; `sql/10` aplicado, código reativado.
+
+**Pendências reais (não-mocks):**
+- Hoje `useOS` traz `equipamento: ''` hardcoded (não há coluna). Continua não-essencial — marca+modelo já cobrem o display.
+- `endereco` no `os` é stale (sempre `''` no useOS) — `FormClienteEdit` salva em `cliente.endereco`, então o Header lê de lá indiretamente após refetch. OK.
+- O INSERT do `NovaOSModal` ainda não cria `os_historico` inicial (a trigger do banco cuida — confirmado no commit 0e2d9f8 do schema parte 2).
+
+**Atenção pra próximas sessões em `os`:**
+- O Header.jsx foi tocado pelo Toni no fim da sessão (linha 207 — removeu o `background: tipoCor + '08'` que vinha desde 18/05). Não revertir sem perguntar.
+- O Kanban.jsx também sofreu edição manual (dropdown unificado de filtros — `menuAberto: 'prazo' | 'resp' | 'tipos' | null` em vez dos botões inline). Não foi commit deste terminal — não mexer.
