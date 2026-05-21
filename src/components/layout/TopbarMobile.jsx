@@ -15,8 +15,8 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
     <header style={{
       background: T.card,
       borderBottom: `1px solid ${T.border}`,
-      padding: '0 14px',
-      height: 56,
+      padding: '0 12px',
+      height: 42,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0,
       position: 'sticky', top: 0, zIndex: 50,
@@ -26,7 +26,7 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
       <LogoIdemaq
         dark={dark}
         style={{
-          height: 26, width: 'auto', maxWidth: 110,
+          height: 22, width: 'auto', maxWidth: 100,
           objectFit: 'contain', display: 'block',
         }}
       />
@@ -35,14 +35,14 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
       <button onClick={toggleTheme}
         aria-label={dark ? 'Modo claro' : 'Modo escuro'}
         style={{
-          position: 'absolute', right: 14,
-          width: 36, height: 36, borderRadius: 8,
+          position: 'absolute', right: 10,
+          width: 30, height: 30, borderRadius: 7,
           background: 'transparent', border: 'none', cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           color: dark ? P.yellow : T.textMuted,
           fontFamily: 'inherit',
         }}>
-        <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 18 }} aria-hidden="true" />
+        <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 16 }} aria-hidden="true" />
       </button>
     </header>
   )
