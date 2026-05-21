@@ -1,7 +1,6 @@
 # Contexto — Vendas (Histórico de OS)
 
-> Doc vivo do terminal `vendas`. Página `/vendas` ainda **não implementada** —
-> decisão tomada 20/05/2026 noite, implementação planejada pra 21/05/2026+.
+> Doc vivo do terminal `vendas`. Página `/vendas` **online** desde 21/05/2026.
 > Se mudou regra geral / status macro / interseção com outra área, atualizar
 > também `CLAUDE.md`.
 
@@ -9,15 +8,31 @@
 
 ## 1. Status atual
 
-🟢 **Onda 1 implementada (21/05/2026 madrugada — sessão noturna autônoma):**
+🟢 **Onda 1 entregue (21/05/2026 madrugada — sessão noturna autônoma):**
 
-- `src/pages/Vendas.jsx` — lista flat de todas as OS, KPIs no header, barra de filtros (período/tipo/status/pagamento/busca), tabela densa ordenável, click abre OSDetalhe via `useOSDetalheModal`
+- `src/pages/Vendas.jsx` — lista flat de todas as OS, KPIs no header (Faturado/OS no período/Ticket médio/A receber), barra de filtros horizontal **padrão Financeiro** (dropdown calendário + chips de tipo/status/pagamento + busca livre), tabela densa ordenável, click abre OSDetalhe via `useOSDetalheModal`
 - `src/components/vendas/NovaOSAntigaModal.jsx` — modal pra registrar OS retroativa (cliente autocomplete via debounce + ILIKE, tipo, data, equipamento, valor/desconto/pago, forma, observações). Cria direto em etapa `concluido` + `data_conclusao` preenchida. **2 passos**: INSERT primeiro + UPDATE separado pra setar `criado_em` retroativo (trigger `tg_set_audit` sobrescreve no INSERT).
 - `src/utils/osData.js` — `MENUS` ganhou item "Vendas" (`ti-receipt-2`, seção `principal`)
 - `Sidebar.jsx` + `BottomNav.jsx` — `vendas` adicionado a `MENUS_ADMIN_ONLY` (defesa em 3 camadas)
 - `App.jsx` — rota `/vendas` envolta em `<AdminOnly>` (desktop + mobile)
+- `AppLayout.jsx` — `vendas: '/vendas'` no mapa `ROUTES` (link essencial pro menu lateral chamar `navigate`)
 
-**Reuso**: `useOS(true)` (já bypassa filtro 24h), `useOSDetalheModal` (criado dia 20/05 pra Logística — mesmo padrão), componentes UI da lib.
+### Bug fixes pós-deploy (21/05 manhã):
+
+| Bug | Causa | Fix |
+|---|---|---|
+| Click no menu "Vendas" não fazia nada | Faltou `vendas: '/vendas'` no mapa `ROUTES` de `AppLayout.jsx` — `setPagina('vendas')` consultava entrada `undefined` e `navigate` virava no-op silencioso | Adicionada a entrada. **Checklist pra páginas novas**: 5 lugares — `MENUS`, `Sidebar.MENUS_ADMIN_ONLY` (se admin-only), `BottomNav.MENUS_ADMIN_ONLY`, **`AppLayout.ROUTES`**, `App.jsx` `<Route>` |
+| Erro `cannot add postgres_changes callbacks for realtime:os-changes after subscribe()` ao abrir /vendas | Duas instâncias de `useOS` na mesma página (Vendas chamava direto + `useOSDetalheModal` chamava interno) — ambas criavam `channel('os-changes')` com mesmo nome, Supabase JS proíbe | (1) `useOS` agora gera channel name único por instância (`os-changes-${rnd}`) — defesa em profundidade pra qualquer caso de 2 instâncias. (2) `useOSDetalheModal` aceita prop `buscando` e expõe `osList/osLoading/osRefetch` — Vendas usa só ele, sem chamar `useOS` separado. |
+
+### Refator de filtros (21/05 manhã):
+
+Inicialmente fui com chips de presets inline + 2 inputs date no header. Toni pediu **padrão idêntico ao Financeiro**:
+- Botão único `[📅 Mês atual ▾]` com dropdown contendo presets (7d, 30d, mês atual, mês passado, ano, todos) + sessão "Personalizado" com 2 date pickers
+- Chips de tipo + status + pagamento ao lado
+- Busca livre no fim
+- Helpers `PERIODOS`/`labelPeriodo`/`rangeDoPeriodo` copiados do Financeiro (objeto `{id}` ou `{id: 'custom', de, ate}`) — facilita unificar num helper compartilhado se outras páginas adotarem.
+
+**Reuso**: `useOSDetalheModal({ buscando: true })` (bypassa filtro 24h), componentes UI da lib.
 
 **Limitações conhecidas pro Toni testar**:
 - Marca `origem_importacao` NÃO implementada ainda (essa coluna entra na Onda 2 junto com importação CSV)
