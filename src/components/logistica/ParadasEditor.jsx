@@ -20,10 +20,15 @@ import { Input, Select, Button, Badge } from '../ui'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import AddressInput from './AddressInput'
 
+// Tipos canônicos do jsonb `paradas` — alinhados com MapaLogistica.jsx e
+// AdicionarOSARotaModal.jsx (sessão geral 20/05 noite). NÃO alterar sem
+// atualizar os outros dois lugares também.
 const TIPOS = [
-  { value: 'coleta',  label: 'Coleta',   icon: 'ti-arrow-down-circle' },
-  { value: 'entrega', label: 'Entrega',  icon: 'ti-truck-delivery' },
-  { value: 'servico', label: 'Serviço',  icon: 'ti-tool' },
+  { value: 'coleta',   label: 'Coleta',   icon: 'ti-arrow-down-circle' },
+  { value: 'entrega',  label: 'Entrega',  icon: 'ti-truck-delivery' },
+  { value: 'cobranca', label: 'Cobrança', icon: 'ti-cash' },
+  { value: 'visita',   label: 'Visita',   icon: 'ti-tool' },
+  { value: 'avulsa',   label: 'Avulsa',   icon: 'ti-pin' },
 ]
 
 function novoUid() {
@@ -61,17 +66,25 @@ export default function ParadasEditor({
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
   const amarelo = corEtapa('yellow', dark)
+  const verde = corEtapa('green', dark)
+  const neutro = T?.textMuted || '#9CA3AF'
   const [dragIdx, setDragIdx] = useState(null)
   const [hoverIdx, setHoverIdx] = useState(null)
 
   function corTipo(tipo) {
-    if (tipo === 'coleta')  return azul
-    if (tipo === 'entrega') return azulClaro
+    if (tipo === 'coleta')   return azul
+    if (tipo === 'entrega')  return verde
+    if (tipo === 'cobranca') return amarelo
+    if (tipo === 'visita')   return azulClaro
+    if (tipo === 'avulsa')   return neutro
     return amarelo
   }
   function bgTipo(tipo) {
-    if (tipo === 'coleta')  return bgEtapa('blue', dark)
-    if (tipo === 'entrega') return bgEtapa('blueLight', dark)
+    if (tipo === 'coleta')   return bgEtapa('blue', dark)
+    if (tipo === 'entrega')  return bgEtapa('green', dark)
+    if (tipo === 'cobranca') return bgEtapa('yellow', dark)
+    if (tipo === 'visita')   return bgEtapa('blueLight', dark)
+    if (tipo === 'avulsa')   return T?.cardAlt || (dark ? '#202024' : '#f5f5f7')
     return bgEtapa('yellow', dark)
   }
   function iconeTipo(tipo) {

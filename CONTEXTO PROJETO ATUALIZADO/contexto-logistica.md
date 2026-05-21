@@ -5,6 +5,22 @@
 
 ---
 
+## 0a. Sessão 21/05/2026 — Sincronização pós-refactor + fix de tipos
+
+Verifiquei que o refactor de planejamento da sessão `geral` (§0b) preservou os 3 arquivos entregues em §0:
+
+- `Logistica.jsx` ainda monta `<NovaRotaModal>` e `<RotaDetalheModal>` exatamente como deixei (linhas ~506-523).
+- Pinos do mapa `MapaLogistica` chamam `setRotaDetalhe(rotaAlvo)` no click → abre meu `RotaDetalheModal`. Click no corpo da parada na lista também (lógica que plantei, mantida).
+- `AdicionarOSARotaModal` (novo) consome `criarRota`/`atualizarRota` do mesmo `useRotas` — mesma camada de persistência, mesmo shape de jsonb (§3).
+
+**Fix entregue hoje (1 arquivo):**
+
+- **`ParadasEditor.jsx`** — Select de tipo só conhecia `coleta`/`entrega`/`servico`. Como a sessão geral expandiu o jsonb pra 5 tipos canônicos (`coleta`/`entrega`/`cobranca`/`visita`/`avulsa`), abrir uma parada criada via `AdicionarOSARotaModal` no `RotaDetalheModal` mostrava o Select **em branco** (valor não-listado) e qualquer interação com o Select **perderia o tipo original**. Expandido pra os 5 tipos canônicos, com cores alinhadas ao `MapaLogistica` (coleta=azul, entrega=verde, cobranca=amarelo, visita=azulClaro, avulsa=neutro). `servico` removido — era valor meu que ninguém usa em prod.
+
+Também atualizei §0 trocando a antiga nota "outros componentes paralelos, documentar depois" por uma explicação de como meus modais convivem com o refactor. E reescrevi §1 (status) e §3 (schema) pra refletir o estado canônico pós-planejamento — ver baixo.
+
+---
+
 ## 0b. Sessão 20/05/2026 noite — Logística virou ferramenta de planejamento
 
 **Reformulação conceitual (sessão `geral`):**
@@ -78,28 +94,42 @@ Rota = 1 ida/volta do carro com até **2 coletas + 2 entregas** (limite físico 
 4. **Motoristas via `useUsuarios`** filtrados por `papel ∈ {logistica, dono}` (Toni dirige também). Usa `apelido` (tabela `usuarios` não tem `nome` — repete a lição da Onda 4).
 5. **DnD no detalhe NÃO usa `useRotas.reordenarParadas`** — o modal de detalhe mantém um draft local e só persiste tudo (paradas + campos da rota) no botão "Salvar alterações" via `useRotas.atualizar`. Mais previsível pro operador (pode arrastar e desistir). O hook `reordenarParadas` continua disponível pro caso de uma UI de "reordenar em linha" no futuro (lista da página).
 6. **"Concluir parada" individual SIM dispara `useRotas.concluirParada` direto** dentro do modal — é uma ação atômica clara e já é optimistic no hook. O draft local também é atualizado pra feedback visual imediato.
-7. **Tipo `servico`** adicionado às paradas (além dos `coleta`/`entrega` originais) — útil pra visitas técnicas que não envolvem retirar/devolver máquina. Cor amarela (`P.yellow`) pra diferenciar dos dois azuis das coletas/entregas.
+7. ~~**Tipo `servico`** adicionado às paradas — cor amarela.~~ **REVOGADO em 21/05/2026**: a sessão `geral` (§0b) padronizou os tipos como `coleta`/`entrega`/`cobranca`/`visita`/`avulsa`. `servico` foi removido do `ParadasEditor` e substituído por `visita` (mesma ideia, nome canônico).
 
 **Validações dos modais:**
 - Data obrigatória
 - ≥ 1 parada com endereço preenchido (paradas em branco são descartadas no save)
 - `ordem` é renumerada (1..N) ao persistir
 
-**Outros componentes adicionados em paralelo por outro terminal** (visíveis nos imports atuais do `Logistica.jsx`, fora do escopo desta sessão): `MapaLogistica`, `OSDisponiveisSidebar`, `AdicionarOSARotaModal`, integração com `useOSDetalheModal` pra abrir OS sem trocar de tela. Documentar quando o terminal responsável fechar a tarefa.
+**Integração com o refactor de planejamento (sessão `geral`, ver §0b acima):** os modais entregues aqui continuam sendo o "cérebro" de criar/editar rota — o que mudou é o entorno:
+- `NovaRotaModal` permanece como o botão "+ Nova rota" no header.
+- `RotaDetalheModal` permanece sendo aberto pelo click no corpo de qualquer parada da lista (e pelo click em pino do mapa via `onClick` de cada parada — abre a rota mãe, não a OS).
+- `ParadasEditor` permanece sendo o editor de paradas dentro dos 2 modais.
+- O novo `AdicionarOSARotaModal` (sessão geral) NÃO substitui esses modais — ele é um caminho alternativo de adição: pega 1 OS específica da sidebar e plugha numa rota existente OU cria rota nova passando pelos mesmos `criarRota/atualizarRota` do hook.
 
 ---
 
 ## 1. Status atual
 
-🟢 **CRUD completo: hook + UI + modais de criação/edição com drag-and-drop** (20/05/2026).
-- `src/pages/Logistica.jsx` — UI completa, consome `useRotas`. Botão "Nova rota" no PageHeader; clique no corpo da parada abre `RotaDetalheModal`. Trata `loading`, `tabelaAusente` e `error` com estados próprios (EmptyState).
-- `src/hooks/useRotas.js` — **modo real**, lê `rota` no Supabase com JOIN em `usuarios` (motorista). Mutações `concluirParada`/`reordenarParadas` fazem UPDATE optimistic do jsonb `paradas` inteiro (com rollback em caso de erro). `criar/atualizar/excluir` (soft-delete) implementados.
-- `src/components/logistica/AddressInput.jsx` — autocomplete via Google Maps Places quando `VITE_GOOGLE_MAPS_KEY` está setada. Loader singleton, debounce 250ms, session token pra economizar quota. Fallback automático pra texto livre quando a chave não existe ou o script falha.
-- `src/components/logistica/ParadasEditor.jsx` — **NOVO (20/05)**. Lista editável de paradas com **drag-and-drop nativo HTML5** (`@dnd-kit` não está instalado). Reusável entre criação e edição. Cada linha: handle de drag · número da ordem · ícone do tipo · Select tipo (`coleta`/`entrega`/`servico`) · Input cliente · time horário previsto · `AddressInput` · Select OS opcional (auto-preenche cliente/fone) · Input telefone · ações Concluir/Remover. Renumera `ordem` no parent ao salvar.
-- `src/components/logistica/NovaRotaModal.jsx` — **NOVO (20/05)**. Campos: data (required), motorista (Select de usuarios com papel `logistica`/`dono`), observações, paradas (`ParadasEditor`). Valida data + ≥1 parada com endereço. Chama `useRotas.criar({ data, motorista_id, paradas, status: 'planejada', observacoes })`.
-- `src/components/logistica/RotaDetalheModal.jsx` — **NOVO (20/05)**. Mesmos campos + Select de status (`planejada`/`em_andamento`/`concluida`/`cancelada`). Botões: "Excluir rota" (com confirmação inline), "Cancelar", "Salvar alterações" (chama `useRotas.atualizar`). Botão "Concluir" por parada dispara `useRotas.concluirParada` direto (já é optimistic no hook). Reordenação por DnD é parte do draft local — só persiste no Save.
-- `sql/06-rota.sql` — ✅ **APLICADO em 19/05/2026** no SQL Editor do Supabase. Tabela `rota` em prod.
-- `scripts/verificar-tabela-rota.mjs` — verificador: `node scripts/verificar-tabela-rota.mjs` reporta se o SQL já rodou.
+🟢 **Ferramenta de planejamento + CRUD de rotas, integrados em prod** (20-21/05/2026).
+
+A página `/logistica` é hoje uma ferramenta de PLANEJAMENTO (ver §0b): sidebar de OS disponíveis à esquerda, mapa Google real à direita, lista de rotas do dia/semana embaixo. CRUD de rotas (criar / editar / excluir) acontece via 2 modais; adição de OS específica numa rota acontece via um 3º modal alternativo. Toda persistência passa pelo mesmo `useRotas`.
+
+**Por arquivo:**
+
+- `src/pages/Logistica.jsx` — UI 2 colunas (sidebar+lista | mapa+legenda). Header com 3 botões: "Abrir no Maps", "Parada avulsa", "+ Nova rota". Consome `useRotas` + `useOSDetalheModal`. Trata `loading`, `tabelaAusente` e `error` com EmptyStates.
+- `src/hooks/useRotas.js` — modo real, JOIN `usuarios(id, apelido)`. `concluirParada/reordenarParadas` fazem UPDATE optimistic do jsonb `paradas` inteiro com rollback. `criar/atualizar/excluir` (soft-delete) implementados.
+- `src/hooks/useOSLogistica.js` (sessão geral) — busca OS nas etapas relevantes pra logística. Exporta `tipoParadaPorEtapa()` e `FILTROS_ETAPA_LOGISTICA`.
+- `src/hooks/useOSDetalheModal.js` (sessão geral) — encapsula `useOS`+`useUsuarios`+auth+callbacks pra abrir `<OSDetalhe>` em qualquer página.
+- `src/components/logistica/MapaLogistica.jsx` (sessão geral) — Google Map real (Naviraí-MS) via Bootstrap Loader oficial. Marker laranja "O" da oficina. Pinos SVG coloridos por tipo (5 tipos canônicos). `fitBounds` automático. POIs (restaurantes/hotéis/transit) escondidos.
+- `src/components/logistica/OSDisponiveisSidebar.jsx` (sessão geral) — lista de OS pendentes com chips de filtro (5 etapas, Pagamento desmarcado por default). Click no nome → `OSDetalhe`. Botão "+ Rota" → `AdicionarOSARotaModal`.
+- `src/components/logistica/AdicionarOSARotaModal.jsx` (sessão geral) — pega 1 OS (ou parada avulsa) e plugha em rota nova OU existente da mesma data. Valida limite 2C+2E. Tipos: coleta/entrega/cobranca/visita (ou avulsa em modo manual).
+- `src/components/logistica/AddressInput.jsx` — autocomplete via Google Maps Places quando `VITE_GOOGLE_MAPS_KEY` setada. Loader singleton, debounce 250ms, session token. Fallback texto livre.
+- `src/components/logistica/ParadasEditor.jsx` — lista editável com **DnD HTML5 nativo** (`@dnd-kit` não está instalado). Reusado por `NovaRotaModal` e `RotaDetalheModal`. **5 tipos canônicos** (coleta/entrega/cobranca/visita/avulsa) desde 21/05 — antes só 3.
+- `src/components/logistica/NovaRotaModal.jsx` — criação. Data + motorista + observações + paradas. Valida data + ≥1 parada com endereço. Chama `useRotas.criar({ data, motorista_id, paradas, status:'planejada', observacoes })`.
+- `src/components/logistica/RotaDetalheModal.jsx` — edição + Select de status (`planejada`/`em_andamento`/`concluida`/`cancelada`). "Excluir rota" 2 cliques. "Concluir" por parada chama `useRotas.concluirParada` direto. DnD é draft local — só persiste no "Salvar alterações" via `useRotas.atualizar`.
+- `sql/06-rota.sql` — ✅ APLICADO em 19/05/2026. Tabela `rota` em prod com jsonb `paradas` aceitando os 5 tipos (jsonb não precisa de migration pra novos valores).
+- `scripts/verificar-tabela-rota.mjs` — `node scripts/verificar-tabela-rota.mjs` reporta se o SQL já rodou.
 
 ### Bug fix Onda 4 (20/05/2026) — embed do motorista
 - **Causa raiz**: hook usava `motorista:motorista_id(id,nome)` mas a tabela `usuarios` não tem coluna `nome` — tem `apelido`. PostgREST devolvia `42703 column "nome" does not exist`, que o handler `isMissingTable()` do hook estava interpretando como **tabela ausente** → UI ficava no modo demo com banner "Tabela rota não existe", mesmo com o SQL 06 já aplicado.
@@ -128,7 +158,7 @@ Rota = 1 ida/volta do carro com até **2 coletas + 2 entregas** (limite físico 
 
 ---
 
-## 3. Tabela `rota` (schema parte 2 — versionado em `sql/06-rota.sql`, não aplicado)
+## 3. Tabela `rota` (schema parte 2 — versionado em `sql/06-rota.sql`, ✅ aplicado 19/05/2026)
 
 **Decisão tomada (19/05/2026):** uma tabela só (`rota`) com `paradas` como
 **`jsonb`** (NÃO `jsonb[]` — array vai dentro do jsonb único, padrão Postgres).
@@ -155,13 +185,13 @@ Rota = 1 ida/volta do carro com até **2 coletas + 2 entregas** (limite físico 
 {
   "id": "uuid-local",         // estável p/ React keys
   "ordem": 1,                 // sequência manual
-  "tipo": "coleta" | "entrega",
-  "os_id": "uuid",            // FK lógico (sem constraint formal)
-  "os_num": 247,              // denormalizado p/ exibição
+  "tipo": "coleta" | "entrega" | "cobranca" | "visita" | "avulsa",
+  "os_id": "uuid",            // FK lógico (sem constraint formal); null em avulsa
+  "os_num": 247,              // denormalizado p/ exibição; null em avulsa
   "cliente_nome": "Ana Reis",
   "cliente_fone": "(67) 9 9911-1010",
   "endereco": "R. das Acácias, 412 — Naviraí/MS",
-  "lat": -23.0654,            // futuro: vem do Google Places
+  "lat": -23.0654,            // vem do Google Places (AddressInput) ou null
   "lng": -54.1898,
   "horario_previsto": "08:30",
   "horario_chegada": null,    // preenchido ao concluir
@@ -170,6 +200,15 @@ Rota = 1 ida/volta do carro com até **2 coletas + 2 entregas** (limite físico 
   "observacoes": null
 }
 ```
+
+**Os 5 tipos** estão alinhados em 3 arquivos — alterar `TIPOS` em **um** exige tocar nos outros 2:
+| Tipo | ParadasEditor (Select) | MapaLogistica (pino) | AdicionarOSARotaModal (chips) | Conta no limite 2C+2E? |
+|---|---|---|---|---|
+| coleta   | ✅ | azul `#5B9BD5` (C) | ✅ | ✅ |
+| entrega  | ✅ | verde `#8FBC55` (E) | ✅ | ✅ |
+| cobranca | ✅ | amarelo `#FFD966` ($) | ✅ | ❌ |
+| visita   | ✅ | azulClaro `#B8CCE4` (V) | ✅ | ❌ |
+| avulsa   | ✅ | cinza `#9CA3AF` (A) | ✅ (modo avulsa) | ❌ |
 
 ### Índices
 - `idx_rota_data` (DESC, soft-delete)
@@ -221,7 +260,7 @@ import ParadasEditor, { paradaVazia } from '../components/logistica/ParadasEdito
 - Ao escolher uma OS no Select, auto-preenche `cliente_nome` e `cliente_fone` SE estavam vazios (preserva edição manual).
 - **NÃO persiste**. Quem decide o quê fazer com o novo array é o componente pai (modal/página).
 
-**Tipos de parada suportados:** `coleta` (azul) · `entrega` (azul claro) · `servico` (amarelo).
+**Tipos de parada suportados (5 canônicos, alinhados ao MapaLogistica):** `coleta` (azul) · `entrega` (verde) · `cobranca` (amarelo) · `visita` (azulClaro) · `avulsa` (neutro). Tipo `servico` foi removido em 21/05/2026 — não é mais válido.
 
 ---
 
