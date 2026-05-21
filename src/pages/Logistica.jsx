@@ -193,19 +193,30 @@ export default function Logistica({ T, dark }) {
                   : filtroData === 'amanha' ? AMANHA
                   : null
 
-  // Rotas da data ativa, ordenadas por nome (Rota 1, Rota 2, Rota 3 → criação).
+  // Rotas da data ativa (qualquer nome, inclusive null/legacy).
   const rotasDoDia = useMemo(() => {
     if (!dataAtiva) return []
     return rotas
       .filter(r => r.data === dataAtiva)
       .sort((a, b) => {
-        // Por nome primeiro (Rota 1 < Rota 2 < Rota 3), fallback por criado_em
         const na = a.nome || 'zzz'
         const nb = b.nome || 'zzz'
         if (na !== nb) return na.localeCompare(nb)
         return (a.criado_em || '').localeCompare(b.criado_em || '')
       })
   }, [rotas, dataAtiva])
+
+  // Slots fixos do filtro — sempre 3 chips, mesmo se faltar a rota correspondente.
+  // Rotas legacy (sem `nome` ou com outro nome) NÃO viram chip — ficam visíveis
+  // apenas em "Todas" e via click em parada no mapa/lista.
+  const NOMES_SLOT = ['Rota 1', 'Rota 2', 'Rota 3']
+  const slotsRotas = useMemo(
+    () => NOMES_SLOT.map(nome => ({
+      nome,
+      rota: rotasDoDia.find(r => r.nome === nome) || null,
+    })),
+    [rotasDoDia]
+  )
 
   // Garante que existem Rota 1 / Rota 2 / Rota 3 vazias pra dataAtiva.
   // Se o sql/17-rota-nome.sql ainda não foi aplicado, a coluna `nome` não
@@ -438,7 +449,7 @@ export default function Logistica({ T, dark }) {
             onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
             onAbrirOSDetalhe={(os) => abrirOSPorId(os.id)}
             onListaFiltrada={handleListaFiltrada}
-            rotasDoDia={rotasDoDia}
+            slotsRotas={slotsRotas}
             rotaSelecionadaId={rotaSelecionadaId}
             onRotaSelecionada={setRotaSelecionadaId}
             schemaNomeAusente={schemaNomeAusente}

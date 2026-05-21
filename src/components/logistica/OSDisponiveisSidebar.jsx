@@ -22,8 +22,8 @@ export default function OSDisponiveisSidebar({
   onSelecionarOS,         // (os) => abre modal "adicionar a rota"
   onAbrirOSDetalhe,       // (os) => abre OSDetalhe (botão alternativo no card)
   onListaFiltrada,        // (osComCoords) => pai injeta no mapa
-  // ─── Filtro por rota (Rota 1/2/3) ───────────────────────────────────
-  rotasDoDia = [],        // [{ id, nome, paradas, ... }] da data ativa
+  // ─── Filtro por rota (3 slots fixos: Rota 1 / Rota 2 / Rota 3) ──────
+  slotsRotas = [],        // [{ nome: 'Rota 1', rota: rotaObj | null }, ...3]
   rotaSelecionadaId = null, // null = "Todas"
   onRotaSelecionada,      // (idOuNull) => void
   schemaNomeAusente = false, // true se sql/17 ainda não rodou
@@ -78,47 +78,48 @@ export default function OSDisponiveisSidebar({
           }
         >OS disponíveis</SectionHeader>
 
-        {/* Chips de rota — Rota 1 / Rota 2 / Rota 3 / Todas. Filtra mapa. */}
-        {(rotasDoDia.length > 0 || schemaNomeAusente) && (
-          <div style={{
-            display: 'flex', flexWrap: 'wrap', gap: 5,
-            marginBottom: 8,
-            paddingBottom: 8,
-            borderBottom: `1px solid ${T.border}`,
-          }}>
-            <ChipRota
-              T={T} dark={dark}
-              ativo={rotaSelecionadaId == null}
-              onClick={() => onRotaSelecionada?.(null)}
-              icon="ti-list"
-            >Todas</ChipRota>
-            {rotasDoDia.map(r => {
-              const nParadas = (r.paradas || []).length
-              return (
-                <ChipRota
-                  key={r.id}
-                  T={T} dark={dark}
-                  ativo={rotaSelecionadaId === r.id}
-                  onClick={() => onRotaSelecionada?.(r.id)}
-                  icon="ti-route"
-                  badge={nParadas > 0 ? nParadas : null}
-                >
-                  {r.nome || `Rota ${String(r.id).slice(0, 4)}`}
-                </ChipRota>
-              )
-            })}
-            {schemaNomeAusente && (
-              <span style={{
-                fontSize: 10, color: T.textDim,
-                padding: '4px 6px',
-                fontStyle: 'italic',
-              }} title="Rode sql/17-rota-nome.sql pra ativar Rota 1/2/3 automáticas">
-                <i className="ti ti-database-off" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
-                slots desabilitados
-              </span>
-            )}
-          </div>
-        )}
+        {/* Chips de rota — sempre Todas + 3 slots (Rota 1/2/3). Filtra mapa. */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 5,
+          marginBottom: 8,
+          paddingBottom: 8,
+          borderBottom: `1px solid ${T.border}`,
+        }}>
+          <ChipRota
+            T={T} dark={dark}
+            ativo={rotaSelecionadaId == null}
+            onClick={() => onRotaSelecionada?.(null)}
+            icon="ti-list"
+          >Todas</ChipRota>
+          {slotsRotas.map(s => {
+            const rota = s.rota
+            const ativo = rota && rotaSelecionadaId === rota.id
+            const nParadas = rota ? (rota.paradas || []).length : 0
+            return (
+              <ChipRota
+                key={s.nome}
+                T={T} dark={dark}
+                ativo={ativo}
+                disabled={!rota}
+                onClick={() => rota && onRotaSelecionada?.(rota.id)}
+                icon="ti-route"
+                badge={nParadas > 0 ? nParadas : null}
+              >
+                {s.nome}
+              </ChipRota>
+            )
+          })}
+          {schemaNomeAusente && (
+            <span style={{
+              fontSize: 10, color: T.textDim,
+              padding: '4px 6px',
+              fontStyle: 'italic',
+            }} title="Rode sql/17-rota-nome.sql pra ativar Rota 1/2/3 automáticas">
+              <i className="ti ti-database-off" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
+              SQL pendente
+            </span>
+          )}
+        </div>
 
         {/* Filtro de etapas — icon-only com tooltip. Bem mais magro que chips
             com label. Bolinha colorida vira pílula azul quando ativo. */}
@@ -246,19 +247,22 @@ function OSCard({ os, T, dark, onSelecionar, onAbrirDetalhe }) {
 }
 
 // Chip de seleção de rota (Rota 1 / Rota 2 / Rota 3 / Todas).
-// Estilo: ativo = azul; inativo = neutro com borda. Mesmo padrão dos chips
-// de etapa logo abaixo.
-function ChipRota({ T, dark, ativo, onClick, icon, badge, children }) {
+// Estilo: ativo = azul cheio · disabled = cinza com hint · inativo = só texto.
+function ChipRota({ T, dark, ativo, disabled = false, onClick, icon, badge, children }) {
   const azul = corEtapa('blue', dark)
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={disabled ? 'Slot vazio — rode sql/17 pra criar' : undefined}
       style={{
         padding: '4px 9px', borderRadius: 12,
-        border: `1px solid ${ativo ? azul : T.border}`,
+        border: `1px solid ${ativo ? azul : disabled ? T.border : T.border}`,
         background: ativo ? `${azul}15` : 'transparent',
-        color: ativo ? azul : T.textSecondary,
-        fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+        color: ativo ? azul : disabled ? T.textDim : T.textSecondary,
+        fontSize: 10.5, fontWeight: 600,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
         fontFamily: 'inherit',
         display: 'inline-flex', alignItems: 'center', gap: 5,
       }}>
