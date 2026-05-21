@@ -30,6 +30,17 @@ h1, h2, h3, h4 { margin: 0; font-weight: 500; }
 ::-webkit-scrollbar-thumb { background: rgba(127, 127, 127, 0.25); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(127, 127, 127, 0.4); }
 
+/* Mobile — esconde scrollbar em chip filters horizontais */
+.idemaq-no-scrollbar::-webkit-scrollbar { display: none; }
+.idemaq-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Mobile — animações de transição entre páginas */
+@keyframes idemaq-fade-slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.idemaq-page-enter { animation: idemaq-fade-slide-up .25s ease both; }
+
 /* Animações compartilhadas */
 @keyframes idemaq-spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes idemaq-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }

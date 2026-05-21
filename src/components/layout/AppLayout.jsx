@@ -12,15 +12,16 @@ import BottomNav from './BottomNav'
 
 // Mapa pagina-id → rota
 const ROUTES = {
-  painel:        '/',
-  os:            '/os',
-  clientes:      '/clientes',
-  vendas:        '/vendas',
-  logistica:     '/logistica',
-  estoque:       '/estoque',
-  financeiro:    '/financeiro',
-  relatorios:    '/relatorios',
-  configuracoes: '/configuracoes',
+  painel:         '/',
+  os:             '/os',
+  clientes:       '/clientes',
+  vendas:         '/vendas',
+  logistica:      '/logistica',
+  estoque:        '/estoque',
+  financeiro:     '/financeiro',
+  relatorios:     '/relatorios',
+  'meu-relatorio':'/meu-relatorio',
+  configuracoes:  '/configuracoes',
 }
 // Reverso para inferir pagina ativa pela URL
 function pageFromPath(pathname) {

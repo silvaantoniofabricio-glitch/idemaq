@@ -42,6 +42,7 @@ import Financeiro    from './pages/Financeiro'
 import Relatorios    from './pages/Relatorios'
 import Configuracoes from './pages/Configuracoes'
 import Vendas        from './pages/Vendas'
+import MeuRelatorio  from './pages/MeuRelatorio'
 import PainelFuncionario from './components/paineis/PainelFuncionario'
 import EmConstrucao from './pages/EmConstrucao'
 
@@ -116,6 +117,7 @@ function RoutesDesktop({ T, dark, user }) {
       <Route path="/vendas"        element={<AdminOnly user={user}><Vendas T={T} dark={dark} user={user} /></AdminOnly>} />
       <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
       <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/meu-relatorio" element={<MeuRelatorio user={user} />} />
       <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -141,6 +143,7 @@ function RoutesMobile({ T, dark, user }) {
         <Route path="/vendas"        element={<AdminOnly user={user}><Vendas T={T} dark={dark} user={user} /></AdminOnly>} />
         <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
         <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
+        <Route path="/meu-relatorio" element={<MeuRelatorio user={user} />} />
         <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -3,17 +3,25 @@
 // Tipos de OS, etapas, zonas, menu, funcionários e mocks de referência.
 
 export const MENUS = [
-  { id: 'painel',       label: 'Painel',        icon: 'ti-layout-dashboard', section: 'principal' },
-  { id: 'os',           label: 'OS',            icon: 'ti-clipboard-list',   section: 'principal' },
-  { id: 'clientes',     label: 'Clientes',      icon: 'ti-user',             section: 'principal' },
-  { id: 'vendas',       label: 'Vendas',        icon: 'ti-receipt-2',        section: 'principal' },
-  { id: 'logistica',    label: 'Logística',     icon: 'ti-truck',            section: 'operacao' },
-  { id: 'estoque',      label: 'Estoque',       icon: 'ti-package',          section: 'operacao' },
-  { id: 'financeiro',   label: 'Financeiro',    icon: 'ti-cash',             section: 'operacao' },
-  { id: 'relatorios',   label: 'Relatórios',    icon: 'ti-chart-bar',        section: 'operacao' },
-  { id: 'configuracoes',label: 'Configurações', icon: 'ti-settings',         section: 'operacao' },
+  { id: 'painel',        label: 'Painel',        icon: 'ti-layout-dashboard', section: 'principal' },
+  { id: 'os',            label: 'OS',            icon: 'ti-clipboard-list',   section: 'principal' },
+  { id: 'clientes',      label: 'Clientes',      icon: 'ti-user',             section: 'principal' },
+  { id: 'vendas',        label: 'Vendas',        icon: 'ti-receipt-2',        section: 'principal' },
+  { id: 'logistica',     label: 'Logística',     icon: 'ti-truck',            section: 'operacao' },
+  { id: 'estoque',       label: 'Estoque',       icon: 'ti-package',          section: 'operacao' },
+  { id: 'financeiro',    label: 'Financeiro',    icon: 'ti-cash',             section: 'operacao' },
+  { id: 'relatorios',    label: 'Relatórios',    icon: 'ti-chart-bar',        section: 'operacao' },
+  { id: 'meu-relatorio', label: 'Relatório',     icon: 'ti-chart-bar',        section: 'principal' },
+  { id: 'configuracoes', label: 'Configurações', icon: 'ti-settings',         section: 'operacao' },
 ]
-export const MENUS_MOBILE = ['painel', 'os', 'estoque', 'financeiro']
+// Bottom Nav mobile — listas separadas por papel (até 5 itens cada).
+// Dono e funcionário veem ferramentas diferentes:
+//   Dono       → finanças + histórico
+//   Funcionário → operação + ponto + relatório pessoal
+export const MENUS_MOBILE_DONO = ['painel', 'os', 'estoque', 'financeiro', 'vendas']
+export const MENUS_MOBILE_FUNC = ['painel', 'os', 'logistica', 'estoque', 'meu-relatorio']
+// Compat — antigos consumidores podem ler isso (BottomNav escolhe por papel)
+export const MENUS_MOBILE = MENUS_MOBILE_DONO
 
 // Os 3 tipos de OS, com seus fluxos de etapas.
 // adminOnly: true → coluna só visível pro dono (Pagamento, Concluído)
