@@ -120,8 +120,16 @@ export default function OSDisponiveisSidebar({
           </div>
         )}
 
-        {/* Chips de filtro de etapa */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {/* Filtro de etapas — icon-only com tooltip. Bem mais magro que chips
+            com label. Bolinha colorida vira pílula azul quando ativo. */}
+        <div style={{
+          display: 'flex', gap: 3, alignItems: 'center',
+          fontSize: 10, color: T.textDim,
+        }}>
+          <span style={{
+            fontSize: 9.5, textTransform: 'uppercase', letterSpacing: '0.06em',
+            color: T.textDim, marginRight: 4,
+          }}>Etapas</span>
           {FILTROS_ETAPA_LOGISTICA.map(f => {
             const ativo = etapasAtivas.has(f.id)
             const corF = corEtapa(f.cor, dark)
@@ -129,18 +137,18 @@ export default function OSDisponiveisSidebar({
               <button
                 key={f.id}
                 onClick={() => toggleEtapa(f.id)}
-                title={f.label}
+                title={`${f.label}${ativo ? ' (clique pra esconder)' : ' (clique pra mostrar)'}`}
                 style={{
-                  padding: '4px 9px', borderRadius: 12,
-                  border: `1px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? `${azul}15` : 'transparent',
-                  color: ativo ? azul : T.textSecondary,
-                  fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+                  width: 22, height: 22, borderRadius: 999,
+                  border: `1px solid ${ativo ? corF : T.border}`,
+                  background: ativo ? `${corF}22` : 'transparent',
+                  color: ativo ? corF : T.textDim,
+                  cursor: 'pointer',
                   fontFamily: 'inherit',
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'background .12s, color .12s, border-color .12s',
                 }}>
-                <i className={`ti ${f.icon}`} style={{ fontSize: 11, color: ativo ? azul : corF }} aria-hidden="true" />
-                {f.label}
+                <i className={`ti ${f.icon}`} style={{ fontSize: 11 }} aria-hidden="true" />
               </button>
             )
           })}

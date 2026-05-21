@@ -7,11 +7,10 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import {
-  Card, Button, Badge, Input, Tabs,
+  Card, Button, Badge, Input,
   EmptyState, PageHeader, SectionHeader,
   useToast,
 } from '../components/ui'
-import { ChipToggle } from '../components/ui/Tabs'
 import { useRotas } from '../hooks/useRotas'
 import NovaRotaModal from '../components/logistica/NovaRotaModal'
 import RotaDetalheModal from '../components/logistica/RotaDetalheModal'
@@ -44,6 +43,77 @@ function rotaCompletaUrl(enderecos) {
   return `https://www.google.com/maps/dir/${enderecos.map(e => encodeURIComponent(e)).join('/')}`
 }
 
+// Botão icon-only com tooltip — usado pras ações secundárias do header
+// (mantém a UI minimalista sem perder a função).
+function IconButton({ T, dark, icon, title, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      style={{
+        width: 32, height: 32, borderRadius: 8,
+        border: `1px solid ${T?.border}`,
+        background: 'transparent',
+        color: T?.textSecondary,
+        cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'inherit',
+        transition: 'background .12s, color .12s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = T?.cardAlt
+        e.currentTarget.style.color = T?.textPrimary
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent'
+        e.currentTarget.style.color = T?.textSecondary
+      }}
+    >
+      <i className={`ti ${icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
+    </button>
+  )
+}
+
+// Ponto da legenda do mapa — 10px de bola colorida + label. Tracejado pra
+// pinos "disponível" (OS sem rota ainda).
+function LegendaDot({ cor, titulo, tracejado = false }) {
+  return (
+    <span title={titulo} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <span style={{
+        width: 9, height: 9, borderRadius: 999,
+        background: tracejado ? 'transparent' : cor,
+        border: tracejado ? `1.5px dashed ${cor}` : `1.5px solid ${cor}`,
+        display: 'inline-block',
+      }} />
+      {titulo.split(' (')[0]}
+    </span>
+  )
+}
+
+// Pílula de período (Hoje / Amanhã / Semana) — substituição minimalista do
+// Tabs segmented. Estilo "ativo = pílula azul cheia", "inativo = texto puro".
+function PillPeriodo({ T, dark, ativo, onClick, children }) {
+  const azul = corEtapa('blue', dark)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '5px 11px', borderRadius: 999,
+        border: 'none',
+        background: ativo ? `${azul}15` : 'transparent',
+        color: ativo ? azul : T?.textMuted,
+        fontSize: 12, fontWeight: ativo ? 600 : 500,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        transition: 'background .12s, color .12s',
+      }}
+    >{children}</button>
+  )
+}
+
 export default function Logistica({ T, dark }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
@@ -55,8 +125,11 @@ export default function Logistica({ T, dark }) {
     excluir: excluirRota,
   } = useRotas()
   const [filtroData, setFiltroData] = useState('hoje')
-  const [verColetas, setVerColetas] = useState(true)
-  const [verEntregas, setVerEntregas] = useState(true)
+  // Antes existiam ChipToggle pra esconder coletas/entregas — removidos por
+  // serem ruído (usuário quase nunca usava). Defaults `true` mantidos pra
+  // não quebrar o `filtradas` e as mensagens de empty state.
+  const verColetas = true
+  const verEntregas = true
   const [busca, setBusca] = useState('')
   const [novaRotaAberta, setNovaRotaAberta] = useState(false)
   const [rotaDetalhe, setRotaDetalhe] = useState(null) // rota selecionada p/ edição
@@ -194,12 +267,10 @@ export default function Logistica({ T, dark }) {
     })
   }, [filtradas])
 
-  // Stats sempre do dia visível pelo filtro (não da base toda)
+  // Stats do dia visível — usadas inline na toolbar (mais magras que stats[] do PageHeader)
   const baseVisivel = paradas.filter(dataMatch)
-  const totalColetas  = baseVisivel.filter(p => p.tipo === 'coleta').length
-  const totalEntregas = baseVisivel.filter(p => p.tipo === 'entrega').length
-  const concluidas    = baseVisivel.filter(p => p.status === 'concluida').length
-  const pendentes     = baseVisivel.filter(p => p.status === 'pendente').length
+  const concluidas  = baseVisivel.filter(p => p.status === 'concluida').length
+  const pendentes   = baseVisivel.filter(p => p.status === 'pendente').length
 
   function concluirParada(rotaId, paradaId) {
     concluirParadaHook(rotaId, paradaId)
@@ -282,61 +353,77 @@ export default function Logistica({ T, dark }) {
     }}>
       <PageHeader T={T} dark={dark}
         title="Logística"
-        subtitle={`${tituloFiltro} · ${ordenadas.length} ${ordenadas.length === 1 ? 'parada' : 'paradas'}`}
-        stats={[
-          { label: 'Coletas',    value: totalColetas,  color: azul },
-          { label: 'Entregas',   value: totalEntregas, color: azulClaro },
-          { label: 'Pendentes',  value: pendentes,     color: pendentes > 0 ? corEtapa('yellow', dark) : T.textDim },
-          { label: 'Concluídas', value: concluidas,    color: concluidas > 0 ? verde : T.textDim },
-        ]}
+        subtitle={tituloFiltro}
         actions={
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Button T={T} dark={dark} variant="secondary" iconLeft="ti-external-link" onClick={abrirRotaCompleta}>
-              Abrir no Maps
-            </Button>
-            <Button T={T} dark={dark} variant="secondary" iconLeft="ti-map-pin-plus" onClick={() => setParadaAvulsaAberta(true)}>
-              Parada avulsa
-            </Button>
-            <Button T={T} dark={dark} variant="primary" iconLeft="ti-plus" onClick={() => setNovaRotaAberta(true)}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <IconButton T={T} dark={dark}
+              icon="ti-map-pin-plus"
+              title="Adicionar parada avulsa"
+              onClick={() => setParadaAvulsaAberta(true)}
+            />
+            <IconButton T={T} dark={dark}
+              icon="ti-external-link"
+              title="Abrir rota completa no Google Maps"
+              onClick={abrirRotaCompleta}
+            />
+            <Button T={T} dark={dark} variant="primary" size="sm" iconLeft="ti-plus" onClick={() => setNovaRotaAberta(true)}>
               Nova rota
             </Button>
           </div>
         }
       />
 
-      <Card T={T} dark={dark}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Tabs T={T} dark={dark}
-            options={FILTROS_DATA}
-            value={filtroData}
-            onChange={setFiltroData}
-            variant="segmented"
-          />
-          <div style={{ width: 1, height: 24, background: T.border }} />
-          <div style={{ display: 'flex', gap: 6 }}>
-            <ChipToggle T={T} dark={dark}
-              ativo={verColetas}
-              onClick={() => setVerColetas(v => !v)}
-              icon="ti-arrow-down-circle">
-              Coletas
-            </ChipToggle>
-            <ChipToggle T={T} dark={dark}
-              ativo={verEntregas}
-              onClick={() => setVerEntregas(v => !v)}
-              icon="ti-truck-delivery">
-              Entregas
-            </ChipToggle>
-          </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <Input T={T} dark={dark}
-              value={busca}
-              onChange={setBusca}
-              icon="ti-search"
-              placeholder="Buscar cliente, endereço ou nº OS…"
-            />
-          </div>
+      {/* Toolbar magra (sem Card) — período + busca + contador inline */}
+      <div style={{
+        display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
+        padding: '6px 4px',
+      }}>
+        <div style={{
+          display: 'flex', gap: 2,
+          padding: 2,
+          background: T.cardAlt,
+          borderRadius: 999,
+        }}>
+          {FILTROS_DATA.map(f => (
+            <PillPeriodo
+              key={f.id}
+              T={T} dark={dark}
+              ativo={filtroData === f.id}
+              onClick={() => setFiltroData(f.id)}
+            >{f.label}</PillPeriodo>
+          ))}
         </div>
-      </Card>
+
+        <div style={{ flex: 1, minWidth: 220, maxWidth: 380 }}>
+          <Input T={T} dark={dark}
+            value={busca}
+            onChange={setBusca}
+            icon="ti-search"
+            placeholder="Buscar cliente, endereço ou nº OS…"
+            size="sm"
+          />
+        </div>
+
+        {/* Contador inline (substitui os 4 stats grandes do header) */}
+        <div style={{
+          marginLeft: 'auto',
+          display: 'flex', alignItems: 'center', gap: 14,
+          fontSize: 11.5, color: T.textMuted,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          <span><strong style={{ color: T.textPrimary, fontWeight: 600 }}>{ordenadas.length}</strong> {ordenadas.length === 1 ? 'parada' : 'paradas'}</span>
+          {pendentes > 0 && (
+            <span style={{ color: corEtapa('yellow', dark) }}>
+              {pendentes} pendente{pendentes === 1 ? '' : 's'}
+            </span>
+          )}
+          {concluidas > 0 && (
+            <span style={{ color: verde }}>
+              {concluidas} concluída{concluidas === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div style={{
         display: 'grid',
@@ -580,29 +667,21 @@ export default function Logistica({ T, dark }) {
             ]}
           />
 
-          {/* Legenda (fora do mapa pra não cobrir a UI do Google) */}
-          <div style={{ padding: '10px 14px', borderTop: `1px solid ${T.border}` }}>
-            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: T.textMuted, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i className="ti ti-circle-filled" style={{ fontSize: 12, color: '#5B9BD5' }} aria-hidden="true" />
-                Coleta
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i className="ti ti-circle-filled" style={{ fontSize: 12, color: '#8FBC55' }} aria-hidden="true" />
-                Entrega
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i className="ti ti-circle-filled" style={{ fontSize: 12, color: '#B8CCE4' }} aria-hidden="true" />
-                Outro (cobrança/visita/avulsa)
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: T.textDim }}>
-                <i className="ti ti-circle-dashed" style={{ fontSize: 12, color: '#1a3a6e' }} aria-hidden="true" />
-                Disponível
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto', color: T.textDim }}>
-                Número no pino = ordem na rota
-              </span>
-            </div>
+          {/* Legenda — 1 linha compacta, sem labels longos. Tooltip nos pontos. */}
+          <div style={{
+            padding: '8px 14px',
+            borderTop: `1px solid ${T.border}`,
+            display: 'flex', gap: 14, alignItems: 'center',
+            fontSize: 10.5, color: T.textDim,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            <LegendaDot cor="#5B9BD5" titulo="Coleta" />
+            <LegendaDot cor="#8FBC55" titulo="Entrega" />
+            <LegendaDot cor="#B8CCE4" titulo="Outro (cobrança / visita / avulsa)" />
+            <LegendaDot cor="#1a3a6e" titulo="OS disponível (sem rota)" tracejado />
+            <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>
+              Número no pino = ordem da parada
+            </span>
           </div>
         </Card>
       </div>
