@@ -13,15 +13,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadMapsScript, MAPS_KEY_DISPONIVEL } from '../components/logistica/AddressInput'
 
-const STORAGE_KEY = 'idemaq.geocode.cache.v1'
+// v2 (21/05/2026): cache passou a guardar SÓ positivos — invalidação de v1
+// limpa entradas null antigas que ficavam grudadas pra sempre.
+const STORAGE_KEY = 'idemaq.geocode.cache.v2'
 
-// Quota por sessão — limite real do tier free do Google é generoso (~40 req/s)
-// mas a gente é conservador pra não estourar conta da Idemaq.
-const QUOTA_POR_SESSAO = 30
+// Quota por sessão — Google Geocoding tier free aceita ~40 req/s e 40k/mês.
+// 60 cobre o dia-a-dia de logística (até ~60 OS visíveis no mapa por sessão).
+const QUOTA_POR_SESSAO = 60
 
-// Throttle entre requisições. 200ms = 5 req/s — Google aceita até 50 req/s mas
-// dá pico de "OVER_QUERY_LIMIT" se vai muito perto do teto.
-const THROTTLE_MS = 200
+// Throttle entre requisições. 120ms ≈ 8 req/s — bem abaixo do teto.
+const THROTTLE_MS = 120
 
 // Sufixo automático pra dar contexto pro geocoder quando o endereço não tem
 // cidade/UF — a maior parte dos clientes da Idemaq está em Naviraí/MS.
@@ -74,7 +75,9 @@ export function useGeocodeEnderecos(enderecos) {
 
       for (const end of lista) {
         if (cancelled) return
-        if (cacheRef.current[end] !== undefined) continue // já cacheado (positivo OU falha)
+        // Só pula se já tiver positivo cacheado. Negativos NÃO são cacheados —
+        // se um dia faltou chave/quota, na próxima sessão tenta de novo.
+        if (cacheRef.current[end]) continue
         if (usados >= QUOTA_POR_SESSAO) break
 
         usados++
@@ -85,15 +88,18 @@ export function useGeocodeEnderecos(enderecos) {
                 const loc = results[0].geometry.location
                 resolve({ lat: loc.lat(), lng: loc.lng() })
               } else {
-                resolve(null) // negativo cacheia também pra não reconsultar
+                resolve(null)
               }
             })
           })
           if (cancelled) return
-          const next = { ...cacheRef.current, [end]: res }
-          cacheRef.current = next
-          setCoords(next)
-          escreverCache(next)
+          if (res) {
+            // Cacheia só os positivos
+            const next = { ...cacheRef.current, [end]: res }
+            cacheRef.current = next
+            setCoords(next)
+            escreverCache(next)
+          }
         } catch { /* erro de rede, segue pro próximo */ }
 
         // throttle

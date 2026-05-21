@@ -8,6 +8,7 @@ import { Card, SectionHeader } from '../ui'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { useOSLogistica, FILTROS_ETAPA_LOGISTICA } from '../../hooks/useOSLogistica'
 import { useGeocodeEnderecos } from '../../hooks/useGeocodeEnderecos'
+import { MAPS_KEY_DISPONIVEL } from './AddressInput'
 
 // Default: as 4 etapas logísticas marcadas, Pagamento desmarcado.
 const ETAPAS_DEFAULT_ATIVAS = new Set([
@@ -55,6 +56,19 @@ export default function OSDisponiveisSidebar({
     [filtradas]
   )
   const coordsPorEndereco = useGeocodeEnderecos(enderecos)
+
+  // Diagnóstico: quantas OS aparecem no mapa vs. quantas faltam (e por quê).
+  // Importante porque sem endereço cadastrado a OS some do mapa silenciosamente —
+  // o user precisa ver isso pra entender por que pin não aparece.
+  const diagnostico = useMemo(() => {
+    let comCoord = 0, semEndereco = 0, geocodificando = 0
+    for (const os of filtradas) {
+      if (!os.endereco) { semEndereco++; continue }
+      if (coordsPorEndereco[os.endereco]) comCoord++
+      else geocodificando++
+    }
+    return { comCoord, semEndereco, geocodificando, total: filtradas.length }
+  }, [filtradas, coordsPorEndereco])
 
   // Anexa lat/lng (quando disponível) e dispara o callback pro pai.
   // Mantém a mesma referência quando nada mudou pra evitar render loops no pai.
@@ -154,6 +168,49 @@ export default function OSDisponiveisSidebar({
             )
           })}
         </div>
+
+        {/* Diagnóstico do mapa — quantas OS estão plotadas vs. faltam */}
+        {!MAPS_KEY_DISPONIVEL && filtradas.length > 0 && (
+          <div style={{
+            marginTop: 8,
+            padding: '6px 8px', borderRadius: 6,
+            background: bgEtapa('yellow', dark),
+            border: `1px solid ${corEtapa('yellow', dark)}44`,
+            fontSize: 10.5, color: corEtapa('yellow', dark),
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 12 }} aria-hidden="true" />
+            <span><strong>VITE_GOOGLE_MAPS_KEY</strong> não setada — pins não aparecem no mapa.</span>
+          </div>
+        )}
+        {MAPS_KEY_DISPONIVEL && filtradas.length > 0 && (
+          <div style={{
+            marginTop: 8,
+            display: 'flex', gap: 10, flexWrap: 'wrap',
+            fontSize: 10.5, color: T.textDim,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {diagnostico.comCoord > 0 && (
+              <span style={{ color: corEtapa('green', dark) }}>
+                <i className="ti ti-map-pin-check" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
+                {diagnostico.comCoord} no mapa
+              </span>
+            )}
+            {diagnostico.geocodificando > 0 && (
+              <span title="Aguardando o Google geocodificar (até 8/s)">
+                <i className="ti ti-loader-2" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
+                {diagnostico.geocodificando} geocodificando…
+              </span>
+            )}
+            {diagnostico.semEndereco > 0 && (
+              <span style={{ color: corEtapa('yellow', dark) }}
+                title="Cliente sem endereço cadastrado — não dá pra plotar">
+                <i className="ti ti-map-pin-off" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
+                {diagnostico.semEndereco} sem endereço
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {loading && (
