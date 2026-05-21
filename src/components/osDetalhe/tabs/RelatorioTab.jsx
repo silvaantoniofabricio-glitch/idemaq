@@ -1,7 +1,14 @@
-// src/components/osDetalhe/tabs/ResumoTab.jsx
-// Aba Resumo — contexto do caso. Banners de garantia/recusada, mini-cards de
-// prazo, diagnóstico (defeito + causa), orçamento (admin-only com totais),
-// histórico recente das últimas 3 mudanças de etapa, observações.
+// src/components/osDetalhe/tabs/RelatorioTab.jsx
+// Aba Relatório — relatório completo da OS, etapa por etapa.
+// Estrutura:
+//  1. Banners contextuais (garantia, recusada).
+//  2. Mini-cards (aberta em, prazo, dias na OS).
+//  3. Diagnóstico (defeito + causa + itens marcados) — bloco compartilhado.
+//  4. Orçamento (admin-only — itens + totais).
+//  5. Relatório por etapa — o que foi capturado em cada etapa que a OS já
+//     passou (Recebido / Oficina / Teste final, com checklist + falhas).
+//  6. Histórico recente das últimas 3 mudanças de etapa.
+//  7. Observações.
 // Cliente/equipamento já vivem no Header do modal (sempre visíveis).
 
 import React from 'react'
@@ -11,9 +18,11 @@ import { dentroGarantia, calcStatusPrazo, diasPrazo, totalAPagar, estaPagaTotal 
 import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
 import { TIPOS_OS } from '../../../utils/osData'
 import { useOSItens } from '../../../hooks/useOSItens'
+import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
+import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import RelatorioDiagnostico from '../RelatorioDiagnostico'
 
-export default function ResumoTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {
+export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {
   const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
 
@@ -113,6 +122,10 @@ export default function ResumoTab({ T, dark, os, osBase, usuarios, admin, onAbri
           Nenhum item lançado nesta OS.
         </div>
       )}
+
+      {/* Relatório por etapa — o que foi capturado em cada etapa que a OS
+          já passou (lê do histórico real; renderiza checklist/falhas/pagamento). */}
+      <RelatorioPorEtapaBloco T={T} dark={dark} os={os} usuarios={usuarios} admin={admin} />
 
       {/* Histórico recente — últimas 3 mudanças */}
       <HistoricoRecenteBloco T={T} dark={dark} os={os} usuarios={usuarios} />
@@ -347,6 +360,441 @@ function HistoricoRecenteBloco({ T, dark, os, usuarios }) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ─── Relatório por etapa ─────────────────────────────────────────────────────
+// Para cada etapa que tem dados (checklist preenchido, falhas registradas,
+// pagamento confirmado, datas de entrega), mostra um card resumindo o que
+// foi capturado. Render só pra etapas que a OS realmente passou (ou tem
+// dado registrado mesmo sem aparecer no histórico — ex: OS importada).
+//
+// Carrega 3 checklists (recebido, em_oficina, teste_final) + falhas via
+// hooks. Cada hook só faz query se o osId for UUID válido; em rascunhos
+// retornam vazio silenciosamente.
+function RelatorioPorEtapaBloco({ T, dark, os, usuarios, admin }) {
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const vermelho = corEtapa('red', dark)
+
+  const checkRecebido = useChecklistEtapa(os?.id, 'recebido')
+  const checkOficina  = useChecklistEtapa(os?.id, 'em_oficina')
+  const checkTeste    = useChecklistEtapa(os?.id, 'teste_final')
+  const { falhas }    = useFalhaTeste(os?.id)
+
+  const funcPorId = (id) => {
+    const u = (usuarios || []).find(x => x.id === id)
+    return u ? (u.apelido || u.nome || 'desconhecido') : null
+  }
+
+  // Data + responsável de cada etapa (último evento que ENTROU naquela etapa).
+  function dadosEtapa(etapaDb) {
+    const hist = (os.historico || []).filter(h => {
+      // os.historico já está com etapas em formato UI — converter pra comparar
+      if (etapaDb === 'em_oficina') return h.etapa === 'oficina'
+      if (etapaDb === 'agendamento') return h.etapa === 'agendado' || h.etapa === 'agendamento'
+      if (etapaDb === 'entrega') return h.etapa === 'entrega' || h.etapa === 'entregue'
+      return h.etapa === etapaDb
+    })
+    if (hist.length === 0) return null
+    const ultimo = hist[hist.length - 1]
+    return {
+      data: ultimo.data,
+      responsavel: funcPorId(ultimo.funcionario),
+    }
+  }
+
+  // Resumo de checklist genérico: conta marcados / total + lista os com defeito/barulho.
+  function resumirChecklist(itens) {
+    if (!itens || itens.length === 0) return null
+    const total = itens.length
+    const ok = itens.filter(i => i.valor === 'ok' || i.checked === true || i.estado === 'ok').length
+    const problemas = itens
+      .filter(i => i.valor === 'defeito' || i.valor === 'barulho' || i.estado === 'defeito')
+      .map(i => ({ label: i.label || i.id, tipo: i.valor || i.estado }))
+    return { total, ok, problemas }
+  }
+
+  const blocos = []
+
+  // === Recebido ===
+  const dadosRecebido = dadosEtapa('recebido')
+  const temRecebido = checkRecebido.itens.length > 0 || checkRecebido.observacoes || !!dadosRecebido
+  if (temRecebido && !checkRecebido.loading) {
+    const res = resumirChecklist(checkRecebido.itens)
+    blocos.push(
+      <EtapaCard
+        key="recebido" T={T} dark={dark} corBase={azul}
+        icon="ti-clipboard-check" titulo="Recebido (pré-diagnóstico)"
+        meta={dadosRecebido}
+      >
+        {res && (
+          <ChecklistResumo T={T} dark={dark} resumo={res}
+            verde={verde} vermelho={vermelho} />
+        )}
+        {checkRecebido.observacoes && (
+          <Obs T={T} label="Observações da coleta" texto={checkRecebido.observacoes} />
+        )}
+        {!res && !checkRecebido.observacoes && (
+          <Vazio T={T} texto="Sem checklist ou observações registrados." />
+        )}
+      </EtapaCard>
+    )
+  }
+
+  // === Diagnóstico ===
+  const dadosDiag = dadosEtapa('diagnostico')
+  const causa = os.diagnostico?.causa
+  if (dadosDiag || causa) {
+    blocos.push(
+      <EtapaCard
+        key="diagnostico" T={T} dark={dark} corBase={azul}
+        icon="ti-stethoscope" titulo="Diagnóstico"
+        meta={dadosDiag}
+      >
+        {causa
+          ? <Obs T={T} label="Causa apontada pelo técnico" texto={causa} />
+          : <Vazio T={T} texto="Sem causa apontada (ver chips do bloco Diagnóstico acima)." />
+        }
+      </EtapaCard>
+    )
+  }
+
+  // === Orçamento — só admin, e só se já passou pela etapa ===
+  const dadosOrcamento = dadosEtapa('orcamento')
+  if (admin && dadosOrcamento) {
+    blocos.push(
+      <EtapaCard
+        key="orcamento" T={T} dark={dark} corBase={azul}
+        icon="ti-receipt" titulo="Orçamento"
+        meta={dadosOrcamento}
+      >
+        <div style={{ fontSize: 11.5, color: T.textMuted }}>
+          Detalhes dos itens estão no bloco Orçamento acima.
+        </div>
+      </EtapaCard>
+    )
+  }
+
+  // === Em oficina ===
+  const dadosOficina = dadosEtapa('em_oficina')
+  if ((checkOficina.itens.length > 0 || dadosOficina) && !checkOficina.loading) {
+    const res = resumirChecklist(checkOficina.itens)
+    blocos.push(
+      <EtapaCard
+        key="oficina" T={T} dark={dark} corBase={azul}
+        icon="ti-tool" titulo="Em oficina"
+        meta={dadosOficina}
+      >
+        {res && (
+          <ChecklistResumo T={T} dark={dark} resumo={res}
+            verde={verde} vermelho={vermelho} />
+        )}
+        {checkOficina.observacoes && (
+          <Obs T={T} label="Observações da oficina" texto={checkOficina.observacoes} />
+        )}
+        {!res && !checkOficina.observacoes && (
+          <Vazio T={T} texto="Sem itens executados registrados." />
+        )}
+      </EtapaCard>
+    )
+  }
+
+  // === Teste final ===
+  const dadosTeste = dadosEtapa('teste_final')
+  if ((checkTeste.itens.length > 0 || dadosTeste || falhas.length > 0) && !checkTeste.loading) {
+    const res = resumirChecklist(checkTeste.itens)
+    blocos.push(
+      <EtapaCard
+        key="teste" T={T} dark={dark} corBase={azul}
+        icon="ti-flask" titulo="Teste final"
+        meta={dadosTeste}
+      >
+        {res && (
+          <ChecklistResumo T={T} dark={dark} resumo={res}
+            verde={verde} vermelho={vermelho} />
+        )}
+        {checkTeste.observacoes && (
+          <Obs T={T} label="Observações do teste" texto={checkTeste.observacoes} />
+        )}
+        {falhas.length > 0 && (
+          <FalhasBloco T={T} dark={dark} falhas={falhas} vermelho={vermelho} verde={verde} />
+        )}
+        {!res && !checkTeste.observacoes && falhas.length === 0 && (
+          <Vazio T={T} texto="Sem testes ou falhas registrados." />
+        )}
+      </EtapaCard>
+    )
+  }
+
+  // === Entrega ===
+  const dadosEntrega = dadosEtapa('entrega')
+  if (dadosEntrega) {
+    blocos.push(
+      <EtapaCard
+        key="entrega" T={T} dark={dark} corBase={azul}
+        icon="ti-truck-delivery" titulo="Entrega"
+        meta={dadosEntrega}
+      >
+        <Vazio T={T} texto="Detalhes da entrega (data/foto) ainda não persistem em colunas dedicadas." />
+      </EtapaCard>
+    )
+  }
+
+  // === Pagamento — só admin ===
+  const dadosPagamento = dadosEtapa('pagamento')
+  if (admin && (dadosPagamento || os.valor_pago > 0)) {
+    const pagaTotal = estaPagaTotal(os)
+    blocos.push(
+      <EtapaCard
+        key="pagamento" T={T} dark={dark} corBase={azul}
+        icon="ti-cash-banknote" titulo="Pagamento"
+        meta={dadosPagamento}
+      >
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8,
+          fontSize: 12, color: T.textSecondary,
+        }}>
+          <KV T={T} label="Valor pago" valor={fmtBRL(os.valor_pago || 0)}
+            cor={(os.valor_pago || 0) > 0 ? verde : T.textMuted} />
+          <KV T={T} label="Forma" valor={os.forma_pagamento || '—'} />
+          <KV T={T} label="Status" valor={pagaTotal ? 'Pago total' : (os.valor_pago > 0 ? 'Parcial' : 'Não pago')}
+            cor={pagaTotal ? verde : (os.valor_pago > 0 ? amarelo : T.textMuted)} />
+          <KV T={T} label="Saldo" valor={fmtBRL(Math.max(0, totalAPagar(os) - (os.valor_pago || 0)))}
+            cor={pagaTotal ? verde : amarelo} />
+        </div>
+      </EtapaCard>
+    )
+  }
+
+  // === Concluído ===
+  const dadosConcluido = dadosEtapa('concluido')
+  if (dadosConcluido) {
+    blocos.push(
+      <EtapaCard
+        key="concluido" T={T} dark={dark} corBase={verde}
+        icon="ti-circle-check" titulo="Concluído"
+        meta={dadosConcluido}
+      >
+        <Vazio T={T} texto={os.garantia
+          ? `OS de garantia (${os.garantia_dias || 90} dias).`
+          : `Garantia padrão de ${os.garantia_dias || 90} dias a partir desta data.`} />
+      </EtapaCard>
+    )
+  }
+
+  // === Recusado ===
+  const dadosRecusado = dadosEtapa('recusado')
+  if (dadosRecusado) {
+    blocos.push(
+      <EtapaCard
+        key="recusado" T={T} dark={dark} corBase={vermelho}
+        icon="ti-circle-x" titulo="Recusada"
+        meta={dadosRecusado}
+      >
+        <Vazio T={T} texto="OS recusada pelo cliente — ver decisão na aba Etapa." />
+      </EtapaCard>
+    )
+  }
+
+  // Estado de carregamento global (3 hooks)
+  const carregando = checkRecebido.loading || checkOficina.loading || checkTeste.loading
+
+  return (
+    <div className="idemaq-card" style={{
+      background: T.cardAlt, border: `1px solid ${T.border}`,
+      borderRadius: 9, padding: '12px 14px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+        <SectionLabel T={T} icon="ti-report" label="Relatório por etapa" />
+        <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+          {blocos.length} {blocos.length === 1 ? 'etapa registrada' : 'etapas registradas'}
+        </span>
+      </div>
+
+      {carregando && (
+        <div style={{
+          fontSize: 12, color: T.textMuted, textAlign: 'center', padding: '14px',
+        }}>
+          <i className="ti ti-loader" style={{ fontSize: 14, marginRight: 6, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
+          Carregando dados das etapas…
+        </div>
+      )}
+
+      {!carregando && blocos.length === 0 && (
+        <div style={{
+          fontSize: 12, color: T.textMuted, fontStyle: 'italic',
+          padding: '14px', textAlign: 'center',
+        }}>
+          Nenhuma etapa registrou dados ainda — preencha as ações da OS pra alimentar o relatório.
+        </div>
+      )}
+
+      {!carregando && blocos.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {blocos}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EtapaCard({ T, dark, corBase, icon, titulo, meta, children }) {
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 8, padding: '10px 12px',
+      borderLeft: `3px solid ${corBase}`,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+        marginBottom: 8,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <i className={`ti ${icon}`} style={{ fontSize: 15, color: corBase }} aria-hidden="true" />
+          <span style={{
+            fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+          }}>{titulo}</span>
+        </div>
+        {meta && (
+          <div style={{
+            fontSize: 10.5, color: T.textMuted,
+            display: 'flex', alignItems: 'center', gap: 5,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            <i className="ti ti-clock" style={{ fontSize: 11 }} aria-hidden="true" />
+            {fmtPrazoCurto(meta.data) || '—'}
+            {meta.responsavel && <span>· por {meta.responsavel}</span>}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function ChecklistResumo({ T, dark, resumo, verde, vermelho }) {
+  const { total, ok, problemas } = resumo
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          fontSize: 11, fontWeight: 600,
+          padding: '2px 7px', borderRadius: 10,
+          background: bgEtapa('green', false), color: verde,
+          border: `1px solid ${verde}33`,
+        }}>
+          <i className="ti ti-check" style={{ fontSize: 11 }} aria-hidden="true" />
+          {ok}/{total} OK
+        </span>
+        {problemas.length > 0 && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 11, fontWeight: 600,
+            padding: '2px 7px', borderRadius: 10,
+            background: bgEtapa('red', false), color: vermelho,
+            border: `1px solid ${vermelho}33`,
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 11 }} aria-hidden="true" />
+            {problemas.length} {problemas.length === 1 ? 'problema' : 'problemas'}
+          </span>
+        )}
+      </div>
+      {problemas.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {problemas.map((p, i) => (
+            <div key={i} style={{
+              fontSize: 11.5, color: T.textSecondary,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{
+                width: 5, height: 5, borderRadius: '50%',
+                background: vermelho, flexShrink: 0,
+              }} aria-hidden="true" />
+              <span>{p.label}{p.tipo ? ` — ${p.tipo}` : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FalhasBloco({ T, dark, falhas, vermelho, verde }) {
+  const abertas = falhas.filter(f => !f.resolvida)
+  const resolvidas = falhas.filter(f => f.resolvida)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 600, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 2,
+      }}>
+        Falhas registradas ({falhas.length})
+      </div>
+      {abertas.map(f => (
+        <div key={f.id} style={{
+          fontSize: 11.5, color: vermelho,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <i className="ti ti-circle-dot" style={{ fontSize: 11 }} aria-hidden="true" />
+          <span>{f.descricao}</span>
+        </div>
+      ))}
+      {resolvidas.map(f => (
+        <div key={f.id} style={{
+          fontSize: 11.5, color: T.textMuted,
+          display: 'flex', alignItems: 'center', gap: 6,
+          textDecoration: 'line-through',
+        }}>
+          <i className="ti ti-circle-check" style={{ fontSize: 11, color: verde }} aria-hidden="true" />
+          <span>{f.descricao}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Obs({ T, label, texto }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 10.5, fontWeight: 600, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 3,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 12, color: T.textSecondary, lineHeight: 1.45,
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+      }}>{texto}</div>
+    </div>
+  )
+}
+
+function Vazio({ T, texto }) {
+  return (
+    <div style={{
+      fontSize: 11.5, color: T.textMuted, fontStyle: 'italic',
+    }}>{texto}</div>
+  )
+}
+
+function KV({ T, label, valor, cor }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 10, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 2,
+      }}>{label}</div>
+      <div style={{
+        fontSize: 12.5, fontWeight: 600, color: cor || T.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{valor}</div>
     </div>
   )
 }

@@ -19,17 +19,17 @@ import { isAdmin } from '../../utils/osHelpers'
 import Header from './Header'
 import Footer from './Footer'
 import HistoricoPanel from './HistoricoPanel'
-import ResumoTab from './tabs/ResumoTab'
+import RelatorioTab from './tabs/RelatorioTab'
 import PagamentoTab from './tabs/PagamentoTab'
 import EtapaTab from './tabs/EtapaTab'
 
 // Aba inicial conforme a etapa atual da OS.
 // Etapa é a aba default — é onde a ação acontece pra etapa corrente.
 // Pagamento aparece como default só na etapa de Pagamento (onde a ação É receber).
-// Concluído/Recusado abrem em Resumo (não tem ação, só contexto).
+// Concluído/Recusado abrem em Relatório (não tem ação, só contexto).
 function abaInicial(etapa) {
   if (etapa === 'pagamento') return 'pagamento'
-  if (etapa === 'concluido' || etapa === 'recusado') return 'resumo'
+  if (etapa === 'concluido' || etapa === 'recusado') return 'relatorio'
   return 'etapa'
 }
 
@@ -120,7 +120,7 @@ export default function OSDetalhe({
             background: T.bg,
           }}>
             {aba === 'etapa'     && <EtapaTab {...tabProps} />}
-            {aba === 'resumo'    && <ResumoTab {...tabProps} />}
+            {aba === 'relatorio' && <RelatorioTab {...tabProps} />}
             {aba === 'pagamento' && <PagamentoTab {...tabProps} />}
           </div>
 

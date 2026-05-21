@@ -199,7 +199,7 @@ Linha 2 do header: foto da máquina + bloco info estruturado.
 ## 8. OSDetalhe — Tabs
 
 - **Etapa**: delega pra `acoes/AcaoXxx.jsx` baseado em `os.etapa` (10 Ações registradas em `EtapaTab.MAP`)
-- **Resumo**: contexto do caso (não duplica Cliente/Equipamento que já vivem no Header). Usa `RelatorioDiagnostico` compartilhado pro bloco de diagnóstico. Orçamento admin-only
+- **Relatório** (`RelatorioTab.jsx` — renomeado de `ResumoTab` em 21/05/2026): relatório completo da OS, etapa por etapa. Banners contextuais + mini-cards + diagnóstico + orçamento (admin) + **bloco "Relatório por etapa"** (lê do histórico real + 3 hooks de `useChecklistEtapa` recebido/oficina/teste + `useFalhaTeste`; renderiza card por etapa com data/responsável + dados específicos: checklist resumido, falhas abertas/resolvidas, KPIs de pagamento) + histórico recente + observações. Aba `id: 'relatorio'` (era `'resumo'`); `abaInicial('concluido'|'recusado')` retorna `'relatorio'`.
 - **Pagamento**: itens + recebimento (FormRecebimento real)
 
 ---
