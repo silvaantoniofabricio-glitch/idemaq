@@ -12,6 +12,7 @@ import {
   Modal, ModalHeader, Button, Input, Textarea,
   useToast,
 } from '../ui'
+import AddressInput from '../logistica/AddressInput'
 
 export default function NovoClienteModal({
   T, dark, mobile,
@@ -83,11 +84,11 @@ export default function NovoClienteModal({
           required
         />
 
-        <Input T={T} dark={dark}
+        <AddressInput
+          T={T} dark={dark}
           label="Endereço"
           value={form.endereco}
-          onChange={v => update('endereco', v)}
-          icon="ti-map-pin"
+          onChange={({ endereco }) => update('endereco', endereco)}
           placeholder="Rua, número, bairro"
         />
 

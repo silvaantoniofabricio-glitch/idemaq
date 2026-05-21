@@ -33,6 +33,7 @@ import {
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
 import Badge from '../components/ui/Badge'
+import AddressInput from '../components/logistica/AddressInput'
 import { OS_ITENS_MOCK } from '../_mocks/os'
 
 // ─── Constantes do redesign da Nova OS ──────────────────────────────────────
@@ -216,11 +217,13 @@ function NovoClienteModalCompleto({ T, dark, onClose, onSalvar, nomeInicial, mob
             <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Endereço 1</span>
             <span style={{ fontSize:10, color:cor(P.red, P.redDark), fontWeight:700 }}>OBRIGATÓRIO</span>
           </div>
-          <input value={form.enderecos[0] || ''} onChange={e=>updateEnd(0, e.target.value)} placeholder="Rua, número, bairro — cidade/UF" style={inputStyle} />
-          <div style={{ fontSize:10.5, color:T.textMuted, marginTop:4, display:'flex', alignItems:'center', gap:4 }}>
-            <i className="ti ti-map-search" style={{ fontSize:12 }} aria-hidden="true" />
-            Validado via Google Maps ao digitar
-          </div>
+          <AddressInput
+            T={T} dark={dark}
+            label=""
+            placeholder="Rua, número, bairro — cidade/UF"
+            value={form.enderecos[0] || ''}
+            onChange={({ endereco }) => updateEnd(0, endereco)}
+          />
 
           {/* Endereços extras */}
           {form.enderecos.slice(1).map((end, idx) => {
@@ -238,7 +241,13 @@ function NovoClienteModalCompleto({ T, dark, onClose, onSalvar, nomeInicial, mob
                     <i className="ti ti-trash" style={{ fontSize:13 }} aria-hidden="true" /> Remover
                   </button>
                 </div>
-                <input value={end} onChange={e=>updateEnd(realIdx, e.target.value)} placeholder="Rua, número, bairro — cidade/UF" style={inputStyle} />
+                <AddressInput
+                  T={T} dark={dark}
+                  label=""
+                  placeholder="Rua, número, bairro — cidade/UF"
+                  value={end}
+                  onChange={({ endereco }) => updateEnd(realIdx, endereco)}
+                />
               </div>
             )
           })}
