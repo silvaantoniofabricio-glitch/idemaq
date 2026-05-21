@@ -39,9 +39,10 @@
 - 🟡 UI mock (Módulo 07 do roadmap)
 
 ### Modais
-- ✅ `PecaDetalheModal`: barra estoque mín/atual/máx + custos/preço/margem + histórico de movimentações
+- ✅ `PecaDetalheModal`: barra estoque mín/atual/máx + custos/preço/margem + **histórico real** (peca_movimentacao, últimos 20) + botão "Ajustar estoque" → `AjusteEstoqueModal`
+- ✅ `AjusteEstoqueModal` (20/05/2026): ajuste manual de `qtd_atual` com motivo (contagem/perda/ganho/devolução/outro) + observação + preview do delta (ver §12)
 - ✅ `MaquinaDetalheModal`: breakdown de custo Compra/Itens/Serviço + itens da reforma + timeline
-- ✅ Flag `mostraValores = isAdmin(user)` esconde preços pra papéis não-dono
+- ✅ Flag `mostraValores = isAdmin(user)` esconde preços pra papéis não-dono e oculta o botão "Ajustar estoque" (funcionário não ajusta)
 
 ---
 
@@ -168,8 +169,10 @@ RLS no banco também protege os dados sensíveis (defesa em camadas).
 - Mapeia snake_case ↔ camelCase via `dbToUi`/`uiToDb`
 - CRUD: `criar` ✅, `atualizar` ✅ (consumido pelo `PecaDetalheModal`), `excluir` (soft) ✅
 - `atualizar(id, patch)` aceita patch parcial em camelCase, retorna `{ data, error }` com a linha atualizada
+- `ajustarEstoque(pecaId, { qtdNova, motivo, observacao })` ✅ (20/05/2026): UPDATE `qtd_atual` + INSERT em `peca_movimentacao` (tipo=`ajuste_manual`) — ver §12
 - `baixarItens(osId)` wrapper sobre `baixarItensDaOS` que dispara refetch após sucesso
-- Export named `baixarItensDaOS(osId)` standalone (usado pelo `useOS.js` sem precisar instanciar o hook) — idempotente via flag `os.itens_baixados`
+- Export named `baixarItensDaOS(osId)` standalone (usado pelo `useOS.js` sem precisar instanciar o hook) — idempotente via flag `os.itens_baixados`; também grava `peca_movimentacao` com `tipo='baixa_os'` por peça baixada
+- Helper `logMovimentacao({...})` standalone que silencia 42P01/PGRST205 (compat com bases sem sql/11)
 - 2ª query light separada pra KPIs/contagem global (não afetada pelo filtro)
 - Trata `modelos_compativeis` como array
 
@@ -201,7 +204,7 @@ Implementação client-side com **idempotência real via flag no banco**:
 **Race / re-conclusão**: a flag `os.itens_baixados` é claim-once. Drag duplicado, 2 dispositivos concorrentes, ou reabrir+concluir de novo: tudo cobre — só roda uma vez por OS na vida.
 
 **Pendentes**:
-- Tabela `peca_movimentacao(peca_id, delta, tipo, os_id, …)` pra histórico real (hoje o histórico do `PecaDetalheModal` ainda é mock)
+- ~~Tabela `peca_movimentacao`~~ ✅ feito 20/05/2026 (sql/11; pendente apenas Toni rodar no Supabase — ver §12)
 - Dropdown de peças no orçamento (`AcaoOrcamento`) pra preencher `peca_id` automaticamente
 
 Cruza com OS — ver `contexto-os.md`. Detalhe operacional + cuidados em `PENDENCIAS-ROTAS.md`.
