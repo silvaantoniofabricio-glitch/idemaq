@@ -8,7 +8,7 @@
 // não tem drag-and-drop em mobile. moverOS e updateOS são versões enxutas
 // da lógica do Kanban (reusam podeMoverOS + uiEtapaToDb pra ficar fiel).
 
-import React, { useState, useMemo, useRef } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
@@ -313,26 +313,51 @@ export default function OSMobile({ T, dark, user }) {
 }
 
 // ─── Abas por etapa ───────────────────────────────────────────────────────
+// Quando a aba ativa muda (por click OU swipe), a barra rola suavemente pra
+// centralizar a ativa no meio da tela. Layout fica:
+//   [anterior]  [ATIVA]  [próxima]   ← ativa sempre no centro
 function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
   const azul = dark ? '#5B9BD5' : '#5B9BD5'
   const corBadge = { yellow: '#b8860b', red: '#c04242', blue: '#5B9BD5', blueLight: '#5B9BD5', neutro: '#6b7280', green: '#2e7d5e' }
   const bgBadge  = { yellow: dark ? 'rgba(255,217,102,.18)' : '#fff8e1', red: dark ? 'rgba(255,107,107,.18)' : '#fff0f0', blue: dark ? 'rgba(91,155,213,.18)' : '#e8f0fb', blueLight: dark ? 'rgba(91,155,213,.18)' : '#e8f0fb', neutro: dark ? '#2a2d3a' : '#f0f2f5', green: dark ? 'rgba(46,125,94,.18)' : '#e8f8f0' }
+
+  const trilhoRef = useRef(null)
+  const abaRefs = useRef({})  // { [id]: HTMLButtonElement }
+
+  // Centraliza a aba ativa quando muda (click ou swipe).
+  useEffect(() => {
+    const trilho = trilhoRef.current
+    const ativoEl = abaRefs.current[ativa]
+    if (!trilho || !ativoEl) return
+    // Calcula o scrollLeft pra colocar o centro do botão no centro do trilho
+    const trilhoW = trilho.clientWidth
+    const alvoLeft = ativoEl.offsetLeft + (ativoEl.offsetWidth / 2) - (trilhoW / 2)
+    trilho.scrollTo({ left: Math.max(0, alvoLeft), behavior: 'smooth' })
+  }, [ativa, abas.length])
 
   return (
     <div style={{
       borderBottom: `1px solid ${T.border}`,
       flexShrink: 0,
     }}>
-      <div style={{
-        display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-        scrollbarWidth: 'none', padding: '0 14px',
-      }}>
+      <div
+        ref={trilhoRef}
+        className="idemaq-no-scrollbar"
+        style={{
+          display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          padding: '0 14px',
+          scrollSnapType: 'x proximity',
+        }}>
         {abas.map(aba => {
           const isAtiva = ativa === aba.id
           const cor = corBadge[aba.cor] || '#6b7280'
           const bg  = bgBadge[aba.cor]  || (dark ? '#2a2d3a' : '#f0f2f5')
           return (
-            <button key={aba.id} onClick={() => onSelect(aba.id)}
+            <button
+              key={aba.id}
+              ref={(el) => { if (el) abaRefs.current[aba.id] = el }}
+              onClick={() => onSelect(aba.id)}
               style={{
                 flexShrink: 0, padding: '10px 14px',
                 background: 'transparent', border: 'none',
@@ -343,6 +368,7 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
                 whiteSpace: 'nowrap',
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 transition: 'color .15s, border-color .15s',
+                scrollSnapAlign: 'center',
               }}>
               {aba.curto}
               <span style={{
