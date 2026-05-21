@@ -15,7 +15,7 @@ import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 
 // Centro default: Oficina Idemaq · Naviraí/MS
 const NAVIRAI_CENTER = { lat: -23.0653, lng: -54.1903 }
-const ZOOM_DEFAULT = 13
+const ZOOM_DEFAULT = 14
 
 // Cores Deutan + letra por tipo de parada
 const TIPO_VISUAL = {
@@ -167,9 +167,9 @@ export default function MapaLogistica({
     // Re-enquadra se tiver paradas válidas
     if (markersRef.current.length > 0) {
       mapaRef.current.fitBounds(bounds, 80)
-      // Limita zoom out absurdo quando há 1 ou 2 paradas perto
+      // Limita zoom in absurdo quando há 1 ou 2 paradas perto
       const listener = google.maps.event.addListenerOnce(mapaRef.current, 'idle', () => {
-        if (mapaRef.current.getZoom() > 15) mapaRef.current.setZoom(14)
+        if (mapaRef.current.getZoom() > 16) mapaRef.current.setZoom(15)
       })
     }
   }, [paradas, status])
