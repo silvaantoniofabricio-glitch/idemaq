@@ -4,7 +4,7 @@
 // Botões "Maps" abrem Google Maps diretamente via link público (sem chave de API).
 // Visível pra Dono + Alessandro (RLS no banco vai bloquear acesso pra Guilherme).
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import {
   Card, Button, Badge, Input, Tabs,
@@ -62,6 +62,12 @@ export default function Logistica({ T, dark }) {
   const [rotaDetalhe, setRotaDetalhe] = useState(null) // rota selecionada p/ edição
   const [osParaAdicionarARota, setOsParaAdicionarARota] = useState(null) // OS da sidebar selecionada
   const [paradaAvulsaAberta, setParadaAvulsaAberta] = useState(false) // modal de parada avulsa
+  // Slot fixo selecionado (Rota 1/2/3) — null = mostra todas. Filtra mapa + lista.
+  const [rotaSelecionadaId, setRotaSelecionadaId] = useState(null)
+  // Guard pra não criar as 3 rotas em loop enquanto o fetchAll converge
+  const criandoRotasRef = useRef(false)
+  // Avisa se a coluna `nome` ainda não existe no banco (sql/17 não rodado)
+  const [schemaNomeAusente, setSchemaNomeAusente] = useState(false)
   // OS "disponíveis" filtradas no Sidebar — atualizadas via callback junto com
   // lat/lng geocodados. Usadas pra plotar pins extras no mapa (tipo 'disponivel').
   const [osDisponiveisFiltradas, setOsDisponiveisFiltradas] = useState([])
@@ -77,22 +83,26 @@ export default function Logistica({ T, dark }) {
   const verde = corEtapa('green', dark)
 
   // Achata { rotas: [{ paradas: [...] }] } pra lista plana de paradas + data,
-  // mantendo o `rotaId` p/ chamar a mutação corretamente.
+  // mantendo o `rotaId` + `rotaNome` + `ordem` p/ filtros e pinos numerados.
   const paradas = useMemo(() => {
     const out = []
     for (const r of rotas) {
-      for (const p of (r.paradas || [])) {
+      const lista = Array.isArray(r.paradas) ? r.paradas : []
+      // Normaliza `ordem` baseado na posição no array, pra pinos do mapa
+      // sempre terem número mesmo se o campo `ordem` estiver inconsistente.
+      lista.forEach((p, idx) => {
         out.push({
           ...p,
           rotaId: r.id,
+          rotaNome: r.nome || null,
+          ordem: p.ordem ?? (idx + 1),
           data: r.data,
-          // aliases p/ o JSX abaixo (osNum/cliente/fone/horario):
           osNum: p.os_num,
           cliente: p.cliente_nome,
           fone: p.cliente_fone,
           horario: p.horario_previsto,
         })
-      }
+      })
     }
     return out
   }, [rotas])
@@ -104,10 +114,70 @@ export default function Logistica({ T, dark }) {
     return true
   }
 
+  // Data ISO ativa (hoje/amanhã). `null` quando filtro é "semana" — aí não
+  // faz sentido pré-criar slots de rota porque slot é por-dia.
+  const dataAtiva = filtroData === 'hoje' ? HOJE
+                  : filtroData === 'amanha' ? AMANHA
+                  : null
+
+  // Rotas da data ativa, ordenadas por nome (Rota 1, Rota 2, Rota 3 → criação).
+  const rotasDoDia = useMemo(() => {
+    if (!dataAtiva) return []
+    return rotas
+      .filter(r => r.data === dataAtiva)
+      .sort((a, b) => {
+        // Por nome primeiro (Rota 1 < Rota 2 < Rota 3), fallback por criado_em
+        const na = a.nome || 'zzz'
+        const nb = b.nome || 'zzz'
+        if (na !== nb) return na.localeCompare(nb)
+        return (a.criado_em || '').localeCompare(b.criado_em || '')
+      })
+  }, [rotas, dataAtiva])
+
+  // Garante que existem Rota 1 / Rota 2 / Rota 3 vazias pra dataAtiva.
+  // Se o sql/17-rota-nome.sql ainda não foi aplicado, a coluna `nome` não
+  // existe e o insert falha — capturamos isso e setamos `schemaNomeAusente`.
+  useEffect(() => {
+    if (!dataAtiva || tabelaAusente || criandoRotasRef.current || schemaNomeAusente) return
+    const NOMES = ['Rota 1', 'Rota 2', 'Rota 3']
+    const existentes = new Set(rotasDoDia.map(r => r.nome).filter(Boolean))
+    const faltam = NOMES.filter(n => !existentes.has(n))
+    if (faltam.length === 0) return
+
+    criandoRotasRef.current = true
+    ;(async () => {
+      try {
+        for (const nome of faltam) {
+          const res = await criarRota({
+            data: dataAtiva, nome, paradas: [],
+            status: 'planejada', motorista_id: null,
+          })
+          if (res?.error) {
+            const msg = (res.error.message || '').toLowerCase()
+            if (msg.includes('nome') && (msg.includes('column') || msg.includes('does not exist'))) {
+              setSchemaNomeAusente(true)
+              break
+            }
+          }
+        }
+      } finally {
+        criandoRotasRef.current = false
+      }
+    })()
+  }, [dataAtiva, rotasDoDia, tabelaAusente, schemaNomeAusente, criarRota])
+
+  // Reset rotaSelecionada quando muda de dia (id pertence a outro dia)
+  useEffect(() => {
+    if (rotaSelecionadaId && !rotasDoDia.some(r => r.id === rotaSelecionadaId)) {
+      setRotaSelecionadaId(null)
+    }
+  }, [rotasDoDia, rotaSelecionadaId])
+
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase()
     return paradas.filter(p => {
       if (!dataMatch(p)) return false
+      if (rotaSelecionadaId && p.rotaId !== rotaSelecionadaId) return false
       if (p.tipo === 'coleta'  && !verColetas)  return false
       if (p.tipo === 'entrega' && !verEntregas) return false
       if (q && !p.cliente.toLowerCase().includes(q)
@@ -115,7 +185,7 @@ export default function Logistica({ T, dark }) {
             && !String(p.osNum).includes(q)) return false
       return true
     })
-  }, [paradas, filtroData, verColetas, verEntregas, busca])
+  }, [paradas, filtroData, verColetas, verEntregas, busca, rotaSelecionadaId])
 
   const ordenadas = useMemo(() => {
     return [...filtradas].sort((a, b) => {
@@ -281,6 +351,10 @@ export default function Logistica({ T, dark }) {
             onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
             onAbrirOSDetalhe={(os) => abrirOSPorId(os.id)}
             onListaFiltrada={handleListaFiltrada}
+            rotasDoDia={rotasDoDia}
+            rotaSelecionadaId={rotaSelecionadaId}
+            onRotaSelecionada={setRotaSelecionadaId}
+            schemaNomeAusente={schemaNomeAusente}
           />
 
           {/* Lista de paradas das rotas */}
@@ -477,20 +551,24 @@ export default function Logistica({ T, dark }) {
             height={460}
             paradas={[
               // Paradas oficiais das rotas (coleta/entrega/cobrança/visita/avulsa)
+              // Quando uma rota está selecionada, esconde paradas das outras.
               ...paradas
                 .filter(p => p.lat != null && p.lng != null)
+                .filter(p => !rotaSelecionadaId || p.rotaId === rotaSelecionadaId)
                 .map(p => ({
                   lat: p.lat,
                   lng: p.lng,
                   tipo: p.tipo,
-                  label: `${p.tipo === 'avulsa' ? 'Avulsa' : `OS #${p.osNum}`} · ${p.cliente_nome || p.cliente || 'Sem cliente'}`,
+                  ordem: p.ordem, // pino mostra o número da ordem dentro da rota
+                  label: `${p.rotaNome ? p.rotaNome + ' · ' : ''}${p.tipo === 'avulsa' ? 'Avulsa' : `OS #${p.osNum}`} · ${p.cliente_nome || p.cliente || 'Sem cliente'}`,
                   onClick: () => {
                     const rotaAlvo = rotas.find(r => r.id === p.rotaId)
                     if (rotaAlvo) setRotaDetalhe(rotaAlvo)
                   },
                 })),
-              // OS "disponíveis" filtradas no Sidebar — pins tracejados (tipo 'disponivel')
-              ...osDisponiveisFiltradas
+              // OS "disponíveis" filtradas no Sidebar — pins tracejados.
+              // Só aparecem quando NÃO tem rota selecionada (modo "ver tudo").
+              ...(rotaSelecionadaId ? [] : osDisponiveisFiltradas
                 .filter(o => o.lat != null && o.lng != null)
                 .map(o => ({
                   lat: o.lat,
@@ -498,28 +576,31 @@ export default function Logistica({ T, dark }) {
                   tipo: 'disponivel',
                   label: `OS #${o.numero} · ${o.cliente_nome} · ${o.etapa_label}`,
                   onClick: () => abrirOSPorId(o.id),
-                })),
+                }))),
             ]}
           />
 
-          {/* (mantido fora do mapa pra não cobrir a UI do Google) */}
+          {/* Legenda (fora do mapa pra não cobrir a UI do Google) */}
           <div style={{ padding: '10px 14px', borderTop: `1px solid ${T.border}` }}>
-            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: T.textMuted, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: T.textMuted, flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i className="ti ti-arrow-down-circle" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
+                <i className="ti ti-circle-filled" style={{ fontSize: 12, color: '#5B9BD5' }} aria-hidden="true" />
                 Coleta
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i className="ti ti-truck-delivery" style={{ fontSize: 13, color: azulClaro }} aria-hidden="true" />
+                <i className="ti ti-circle-filled" style={{ fontSize: 12, color: '#8FBC55' }} aria-hidden="true" />
                 Entrega
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i className="ti ti-map-pin-question" style={{ fontSize: 13, color: '#1a3a6e' }} aria-hidden="true" />
-                Disponível (filtro do sidebar)
+                <i className="ti ti-circle-filled" style={{ fontSize: 12, color: '#B8CCE4' }} aria-hidden="true" />
+                Outro (cobrança/visita/avulsa)
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: T.textDim }}>
+                <i className="ti ti-circle-dashed" style={{ fontSize: 12, color: '#1a3a6e' }} aria-hidden="true" />
+                Disponível
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto', color: T.textDim }}>
-                <i className="ti ti-pin" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-                Naviraí · oficina marcada no mapa
+                Número no pino = ordem na rota
               </span>
             </div>
           </div>

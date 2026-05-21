@@ -5,6 +5,36 @@
 
 ---
 
+## 0a2. Sessão 21/05/2026 tarde — 3 slots de rota + mapa simplificado
+
+**Pedido do Toni:**
+1. As 3 rotas (Rota 1/2/3) já vêm abertas — só "encher" com OS.
+2. Essas 3 rotas viram filtro dentro de "OS disponíveis" — selecionar uma → ver só ela no mapa.
+3. Mapa simplificado: **3 cores** (coleta=azul, entrega=verde, outro=azulClaro) e pino mostra **número da ordem na rota** em vez de letra.
+
+**Entregue:**
+
+| Arquivo | Mudança |
+|---|---|
+| `sql/17-rota-nome.sql` | **NOVO (não aplicado).** ADD COLUMN `nome` + DROP UNIQUE antigo + UNIQUE (data, motorista_id, nome). Toni roda no Supabase pra ativar os slots automáticos. |
+| `MapaLogistica.jsx` | TIPO_VISUAL reduzido pra 3 cores efetivas (cobranca/visita/avulsa caem em azulClaro). `svgPin()` aceita `texto` em vez de `letra` fixa (suporta 1 ou 2 dígitos). Pino aceita `ordem` por parada → mostra número da ordem em vez de letra. |
+| `Logistica.jsx` | Auto-cria 3 rotas vazias (`Rota 1/2/3`) pra `dataAtiva` quando faltam. Fallback gracioso se a coluna `nome` ainda não existe (`schemaNomeAusente`). Estado `rotaSelecionadaId` filtra lista e pinos do mapa. Achata paradas injetando `ordem` (idx+1 se faltar) + `rotaNome`. Legenda do mapa reescrita pras 3 cores. |
+| `OSDisponiveisSidebar.jsx` | Topo do card ganha chips `Todas / Rota 1 / Rota 2 / Rota 3` (componente `<ChipRota>` interno) com contador de paradas por chip. Mostra "slots desabilitados" se o SQL ainda não rodou. |
+
+**Detalhes do auto-criar:**
+- Guard via `useRef` (`criandoRotasRef`) evita disparar `criarRota` em loop enquanto o `fetchAll()` converge.
+- Quando `criar({ nome })` retorna erro "column does not exist" → seta `schemaNomeAusente=true` e para de tentar (sem spam de erros).
+- Filtro "semana" (`dataAtiva === null`) não cria slots — slot é por-dia.
+- `rotaSelecionadaId` é resetado quando troca de data (id pertence a outro dia).
+
+**Como vai ficar quando o SQL `sql/17` rodar:**
+1. Abre `/logistica` em "Hoje" → 3 rotas vazias aparecem como chips na sidebar.
+2. Toni clica em uma OS pendente → `AdicionarOSARotaModal` abre → escolhe destino (Rota 1/2/3) → OS vira parada.
+3. Clica no chip "Rota 1" no topo da sidebar → mapa mostra só os pinos da Rota 1, numerados 1, 2, 3… conforme a ordem.
+4. "Todas" volta a mostrar tudo (paradas das 3 rotas + OS disponíveis tracejadas).
+
+---
+
 ## 0a. Sessão 21/05/2026 — Sincronização pós-refactor + fix de tipos
 
 Verifiquei que o refactor de planejamento da sessão `geral` (§0b) preservou os 3 arquivos entregues em §0:
