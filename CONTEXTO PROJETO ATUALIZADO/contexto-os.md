@@ -14,6 +14,7 @@
 - ✅ SELECT inclui `os_item(count)` (mapeado pro campo `itens`)
 - ✅ Filtra `cliente.deleted_at` em JS pós-fetch (outer join — fabricação tem `cliente_id NULL` e precisa aparecer)
 - ✅ Skeleton de 3 cards/coluna enquanto loading
+- ✅ **Scroll inteligente (21/05/2026)**: `handleWheel` rola horizontal o Kanban por padrão, mas se o cursor está sobre uma coluna lotada com barra própria e ainda dá pra rolar na direção do gesto, deixa a coluna rolar nativamente. Detalhe em §17.
 
 ### Nova OS (`src/_legacy/desktopKanbanModals.jsx`)
 - ✅ **Salva real** (19/05/2026 → commit em 20/05): busca cliente do Supabase com debounce **250ms** + ILIKE em nome/telefone + **mínimo 2 chars** + LIMIT 20
@@ -381,3 +382,35 @@ Helper `itensMarcadosDoDiag` + map `ITENS_DIAG`.
 **Atenção pra próximas sessões em `os`:**
 - O Header.jsx foi tocado pelo Toni no fim da sessão (linha 207 — removeu o `background: tipoCor + '08'` que vinha desde 18/05). Não revertir sem perguntar.
 - O Kanban.jsx também sofreu edição manual (dropdown unificado de filtros — `menuAberto: 'prazo' | 'resp' | 'tipos' | null` em vez dos botões inline). Não foi commit deste terminal — não mexer.
+
+---
+
+## 17. Fechamento sessão 21/05/2026 (terminal `os`)
+
+**Entregue:**
+
+1. **Scroll vertical na coluna lotada (`Kanban.jsx` · commit `264ab3e`)**
+   - Antes: girar a roda do mouse sempre virava scroll horizontal do Kanban — mesmo com cursor sobre coluna com barra própria.
+   - Agora: `handleWheel` sobe do `e.target` até `kanbanRef`. Se acha ancestral com `overflowY: auto/scroll` + `scrollHeight > clientHeight` E ainda dá pra rolar na direção do gesto (`scrollTop + clientHeight < scrollHeight` pra baixo, `scrollTop > 0` pra cima), deixa o browser rolar nativamente. Caso contrário (sem barra interna, ou já no topo/fundo), converte pra `scrollLeft += deltaY` igual antes.
+   - Gesto naturalmente horizontal (touchpad com `|deltaX| ≥ |deltaY|`) passa nativo sem interferência.
+
+2. **Aba Resumo → Relatório + bloco "Relatório por etapa" (`commit bb4d8db`)**
+   - **Renomeio**: `ResumoTab.jsx` → `RelatorioTab.jsx` (via `git mv` — histórico preservado). Componente exportado: `RelatorioTab`. Aba: `id` `'resumo'` → `'relatorio'`, `label` "Resumo" → "Relatório", `icon` `ti-info-circle` → `ti-report`. `abaInicial('concluido'|'recusado')` retorna `'relatorio'`.
+   - **Novo bloco `RelatorioPorEtapaBloco`** no fim do `RelatorioTab.jsx`. Carrega 3 hooks de checklist (`useChecklistEtapa` × `recebido` / `em_oficina` / `teste_final`) + `useFalhaTeste`. Render condicional: só monta `EtapaCard` pra etapa que tem dado registrado (checklist preenchido, falha registrada, evento no histórico, valor_pago > 0).
+   - **Cada `EtapaCard`** (borda lateral colorida + ícone + título + meta data/responsável):
+     - **Recebido / Oficina / Teste**: `ChecklistResumo` (badge `X/Y OK` verde + badge `N problemas` vermelho + lista dos itens com `valor === 'defeito'|'barulho'`) + observações da etapa.
+     - **Diagnóstico**: causa apontada (`os.diagnostico?.causa`) ou ponteiro pro RelatorioDiagnostico acima.
+     - **Orçamento** (admin-only): ponteiro pro bloco de orçamento acima (sem duplicar lista).
+     - **Pagamento** (admin-only): grid 2×2 com Valor pago / Forma / Status / Saldo.
+     - **Concluído** (verde): nota de garantia (90 dias ou customizado).
+     - **Recusada** (vermelho): pointer pra decisão na aba Etapa.
+   - Estado vazio: "Nenhuma etapa registrou dados ainda — preencha as ações da OS pra alimentar o relatório."
+   - **Hook strategy**: 3 `useChecklistEtapa` + `useFalhaTeste` rodam sempre que o RelatorioTab monta (4 queries extras por abertura de OS na aba Relatório). Cada hook é silent quando `osId` não é UUID (rascunho). Se virar gargalo, dá pra mover pra carregamento lazy on-demand por etapa.
+
+**Pendências que ficaram (não bloqueantes):**
+- Dados da etapa Entrega ainda não persistem em colunas dedicadas (`entrega_data`, `entrega_hora`, `entrega_responsavel`, `entrega_obs`). EtapaCard de Entrega mostra "Detalhes ainda não persistem em colunas dedicadas". Quando criar essas colunas, atualizar `RelatorioPorEtapaBloco` pra mostrar.
+- `os.diagnostico?.causa` ainda vive em memória (não há coluna). EtapaCard de Diagnóstico só mostra causa se estiver no estado in-session — após refresh, cai pro fallback.
+
+**Atenção pra próximas sessões em `os`:**
+- `RelatorioTab.jsx` é arquivo grande agora (~700 linhas). Se for evoluir o relatório (PDF, export, mais detalhe por etapa), considerar split em sub-componentes em `osDetalhe/relatorio/`.
+- Mudanças do scroll horizontal e do bloco "Relatório por etapa" são independentes — qualquer revert pontual de uma não afeta a outra.
