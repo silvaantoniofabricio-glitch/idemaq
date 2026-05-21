@@ -79,23 +79,20 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden', flex: 1, minWidth: 0 }}>
             {expanded ? (
-              // Logo oficial — em light mode, LogoIdemaq tinge o branco "Ide" de azul marinho.
+              // Logo inteira (em light mode, LogoIdemaq tinge o branco "Ide" de azul marinho).
               <LogoIdemaq
                 dark={dark}
+                variant="full"
                 style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block' }}
               />
             ) : (
-              // Versão compacta (slot 56px): mantém o quadradinho azul + ícone
-              // até termos uma marca quadrada da Idemaq pra substituir.
-              <div style={{
-                width: 28, height: 28,
-                background: `linear-gradient(135deg,${P.blue},#3a7bbf)`,
-                borderRadius: 7,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <i className="ti ti-tool" style={{ fontSize: 14, color: '#fff' }} aria-hidden="true" />
-              </div>
+              // Slot 56px → mostra só o símbolo (engrenagem/globo verde) cropado
+              // automaticamente pelo LogoIdemaq via detecção de bbox da metade esquerda.
+              <LogoIdemaq
+                dark={dark}
+                variant="symbol"
+                style={{ height: 32, width: 'auto', maxWidth: 36, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+              />
             )}
           </div>
           {expanded && (
