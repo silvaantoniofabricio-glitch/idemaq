@@ -85,6 +85,23 @@ export default function MapaLogistica({
           mapTypeControl: false,
           fullscreenControl: true,
           zoomControl: true,
+          clickableIcons: false, // POIs não clicáveis (evita popup ao errar)
+          styles: [
+            // Esconde restaurantes, hotéis, postos, comércio, parques, etc
+            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+            // Esconde paradas de ônibus, estações de metrô, etc
+            { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+            // Esconde escolas/hospitais/governo (ainda dentro de poi mas separado)
+            { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+            { featureType: 'poi.medical', stylers: [{ visibility: 'off' }] },
+            { featureType: 'poi.school', stylers: [{ visibility: 'off' }] },
+            { featureType: 'poi.government', stylers: [{ visibility: 'off' }] },
+            { featureType: 'poi.attraction', stylers: [{ visibility: 'off' }] },
+            { featureType: 'poi.place_of_worship', stylers: [{ visibility: 'off' }] },
+            { featureType: 'poi.sports_complex', stylers: [{ visibility: 'off' }] },
+            // Mantém parques visíveis (verde do mapa) mas sem ícones
+            { featureType: 'poi.park', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+          ],
         })
 
         // Marcador fixo da oficina (sempre visível) — pin laranja com "O"
