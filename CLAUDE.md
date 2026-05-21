@@ -223,7 +223,7 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | Kanban (OS) | ✅ Real + Realtime + Garantia + Recusada→Fabricação | — |
 | OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + FormClienteEdit + FormEquipamentoEdit (20/05) | — |
 | Clientes | ✅ Real (782) + modal lista OS | — |
-| Logística | ✅ Real (rota + Places) + NovaRotaModal + RotaDetalheModal com DnD (20/05) | Setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
+| Logística | ✅ Reformulada como ferramenta de planejamento (20/05 noite): mapa real + sidebar OS Disponíveis + AdicionarOSARota (5 tipos + limite 2C+2E) + parada Avulsa + click no card abre OSDetalhe inline | — |
 | Estoque | ✅ Real (680) + ajuste manual + histórico real (`peca_movimentacao` aplicado 20/05) | — |
 | Financeiro | ✅ Real + OS→Financeiro + NovoLanc (avulso/parcelado/recorrente) + edição inline (20/05) | — |
 | Relatórios | ✅ 7 reais (DRE + Funcionários + Relógio de Ponto ligados ao Supabase 20/05) | Deploy da edge function `relatorio-ia` pra destravar análise IA |
@@ -231,8 +231,8 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | Ponto | ✅ Schema aplicado + hook + componentes (20/05) | Funcionários começarem a bater pra povoar o histórico |
 | Schema parte 2 | ✅ Todos aplicados (01/05/06/07/08/09/10/11) | — |
 | Storage idemaq-privado | ✅ Bucket criado + foto coleta plugada (20/05) | — |
-| Env vars Vercel | ✅ Código pronto, fallback hardcoded até Toni setar no Vercel (20/05) | Toni adicionar `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` no painel Vercel |
-| Edge function `relatorio-ia` | ✅ Código pronto + guia em `docs/deploy-edge-function-ia.md` | Toni rodar `supabase functions deploy` (~5 min) |
+| Env vars Vercel | ✅ Supabase URL+key setadas em prod (20/05 noite) + `VITE_GOOGLE_MAPS_KEY` setada com bootstrap loader oficial | — |
+| Edge function `relatorio-ia` | ✅ Código pronto + guia em `docs/deploy-edge-function-ia.md` | Toni rodar `supabase functions deploy` quando topar criar conta Anthropic |
 | Google Maps Places | ✅ Guia em `docs/setup-google-maps.md` | Toni criar API key + setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
 
 ---

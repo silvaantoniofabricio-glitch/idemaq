@@ -31,6 +31,7 @@
 - ✅ **Schema parte 2 plugado (19/05/2026)**: checklist de Recebido / Em oficina / Teste final persistido em `checklist_etapa`; falhas de teste em `falha_teste` (substituiu jsonb em memória `os.teste_falhas`)
 - ✅ **OS de garantia funcional (19/05/2026)**: botão em AcaoConcluido cria OS nova via `criarOSDerivada()` (atendimento + garantia=true + valor 0 + 90 dias)
 - ✅ **Recusada → Fabricação refeito (19/05/2026)**: agora cria OS NOVA com `os_origem_id`, preservando o cliente na OS original (em vez de UPDATE in-place)
+- ✅ **OSDetalhe acessível de outras páginas (20/05/2026 noite)**: novo hook `src/hooks/useOSDetalheModal.js` encapsula `useOS` + `useUsuarios` + auth + callbacks (`moverOS`, `updateOS`, `excluirOS`, `toggleAgPecaOS`). Retorna `{ abrirOSPorNumero, abrirOSPorId, modalProps }`. 1º consumidor: `Logistica.jsx` (click no card da sidebar abre OSDetalhe inline). Lógica é cópia da do Kanban — refator futuro pode unificar.
 
 **Campos persistidos hoje** (via `updateOS`):
 - Financeiro: `valor_total`, `desconto`, `valor_pago`, `pago`, `forma_pagamento`
@@ -326,6 +327,7 @@ Helper `itensMarcadosDoDiag` + map `ITENS_DIAG`.
 - **Estoque**: ✅ baixa automática ao concluir OS (20/05/2026) — `useOS.updateOS` dispara `baixarEstoqueAoConcluir(osId, osNumero)` fire-and-forget na transição pra `concluido`, que chama `baixarItensDaOS(osId)` de `usePecas.js`. **Idempotente** via claim atômico `UPDATE os SET itens_baixados=true WHERE itens_baixados=false`. Decremento via `os_item.peca_id` (avulsos com peca_id NULL são ignorados). Pré-requisito: aplicar `sql/07-os-itens-baixados.sql` no SQL Editor do Supabase. Categorias de peça espelham `ITENS_DIAG`. Ver `contexto-estoque.md` §9
 - **Financeiro**: pagamento gera lançamento em `lancamento_financeiro` (schema parte 2 pendente). Ver `contexto-financeiro.md`
 - **Geral / cross-area**: ✅ `checklist_etapa` + `falha_teste` aplicados (19/05/2026 via sql/05). `retorno_garantia` ainda pendente.
+- **Histórico pré-sistema (Trello)**: export completo em `Base de dados clientes Bling/areadetrabalho95498714_20260519_035333/` — board `serviços` tem **1012 cards** com Telefone/Endereço/Valor/Data Entrada/Data Saída. Ainda não importado pra `os`. Telefone é chave pra cruzar com `cliente`. Decisão de schema pendente (retroativo na tabela `os` vs tabela separada `os_historico_trello`). Ver `contexto-clientes.md §4b`.
 
 ---
 

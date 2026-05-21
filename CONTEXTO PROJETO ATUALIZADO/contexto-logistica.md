@@ -5,6 +5,59 @@
 
 ---
 
+## 0b. Sessão 20/05/2026 noite — Logística virou ferramenta de planejamento
+
+**Reformulação conceitual (sessão `geral`):**
+
+A página `/logistica` deixou de ser "criar rotas avulsas" pra virar ferramenta de **PLANEJAMENTO** — decidir o que cabe junto em cada ida/volta do carro. Rotas ainda existem como entidade (tabela `rota` mantida), mas a UI agora orbita em torno das OS pendentes e do mapa.
+
+**Entregue em 6 commits sequenciais:**
+
+| Commit | O quê |
+|---|---|
+| `6c435b9` | Mapa real Google Maps centrado em Naviraí-MS (substituiu placeholder) |
+| `c74b2d2` | Bootstrap loader oficial (fix race condition `script.onload` antes do `importLibrary` ficar pronto) |
+| `b5c4786` | Sidebar `OSDisponiveisSidebar` + hook `useOSLogistica` (4 etapas + Pagamento) |
+| `9ea8ccd` | Modal `AdicionarOSARotaModal` com 4 tipos (coleta/entrega/cobrança/visita) + validação 2C+2E |
+| `9c0faa3` | Pinos coloridos no mapa por tipo de parada + parada Avulsa (5º tipo) |
+| `d060392` | Sidebar movida pra coluna esquerda do grid (mesma posição da lista de rotas) |
+| `76697d7` | Mapa esconde POIs (restaurantes, hotéis, transit) — visual limpo |
+| `6b05a98` | Click no card da sidebar abre `OSDetalhe` inline (via `useOSDetalheModal`) |
+
+**Conceito de Rota refinado:**
+
+Rota = 1 ida/volta do carro com até **2 coletas + 2 entregas** (limite físico — carro cabe 2 máquinas). Tipos de parada:
+
+| Tipo | Vem de | Conta no limite 2+2? | Quando usar |
+|---|---|---|---|
+| Coleta | OS em `agendamento` | ✅ Sim | Buscar máquina do cliente |
+| Entrega | OS em `entrega` | ✅ Sim | Devolver máquina pronta |
+| Cobrança | OS em `pagamento` | ❌ Não | Passar pra receber, sem mover máquina |
+| Visita | OS em qualquer das 4 etapas logísticas | ❌ Não | Manutenção rápida no local |
+| Avulsa | Manual (sem OS) | ❌ Não | Loja de peça, posto, almoço, etc |
+
+**`tipo` no jsonb `paradas`** ganhou 3 valores novos além do `coleta|entrega` original: `cobranca`, `visita`, `avulsa`. Schema do banco (`sql/06`) NÃO precisou mudar — jsonb aceita qualquer string.
+
+**Arquivos novos:**
+
+| Arquivo | Função |
+|---|---|
+| `src/hooks/useOSLogistica.js` | Busca OS nas etapas relevantes (`aguardando_agendamento`, `agendamento`, `teste_final`, `entrega` + opcional `pagamento`). Exporta `tipoParadaPorEtapa()` e `FILTROS_ETAPA_LOGISTICA`. |
+| `src/hooks/useOSDetalheModal.js` | Encapsula `useOS` + `useUsuarios` + auth + callbacks pra renderizar `<OSDetalhe>` em qualquer página. Hoje usado na Logística; futuramente Kanban também (refator opcional). |
+| `src/components/logistica/MapaLogistica.jsx` | Google Map com Bootstrap Loader. Marker da oficina sempre laranja "O". Aceita `paradas` com `{ lat, lng, tipo, label, onClick? }` → pinos SVG coloridos com letra (C/E/$/V/A). `clickableIcons: false` + styles escondem POIs. `fitBounds` automático quando paradas mudam. |
+| `src/components/logistica/OSDisponiveisSidebar.jsx` | Lista de OS pendentes com chips de filtro (5 etapas). Default: 4 marcadas, Pagamento desmarcado. Click no nome → `onAbrirOSDetalhe`. Botão "+ Rota" → `onSelecionarOS`. |
+| `src/components/logistica/AdicionarOSARotaModal.jsx` | Modal de adicionar OS (ou parada avulsa) a uma rota. Modo `'os'` ou `'avulsa'`. Em modo avulsa esconde chips de tipo e mostra form (nome + AddressInput). Valida limite 2C+2E. |
+
+**Botão "Parada avulsa" novo no header** da página — abre o `AdicionarOSARotaModal` em modo avulsa direto.
+
+**Limitação conhecida MVP:**
+
+- OS sem lat/lng (campo `cliente.endereco` ainda é texto livre) **não aparecem no mapa**. Aparecem na sidebar e na lista de paradas. Quando endereço for editado via `AddressInput`, ganha coords automático.
+- Click em pino do mapa abre `RotaDetalheModal` da rota mãe (não a OS individual).
+- "Rotas de Hoje/Amanhã/Semana" — os chips de filtro já existiam, não mexi nessa parte (continua funcionando como antes).
+
+---
+
 ## 0. Sessão 20/05/2026 — UI de criação/edição de rota (drag-and-drop)
 
 **Entregue (commit `c1a774d`):**
