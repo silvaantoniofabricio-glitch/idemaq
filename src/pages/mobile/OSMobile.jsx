@@ -33,7 +33,15 @@ export default function OSMobile({ T, dark, user }) {
     zona: 'todos',
     tipos: new Set(['atendimento', 'fabricacao', 'venda']),
   })
-  const [etapaAba, setEtapaAba] = useState('todas')
+  // Etapa selecionada nas abas. Sempre tem que existir uma (regra de UX).
+  // Estado inicial:
+  //  - lê do localStorage se houver entrada válida
+  //  - senão começa null e o useEffect logo abaixo seta a primeira aba
+  //    disponível assim que `abasDisponiveis` carrega.
+  const ETAPA_STORAGE_KEY = 'idemaq.osmobile.etapaAba'
+  const [etapaAba, setEtapaAba] = useState(() => {
+    try { return localStorage.getItem(ETAPA_STORAGE_KEY) || null } catch { return null }
+  })
   const [osAberta, setOsAberta] = useState(null)
 
   // ─── Filtragem ─────────────────────────────────────────────────────────────
@@ -81,10 +89,11 @@ export default function OSMobile({ T, dark, user }) {
     const abasDisponiveis = ETAPAS_TODOS.filter(e => contadores[e.id] > 0)
       .map(e => ({ ...e, count: contadores[e.id] }))
 
-    // Se a aba selecionada sumiu (ex: mudou filtro de zona), volta pra "todas"
-    const abaValida = etapaAba === 'todas' || abasDisponiveis.some(a => a.id === etapaAba)
-
-    const osExibidas = (abaValida && etapaAba !== 'todas')
+    // Filtra a lista pela aba ativa. Se a aba não casa com nenhuma disponível
+    // (ainda decidindo, ou trocou filtro e a anterior sumiu), mostra tudo
+    // enquanto o useEffect abaixo escolhe a nova etapa default.
+    const abaValida = etapaAba && abasDisponiveis.some(a => a.id === etapaAba)
+    const osExibidas = abaValida
       ? osFiltradas.filter(os => {
           const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
           return uni?.id === etapaAba
@@ -93,6 +102,22 @@ export default function OSMobile({ T, dark, user }) {
 
     return { abasDisponiveis, osExibidas }
   }, [osFiltradas, etapaAba])
+
+  // Garante que uma etapa sempre fica selecionada — regra de UX. Roda quando
+  // abasDisponiveis muda (load inicial, troca de filtro/zona, novo dado via
+  // Realtime). Mantém a salva no localStorage se ainda existir; senão cai pra
+  // primeira aba disponível.
+  useEffect(() => {
+    if (abasDisponiveis.length === 0) return
+    if (etapaAba && abasDisponiveis.some(a => a.id === etapaAba)) return
+    setEtapaAba(abasDisponiveis[0].id)
+  }, [abasDisponiveis, etapaAba])
+
+  // Persiste a etapa escolhida pra próxima entrada na página.
+  useEffect(() => {
+    if (!etapaAba) return
+    try { localStorage.setItem(ETAPA_STORAGE_KEY, etapaAba) } catch {}
+  }, [etapaAba])
 
   // ─── Atualização genérica de campos (usada pelas ações do OSDetalhe) ───────
   // UI sempre recebe patch completo (optimistic). Persistência filtrada via
@@ -249,7 +274,7 @@ export default function OSMobile({ T, dark, user }) {
           T={T} dark={dark}
           abas={abasDisponiveis}
           ativa={etapaAba}
-          onSelect={id => setEtapaAba(prev => prev === id ? 'todas' : id)}
+          onSelect={id => setEtapaAba(id)}
         />
       )}
 
