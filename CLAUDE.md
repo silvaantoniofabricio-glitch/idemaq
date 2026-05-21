@@ -42,6 +42,7 @@ Cada terminal tem env var `IDEMAQ_TERMINAL` + um doc dedicado em `CONTEXTO PROJE
 | `painel` | Painel Idemaq | `contexto-painel.md` | Dashboard executivo (DONO) |
 | `painel_func` | Painel Funcionários | `contexto-painel-func.md` | Painel operacional (funcionário — não implementado) |
 | `relatorios` | Relatórios Idemaq | `contexto-relatorios.md` | 6 relatórios + 2 com Claude API |
+| `vendas` | Vendas (histórico de OS) | `contexto-vendas.md` | Lista flat de todas as OS + importação CSV |
 | `ponto` | Ponto Idemaq | `contexto-ponto.md` | Relógio de ponto (especificação completa em `idemaq-modulo-ponto-CLAUDE-CODE.md`) |
 | `geral` | Geral Idemaq | _(só este CLAUDE.md)_ | Coringa cross-area, sem foco fixo |
 
@@ -224,6 +225,7 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + FormClienteEdit + FormEquipamentoEdit (20/05) | — |
 | Clientes | ✅ Real (782) + modal lista OS | — |
 | Logística | ✅ Reformulada como ferramenta de planejamento (20/05 noite): mapa real + sidebar OS Disponíveis + AdicionarOSARota (5 tipos + limite 2C+2E) + parada Avulsa + click no card abre OSDetalhe inline | — |
+| Vendas (histórico OS) | 🔴 Não implementado | Sessão 21/05+: criar `/vendas` admin-only (lista + filtros + KPIs + modal "Nova OS antiga"); Onda 2: importação CSV Bling/Trello |
 | Estoque | ✅ Real (680) + ajuste manual + histórico real (`peca_movimentacao` aplicado 20/05) | — |
 | Financeiro | ✅ Real + OS→Financeiro + NovoLanc (avulso/parcelado/recorrente) + edição inline (20/05) | — |
 | Relatórios | ✅ 7 reais (DRE + Funcionários + Relógio de Ponto ligados ao Supabase 20/05) | Deploy da edge function `relatorio-ia` pra destravar análise IA |
