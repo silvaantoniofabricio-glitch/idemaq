@@ -5,6 +5,7 @@
 // Visível pra Dono + Alessandro (RLS no banco vai bloquear acesso pra Guilherme).
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useIsMobile } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import {
   Card, Button, Badge, Input,
@@ -117,6 +118,7 @@ function PillPeriodo({ T, dark, ativo, onClick, children }) {
 export default function Logistica({ T, dark }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
+  const isMobile = useIsMobile()
   const {
     rotas, loading, error, tabelaAusente,
     concluirParada: concluirParadaHook,
@@ -137,6 +139,9 @@ export default function Logistica({ T, dark }) {
   const [paradaAvulsaAberta, setParadaAvulsaAberta] = useState(false) // modal de parada avulsa
   // Slot fixo selecionado (Rota 1/2/3) — null = mostra todas. Filtra mapa + lista.
   const [rotaSelecionadaId, setRotaSelecionadaId] = useState(null)
+  // Aba ativa no mobile (desktop ignora). 3 seções não cabem lado a lado em 360px,
+  // então viram tabs: mapa cheio | lista cheia | OS disponíveis cheio.
+  const [abaMobile, setAbaMobile] = useState('mapa')
   // Guard pra não criar as 3 rotas em loop enquanto o fetchAll converge
   const criandoRotasRef = useRef(false)
   // Avisa se a coluna `nome` ainda não existe no banco (sql/17 não rodado)
@@ -355,16 +360,16 @@ export default function Logistica({ T, dark }) {
 
   return (
     <div style={{
-      padding: '20px 24px 32px',
+      padding: isMobile ? '12px 12px 88px' : '20px 24px 32px',
       overflowY: 'auto',
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      gap: 14,
+      gap: isMobile ? 10 : 14,
     }}>
       <PageHeader T={T} dark={dark}
         title="Logística"
-        subtitle={tituloFiltro}
+        subtitle={isMobile ? undefined : tituloFiltro}
         actions={
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <IconButton T={T} dark={dark}
@@ -377,23 +382,31 @@ export default function Logistica({ T, dark }) {
               title="Abrir rota completa no Google Maps"
               onClick={abrirRotaCompleta}
             />
-            <Button T={T} dark={dark} variant="primary" size="sm" iconLeft="ti-plus" onClick={() => setNovaRotaAberta(true)}>
-              Nova rota
-            </Button>
+            {!isMobile && (
+              <Button T={T} dark={dark} variant="primary" size="sm" iconLeft="ti-plus" onClick={() => setNovaRotaAberta(true)}>
+                Nova rota
+              </Button>
+            )}
           </div>
         }
       />
 
-      {/* Toolbar magra (sem Card) — período + busca + contador inline */}
+      {/* Toolbar magra (sem Card) — período + busca + contador inline.
+          Mobile: período full-width em cima, busca embaixo, contador some. */}
       <div style={{
-        display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
-        padding: '6px 4px',
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 6 : 12,
+        alignItems: isMobile ? 'stretch' : 'center',
+        flexWrap: 'wrap',
+        padding: isMobile ? '0 2px' : '6px 4px',
       }}>
         <div style={{
           display: 'flex', gap: 2,
           padding: 2,
           background: T.cardAlt,
           borderRadius: 999,
+          alignSelf: isMobile ? 'flex-start' : 'auto',
         }}>
           {FILTROS_DATA.map(f => (
             <PillPeriodo
@@ -405,45 +418,103 @@ export default function Logistica({ T, dark }) {
           ))}
         </div>
 
-        <div style={{ flex: 1, minWidth: 220, maxWidth: 380 }}>
+        <div style={{
+          flex: isMobile ? 'none' : 1,
+          width: isMobile ? '100%' : undefined,
+          minWidth: isMobile ? 0 : 220,
+          maxWidth: isMobile ? '100%' : 380,
+        }}>
           <Input T={T} dark={dark}
             value={busca}
             onChange={setBusca}
             icon="ti-search"
-            placeholder="Buscar cliente, endereço ou nº OS…"
+            placeholder={isMobile ? 'Buscar…' : 'Buscar cliente, endereço ou nº OS…'}
             size="sm"
           />
         </div>
 
-        {/* Contador inline (substitui os 4 stats grandes do header) */}
-        <div style={{
-          marginLeft: 'auto',
-          display: 'flex', alignItems: 'center', gap: 14,
-          fontSize: 11.5, color: T.textMuted,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          <span><strong style={{ color: T.textPrimary, fontWeight: 600 }}>{ordenadas.length}</strong> {ordenadas.length === 1 ? 'parada' : 'paradas'}</span>
-          {pendentes > 0 && (
-            <span style={{ color: corEtapa('yellow', dark) }}>
-              {pendentes} pendente{pendentes === 1 ? '' : 's'}
-            </span>
-          )}
-          {concluidas > 0 && (
-            <span style={{ color: verde }}>
-              {concluidas} concluída{concluidas === 1 ? '' : 's'}
-            </span>
-          )}
-        </div>
+        {/* Contador inline — só no desktop (no mobile vai pras tabs como badge) */}
+        {!isMobile && (
+          <div style={{
+            marginLeft: 'auto',
+            display: 'flex', alignItems: 'center', gap: 14,
+            fontSize: 11.5, color: T.textMuted,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            <span><strong style={{ color: T.textPrimary, fontWeight: 600 }}>{ordenadas.length}</strong> {ordenadas.length === 1 ? 'parada' : 'paradas'}</span>
+            {pendentes > 0 && (
+              <span style={{ color: corEtapa('yellow', dark) }}>
+                {pendentes} pendente{pendentes === 1 ? '' : 's'}
+              </span>
+            )}
+            {concluidas > 0 && (
+              <span style={{ color: verde }}>
+                {concluidas} concluída{concluidas === 1 ? '' : 's'}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Tabs mobile — Mapa / Lista / OS Disponíveis. Cada uma toma tela inteira. */}
+      {isMobile && (
+        <div style={{
+          display: 'flex', gap: 2, padding: 3,
+          background: T.cardAlt, borderRadius: 999,
+        }}>
+          {[
+            { id: 'mapa',  label: 'Mapa',  icon: 'ti-map' },
+            { id: 'lista', label: 'Lista', icon: 'ti-list', badge: ordenadas.length },
+            { id: 'os',    label: 'OS',    icon: 'ti-search' },
+          ].map(t => {
+            const ativo = abaMobile === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setAbaMobile(t.id)}
+                style={{
+                  flex: 1, padding: '8px 0', borderRadius: 999,
+                  border: 'none',
+                  background: ativo ? T.card : 'transparent',
+                  color: ativo ? azul : T.textMuted,
+                  fontWeight: ativo ? 600 : 500,
+                  fontSize: 12, fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  boxShadow: ativo ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
+                  transition: 'background .12s, color .12s, box-shadow .12s',
+                }}
+              >
+                <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
+                {t.label}
+                {t.badge != null && t.badge > 0 && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700,
+                    padding: '1px 6px', borderRadius: 8,
+                    background: ativo ? azul : T.textDim,
+                    color: '#fff',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>{t.badge}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(380px, 1fr) 1.1fr',
-        gap: 14,
+        gridTemplateColumns: isMobile ? '1fr' : 'minmax(380px, 1fr) 1.1fr',
+        gap: isMobile ? 10 : 14,
         alignItems: 'start',
       }}>
-        {/* Coluna esquerda — OS disponíveis (planejamento) + lista de paradas/rotas */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Coluna esquerda — OS disponíveis (planejamento) + lista de paradas/rotas.
+            Mobile: cada filha controlada pela aba (Lista | OS). */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 14,
+        }}>
+          {/* Sub-bloco da Sidebar — visible se desktop OU aba 'os' */}
+          <div style={{ display: isMobile && abaMobile !== 'os' ? 'none' : 'block' }}>
           <OSDisponiveisSidebar
             T={T} dark={dark}
             onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
@@ -454,7 +525,10 @@ export default function Logistica({ T, dark }) {
             onRotaSelecionada={setRotaSelecionadaId}
             schemaNomeAusente={schemaNomeAusente}
           />
+          </div>
 
+          {/* Sub-bloco da Lista — visible se desktop OU aba 'lista' */}
+          <div style={{ display: isMobile && abaMobile !== 'lista' ? 'none' : 'block' }}>
           {/* Lista de paradas das rotas */}
         {ordenadas.length === 0 ? (
           <EmptyState T={T}
@@ -630,9 +704,12 @@ export default function Logistica({ T, dark }) {
             })}
           </Card>
         )}
+          </div>{/* fim sub-bloco Lista */}
         </div>{/* fim coluna esquerda */}
 
-        {/* Coluna direita — Mapa Google Maps real (Naviraí-MS) */}
+        {/* Coluna direita — Mapa Google Maps real (Naviraí-MS).
+            Mobile: só visível quando aba === 'mapa'. */}
+        <div style={{ display: isMobile && abaMobile !== 'mapa' ? 'none' : 'block' }}>
         <Card T={T} dark={dark} padding={0}>
           <div style={{ padding: '12px 16px 10px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -646,7 +723,7 @@ export default function Logistica({ T, dark }) {
 
           <MapaLogistica
             T={T} dark={dark}
-            height={460}
+            height={isMobile ? 380 : 460}
             paradas={[
               // Paradas oficiais das rotas (coleta/entrega/cobrança/visita/avulsa)
               // Quando uma rota está selecionada, esconde paradas das outras.
@@ -695,11 +772,33 @@ export default function Logistica({ T, dark }) {
             </span>
           </div>
         </Card>
+        </div>{/* fim wrapper mapa */}
       </div>
+
+      {/* FAB Nova Rota (só mobile) — flutua acima do BottomNav */}
+      {isMobile && (
+        <button
+          onClick={() => setNovaRotaAberta(true)}
+          aria-label="Nova rota"
+          title="Nova rota"
+          style={{
+            position: 'fixed', bottom: 80, right: 16,
+            width: 54, height: 54, borderRadius: '50%',
+            background: `linear-gradient(135deg, ${corEtapa('blue', dark)}, #3a7bbf)`,
+            color: '#fff', border: 'none',
+            boxShadow: '0 6px 18px rgba(91,155,213,.45), 0 2px 4px rgba(0,0,0,.15)',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 90,
+          }}
+        >
+          <i className="ti ti-plus" style={{ fontSize: 26 }} aria-hidden="true" />
+        </button>
+      )}
 
       {novaRotaAberta && (
         <NovaRotaModal
-          T={T} dark={dark}
+          T={T} dark={dark} mobile={isMobile}
           onClose={() => setNovaRotaAberta(false)}
           onCriar={criarRota}
         />
@@ -707,7 +806,7 @@ export default function Logistica({ T, dark }) {
 
       {rotaDetalhe && (
         <RotaDetalheModal
-          T={T} dark={dark}
+          T={T} dark={dark} mobile={isMobile}
           rota={rotaDetalhe}
           onClose={() => setRotaDetalhe(null)}
           onAtualizar={atualizarRota}
@@ -718,7 +817,7 @@ export default function Logistica({ T, dark }) {
 
       {osParaAdicionarARota && (
         <AdicionarOSARotaModal
-          T={T} dark={dark}
+          T={T} dark={dark} mobile={isMobile}
           os={osParaAdicionarARota}
           rotas={rotas}
           onClose={() => setOsParaAdicionarARota(null)}
@@ -729,7 +828,7 @@ export default function Logistica({ T, dark }) {
 
       {paradaAvulsaAberta && (
         <AdicionarOSARotaModal
-          T={T} dark={dark}
+          T={T} dark={dark} mobile={isMobile}
           modo="avulsa"
           rotas={rotas}
           onClose={() => setParadaAvulsaAberta(false)}

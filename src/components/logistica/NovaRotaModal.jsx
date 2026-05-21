@@ -18,7 +18,7 @@ import { useOS } from '../../hooks/useOS'
 
 const HOJE = new Date().toISOString().slice(0, 10)
 
-export default function NovaRotaModal({ T, dark, onClose, onCriar }) {
+export default function NovaRotaModal({ T, dark, mobile = false, onClose, onCriar }) {
   const notify = useToast()
   const azul = corEtapa('blue', dark)
   const vermelho = corEtapa('red', dark)
@@ -100,7 +100,7 @@ export default function NovaRotaModal({ T, dark, onClose, onCriar }) {
   }
 
   return (
-    <Modal T={T} dark={dark} onClose={onClose} maxWidth={860} closeOnOverlay={false}>
+    <Modal T={T} dark={dark} mobile={mobile} onClose={onClose} maxWidth={860} closeOnOverlay={false}>
       <ModalHeader
         T={T}
         icon="ti-route"

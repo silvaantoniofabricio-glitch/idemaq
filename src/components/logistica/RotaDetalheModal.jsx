@@ -34,7 +34,7 @@ function statusBadge(status, dark) {
 }
 
 export default function RotaDetalheModal({
-  T, dark,
+  T, dark, mobile = false,
   rota,
   onClose,
   onAtualizar,            // (id, patch) => Promise<{ error }>
@@ -154,7 +154,7 @@ export default function RotaDetalheModal({
   if (!rota) return null
 
   return (
-    <Modal T={T} dark={dark} onClose={onClose} maxWidth={860} closeOnOverlay={false}>
+    <Modal T={T} dark={dark} mobile={mobile} onClose={onClose} maxWidth={860} closeOnOverlay={false}>
       <ModalHeader
         T={T}
         icon="ti-route"

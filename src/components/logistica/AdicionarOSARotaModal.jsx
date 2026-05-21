@@ -43,7 +43,7 @@ function contarParadas(rota) {
 }
 
 export default function AdicionarOSARotaModal({
-  T, dark,
+  T, dark, mobile = false,
   os,                  // OS vinda da sidebar — null quando modo=avulsa
   modo = 'os',         // 'os' | 'avulsa'
   rotas = [],          // todas as rotas (filtra por data internamente)
@@ -172,7 +172,7 @@ export default function AdicionarOSARotaModal({
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <Modal T={T} dark={dark} onClose={onClose} maxWidth={520}>
+    <Modal T={T} dark={dark} mobile={mobile} onClose={onClose} maxWidth={520}>
       <div style={{
         padding: '14px 18px', borderBottom: `1px solid ${T.border}`,
         display: 'flex', alignItems: 'center', gap: 10,
