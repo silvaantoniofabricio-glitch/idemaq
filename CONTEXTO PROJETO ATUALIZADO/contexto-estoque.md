@@ -39,6 +39,19 @@
 - 🟡 Schema existe (`tabela maquina`), sem dados reais
 - 🟡 UI mock (Módulo 07 do roadmap)
 
+### Mobile
+- ✅ **`EstoqueMobile.jsx` (21/05/2026)**: página mobile dedicada — substitui o re-uso do desktop (que estourava com 6 colunas em 360px)
+  - `MobilePageHeader` com KPIs em grid 2×2 (em estoque · reposição · valor · cadastros)
+  - Tabs Peças/Máquinas segmented compacto (44px touch)
+  - `MobileSearchBar` sticky no topo
+  - `MobileChipFilter` horizontal pra categorias (scroll-x snap, badge de contagem)
+  - Lista vertical de `PecaCardMobile` (touch ≥76px, border-left colorida pelo status — vermelho esgotado/amarelo baixo/azul OK/cinza catálogo)
+  - `PaginacaoMobile` no rodapé (botões ≥44px, só aparece quando NÃO buscando + multi-pág)
+  - `MobileFAB` "+" canto inferior direito (só pro dono — funcionário não cadastra)
+  - Reusa `PecaDetalheModal`/`AjusteEstoqueModal`/`NovaPecaModal` com prop `mobile` (bottom sheet)
+  - Aba Máquinas usa `MaquinaCardMobile` (touch ≥76px, mock até Módulo 07)
+  - Padding bottom 90 pra não esconder atrás do `BottomNav`
+
 ### Modais
 - ✅ `PecaDetalheModal`: barra estoque mín/atual/máx + custos/preço/margem + **histórico real** (peca_movimentacao, últimos 20) + botão "Ajustar estoque" → `AjusteEstoqueModal`
 - ✅ `AjusteEstoqueModal` (20/05/2026): ajuste manual de `qtd_atual` com motivo (contagem/perda/ganho/devolução/outro) + observação + preview do delta (ver §12)
