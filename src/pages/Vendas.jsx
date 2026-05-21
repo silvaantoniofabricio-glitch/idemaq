@@ -12,7 +12,7 @@
 // Modal "Nova OS antiga" pra registro retroativo (~doaut de Toni — ver
 // contexto-vendas.md).
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
@@ -23,46 +23,55 @@ import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import NovaOSAntigaModal from '../components/vendas/NovaOSAntigaModal'
 
-// ─── Helpers de período (reusa lógica simples) ───────────────────────────────
-function rangeDoPeriodo(periodo, mesEsp, dataIni, dataFim) {
+// ─── Período (mesmo padrão do Financeiro) ───────────────────────────────────
+// `periodo` é objeto: { id: 'mes' } | { id: 'custom', de, ate }
+const PERIODOS = [
+  { id: '7d',          label: 'Últimos 7 dias',  dias: 7 },
+  { id: '30d',         label: 'Últimos 30 dias', dias: 30 },
+  { id: 'mes',         label: 'Mês atual',        mes: true },
+  { id: 'mes_passado', label: 'Mês passado',      mesPassado: true },
+  { id: 'ano',         label: 'Este ano',         ano: true },
+  { id: 'todos',       label: 'Todos',            all: true },
+]
+
+function rangeDoPeriodo(periodo) {
   const hoje = new Date()
   const toIso = d => d.toISOString().slice(0, 10)
-
-  if (periodo === 'custom') {
-    return { ini: dataIni || null, fim: dataFim || null, label: `${dataIni || '?'} → ${dataFim || '?'}` }
+  if (periodo.id === 'todos') return { ini: null, fim: null }
+  if (periodo.id === 'custom') return { ini: periodo.de || null, fim: periodo.ate || null }
+  const cfg = PERIODOS.find(p => p.id === periodo.id) || PERIODOS[2]
+  if (cfg.dias) {
+    const ini = new Date(hoje); ini.setDate(ini.getDate() - cfg.dias)
+    return { ini: toIso(ini), fim: toIso(hoje) }
   }
-  if (periodo === 'mes_especifico') {
-    if (!mesEsp) return { ini: null, fim: null, label: '?' }
-    const [y, m] = mesEsp.split('-').map(Number)
-    const ini = new Date(y, m - 1, 1)
-    const fim = new Date(y, m, 0)
-    return { ini: toIso(ini), fim: toIso(fim), label: mesEsp }
+  if (cfg.mes) {
+    return {
+      ini: toIso(new Date(hoje.getFullYear(), hoje.getMonth(), 1)),
+      fim: toIso(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)),
+    }
   }
-  if (periodo === 'mes_atual') {
-    const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-    const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
-    return { ini: toIso(ini), fim: toIso(fim), label: 'Este mês' }
+  if (cfg.mesPassado) {
+    return {
+      ini: toIso(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)),
+      fim: toIso(new Date(hoje.getFullYear(), hoje.getMonth(), 0)),
+    }
   }
-  if (periodo === 'mes_passado') {
-    const ini = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)
-    const fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0)
-    return { ini: toIso(ini), fim: toIso(fim), label: 'Mês passado' }
+  if (cfg.ano) {
+    return {
+      ini: toIso(new Date(hoje.getFullYear(), 0, 1)),
+      fim: toIso(new Date(hoje.getFullYear(), 11, 31)),
+    }
   }
-  if (periodo === 'ano') {
-    const ini = new Date(hoje.getFullYear(), 0, 1)
-    const fim = new Date(hoje.getFullYear(), 11, 31)
-    return { ini: toIso(ini), fim: toIso(fim), label: `Ano ${hoje.getFullYear()}` }
-  }
-  // tudo
-  return { ini: null, fim: null, label: 'Todas' }
+  return { ini: null, fim: null }
 }
 
-const PRESETS_PERIODO = [
-  { id: 'mes_atual',    label: 'Este mês' },
-  { id: 'mes_passado',  label: 'Mês passado' },
-  { id: 'ano',          label: 'Este ano' },
-  { id: 'tudo',         label: 'Tudo' },
-]
+function labelPeriodo(periodo) {
+  if (periodo.id === 'custom') {
+    const fmt = (iso) => iso ? iso.split('-').reverse().join('/') : '?'
+    return `${fmt(periodo.de)} → ${fmt(periodo.ate)}`
+  }
+  return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[2]).label
+}
 
 const FILTROS_TIPO = [
   { id: 'atendimento', label: 'Atendimento', cor: 'blue' },
@@ -111,14 +120,24 @@ export default function Vendas({ T, dark, user }) {
   // Reusa a mesma instância pra evitar 2 channels Realtime no mesmo nome.
 
   // ─── Filtros ──────────────────────────────────────────────────────────────
-  const [periodo, setPeriodo] = useState('mes_atual')
-  const [mesEsp, setMesEsp] = useState('')
-  const [dataIni, setDataIni] = useState('')
-  const [dataFim, setDataFim] = useState('')
+  const [periodo, setPeriodo] = useState({ id: 'mes' })
+  const [periodoAberto, setPeriodoAberto] = useState(false)
+  const periodoRef = useRef(null)
   const [tiposAtivos, setTiposAtivos] = useState(new Set(['atendimento', 'fabricacao', 'venda']))
   const [statusAtivos, setStatusAtivos] = useState(new Set(['concluido', 'recusado', 'aberto']))
   const [pagamentosAtivos, setPagamentosAtivos] = useState(new Set(['total', 'parcial', 'nao']))
   const [busca, setBusca] = useState('')
+
+  // Click-fora fecha dropdown de período (mesmo padrão Financeiro)
+  useEffect(() => {
+    function handler(e) {
+      if (periodoRef.current && !periodoRef.current.contains(e.target)) {
+        setPeriodoAberto(false)
+      }
+    }
+    if (periodoAberto) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [periodoAberto])
 
   // Modal nova OS antiga
   const [novaOSAntigaAberta, setNovaOSAntigaAberta] = useState(false)
@@ -140,10 +159,7 @@ export default function Vendas({ T, dark, user }) {
   const vermelho = corEtapa('red', dark)
 
   // ─── Range do período (ISO date) ──────────────────────────────────────────
-  const range = useMemo(
-    () => rangeDoPeriodo(periodo, mesEsp, dataIni, dataFim),
-    [periodo, mesEsp, dataIni, dataFim]
-  )
+  const range = useMemo(() => rangeDoPeriodo(periodo), [periodo])
 
   // ─── Filtrar OS ────────────────────────────────────────────────────────────
   const filtradas = useMemo(() => {
@@ -260,7 +276,7 @@ export default function Vendas({ T, dark, user }) {
     }}>
       <PageHeader T={T} dark={dark}
         title="Vendas"
-        subtitle={`Histórico de OS · ${range.label}`}
+        subtitle={`Histórico de OS · ${labelPeriodo(periodo)}`}
         stats={[
           { label: 'Faturado', value: fmtBRL(kpis.faturado), color: corHero(dark) },
           { label: 'OS no período', value: kpis.total, color: azul },
@@ -278,58 +294,77 @@ export default function Vendas({ T, dark, user }) {
         }
       />
 
-      {/* Barra de filtros */}
-      <Card T={T} dark={dark} padding={0}>
-        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Linha 1: período presets + custom */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px', marginRight: 4 }}>
-              Período:
-            </span>
-            {PRESETS_PERIODO.map(p => (
-              <ChipToggle key={p.id}
-                T={T} dark={dark}
-                ativo={periodo === p.id}
-                onClick={() => setPeriodo(p.id)}
-              >{p.label}</ChipToggle>
-            ))}
-            <input type="month" value={mesEsp}
-              onChange={(e) => { setMesEsp(e.target.value); setPeriodo('mes_especifico') }}
+      {/* Barra de filtros — padrão Financeiro */}
+      <Card T={T} dark={dark}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+
+          {/* Período (dropdown estilo Financeiro) */}
+          <div ref={periodoRef} style={{ position: 'relative' }}>
+            <button onClick={() => setPeriodoAberto(o => !o)}
               style={{
-                padding: '5px 8px', borderRadius: 6,
-                border: `1px solid ${periodo === 'mes_especifico' ? azul : T.border}`,
-                background: T.bg, color: T.textPrimary,
-                fontSize: 11.5, fontFamily: 'inherit',
-                colorScheme: dark ? 'dark' : 'light',
-              }}
-            />
-            <span style={{ fontSize: 10.5, color: T.textDim }}>ou</span>
-            <input type="date" value={dataIni}
-              onChange={(e) => { setDataIni(e.target.value); setPeriodo('custom') }}
-              style={{
-                padding: '5px 8px', borderRadius: 6,
-                border: `1px solid ${periodo === 'custom' ? azul : T.border}`,
-                background: T.bg, color: T.textPrimary,
-                fontSize: 11.5, fontFamily: 'inherit',
-                colorScheme: dark ? 'dark' : 'light',
-              }} />
-            <span style={{ fontSize: 10.5, color: T.textDim }}>→</span>
-            <input type="date" value={dataFim}
-              onChange={(e) => { setDataFim(e.target.value); setPeriodo('custom') }}
-              style={{
-                padding: '5px 8px', borderRadius: 6,
-                border: `1px solid ${periodo === 'custom' ? azul : T.border}`,
-                background: T.bg, color: T.textPrimary,
-                fontSize: 11.5, fontFamily: 'inherit',
-                colorScheme: dark ? 'dark' : 'light',
-              }} />
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '8px 12px', borderRadius: 8,
+                border: `1px solid ${T.border}`,
+                background: T.cardAlt, color: T.textPrimary,
+                fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                minWidth: 200,
+              }}>
+              <i className="ti ti-calendar" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+              <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
+              <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
+                style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
+            </button>
+
+            {periodoAberto && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 50,
+                minWidth: 260,
+                background: T.card, border: `1px solid ${T.border}`,
+                borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+                padding: 8,
+              }}>
+                {PERIODOS.map(p => {
+                  const ativo = periodo.id === p.id
+                  return (
+                    <button key={p.id}
+                      onClick={() => { setPeriodo({ id: p.id }); setPeriodoAberto(false) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                        padding: '8px 10px', borderRadius: 6,
+                        border: 'none',
+                        background: ativo ? cor('#0d2035', '#e6f1fb') : 'transparent',
+                        color: ativo ? azul : T.textSecondary,
+                        fontSize: 12.5, fontWeight: ativo ? 700 : 500,
+                        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      }}>
+                      {ativo
+                        ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
+                        : <span style={{ width: 13 }} />}
+                      {p.label}
+                    </button>
+                  )
+                })}
+                <div style={{ height: 1, background: T.border, margin: '6px 4px' }} />
+                <div style={{
+                  padding: '4px 6px 2px', fontSize: 10.5, color: T.textMuted,
+                  fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em',
+                }}>
+                  Personalizado
+                </div>
+                <div style={{ display: 'flex', gap: 6, padding: 6 }}>
+                  <input type="date" value={periodo.de || ''}
+                    onChange={e => setPeriodo({ id: 'custom', de: e.target.value, ate: periodo.ate })}
+                    style={inputDate(T, dark)} />
+                  <input type="date" value={periodo.ate || ''}
+                    onChange={e => setPeriodo({ id: 'custom', de: periodo.de, ate: e.target.value })}
+                    style={inputDate(T, dark)} />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Linha 2: tipos */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px', marginRight: 4 }}>
-              Tipo:
-            </span>
+          {/* Tipos chips */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {FILTROS_TIPO.map(f => (
               <ChipToggle key={f.id}
                 T={T} dark={dark}
@@ -339,11 +374,8 @@ export default function Vendas({ T, dark, user }) {
             ))}
           </div>
 
-          {/* Linha 3: status + pagamento + busca */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px', marginRight: 4 }}>
-              Status:
-            </span>
+          {/* Status chips */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {FILTROS_STATUS.map(f => (
               <ChipToggle key={f.id}
                 T={T} dark={dark}
@@ -351,10 +383,10 @@ export default function Vendas({ T, dark, user }) {
                 onClick={() => toggleSet(statusAtivos, f.id, setStatusAtivos)}
               >{f.label}</ChipToggle>
             ))}
+          </div>
 
-            <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px', marginLeft: 8, marginRight: 4 }}>
-              Pagto:
-            </span>
+          {/* Pagamento chips */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {FILTROS_PAGAMENTO.map(f => (
               <ChipToggle key={f.id}
                 T={T} dark={dark}
@@ -362,15 +394,16 @@ export default function Vendas({ T, dark, user }) {
                 onClick={() => toggleSet(pagamentosAtivos, f.id, setPagamentosAtivos)}
               >{f.label}</ChipToggle>
             ))}
+          </div>
 
-            <div style={{ flex: 1, minWidth: 180, marginLeft: 'auto' }}>
-              <Input T={T} dark={dark}
-                value={busca}
-                onChange={setBusca}
-                icon="ti-search"
-                placeholder="Cliente, nº OS, telefone ou equipamento"
-              />
-            </div>
+          {/* Busca */}
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <Input T={T} dark={dark}
+              value={busca}
+              onChange={setBusca}
+              icon="ti-search"
+              placeholder="Cliente, nº OS, telefone ou equipamento"
+            />
           </div>
         </div>
       </Card>
@@ -509,6 +542,15 @@ function LinhaOS({ os, T, dark, onClick }) {
       </td>
     </tr>
   )
+}
+
+function inputDate(T, dark) {
+  return {
+    padding: '6px 8px', fontSize: 12, borderRadius: 6,
+    border: `1px solid ${T.border}`, background: T.card, color: T.textPrimary,
+    fontFamily: 'inherit', flex: 1, outline: 'none',
+    colorScheme: dark ? 'dark' : 'light',
+  }
 }
 
 function tdStyle(T) {
