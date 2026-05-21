@@ -211,3 +211,40 @@ Ver `contexto-relatorios.md`.
 - **Painel Funcionários**: substitui slot Financeiro. Ver `contexto-painel-func.md`
 - **Relatórios**: relatório de Ponto (admin-only). Ver `contexto-relatorios.md`
 - **Geral / cross-area**: schema parte 2 (2 tabelas novas + RLS por usuário). Ver `CLAUDE.md` seção 11
+
+---
+
+## 14. Log da sessão 20/05/2026 — terminal `ponto`
+
+**Commit**: `4e19b7d feat(ponto): schema parte 2 + hook usePonto + componentes do painel-func`
+
+### O que foi entregue
+- ✅ `sql/09-ponto-schema.sql` (versionado, **NÃO aplicado**) — 2 tabelas + 2 enums + 4 índices + 4 policies RLS + 2 triggers de auditoria.
+- ✅ `src/hooks/usePonto.js` — hook completo (CRUD, geo, agregação, Realtime, fallback demo).
+- ✅ Componentes novos: `ResumoDia.jsx`, `SaldoBancoHoras.jsx`, `HistoricoSemana.jsx`.
+- ✅ Realinhamento da nomenclatura: `_mocks.js` + `BotaoBaterPonto`, `CardPontoFuncionario`, `EspelhoPonto`, `MapaDeBatidas`, `RelatorioPontoDono` migrados de `data_hora/latitude/longitude/endereco/almoco_inicio/almoco_fim` para `bateu_em/lat/lng/endereco_aproximado/saida_almoco/volta_almoco`.
+- ✅ Build local validado (`vite build` em 237ms, 187 módulos).
+
+### Decisões dessa sessão
+1. **Nomenclatura** dos tipos da batida: `entrada | saida_almoco | volta_almoco | saida` (em vez do que estava na spec `almoco_inicio`/`almoco_fim`). Motivo: lê mais natural pro funcionário, e o user pediu explicitamente.
+2. **`bateu_em` em vez de `data_hora`** — mais explícito no contexto de relógio de ponto.
+3. **`bateu_em` é preenchido pelo servidor** (DEFAULT `now()`) — front NÃO envia, pra evitar batida retroativa.
+4. **`lat`/`lng` nullable no banco** mas obrigatórios pela regra do front — só ficam nullable pra permitir ajuste manual do dono.
+5. **`jornada_funcionario` é o agregado diário** (1 linha por funcionário/dia, não 1 linha de config por funcionário — a config padrão fica como constante no hook por enquanto, vira tabela `config_jornada` se precisar).
+6. **Saldo banco de horas calculado client-side por enquanto**: hook soma minutos trabalhados de cada dia (do `ponto_registro`) menos jornada padrão (480 min). Quando trigger consolidar `jornada_funcionario.saldo_horas`, hook passa a ler dali.
+
+### Por que sql/09 ainda não rodou
+A regra do projeto é que o terminal só versiona SQL — o Toni roda no Supabase SQL Editor manualmente. Próxima sessão `geral` ou Toni mesmo aplica `sql/09-ponto-schema.sql`.
+
+### Próximos passos exatos (ordem)
+1. Toni roda `sql/09-ponto-schema.sql` no Supabase. Conferir RLS funcionando (logar como funcionário e tentar SELECT — deve ver só os próprios).
+2. Criar `src/components/paineis/PainelFuncionario.jsx` chamando `usePonto({ funcionarioId: user.id })` + montando `CardPontoFuncionario` + `ResumoDia` + `SaldoBancoHoras` + `HistoricoSemana`.
+3. No `App.jsx`, rotear painel: papel `dono` → painel atual; `logistica`/`oficina` → `PainelFuncionario`.
+4. Trocar mock visual do `BotaoBaterPonto` por chamada real ao `usePonto.bater()` (já tem fallback).
+5. Trocar `BATIDAS_MOCK` por dados reais nos componentes existentes (`CardPontoFuncionario` / `EspelhoPonto` / `RelatorioPontoDono` / `MapaDeBatidas`).
+
+### Anti-patterns que evitei nesta sessão
+- ❌ Não mexi em `CLAUDE.md` (outro terminal estava atualizando).
+- ❌ Não mexi em `App.jsx`, `BottomNav.jsx`, `Sidebar.jsx`, `Painel.jsx`, `sql/10-configuracoes.sql`, `Configuracoes.jsx`, `useConfiguracoes.js` (outro terminal `geral`).
+- ❌ Não usei `git add -A` — fiz git add explícito só dos 12 arquivos do escopo.
+- ❌ Não criei `useGeolocalizacao` hook separado — coloquei `capturarGeolocalizacao()` exportado dentro do `usePonto.js` (escopo era só esse hook).
