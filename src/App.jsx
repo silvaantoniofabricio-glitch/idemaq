@@ -41,6 +41,7 @@ import Estoque      from './pages/Estoque'
 import Financeiro    from './pages/Financeiro'
 import Relatorios    from './pages/Relatorios'
 import Configuracoes from './pages/Configuracoes'
+import Vendas        from './pages/Vendas'
 import PainelFuncionario from './components/paineis/PainelFuncionario'
 import EmConstrucao from './pages/EmConstrucao'
 
@@ -112,6 +113,7 @@ function RoutesDesktop({ T, dark, user }) {
       <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
       <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
       <Route path="/financeiro"    element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/vendas"        element={<AdminOnly user={user}><Vendas T={T} dark={dark} user={user} /></AdminOnly>} />
       <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
       <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
       <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />
@@ -136,6 +138,7 @@ function RoutesMobile({ T, dark, user }) {
         <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
         <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
         <Route path="/financeiro"    element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+        <Route path="/vendas"        element={<AdminOnly user={user}><Vendas T={T} dark={dark} user={user} /></AdminOnly>} />
         <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
         <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
         <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />

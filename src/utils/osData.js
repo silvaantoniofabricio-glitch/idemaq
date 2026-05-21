@@ -6,6 +6,7 @@ export const MENUS = [
   { id: 'painel',       label: 'Painel',        icon: 'ti-layout-dashboard', section: 'principal' },
   { id: 'os',           label: 'OS',            icon: 'ti-clipboard-list',   section: 'principal' },
   { id: 'clientes',     label: 'Clientes',      icon: 'ti-user',             section: 'principal' },
+  { id: 'vendas',       label: 'Vendas',        icon: 'ti-receipt-2',        section: 'principal' },
   { id: 'logistica',    label: 'Logística',     icon: 'ti-truck',            section: 'operacao' },
   { id: 'estoque',      label: 'Estoque',       icon: 'ti-package',          section: 'operacao' },
   { id: 'financeiro',   label: 'Financeiro',    icon: 'ti-cash',             section: 'operacao' },

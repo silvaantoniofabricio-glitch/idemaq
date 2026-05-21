@@ -225,7 +225,7 @@ Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde 
 | OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + FormClienteEdit + FormEquipamentoEdit (20/05) | — |
 | Clientes | ✅ Real (782) + modal lista OS | — |
 | Logística | ✅ Reformulada como ferramenta de planejamento (20/05 noite): mapa real + sidebar OS Disponíveis + AdicionarOSARota (5 tipos + limite 2C+2E) + parada Avulsa + click no card abre OSDetalhe inline | — |
-| Vendas (histórico OS) | 🔴 Não implementado | Sessão 21/05+: criar `/vendas` admin-only (lista + filtros + KPIs + modal "Nova OS antiga"); Onda 2: importação CSV Bling/Trello |
+| Vendas (histórico OS) | ✅ Onda 1 entregue 21/05/2026 madrugada: `/vendas` admin-only com lista + filtros + KPIs + modal "Nova OS antiga" retroativa | Onda 2: importação CSV Bling/Trello (depende de Toni exportar amostra) |
 | Estoque | ✅ Real (680) + ajuste manual + histórico real (`peca_movimentacao` aplicado 20/05) | — |
 | Financeiro | ✅ Real + OS→Financeiro + NovoLanc (avulso/parcelado/recorrente) + edição inline (20/05) | — |
 | Relatórios | ✅ 7 reais (DRE + Funcionários + Relógio de Ponto ligados ao Supabase 20/05) | Deploy da edge function `relatorio-ia` pra destravar análise IA |

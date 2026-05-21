@@ -9,7 +9,21 @@
 
 ## 1. Status atual
 
-🔴 **Não implementado** — só decisão de arquitetura e plano detalhado abaixo.
+🟢 **Onda 1 implementada (21/05/2026 madrugada — sessão noturna autônoma):**
+
+- `src/pages/Vendas.jsx` — lista flat de todas as OS, KPIs no header, barra de filtros (período/tipo/status/pagamento/busca), tabela densa ordenável, click abre OSDetalhe via `useOSDetalheModal`
+- `src/components/vendas/NovaOSAntigaModal.jsx` — modal pra registrar OS retroativa (cliente autocomplete via debounce + ILIKE, tipo, data, equipamento, valor/desconto/pago, forma, observações). Cria direto em etapa `concluido` + `data_conclusao` preenchida. **2 passos**: INSERT primeiro + UPDATE separado pra setar `criado_em` retroativo (trigger `tg_set_audit` sobrescreve no INSERT).
+- `src/utils/osData.js` — `MENUS` ganhou item "Vendas" (`ti-receipt-2`, seção `principal`)
+- `Sidebar.jsx` + `BottomNav.jsx` — `vendas` adicionado a `MENUS_ADMIN_ONLY` (defesa em 3 camadas)
+- `App.jsx` — rota `/vendas` envolta em `<AdminOnly>` (desktop + mobile)
+
+**Reuso**: `useOS(true)` (já bypassa filtro 24h), `useOSDetalheModal` (criado dia 20/05 pra Logística — mesmo padrão), componentes UI da lib.
+
+**Limitações conhecidas pro Toni testar**:
+- Marca `origem_importacao` NÃO implementada ainda (essa coluna entra na Onda 2 junto com importação CSV)
+- Não cria lançamento financeiro automático pra OS retroativa paga — Toni cria manualmente via NovoLancamentoModal se quiser. Futuro: checkbox "Criar lançamento de receita pago" no modal.
+
+🔴 **Onda 2 (importação CSV) — ainda pendente** — depende de Toni exportar CSV de exemplo do Bling/Trello pra mapeamento de colunas.
 
 ---
 
