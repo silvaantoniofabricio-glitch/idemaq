@@ -19,7 +19,6 @@ import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
 import {
   Card, Button, Badge, Input, PageHeader, EmptyState, ChipToggle, useToast,
 } from '../components/ui'
-import { useOS } from '../hooks/useOS'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import NovaOSAntigaModal from '../components/vendas/NovaOSAntigaModal'
@@ -107,7 +106,9 @@ export default function Vendas({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
 
-  const { osList, loading, refetch: osRefetch } = useOS(true) // buscando=true → sem filtro 24h
+  // useOSDetalheModal já chama useOS internamente — passamos buscando=true pra
+  // bypassa filtro 24h (Vendas mostra tudo, não esconde concluídas antigas).
+  // Reusa a mesma instância pra evitar 2 channels Realtime no mesmo nome.
 
   // ─── Filtros ──────────────────────────────────────────────────────────────
   const [periodo, setPeriodo] = useState('mes_atual')
@@ -122,8 +123,11 @@ export default function Vendas({ T, dark, user }) {
   // Modal nova OS antiga
   const [novaOSAntigaAberta, setNovaOSAntigaAberta] = useState(false)
 
-  // OSDetalhe inline
-  const { abrirOSPorId, modalProps: osDetalheProps } = useOSDetalheModal({ notify })
+  // OSDetalhe inline + lista de OS (buscando=true bypassa filtro 24h)
+  const {
+    abrirOSPorId, modalProps: osDetalheProps,
+    osList, osLoading: loading, osRefetch,
+  } = useOSDetalheModal({ notify, buscando: true })
 
   // Ordenação
   const [ordemCol, setOrdemCol] = useState('numero')

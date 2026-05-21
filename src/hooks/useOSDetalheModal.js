@@ -22,14 +22,15 @@ import { useUsuarios } from './useUsuarios'
 import { podeMoverOS } from '../utils/osHelpers'
 import { ETAPAS_TODOS, TIPOS_OS } from '../utils/osData'
 
-export function useOSDetalheModal({ notify } = {}) {
+export function useOSDetalheModal({ notify, buscando = false } = {}) {
   const [user, setUser] = useState(null)
   const [osDetalhe, setOsDetalhe] = useState(null) // OS aberta no modal
   const {
     osList, setOsList,
     refetch: osRefetch,
+    loading: osLoading,
     updateOS: updateOSHook,
-  } = useOS(false)
+  } = useOS(buscando)
   const { usuarios } = useUsuarios()
 
   // Auth user
@@ -155,6 +156,8 @@ export function useOSDetalheModal({ notify } = {}) {
     fechar,
     modalProps,
     osList,
+    osLoading,
+    osRefetch,
     user,
   }
 }

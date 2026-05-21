@@ -64,7 +64,7 @@ export function useOS(buscando = false) {
           cliente_id,
           marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado,
           pre_diagnostico, observacoes,
-          cliente:cliente_id(id, nome, telefone, deleted_at),
+          cliente:cliente_id(id, nome, telefone, endereco, deleted_at),
           os_item(count),
           os_historico(id, etapa_de, etapa_para, funcionario_id, data)
         `)
@@ -97,14 +97,16 @@ export function useOS(buscando = false) {
           fone: os.cliente?.telefone || '',
           cliente_id: os.cliente?.id || null,
           // Equipamento: colunas reais em `os` (aplicadas via
-          // sql/10-os-equipamento.sql em 20/05/2026). `equipamento` e
-          // `endereco` ficam vazios — ainda não têm coluna dedicada.
+          // sql/10-os-equipamento.sql em 20/05/2026). `equipamento` ainda
+          // não tem coluna dedicada.
           equipamento: '',
           marca: os.marca_equipamento || '',
           modelo: os.modelo_equipamento || '',
           serie: os.numero_serie || '',
           defeito: os.defeito_relatado || '',
-          endereco: '',
+          // Endereço vem do cliente embed (cliente.endereco). OS não tem
+          // coluna própria de endereço por enquanto.
+          endereco: os.cliente?.endereco || '',
           fotos: 0,
           observacoes: os.observacoes || '',
           // Contagem de itens da OS (vem de os_item(count) → [{ count: N }])
@@ -155,9 +157,14 @@ export function useOS(buscando = false) {
 
   // Realtime: refetch silencioso quando qualquer linha de `os` muda.
   // Cobre drag-and-drop entre dispositivos, edições de outro usuário, e novas OS.
+  //
+  // Channel name UNICO por instância — evita conflito "cannot add callbacks
+  // after subscribe()" quando duas páginas (ex: Kanban + Vendas) montam
+  // useOS ao mesmo tempo (Supabase JS proibe 2 channels com mesmo nome).
   useEffect(() => {
+    const channelName = `os-changes-${Math.random().toString(36).slice(2, 10)}`
     const channel = supabase
-      .channel('os-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'os' },
