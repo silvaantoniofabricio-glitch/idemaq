@@ -24,7 +24,9 @@ export const MENUS_MOBILE_FUNC = ['painel', 'os', 'logistica', 'estoque', 'meu-r
 export const MENUS_MOBILE = MENUS_MOBILE_DONO
 
 // Os 3 tipos de OS, com seus fluxos de etapas.
-// adminOnly: true → coluna só visível pro dono (Pagamento, Concluído)
+// adminOnly: true → coluna só visível pro dono (Concluído).
+// "Pagamento" foi liberado pro funcionário em 21/05/2026 — eles precisam ver
+// o financeiro da OS pra cobrar e dar baixa do recebimento.
 export const TIPOS_OS = {
   atendimento: {
     label: 'Atendimento', icon: 'ti-tool', cor: 'blue',
@@ -38,7 +40,7 @@ export const TIPOS_OS = {
       { id:'oficina',        label:'Em oficina',       curto:'Em oficina',   cor:'blueLight', dual:true },
       { id:'teste_final',    label:'Teste final',      curto:'Teste final',  cor:'blue' },
       { id:'entrega',        label:'Entrega',          curto:'Entrega',      cor:'blue' },
-      { id:'pagamento',      label:'Pagamento',        curto:'Pagamento',    cor:'yellow', adminOnly:true },
+      { id:'pagamento',      label:'Pagamento',        curto:'Pagamento',    cor:'yellow' },
       { id:'concluido',      label:'Concluído',        curto:'Concluído',    cor:'green',  adminOnly:true },
     ],
     lateral: { id:'recusado', label:'Recusado', curto:'Recusado', cor:'red' }
@@ -59,7 +61,7 @@ export const TIPOS_OS = {
     etapas: [
       { id:'agendamento', label:'Agendamento',  curto:'Agendamento', cor:'neutro' },
       { id:'entregue',    label:'Entregue',     curto:'Entregue',    cor:'blue' },
-      { id:'pagamento',   label:'Pagamento',    curto:'Pagamento',   cor:'yellow', adminOnly:true },
+      { id:'pagamento',   label:'Pagamento',    curto:'Pagamento',   cor:'yellow' },
       { id:'concluido',   label:'Concluído',    curto:'Concluído',   cor:'green',  adminOnly:true },
     ],
   },
@@ -75,7 +77,7 @@ export const ETAPAS_TODOS = [
   { id:'oficina',        label:'Em oficina',              curto:'Em oficina',   cor:'blueLight', dual:true, match:{ atendimento:'oficina', fabricacao:'oficina' } },
   { id:'teste_final',    label:'Teste final',             curto:'Teste final',  cor:'blue',  match:{ atendimento:'teste_final', fabricacao:'teste_final' } },
   { id:'entrega',        label:'Entrega',                 curto:'Entrega',      cor:'blue',  match:{ atendimento:'entrega', venda:'entregue' } },
-  { id:'pagamento',      label:'Pagamento',               curto:'Pagamento',    cor:'yellow', adminOnly:true, match:{ atendimento:'pagamento', venda:'pagamento' } },
+  { id:'pagamento',      label:'Pagamento',               curto:'Pagamento',    cor:'yellow', match:{ atendimento:'pagamento', venda:'pagamento' } },
   { id:'concluido',      label:'Concluído',               curto:'Concluído',    cor:'green',  adminOnly:true, match:{ atendimento:'concluido', fabricacao:'concluido', venda:'concluido' } },
 ]
 

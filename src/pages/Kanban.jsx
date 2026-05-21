@@ -311,7 +311,7 @@ export default function Kanban({ T, dark, user }) {
                 {buscando && (
                   <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:8, background:cor('#0d2035','#e6f1fb'), color:azul, fontSize:10, fontWeight:700 }}>Busca ativa</span>
                 )}
-                {!admin && <span style={{ color:T.textDim, fontSize:11 }}>· você não vê Pagamento e Concluído</span>}
+                {!admin && <span style={{ color:T.textDim, fontSize:11 }}>· você não vê Concluído</span>}
               </div>
             </div>
           )
