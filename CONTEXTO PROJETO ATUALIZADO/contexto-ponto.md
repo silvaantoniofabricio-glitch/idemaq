@@ -7,13 +7,18 @@
 
 ---
 
-## 1. Status atual
+## 1. Status atual (21/05/2026 manhã)
 
-🟡 **Fundação pronta — aguardando deploy do SQL**.
-- Schema (`sql/09-ponto-schema.sql`) versionado e pronto pra rodar no Supabase.
-- Hook `usePonto` criado com CRUD, geolocalização, agregação por janela e modo demo automático (fallback quando tabela não existe).
-- Componentes do painel do funcionário criados: `BotaoBaterPonto`, `CardPontoFuncionario`, `ResumoDia`, `SaldoBancoHoras`, `HistoricoSemana`, `EspelhoPonto`, `MapaDeBatidas`, `RelatorioPontoDono`, `ConfigJornadaModal`.
-- **Pendente**: criar `PainelFuncionario.jsx` que orquestra esses componentes + roteamento no `App.jsx`.
+🟡 **Fundação pronta + Painel-func existe — aguardando deploy do SQL e cabeamento real**.
+
+- ✅ Schema (`sql/09-ponto-schema.sql`) versionado. **NÃO aplicado** ainda no Supabase.
+- ✅ Hook `usePonto` criado (CRUD, geolocalização, agregação, Realtime, fallback demo).
+- ✅ Componentes em `src/components/ponto/`: `BotaoBaterPonto`, `CardPontoFuncionario`, `ResumoDia`, `SaldoBancoHoras`, `HistoricoSemana`, `EspelhoPonto`, `MapaDeBatidas`, `RelatorioPontoDono`, `ConfigJornadaModal`.
+- ✅ `src/components/paineis/PainelFuncionario.jsx` criado pelo terminal `painel_func` (commit `760a40b`) — orquestra `CardPontoFuncionario` + `EspelhoPonto` + cards de OS/desempenho. **NÃO integra ainda** `ResumoDia` / `SaldoBancoHoras` / `HistoricoSemana`.
+- ✅ Hook `usePainelFuncionario` criado pelo painel_func — traz OS reais via `os_historico` + KPIs do mês (foco em métricas operacionais, zero financeiro).
+- 🔴 **Não plugado**: `BotaoBaterPonto` ainda usa mock visual (`capturarLocalizacaoMock`), não chama `usePonto.bater()`. `CardPontoFuncionario` lê de `BATIDAS_MOCK` em vez de `usePonto`.
+
+**Próximo bloco**: Toni roda sql/09 → trocar mock por `usePonto` em `CardPontoFuncionario` + `BotaoBaterPonto` → integrar `ResumoDia`/`SaldoBancoHoras`/`HistoricoSemana` no `PainelFuncionario.jsx`.
 
 ---
 
@@ -109,9 +114,15 @@ const {
 - **`RelatorioPontoDono.jsx`** — dashboard completo com 6 abas (Visão geral, Espelhos, Mapa, Produtividade, Ajustes, Configurações).
 - **`ConfigJornadaModal.jsx`** — modal pra dono configurar jornada de cada funcionário.
 
-### Ainda a criar
+### Já criado (mas não integrado com `usePonto` ainda)
 
-- **`src/components/paineis/PainelFuncionario.jsx`** — orquestra os componentes acima no painel do funcionário (substitui o slot Financeiro).
+- **`src/components/paineis/PainelFuncionario.jsx`** ✨ (terminal `painel_func`) — orquestra `CardPontoFuncionario` + lista de OS via `usePainelFuncionario` + KPIs do mês. View de "Ver espelho" troca pro `EspelhoPonto`. Cuidado: ainda **não usa** `ResumoDia` / `SaldoBancoHoras` / `HistoricoSemana` — esses 3 cartões novos precisam ser integrados pra subir o nível do painel.
+
+### Ainda a criar / fazer
+
+- Plugar `usePonto({ funcionarioId })` dentro do `CardPontoFuncionario` (hoje lê `BATIDAS_MOCK` de `_mocks.js`).
+- Trocar `capturarLocalizacaoMock` por `capturarGeolocalizacao` real no `BotaoBaterPonto`.
+- Integrar `ResumoDia`, `SaldoBancoHoras`, `HistoricoSemana` no `PainelFuncionario.jsx`.
 - Roteamento no `App.jsx`: papel `dono` → painel atual; `logistica`/`oficina` → `PainelFuncionario`.
 - Cronjob de falta automática (Supabase Edge Function 23h).
 
@@ -196,13 +207,14 @@ Ver `contexto-relatorios.md`.
 
 ## 12. Pendências (próxima sessão)
 
-1. **Toni roda `sql/09-ponto-schema.sql` no Supabase SQL Editor** (ação fora do code)
-2. Criar `src/components/paineis/PainelFuncionario.jsx` orquestrando os componentes
-3. Plugar `usePonto.bater` no `BotaoBaterPonto` (hoje usa mock visual)
-4. Trocar `BATIDAS_MOCK` por dados reais em `CardPontoFuncionario` / `EspelhoPonto`
-5. Roteamento no `App.jsx`: `dono` → painel atual; `logistica`/`oficina` → `PainelFuncionario`
-6. Cronjob de falta automática (Edge Function)
-7. Adicionar item "Relógio de Ponto" no menu Relatórios (admin-only)
+1. **Toni roda `sql/09-ponto-schema.sql` no Supabase SQL Editor** (ação fora do code — STILL pendente em 21/05)
+2. ~~Criar `PainelFuncionario.jsx`~~ ✅ feito pelo terminal `painel_func` (commit `760a40b`)
+3. Plugar `usePonto({ funcionarioId })` no `CardPontoFuncionario` (substitui `BATIDAS_MOCK`)
+4. Trocar `capturarLocalizacaoMock` por `capturarGeolocalizacao` real no `BotaoBaterPonto`
+5. Integrar `ResumoDia` + `SaldoBancoHoras` + `HistoricoSemana` no `PainelFuncionario.jsx` (ficaram criados mas não orquestrados)
+6. Roteamento no `App.jsx`: `dono` → painel atual; `logistica`/`oficina` → `PainelFuncionario` (verificar se terminal painel_func já fez)
+7. Cronjob de falta automática (Edge Function)
+8. Adicionar item "Relógio de Ponto" no menu Relatórios (admin-only)
 
 ---
 
@@ -248,3 +260,22 @@ A regra do projeto é que o terminal só versiona SQL — o Toni roda no Supabas
 - ❌ Não mexi em `App.jsx`, `BottomNav.jsx`, `Sidebar.jsx`, `Painel.jsx`, `sql/10-configuracoes.sql`, `Configuracoes.jsx`, `useConfiguracoes.js` (outro terminal `geral`).
 - ❌ Não usei `git add -A` — fiz git add explícito só dos 12 arquivos do escopo.
 - ❌ Não criei `useGeolocalizacao` hook separado — coloquei `capturarGeolocalizacao()` exportado dentro do `usePonto.js` (escopo era só esse hook).
+
+---
+
+## 15. Atualização 21/05/2026 manhã — sync com outros terminais
+
+Pull do main mostrou que enquanto eu trabalhava no schema/hook, outros terminais avançaram:
+
+- **Terminal `painel_func`** (commit `760a40b feat(painel-func): MVP visual completo`):
+  - Criou `src/components/paineis/PainelFuncionario.jsx` integrando `CardPontoFuncionario` + `EspelhoPonto`
+  - Criou `src/hooks/usePainelFuncionario.js` (escopo: lista OS reais do funcionário via `os_historico` + KPIs do mês)
+  - Não integrou meus 3 cartões novos (`ResumoDia`/`SaldoBancoHoras`/`HistoricoSemana`) — sessão futura precisa.
+
+- **Outras pendências do CLAUDE.md** (`1ebe808 docs(claude): status macro reflete entrega de ponto`):
+  - Status macro do módulo Ponto subiu de 🔴 pra 🟡 (fundação pronta).
+
+- **sql/09 continua sem ser aplicado** — busquei `git log --grep="sql/09"` e só apareceu meu commit de versionamento. Toni ainda não rodou no Supabase.
+
+### Conflito potencial detectado
+`CardPontoFuncionario.jsx` lê de `BATIDAS_MOCK` mas é chamado pelo `PainelFuncionario` em produção. Funciona em modo demo, mas próxima sessão `ponto` precisa receber `funcionarioId` (uuid do usuário logado) como prop e usar `usePonto` em vez do mock — caso contrário, o painel-func mostra batidas de `func1`/`func2` mockados para qualquer usuário logado.
