@@ -248,13 +248,26 @@ export default function Kanban({ T, dark, user }) {
     ...ZONAS.map(z => ({ id:z.id, label:z.label, icon:z.icon, cor:z.cor }))
   ]
 
-  // Scroll horizontal com wheel
+  // Scroll horizontal com wheel — mas só quando não há scroll vertical interno
+  // disponível na direção do gesto. Se o cursor está sobre uma coluna que
+  // gerou barra própria (muitos cards) e ainda dá pra rolar nessa direção,
+  // deixa o browser rolar a coluna naturalmente.
   const kanbanRef = useRef(null)
   function handleWheel(e) {
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.preventDefault()
-      kanbanRef.current.scrollLeft += e.deltaY
+    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return // gesto já é horizontal — nativo
+    const root = kanbanRef.current
+    let el = e.target
+    while (el && el !== root) {
+      const oy = getComputedStyle(el).overflowY
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1) {
+        const podeDescer = e.deltaY > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 1
+        const podeSubir  = e.deltaY < 0 && el.scrollTop > 0
+        if (podeDescer || podeSubir) return // coluna tem pra onde rolar — deixa nativo
+      }
+      el = el.parentElement
     }
+    e.preventDefault()
+    root.scrollLeft += e.deltaY
   }
 
   // OS aberta no detalhe — pega a versão atualizada do estado
