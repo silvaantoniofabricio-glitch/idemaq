@@ -131,25 +131,35 @@ function uiToDb(patch) {
 }
 
 /**
- * Hook do estoque de peças. Re-fetcha quando { categoria, busca } mudam.
+ * Hook do estoque de peças. Re-fetcha quando { categoria, busca, page, pageSize } mudam.
+ *
+ * Paginação server-side via `.range(from, to)` + `count: 'exact'` na primeira
+ * query (sem 2ª round-trip). **Quando há busca, ignora `page` e traz TODOS
+ * os matches** — busca varre o resultset inteiro, não fica presa numa página
+ * (UX: você não quer "achar peça X" e ela aparecer só na pág 3).
  *
  * @param {object} args
  * @param {string|null} args.categoria  id da categoria (null/'' = todas)
  * @param {string}      args.busca      termo livre (vazio = sem filtro)
+ * @param {number}      args.page       página atual, base 1 (default 1)
+ * @param {number}      args.pageSize   itens por página (default 20)
  */
-export function usePecas({ categoria = null, busca = '' } = {}) {
+export function usePecas({ categoria = null, busca = '', page = 1, pageSize = 20 } = {}) {
   const [pecas, setPecas] = useState([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const termo = (busca || '').trim()
   const cat = categoria && categoria !== 'todas' ? categoria : null
+  const pg = Math.max(1, Math.trunc(Number(page) || 1))
+  const sz = Math.max(1, Math.trunc(Number(pageSize) || 20))
 
   const fetchPecas = useCallback(async () => {
     setLoading(true); setError(null)
     let query = supabase
       .from('peca')
-      .select(SELECT_COLS)
+      .select(SELECT_COLS, { count: 'exact' })
       .is('deleted_at', null)
       .order('nome', { ascending: true })
 
@@ -165,15 +175,23 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
       }
     }
 
-    const { data, error: err } = await query
+    // Pagina só quando NÃO está buscando — busca varre tudo que casa.
+    if (!termo) {
+      const from = (pg - 1) * sz
+      const to = from + sz - 1
+      query = query.range(from, to)
+    }
+
+    const { data, error: err, count } = await query
     if (err) {
       setError(err)
       setLoading(false)
       return
     }
     setPecas((data || []).map(dbToUi))
+    setTotal(count ?? (data?.length || 0))
     setLoading(false)
-  }, [cat, termo])
+  }, [cat, termo, pg, sz])
 
   useEffect(() => { fetchPecas() }, [fetchPecas])
 
@@ -283,7 +301,7 @@ export function usePecas({ categoria = null, busca = '' } = {}) {
     return { data: dbToUi(data), error: null }
   }
 
-  return { pecas, loading, error, refetch: fetchPecas, criar, atualizar, excluir, baixarItens, ajustarEstoque }
+  return { pecas, total, loading, error, refetch: fetchPecas, criar, atualizar, excluir, baixarItens, ajustarEstoque }
 }
 
 // =============================================================================

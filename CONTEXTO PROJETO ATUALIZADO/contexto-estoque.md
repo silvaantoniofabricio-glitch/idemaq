@@ -8,8 +8,9 @@
 ## 1. Status atual
 
 ### Peças
-- ✅ **Front 100% ligado ao Supabase (19/05/2026 noite)** via `usePecas({ categoria, busca })`
+- ✅ **Front 100% ligado ao Supabase (19/05/2026 noite)** via `usePecas({ categoria, busca, page, pageSize })`
 - ✅ **Filtros server-side**: `.eq('categoria')` + `.or('nome.ilike, sku.ilike, referencia.ilike')`
+- ✅ **Paginação server-side (21/05/2026)**: 20 por página via `.range()` + `count: 'exact'`. Footer com Anterior/Próxima dentro do Card. Reset pra pág 1 quando filtro/busca mudam. **Busca varre todas as páginas** (ignora paginação) — UX evita resultado escondido em outra página.
 - ✅ Debounce 300ms
 - ✅ Skeleton de 8 linhas no loading
 - ✅ 2ª query light alimenta KPIs e contagem por categoria (refletem o snapshot global mesmo quando filtrado)
@@ -162,9 +163,11 @@ RLS no banco também protege os dados sensíveis (defesa em camadas).
 
 ## 8. Hook `usePecas`
 
-`usePecas({ categoria, busca })` em `src/hooks/usePecas.js`.
+`usePecas({ categoria, busca, page = 1, pageSize = 20 })` em `src/hooks/usePecas.js`.
 
 - Aceita filtros como argumentos → fetch server-side
+- **Paginação server-side** (21/05/2026): `.range(from, to)` + `count: 'exact'` na mesma query (sem 2ª round-trip). Retorna `total` no return.
+- **Busca varre tudo**: quando `busca` está preenchida, ignora `page` e traz TODOS os matches — UX evita "achei a peça mas ela tá na pág 3"
 - Debounce 300ms (no consumer)
 - Mapeia snake_case ↔ camelCase via `dbToUi`/`uiToDb`
 - CRUD: `criar` ✅, `atualizar` ✅ (consumido pelo `PecaDetalheModal`), `excluir` (soft) ✅

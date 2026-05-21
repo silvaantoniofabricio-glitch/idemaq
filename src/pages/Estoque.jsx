@@ -39,6 +39,11 @@ const ABAS = [
   { id:'maquinas', label:'Máquinas', icon:'ti-device-washing-machine' },
 ]
 
+// Tamanho da página da listagem de peças (paginação server-side via .range()).
+// 20 cabe bem no viewport sem precisar scroll na maior parte das resoluções.
+// Busca ignora a paginação (varre tudo que casa).
+const PAGE_SIZE = 20
+
 // Paleta Deutan-safe (sem verde puro / vermelho puro sem reforço). O badge
 // da categoria sempre vem com label de texto, então o vermelho aqui não fere
 // a regra "nunca cor isolada como significado".
@@ -114,6 +119,7 @@ export default function Estoque({ T, dark, user }) {
   const [maquinaAberta, setMaquinaAberta] = useState(null)
   const [novaPecaAberta, setNovaPecaAberta] = useState(false)
   const [refetchKey, setRefetchKey] = useState(0)
+  const [paginaAtual, setPaginaAtual] = useState(1)
 
   // Debounce 300ms na busca pra não bombardear o banco a cada tecla
   useEffect(() => {
@@ -121,9 +127,16 @@ export default function Estoque({ T, dark, user }) {
     return () => clearTimeout(t)
   }, [busca])
 
-  // Hook principal — filtros server-side
+  // Resetar pra página 1 sempre que mudar filtro (categoria ou busca).
+  // Sem isso, ficar na pág 5 com categoria nova pode mostrar lista vazia.
+  useEffect(() => {
+    setPaginaAtual(1)
+  }, [categoriaSel, buscaDebounced])
+
+  // Hook principal — filtros server-side + paginação server-side
   const {
     pecas,
+    total: totalFiltrado,
     loading: loadingPecas,
     error: errorPecas,
     criar: criarPeca,
@@ -132,7 +145,12 @@ export default function Estoque({ T, dark, user }) {
   } = usePecas({
     categoria: categoriaSel,
     busca: buscaDebounced,
+    page: paginaAtual,
+    pageSize: PAGE_SIZE,
   })
+
+  const buscando = !!buscaDebounced.trim()
+  const totalPaginas = Math.max(1, Math.ceil(totalFiltrado / PAGE_SIZE))
 
   // Stats globais (independem do filtro). Query light: só campos necessários
   // pra contagem por categoria e KPIs do header. Recarrega quando inserimos
@@ -245,11 +263,16 @@ export default function Estoque({ T, dark, user }) {
     notify('info', msg || 'Em breve — Módulo 06 do plano')
   }
 
-  // Texto do subtítulo: durante o loading mostra "Carregando…", senão a
-  // contagem de visíveis vs total global.
+  // Texto do subtítulo:
+  // - loading: "Carregando…"
+  // - buscando: "N resultado(s) para 'termo'" (varre tudo, sem paginar)
+  // - sem busca: "página A de B · N de Y peças" (Y = totalGlobal)
+  const sufixoBaixas = pecasBaixas > 0 ? ` · ${pecasBaixas} precisam de reposição` : ''
   const subtitlePecas = loadingPecas
     ? 'Carregando peças…'
-    : `${pecas.length} de ${totalGlobal} peças${pecasBaixas > 0 ? ` · ${pecasBaixas} precisam de reposição` : ''}`
+    : buscando
+      ? `${totalFiltrado} resultado${totalFiltrado === 1 ? '' : 's'} para "${buscaDebounced}"${sufixoBaixas}`
+      : `página ${paginaAtual} de ${totalPaginas} · ${pecas.length} de ${totalGlobal} peças${sufixoBaixas}`
 
   return (
     <div style={{
@@ -329,6 +352,11 @@ export default function Estoque({ T, dark, user }) {
               : <ListaPecas T={T} dark={dark} itens={pecas}
                   total={totalGlobal} busca={buscaDebounced}
                   mostraValores={mostraValores}
+                  buscando={buscando}
+                  totalFiltrado={totalFiltrado}
+                  paginaAtual={paginaAtual} totalPaginas={totalPaginas}
+                  pageSize={PAGE_SIZE}
+                  onPagina={setPaginaAtual}
                   onAbrir={(p) => setPecaAberta(p)} />)
         : <ListaMaquinas T={T} dark={dark} itens={maquinasFiltradas} todos={maquinas} busca={busca}
             mostraValores={mostraValores}
@@ -362,7 +390,17 @@ export default function Estoque({ T, dark, user }) {
 // =============================================================================
 // PEÇAS — listagem
 // =============================================================================
-function ListaPecas({ T, dark, itens, total, busca, onAbrir, mostraValores = true }) {
+// Quando NÃO está buscando: pagina (PAGE_SIZE por vez). Header mostra
+// "página A de B · N de totalFiltrado". Footer com botões anterior/próximo.
+// Quando está buscando: traz tudo que casa (sem paginar). Header mostra só
+// a contagem de resultados.
+function ListaPecas({
+  T, dark, itens, total, busca, onAbrir, mostraValores = true,
+  buscando = false,
+  totalFiltrado = 0,
+  paginaAtual = 1, totalPaginas = 1, pageSize = 20,
+  onPagina,
+}) {
   // Grid muda conforme o papel: dono vê 6 colunas, funcionário 4 (sem Custo + Lucro)
   const gridCols = mostraValores
     ? '1fr 90px 110px 110px 90px 90px'
@@ -381,13 +419,21 @@ function ListaPecas({ T, dark, itens, total, busca, onAbrir, mostraValores = tru
     )
   }
 
+  // Texto da contagem no header: "N de M" (M=totalFiltrado quando buscando,
+  // M=total global quando não). Mostra também a página quando aplicável.
+  const contagemHeader = buscando
+    ? `${totalFiltrado} resultado${totalFiltrado === 1 ? '' : 's'}`
+    : `${itens.length} de ${total}${totalPaginas > 1 ? ` · pág ${paginaAtual}/${totalPaginas}` : ''}`
+
+  const mostraPaginacao = !buscando && totalPaginas > 1
+
   return (
     <Card T={T} dark={dark} padding={0}>
       <div style={{ padding: '12px 16px 10px' }}>
         <SectionHeader T={T} dark={dark} icon="ti-puzzle" mb={0}
           action={
             <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-              {itens.length} de {total}
+              {contagemHeader}
             </span>
           }
         >Peças</SectionHeader>
@@ -514,7 +560,70 @@ function ListaPecas({ T, dark, itens, total, busca, onAbrir, mostraValores = tru
           </div>
         )
       })}
+
+      {mostraPaginacao && (
+        <PaginacaoFooter T={T} dark={dark}
+          paginaAtual={paginaAtual}
+          totalPaginas={totalPaginas}
+          totalItens={total}
+          pageSize={pageSize}
+          onPagina={onPagina}
+        />
+      )}
     </Card>
+  )
+}
+
+// =============================================================================
+// PAGINAÇÃO — footer da listagem
+// =============================================================================
+// Aparece só quando NÃO está buscando E totalPaginas > 1. Mostra range
+// (ex: "21–40 de 680") + botões anterior/próximo. Padrão Idemaq: ghost
+// buttons + ícones Tabler.
+function PaginacaoFooter({ T, dark, paginaAtual, totalPaginas, totalItens, pageSize, onPagina }) {
+  const podeAnterior = paginaAtual > 1
+  const podeProxima = paginaAtual < totalPaginas
+  const from = (paginaAtual - 1) * pageSize + 1
+  const to = Math.min(paginaAtual * pageSize, totalItens)
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 10, flexWrap: 'wrap',
+      padding: '10px 16px',
+      borderTop: `1px solid ${T.border}`,
+      background: T.cardAlt,
+    }}>
+      <div style={{
+        fontSize: 11.5, color: T.textMuted,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        Exibindo <strong style={{ color: T.textSecondary, fontWeight: 600 }}>{from}–{to}</strong> de <strong style={{ color: T.textSecondary, fontWeight: 600 }}>{totalItens}</strong>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Button T={T} dark={dark} variant="ghost" size="sm"
+          iconLeft="ti-chevron-left"
+          disabled={!podeAnterior}
+          onClick={() => onPagina?.(Math.max(1, paginaAtual - 1))}>
+          Anterior
+        </Button>
+        <span style={{
+          fontSize: 11.5, color: T.textMuted,
+          padding: '0 8px',
+          fontVariantNumeric: 'tabular-nums',
+          whiteSpace: 'nowrap',
+        }}>
+          Página <strong style={{ color: T.textSecondary, fontWeight: 700 }}>{paginaAtual}</strong> de <strong style={{ color: T.textSecondary, fontWeight: 700 }}>{totalPaginas}</strong>
+        </span>
+        <Button T={T} dark={dark} variant="ghost" size="sm"
+          iconRight="ti-chevron-right"
+          disabled={!podeProxima}
+          onClick={() => onPagina?.(Math.min(totalPaginas, paginaAtual + 1))}>
+          Próxima
+        </Button>
+      </div>
+    </div>
   )
 }
 
