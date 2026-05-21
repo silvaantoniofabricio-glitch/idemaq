@@ -18,6 +18,8 @@ import RotaDetalheModal from '../components/logistica/RotaDetalheModal'
 import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDisponiveisSidebar from '../components/logistica/OSDisponiveisSidebar'
 import AdicionarOSARotaModal from '../components/logistica/AdicionarOSARotaModal'
+import OSDetalhe from '../components/osDetalhe/OSDetalhe'
+import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 
 // Datas-âncora pro filtro (hoje / amanhã / semana) — coerentes em qualquer dia.
 const HOJE = new Date().toISOString().slice(0, 10)
@@ -60,6 +62,9 @@ export default function Logistica({ T, dark }) {
   const [rotaDetalhe, setRotaDetalhe] = useState(null) // rota selecionada p/ edição
   const [osParaAdicionarARota, setOsParaAdicionarARota] = useState(null) // OS da sidebar selecionada
   const [paradaAvulsaAberta, setParadaAvulsaAberta] = useState(false) // modal de parada avulsa
+
+  // OSDetalhe acessível de dentro da Logística — abre OS pra editar sem trocar de tela
+  const { abrirOSPorId, modalProps: osDetalheProps } = useOSDetalheModal({ notify })
 
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
@@ -268,7 +273,7 @@ export default function Logistica({ T, dark }) {
           <OSDisponiveisSidebar
             T={T} dark={dark}
             onSelecionarOS={(os) => setOsParaAdicionarARota(os)}
-            onAbrirOSDetalhe={(os) => notify('info', `Abrir OS #${os.numero} pra edição — em breve`)}
+            onAbrirOSDetalhe={(os) => abrirOSPorId(os.id)}
           />
 
           {/* Lista de paradas das rotas */}
@@ -538,6 +543,8 @@ export default function Logistica({ T, dark }) {
           onAtualizarRota={atualizarRota}
         />
       )}
+
+      {osDetalheProps && <OSDetalhe T={T} dark={dark} {...osDetalheProps} />}
     </div>
   )
 }
