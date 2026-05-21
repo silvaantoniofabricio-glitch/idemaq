@@ -30,7 +30,7 @@ import { isAdmin, getRole } from './utils/osHelpers'
 
 import AppLayout from './components/layout/AppLayout'
 import { ToastProvider } from './components/ui/Toast'
-import { RefreshProvider, useRouteRefresh } from './contexts/RefreshContext'
+import { RefreshProvider } from './contexts/RefreshContext'
 
 import Login        from './pages/Login'
 import Painel       from './pages/Painel'
@@ -48,7 +48,7 @@ import EmConstrucao from './pages/EmConstrucao'
 
 // Mobile (legacy — futuro: pages/mobile/Painel.jsx, OSMobile.jsx refatoradas)
 import PainelMobile from './pages/mobile/PainelMobile'
-import OSMobile, { PullToRefresh } from './pages/mobile/OSMobile'
+import OSMobile from './pages/mobile/OSMobile'
 
 export default function App() {
   const { T, dark, toggleTheme, isMobile } = useTheme()
@@ -125,28 +125,23 @@ function RoutesDesktop({ T, dark, user }) {
 }
 
 function RoutesMobile({ T, dark, user }) {
-  // Mobile usa PullToRefresh embrulhando o conteúdo.
-  // Telas Clientes/Logistica/Estoque/Financeiro/Relatorios já são responsivas
-  // (não precisam de versão mobile dedicada por enquanto) — usa as mesmas.
-  // onRefresh dispara o refetch registrado pela página ativa (via
-  // RefreshContext). Páginas sem hook registrado: no-op silencioso.
-  const refresh = useRouteRefresh()
+  // PullToRefresh removido em 21/05/2026 a pedido do Toni — UX de puxar pra
+  // atualizar foi considerada confusa em prod. Realtime do Supabase + botões
+  // explícitos de refresh em telas críticas cobrem o caso.
   return (
-    <PullToRefresh T={T} dark={dark} onRefresh={refresh}>
-      <Routes>
-        <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
-        <Route path="/os"          element={<OSMobile T={T} dark={dark} user={user} />} />
-        <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
-        <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
-        <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
-        <Route path="/financeiro"    element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
-        <Route path="/vendas"        element={<AdminOnly user={user}><Vendas T={T} dark={dark} user={user} /></AdminOnly>} />
-        <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
-        <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
-        <Route path="/meu-relatorio" element={<MeuRelatorio user={user} />} />
-        <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </PullToRefresh>
+    <Routes>
+      <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
+      <Route path="/os"          element={<OSMobile T={T} dark={dark} user={user} />} />
+      <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
+      <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
+      <Route path="/estoque"     element={<Estoque T={T} dark={dark} user={user} />} />
+      <Route path="/financeiro"    element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/vendas"        element={<AdminOnly user={user}><Vendas T={T} dark={dark} user={user} /></AdminOnly>} />
+      <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/meu-relatorio" element={<MeuRelatorio user={user} />} />
+      <Route path="/painel-func"   element={<PainelFuncionario T={T} dark={dark} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }

@@ -12,7 +12,6 @@ import React, { useState, useMemo } from 'react'
 import { supabase } from '../../supabase'
 import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
-import { useRegisterRouteRefresh } from '../../contexts/RefreshContext'
 import { normalizePatchOS } from '../../utils/osPatch'
 import {
   podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin,
@@ -23,24 +22,18 @@ import FiltrosMobile from '../../components/mobile/FiltrosMobile'
 import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
 
-// Mantém o named export PullToRefresh — App.jsx ainda importa daqui.
-// Por enquanto re-exporta do legacy; refatoração própria fica pra próxima
-// rodada mobile (ver logs/mobile-bloqueios.md).
-export { PullToRefresh } from '../../_legacy/mobileComponents'
-
 export default function OSMobile({ T, dark, user }) {
   const { osList, setOsList, loading, refetch } = useOS(false)
   const { usuarios } = useUsuarios()
   const notify = useToast()
   const admin = isAdmin(user)
-  // Liga o refetch ao PullToRefresh global (App.jsx). Função estável vinda do hook.
-  useRegisterRouteRefresh(refetch)
 
   const [busca, setBusca] = useState('')
   const [filtros, setFiltros] = useState({
     zona: 'todos',
     tipos: new Set(['atendimento', 'fabricacao', 'venda']),
   })
+  const [etapaAba, setEtapaAba] = useState('todas')
   const [osAberta, setOsAberta] = useState(null)
 
   // ─── Filtragem ─────────────────────────────────────────────────────────────
@@ -74,6 +67,32 @@ export default function OSMobile({ T, dark, user }) {
       return true
     })
   }, [osList, busca, filtros, admin])
+
+  // ─── Abas por etapa: contadores + filtragem secundária ────────────────────
+  const { abasDisponiveis, osExibidas } = useMemo(() => {
+    // Conta quantas OS há em cada etapa unificada
+    const contadores = {}
+    for (const os of osFiltradas) {
+      const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
+      if (!uni) continue
+      contadores[uni.id] = (contadores[uni.id] || 0) + 1
+    }
+    // Abas na ordem canônica, só as que têm OS
+    const abasDisponiveis = ETAPAS_TODOS.filter(e => contadores[e.id] > 0)
+      .map(e => ({ ...e, count: contadores[e.id] }))
+
+    // Se a aba selecionada sumiu (ex: mudou filtro de zona), volta pra "todas"
+    const abaValida = etapaAba === 'todas' || abasDisponiveis.some(a => a.id === etapaAba)
+
+    const osExibidas = (abaValida && etapaAba !== 'todas')
+      ? osFiltradas.filter(os => {
+          const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
+          return uni?.id === etapaAba
+        })
+      : osFiltradas
+
+    return { abasDisponiveis, osExibidas }
+  }, [osFiltradas, etapaAba])
 
   // ─── Atualização genérica de campos (usada pelas ações do OSDetalhe) ───────
   // UI sempre recebe patch completo (optimistic). Persistência filtrada via
@@ -177,6 +196,16 @@ export default function OSMobile({ T, dark, user }) {
         <FiltrosMobile T={T} dark={dark} filtros={filtros} setFiltros={setFiltros} />
       </div>
 
+      {/* Abas por etapa */}
+      {!loading && abasDisponiveis.length > 0 && (
+        <AbasEtapa
+          T={T} dark={dark}
+          abas={abasDisponiveis}
+          ativa={etapaAba}
+          onSelect={id => setEtapaAba(prev => prev === id ? 'todas' : id)}
+        />
+      )}
+
       {/* Lista scrollable */}
       <div style={{
         flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
@@ -187,20 +216,20 @@ export default function OSMobile({ T, dark, user }) {
           <SkeletonList T={T} />
         )}
 
-        {!loading && osFiltradas.length === 0 && (
+        {!loading && osExibidas.length === 0 && (
           <EmptyState T={T} busca={busca} />
         )}
 
-        {!loading && osFiltradas.length > 0 && (
+        {!loading && osExibidas.length > 0 && (
           <>
             <div style={{
               fontSize: 11, color: T.textMuted, fontWeight: 600,
               textTransform: 'uppercase', letterSpacing: '.3px',
               paddingLeft: 2,
             }}>
-              {osFiltradas.length} {osFiltradas.length === 1 ? 'OS' : 'OS'} encontrad{osFiltradas.length === 1 ? 'a' : 'as'}
+              {osExibidas.length} OS encontrada{osExibidas.length !== 1 ? 's' : ''}
             </div>
-            {osFiltradas.map(os => (
+            {osExibidas.map(os => (
               <OSCardMobile key={os.numero} T={T} dark={dark} os={os}
                 onClick={() => setOsAberta(os)} />
             ))}
@@ -226,6 +255,55 @@ export default function OSMobile({ T, dark, user }) {
           onRefetchOS={refetch}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Abas por etapa ───────────────────────────────────────────────────────
+function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
+  const azul = dark ? '#5B9BD5' : '#5B9BD5'
+  const corBadge = { yellow: '#b8860b', red: '#c04242', blue: '#5B9BD5', blueLight: '#5B9BD5', neutro: '#6b7280', green: '#2e7d5e' }
+  const bgBadge  = { yellow: dark ? 'rgba(255,217,102,.18)' : '#fff8e1', red: dark ? 'rgba(255,107,107,.18)' : '#fff0f0', blue: dark ? 'rgba(91,155,213,.18)' : '#e8f0fb', blueLight: dark ? 'rgba(91,155,213,.18)' : '#e8f0fb', neutro: dark ? '#2a2d3a' : '#f0f2f5', green: dark ? 'rgba(46,125,94,.18)' : '#e8f8f0' }
+
+  return (
+    <div style={{
+      borderBottom: `1px solid ${T.border}`,
+      flexShrink: 0,
+    }}>
+      <div style={{
+        display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none', padding: '0 14px',
+      }}>
+        {abas.map(aba => {
+          const isAtiva = ativa === aba.id
+          const cor = corBadge[aba.cor] || '#6b7280'
+          const bg  = bgBadge[aba.cor]  || (dark ? '#2a2d3a' : '#f0f2f5')
+          return (
+            <button key={aba.id} onClick={() => onSelect(aba.id)}
+              style={{
+                flexShrink: 0, padding: '10px 14px',
+                background: 'transparent', border: 'none',
+                borderBottom: `2px solid ${isAtiva ? azul : 'transparent'}`,
+                color: isAtiva ? azul : T.textMuted,
+                fontSize: 12.5, fontWeight: isAtiva ? 700 : 500,
+                cursor: 'pointer', fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                transition: 'color .15s, border-color .15s',
+              }}>
+              {aba.curto}
+              <span style={{
+                background: isAtiva ? azul : bg,
+                color: isAtiva ? '#fff' : cor,
+                fontSize: 10, fontWeight: 800,
+                minWidth: 18, height: 18, borderRadius: 9,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                padding: '0 5px',
+              }}>{aba.count}</span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

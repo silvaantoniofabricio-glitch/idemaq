@@ -8,7 +8,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { useOS } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
-import { useRegisterRouteRefresh } from '../../contexts/RefreshContext'
 import { isAdmin } from '../../utils/osHelpers'
 import { supabase } from '../../supabase'
 import HeroMobile from '../../components/mobile/HeroMobile'
@@ -28,8 +27,6 @@ function mesmoMes(d, ref) {
 export default function PainelMobile({ T, dark, user }) {
   const { osList, loading, refetch } = useOS(false)
   const { apelidoDe } = useUsuarios()
-  // PullToRefresh global (App.jsx) chama esse refetch quando o usuário puxa.
-  useRegisterRouteRefresh(refetch)
 
   // Fallback de user (igual ao Painel desktop — prop pode vir undefined)
   const [authUser, setAuthUser] = useState(null)
