@@ -325,17 +325,18 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
   const abaRefs = useRef({})  // { [id]: HTMLButtonElement }
 
   // Carrossel mobile: 3 abas visíveis por vez. Cada aba ocupa 1/3 da largura
-  // do trilho (flex: 0 0 calc(100%/3)), snap mandatory + align start → cada
-  // arraste paginal exatamente 1 aba pra esquerda/direita. Quando a aba ativa
-  // muda (click ou swipe), rola pro offsetLeft dela (alinhado ao start do
-  // trilho — combinando com o snap point).
+  // do trilho. Spacers laterais de 1/3 antes/depois deixam a primeira e a
+  // última aba se centralizarem (com lado vazio quando nos extremos). Snap
+  // mandatory + align center = a aba ativa fica sempre no MEIO do trilho.
+  // Cada arrasto paginal exatamente 1 aba.
   useEffect(() => {
     const trilho = trilhoRef.current
     const ativoEl = abaRefs.current[ativa]
     if (!trilho || !ativoEl) return
-    // Pra aba ficar visível e enquadrada, posiciona o início dela no início
-    // do viewport do trilho. Snap se encarrega do alinhamento fino.
-    trilho.scrollTo({ left: Math.max(0, ativoEl.offsetLeft), behavior: 'smooth' })
+    // Centraliza o botão ativo no centro do viewport do trilho.
+    const trilhoW = trilho.clientWidth
+    const alvoLeft = ativoEl.offsetLeft + (ativoEl.offsetWidth / 2) - (trilhoW / 2)
+    trilho.scrollTo({ left: Math.max(0, alvoLeft), behavior: 'smooth' })
   }, [ativa, abas.length])
 
   return (
@@ -351,6 +352,9 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
           scrollbarWidth: 'none',
           scrollSnapType: 'x mandatory',
         }}>
+        {/* Spacer esquerdo: deixa a primeira aba centralizar com lado vazio */}
+        <div aria-hidden="true" style={{ flex: '0 0 calc(100% / 3)' }} />
+
         {abas.map(aba => {
           const isAtiva = ativa === aba.id
           const cor = corBadge[aba.cor] || '#6b7280'
@@ -372,7 +376,7 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
                 whiteSpace: 'nowrap',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 transition: 'color .15s, border-color .15s',
-                scrollSnapAlign: 'start',
+                scrollSnapAlign: 'center',
                 overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -389,6 +393,9 @@ function AbasEtapa({ T, dark, abas, ativa, onSelect }) {
             </button>
           )
         })}
+
+        {/* Spacer direito: deixa a última aba centralizar com lado vazio */}
+        <div aria-hidden="true" style={{ flex: '0 0 calc(100% / 3)' }} />
       </div>
     </div>
   )
