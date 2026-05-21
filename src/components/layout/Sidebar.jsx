@@ -76,20 +76,27 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
           justifyContent: expanded ? 'space-between' : 'center',
           flexShrink: 0, gap: 8,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden' }}>
-            <div style={{
-              width: 28, height: 28,
-              background: `linear-gradient(135deg,${P.blue},#3a7bbf)`,
-              borderRadius: 7,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <i className="ti ti-tool" style={{ fontSize: 14, color: '#fff' }} aria-hidden="true" />
-            </div>
-            {expanded && (
-              <div>
-                <div style={{ color: T.textPrimary, fontWeight: 700, fontSize: 15, letterSpacing: '-.3px', whiteSpace: 'nowrap' }}>Idemaq</div>
-                <div style={{ color: T.textDim, fontSize: 9, letterSpacing: '.5px', textTransform: 'uppercase' }}>Gestão</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden', flex: 1, minWidth: 0 }}>
+            {expanded ? (
+              // Logo oficial da empresa (verde). PNG tem padding branco lateral,
+              // por isso usamos object-fit: contain + altura controlada pra caber
+              // no header de 56px sem distorcer.
+              <img
+                src="/logo-idemaq.png"
+                alt="Idemaq"
+                style={{ height: 28, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block' }}
+              />
+            ) : (
+              // Versão compacta (slot 56px): mantém o quadradinho azul + ícone
+              // até termos uma marca quadrada da Idemaq pra substituir.
+              <div style={{
+                width: 28, height: 28,
+                background: `linear-gradient(135deg,${P.blue},#3a7bbf)`,
+                borderRadius: 7,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <i className="ti ti-tool" style={{ fontSize: 14, color: '#fff' }} aria-hidden="true" />
               </div>
             )}
           </div>

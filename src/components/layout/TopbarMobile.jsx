@@ -23,22 +23,14 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
       paddingTop: 'env(safe-area-inset-top, 0px)',
     }}>
       {/* Esquerda: logo + página atual */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-        <div style={{
-          width: 30, height: 30,
-          background: `linear-gradient(135deg, ${P.blue}, #3a7bbf)`,
-          borderRadius: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-          boxShadow: '0 2px 6px rgba(91, 155, 213, 0.35)',
-        }}>
-          <i className="ti ti-tool" style={{ fontSize: 14, color: '#fff' }} aria-hidden="true" />
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+        {/* Logo oficial da Idemaq — substitui o quadradinho azul + texto "Idemaq" */}
+        <img
+          src="/logo-idemaq.png"
+          alt="Idemaq"
+          style={{ height: 26, width: 'auto', maxWidth: 110, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-          <span style={{
-            fontSize: 15, fontWeight: 700, color: T.textPrimary,
-            letterSpacing: '-.01em',
-          }}>Idemaq</span>
           <i className={`ti ${menu.icon}`} style={{ fontSize: 14, color: T.textDim }} aria-hidden="true" />
           <span style={{
             fontSize: 12.5, color: T.textSecondary, fontWeight: 500,

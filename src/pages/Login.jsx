@@ -34,16 +34,19 @@ export default function Login({ dark, T }) {
         boxShadow: dark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 4px 24px rgba(0,0,0,0.08)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <div style={{
-            width: 52, height: 52,
-            background: `linear-gradient(135deg, ${P.blue}, #3a7bbf)`,
-            borderRadius: 13,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px',
-          }}>
-            <i className="ti ti-tool" style={{ fontSize: 24, color: '#fff' }} aria-hidden="true" />
-          </div>
-          <h2 style={{ color: T.textPrimary, marginBottom: 4, fontSize: 22, fontWeight: 700 }}>Idemaq</h2>
+          {/* Logo oficial da Idemaq — substitui o círculo azul + título "Idemaq". */}
+          <img
+            src="/logo-idemaq.png"
+            alt="Idemaq"
+            style={{
+              display: 'block',
+              height: 60,
+              width: 'auto',
+              maxWidth: 220,
+              margin: '0 auto 10px',
+              objectFit: 'contain',
+            }}
+          />
           <p style={{ color: T.textMuted, fontSize: 14 }}>Sistema de gestão</p>
         </div>
         <form onSubmit={entrar}>
