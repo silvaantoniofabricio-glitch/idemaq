@@ -23,10 +23,10 @@ const ORIGINAL_URL = '/logo-idemaq.png'
 // Padding em volta do bbox detectado do símbolo (em pixels da imagem original)
 const SYMBOL_BBOX_PADDING = 12
 
-// Pra detectar o símbolo, varremos só os primeiros 30% da largura da imagem
-// — evita pegar o "I" de "Ide" (que começa por volta de 27% no PNG atual) e
-// dá folga caso a logo mude um pouco.
-const SYMBOL_SEARCH_LIMIT_PCT = 0.30
+// Limite máximo de busca (escape — não esperamos passar disso): 45% da largura.
+// O algoritmo real para na primeira COLUNA VAZIA depois do conteúdo (lacuna
+// entre o símbolo e o "Ide"), então o limite é só uma rede de segurança.
+const SYMBOL_SEARCH_LIMIT_PCT = 0.45
 
 // ─── Cache de módulo ────────────────────────────────────────────────────────
 // Chaves: 'full-dark', 'full-light', 'symbol-dark', 'symbol-light'
@@ -48,30 +48,58 @@ function carregarImagem() {
 }
 
 // Detecta o bounding box do símbolo (parte esquerda da logo).
-// Olha só os primeiros SYMBOL_SEARCH_LIMIT_PCT da largura pra não capturar o "Ide".
+// Algoritmo: anda da esquerda pra direita procurando o primeiro pixel visível
+// (início do símbolo), continua até encontrar uma coluna INTEIRAMENTE
+// transparente (lacuna entre símbolo e "Ide"), e devolve o bbox dessa região.
+// Mais robusto que um limite fixo de % — funciona pra qualquer logo que
+// tenha ao menos 1 coluna de respiro entre o símbolo e o texto.
 function detectarBboxSimbolo(imgData, width, height) {
-  const limiteX = Math.floor(width * SYMBOL_SEARCH_LIMIT_PCT)
   const d = imgData.data
-  let minX = width, maxX = -1, minY = height, maxY = -1
+  const limiteHardX = Math.floor(width * SYMBOL_SEARCH_LIMIT_PCT)
+
+  const colunaTemPixel = (x) => {
+    for (let y = 0; y < height; y++) {
+      if (d[(y * width + x) * 4 + 3] > 32) return true
+    }
+    return false
+  }
+
+  // 1) Primeira coluna com pixel visível = início do símbolo
+  let startX = -1
+  for (let x = 0; x < limiteHardX; x++) {
+    if (colunaTemPixel(x)) { startX = x; break }
+  }
+  if (startX < 0) return null
+
+  // 2) Continua até achar uma coluna VAZIA — essa é a lacuna que separa
+  //    o símbolo do "Ide". Capamos no limite hard só por segurança.
+  let endX = startX
+  for (let x = startX + 1; x < limiteHardX; x++) {
+    if (!colunaTemPixel(x)) break
+    endX = x
+  }
+
+  // 3) Calcula Y bounds só dentro de [startX, endX]
+  let minY = height, maxY = -1
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < limiteX; x++) {
-      const i = (y * width + x) * 4
-      if (d[i + 3] > 0) {
-        if (x < minX) minX = x
-        if (x > maxX) maxX = x
+    for (let x = startX; x <= endX; x++) {
+      if (d[(y * width + x) * 4 + 3] > 32) {
         if (y < minY) minY = y
         if (y > maxY) maxY = y
+        break // achou nessa linha, sai pra próxima Y
       }
     }
   }
-  if (maxX < 0) return null // nada encontrado
-  // padding com clamp pras bordas da imagem
+  if (maxY < 0) return null
+
+  // 4) Padding com clamp nas bordas da imagem
   const p = SYMBOL_BBOX_PADDING
+  const x = Math.max(0, startX - p)
+  const y = Math.max(0, minY - p)
   return {
-    x: Math.max(0, minX - p),
-    y: Math.max(0, minY - p),
-    width:  Math.min(width,  maxX - minX + 1 + p * 2),
-    height: Math.min(height, maxY - minY + 1 + p * 2),
+    x, y,
+    width:  Math.min(width  - x, (endX - startX + 1) + (startX - x) + p),
+    height: Math.min(height - y, (maxY - minY + 1) + (minY - y) + p),
   }
 }
 
