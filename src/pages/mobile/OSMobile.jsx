@@ -8,7 +8,7 @@
 // não tem drag-and-drop em mobile. moverOS e updateOS são versões enxutas
 // da lógica do Kanban (reusam podeMoverOS + uiEtapaToDb pra ficar fiel).
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
 import { supabase } from '../../supabase'
 import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
@@ -160,6 +160,53 @@ export default function OSMobile({ T, dark, user }) {
     updateOS(numero, { aguardando_peca: !os.aguardando_peca })
   }
 
+  // ─── Swipe horizontal entre abas (etapas) ──────────────────────────────────
+  // Arrasta a LISTA de OS pra esquerda → próxima aba; direita → anterior.
+  // Quando está em 'todas', primeiro swipe vai pra primeira/última aba.
+  // Nos extremos das abas, o swipe pra fora não muda nada (não dá wrap-around).
+  // Threshold 60px + detecção de eixo dominante pra não brigar com scroll vertical.
+  const touchRef = useRef(null)
+
+  function trocarAbaPorSwipe(direcao) {
+    if (abasDisponiveis.length === 0) return
+    const ids = abasDisponiveis.map(a => a.id)
+    const idx = ids.indexOf(etapaAba)
+    if (idx < 0) {
+      // Está em 'todas' → entra pela primeira (se foi pra esquerda) ou última (direita)
+      setEtapaAba(ids[direcao > 0 ? 0 : ids.length - 1])
+      return
+    }
+    const proxIdx = idx + direcao
+    if (proxIdx < 0 || proxIdx >= ids.length) return // extremo — não wraps
+    setEtapaAba(ids[proxIdx])
+  }
+
+  function onTouchStartLista(e) {
+    const t = e.touches[0]
+    touchRef.current = { x0: t.clientX, y0: t.clientY, swiping: null }
+  }
+  function onTouchMoveLista(e) {
+    if (!touchRef.current) return
+    const t = e.touches[0]
+    const dx = t.clientX - touchRef.current.x0
+    const dy = t.clientY - touchRef.current.y0
+    // Define o eixo dominante no primeiro movimento > 10px e mantém — evita
+    // que um scroll vertical iniciado vire troca de aba no meio do caminho.
+    if (touchRef.current.swiping == null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      touchRef.current.swiping = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    }
+  }
+  function onTouchEndLista(e) {
+    if (!touchRef.current) return
+    const ref = touchRef.current
+    touchRef.current = null
+    if (ref.swiping !== 'h') return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - ref.x0
+    if (Math.abs(dx) < 60) return
+    trocarAbaPorSwipe(dx < 0 ? +1 : -1) // dx<0 = arrasta pra esquerda = próxima aba
+  }
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', flex: 1,
@@ -206,12 +253,18 @@ export default function OSMobile({ T, dark, user }) {
         />
       )}
 
-      {/* Lista scrollable */}
-      <div style={{
-        flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-        padding: '12px 14px 80px',
-        display: 'flex', flexDirection: 'column', gap: 10,
-      }}>
+      {/* Lista scrollable — swipe horizontal troca de aba */}
+      <div
+        onTouchStart={onTouchStartLista}
+        onTouchMove={onTouchMoveLista}
+        onTouchEnd={onTouchEndLista}
+        style={{
+          flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+          padding: '12px 14px 80px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+          touchAction: 'pan-y', // permite scroll vertical; browser não tenta voltar/avançar página
+        }}
+      >
         {loading && (
           <SkeletonList T={T} />
         )}
