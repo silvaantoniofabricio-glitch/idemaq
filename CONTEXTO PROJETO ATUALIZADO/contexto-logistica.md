@@ -5,6 +5,37 @@
 
 ---
 
+## 0. Sessão 20/05/2026 — UI de criação/edição de rota (drag-and-drop)
+
+**Entregue (commit `c1a774d`):**
+
+| Arquivo | Tipo | Função |
+|---|---|---|
+| `src/components/logistica/ParadasEditor.jsx` | NOVO | Lista editável de paradas com DnD HTML5 nativo (reusado pelos 2 modais) |
+| `src/components/logistica/NovaRotaModal.jsx` | NOVO | Modal de criação — data, motorista, observações, paradas |
+| `src/components/logistica/RotaDetalheModal.jsx` | NOVO | Modal de edição + concluir parada + excluir rota |
+| `src/pages/Logistica.jsx` | EDIT | Botão "Nova rota" no header + click na parada abre detalhe |
+| `CONTEXTO PROJETO ATUALIZADO/contexto-logistica.md` | EDIT | Este doc |
+
+**Decisões técnicas:**
+
+1. **Drag-and-drop com HTML5 nativo (não `@dnd-kit`)** — o projeto não tem `@dnd-kit` instalado (conferido em `package.json`) e a regra de ouro do CLAUDE.md proíbe adicionar dependências sem aprovação. HTML5 `draggable + onDragStart/onDragOver/onDrop` resolve com ~30 linhas dentro do `ParadasEditor`. Suficiente pra reorder simples de 5-15 paradas/dia.
+2. **`ParadasEditor` compartilhado** entre os 2 modais pra evitar duplicação. Recebe `paradas` controlled + `onChange`, `osOptions` opcional pro picker, e `onConcluirParada` opcional (só aparece o botão "Concluir" quando passado — só na edição, não na criação).
+3. **Picker de OS via `useOS`** — Select com `OS #N — cliente`. Quando o usuário escolhe uma OS, o editor auto-preenche `cliente_nome` e `cliente_fone` **só se estavam vazios** (não sobrescreve edição manual). Limita a 200 OS pra não estourar o Select.
+4. **Motoristas via `useUsuarios`** filtrados por `papel ∈ {logistica, dono}` (Toni dirige também). Usa `apelido` (tabela `usuarios` não tem `nome` — repete a lição da Onda 4).
+5. **DnD no detalhe NÃO usa `useRotas.reordenarParadas`** — o modal de detalhe mantém um draft local e só persiste tudo (paradas + campos da rota) no botão "Salvar alterações" via `useRotas.atualizar`. Mais previsível pro operador (pode arrastar e desistir). O hook `reordenarParadas` continua disponível pro caso de uma UI de "reordenar em linha" no futuro (lista da página).
+6. **"Concluir parada" individual SIM dispara `useRotas.concluirParada` direto** dentro do modal — é uma ação atômica clara e já é optimistic no hook. O draft local também é atualizado pra feedback visual imediato.
+7. **Tipo `servico`** adicionado às paradas (além dos `coleta`/`entrega` originais) — útil pra visitas técnicas que não envolvem retirar/devolver máquina. Cor amarela (`P.yellow`) pra diferenciar dos dois azuis das coletas/entregas.
+
+**Validações dos modais:**
+- Data obrigatória
+- ≥ 1 parada com endereço preenchido (paradas em branco são descartadas no save)
+- `ordem` é renumerada (1..N) ao persistir
+
+**Outros componentes adicionados em paralelo por outro terminal** (visíveis nos imports atuais do `Logistica.jsx`, fora do escopo desta sessão): `MapaLogistica`, `OSDisponiveisSidebar`, `AdicionarOSARotaModal`, integração com `useOSDetalheModal` pra abrir OS sem trocar de tela. Documentar quando o terminal responsável fechar a tarefa.
+
+---
+
 ## 1. Status atual
 
 🟢 **CRUD completo: hook + UI + modais de criação/edição com drag-and-drop** (20/05/2026).
@@ -112,6 +143,66 @@ const { rotas, loading, error, tabelaAusente,
 - Quando a tabela ainda não existe (`42P01` / "Could not find the table") → `tabelaAusente: true`, lista vazia, sem throw.
 - Mutações `concluirParada` / `reordenarParadas` fazem **UPDATE optimistic do jsonb `paradas` inteiro** (`.update({ paradas: novaLista }).eq('id', rota.id)`) com rollback em caso de erro.
 - `criar/atualizar` fazem insert/update + `fetchAll()`. `excluir` é soft-delete (`deleted_at = now()`).
+
+## 3.3. Componente `ParadasEditor` (`src/components/logistica/ParadasEditor.jsx`)
+
+Lista controlled de paradas com **drag-and-drop nativo HTML5** (sem libs). Reusado por `NovaRotaModal` e `RotaDetalheModal`.
+
+```jsx
+import ParadasEditor, { paradaVazia } from '../components/logistica/ParadasEditor'
+
+<ParadasEditor
+  T={T} dark={dark}
+  paradas={paradas}                  // array controlled (shape do jsonb)
+  onChange={setParadas}              // (novoArray) => void
+  osOptions={[                       // opcional — picker de OS por parada
+    { value: 'uuid', label: 'OS #247 — João', numero: 247, cliente: 'João', fone: '67 9...' }
+  ]}
+  onConcluirParada={(paradaId) => {} } // opcional — só passa no modal de edição
+/>
+```
+
+**O que faz internamente:**
+- DnD: handle `ti-grip-vertical` à esquerda; `onDragOver` destaca a linha-alvo com borda colorida; `onDrop` move o item no array.
+- Adiciona parada nova com `paradaVazia(tipoSugerido)` — sugestão alterna `coleta`↔`entrega` baseado na última.
+- Ao escolher uma OS no Select, auto-preenche `cliente_nome` e `cliente_fone` SE estavam vazios (preserva edição manual).
+- **NÃO persiste**. Quem decide o quê fazer com o novo array é o componente pai (modal/página).
+
+**Tipos de parada suportados:** `coleta` (azul) · `entrega` (azul claro) · `servico` (amarelo).
+
+---
+
+## 3.4. Modais `NovaRotaModal` e `RotaDetalheModal`
+
+**`NovaRotaModal` (`src/components/logistica/NovaRotaModal.jsx`)**
+```jsx
+<NovaRotaModal
+  T={T} dark={dark}
+  onClose={() => setNovaRotaAberta(false)}
+  onCriar={criarRota}   // = useRotas().criar — devolve { data, error }
+/>
+```
+- Internamente usa `useUsuarios` e `useOS(false)` pra popular Selects.
+- Valida data + ≥1 parada com endereço.
+- Status inicial gravado: `'planejada'`.
+
+**`RotaDetalheModal` (`src/components/logistica/RotaDetalheModal.jsx`)**
+```jsx
+<RotaDetalheModal
+  T={T} dark={dark}
+  rota={rotaSelecionada}                // objeto da lista do useRotas
+  onClose={() => setRotaDetalhe(null)}
+  onAtualizar={atualizarRota}           // = useRotas().atualizar
+  onExcluir={excluirRota}               // = useRotas().excluir (soft-delete)
+  onConcluirParada={concluirParadaHook} // = useRotas().concluirParada
+/>
+```
+- Mostra status atual no header (Badge: planejada/em_andamento/concluida/cancelada).
+- "Concluir" por parada dispara `onConcluirParada(rotaId, paradaId)` IMEDIATAMENTE (já é optimistic) + atualiza draft local pra feedback visual instantâneo.
+- "Excluir rota" exige **dois cliques** (1º vira "Confirmar exclusão?", 2º executa).
+- "Salvar alterações" envia patch completo: `{ data, motorista_id, status, observacoes, paradas (renumeradas) }`.
+
+---
 
 ## 3.2. Componente `AddressInput` (`src/components/logistica/AddressInput.jsx`)
 
