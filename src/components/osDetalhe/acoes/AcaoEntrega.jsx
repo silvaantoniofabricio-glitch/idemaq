@@ -12,11 +12,14 @@
 //     Ao confirmar: vai pra Pagamento — ou DIRETO pra Concluído se OS já estiver
 //     paga (estaPagaTotal) — mesma regra do CLAUDE.md.
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa, bgEtapa, corHero } from '../../../utils/colors'
 import { estaPagaTotal } from '../../../utils/osHelpers'
+import {
+  uploadFotoEntrega, removerFotoEntrega, resolverFotoUrl, FOTO_STORAGE_MARKER,
+} from '../../../utils/osStorage'
 import { useToast } from '../../ui'
 import BlocoAcao from './BlocoAcao'
 
@@ -48,6 +51,63 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
   const [responsavel, setResponsavel] = useState(respAgendado || lista[0]?.id || '')
   const [obs, setObs] = useState(obsAgendada)
 
+  // ─── Foto da entrega (obrigatória pra confirmar) ──────────────────────────
+  // Marker no banco vai em pre_diagnostico.foto_entrega = 'storage' (reusa
+  // jsonb existente — não precisa schema novo). Path: os/{id}/entrega.jpg
+  const salvoEntrega = os.pre_diagnostico?.foto_entrega || null
+  const [fotoEntregaUrl, setFotoEntregaUrl] = useState(null)
+  const [fotoEntregaNoStorage, setFotoEntregaNoStorage] = useState(salvoEntrega === FOTO_STORAGE_MARKER)
+  const [uploadingFoto, setUploadingFoto] = useState(false)
+  const inputFotoRef = useRef(null)
+
+  // Carrega URL exibível se já houver foto salva
+  useEffect(() => {
+    let cancelado = false
+    async function carregar() {
+      const url = await resolverFotoUrl(salvoEntrega, os.id, 'entrega')
+      if (!cancelado) setFotoEntregaUrl(url)
+    }
+    if (salvoEntrega) carregar()
+    else setFotoEntregaUrl(null)
+    return () => { cancelado = true }
+  }, [salvoEntrega, os.id])
+
+  async function escolherFotoEntrega(file) {
+    if (!file) return
+    if (!file.type?.startsWith('image/')) {
+      notify('erro', 'Selecione uma imagem (JPG/PNG).')
+      return
+    }
+    setUploadingFoto(true)
+    const res = await uploadFotoEntrega(os.id, file)
+    setUploadingFoto(false)
+    if (!res.ok) {
+      notify('erro', `Falha ao enviar foto: ${res.error}`)
+      return
+    }
+    setFotoEntregaUrl(res.url)
+    setFotoEntregaNoStorage(true)
+    // Persiste marker no banco (estende o jsonb pre_diagnostico)
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        foto_entrega: FOTO_STORAGE_MARKER,
+      },
+    })
+    notify('ok', 'Foto da entrega adicionada')
+  }
+
+  async function removerFoto() {
+    if (!window.confirm('Remover a foto da entrega?')) return
+    if (fotoEntregaNoStorage) await removerFotoEntrega(os.id)
+    setFotoEntregaUrl(null)
+    setFotoEntregaNoStorage(false)
+    if (inputFotoRef.current) inputFotoRef.current.value = ''
+    const { foto_entrega, ...resto } = os.pre_diagnostico || {}
+    onUpdateOS?.(os.numero, { pre_diagnostico: resto })
+    notify('ok', 'Foto da entrega removida')
+  }
+
   function agendar() {
     if (!dataHora) {
       notify('erro', 'Defina data e hora da entrega')
@@ -74,6 +134,13 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
   }
 
   function confirmarEntrega() {
+    // Foto da entrega é OBRIGATÓRIA — prova de devolução em bom estado
+    if (!fotoEntregaNoStorage && !fotoEntregaUrl) {
+      notify('erro', 'Tire a foto da entrega antes de confirmar — comprova devolução em bom estado.')
+      // Scroll automático até o bloco de foto (ajuda no mobile)
+      inputFotoRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (!window.confirm(jaPaga
       ? 'Confirmar entrega? A OS vai direto pra Concluído (já paga).'
       : 'Confirmar entrega? A OS vai pra Pagamento.')) return
@@ -152,6 +219,99 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
           Avisar cliente no WhatsApp
         </button>
 
+        {/* Foto da entrega — obrigatória pra confirmar */}
+        <div style={{
+          padding: '12px 14px', borderRadius: 9,
+          border: `1px dashed ${fotoEntregaUrl ? verde : amarelo}`,
+          background: `${fotoEntregaUrl ? verde : amarelo}10`,
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <i className={`ti ${fotoEntregaUrl ? 'ti-camera-check' : 'ti-camera'}`}
+               style={{ fontSize: 18, color: fotoEntregaUrl ? verde : amarelo }} aria-hidden="true" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: corHero(dark) }}>
+                Foto da entrega · obrigatória
+              </div>
+              <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
+                {fotoEntregaUrl
+                  ? 'Foto anexada — você pode confirmar a entrega.'
+                  : 'Tire foto da máquina no local de entrega (estado em que foi devolvida).'}
+              </div>
+            </div>
+          </div>
+
+          <input
+            ref={inputFotoRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => escolherFotoEntrega(e.target.files?.[0])}
+            style={{ display: 'none' }}
+          />
+
+          {fotoEntregaUrl ? (
+            <div style={{
+              position: 'relative',
+              border: `1px solid ${T.border}`,
+              borderRadius: 8, overflow: 'hidden',
+              maxWidth: 280,
+            }}>
+              <img src={fotoEntregaUrl} alt="Foto da entrega"
+                style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 220, objectFit: 'cover' }} />
+              <div style={{
+                position: 'absolute', top: 6, right: 6,
+                display: 'flex', gap: 4,
+              }}>
+                <button
+                  type="button"
+                  onClick={() => inputFotoRef.current?.click()}
+                  disabled={uploadingFoto}
+                  title={uploadingFoto ? 'Enviando...' : 'Trocar foto'}
+                  style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    border: 'none', cursor: uploadingFoto ? 'wait' : 'pointer',
+                    opacity: uploadingFoto ? 0.6 : 1,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <i className={`ti ${uploadingFoto ? 'ti-loader-2' : 'ti-camera'}`} style={{ fontSize: 14 }} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={removerFoto}
+                  title="Remover foto"
+                  style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    border: 'none', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => inputFotoRef.current?.click()}
+              disabled={uploadingFoto}
+              style={{
+                padding: '12px 14px', borderRadius: 8,
+                border: `1.5px solid ${amarelo}`,
+                background: T.card, color: corHero(dark),
+                fontSize: 13, fontWeight: 700,
+                cursor: uploadingFoto ? 'wait' : 'pointer',
+                opacity: uploadingFoto ? 0.6 : 1,
+                fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>
+              <i className={`ti ${uploadingFoto ? 'ti-loader-2' : 'ti-camera-plus'}`} style={{ fontSize: 18 }} aria-hidden="true" />
+              {uploadingFoto ? 'Enviando foto...' : 'Tirar foto da entrega'}
+            </button>
+          )}
+        </div>
+
         {/* Ações principais */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
           <button onClick={confirmarEntrega} style={{
@@ -161,6 +321,7 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
             fontSize: 13, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'inherit',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            opacity: fotoEntregaUrl ? 1 : 0.5,
           }}>
             <i className="ti ti-check" style={{ fontSize: 17 }} aria-hidden="true" />
             {jaPaga ? 'Confirmar entrega · concluir OS' : 'Confirmar entrega · ir pra Pagamento'}

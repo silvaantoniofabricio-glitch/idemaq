@@ -54,27 +54,34 @@ async function comprimirImagem(file, { maxDim = 1600, quality = 0.85 } = {}) {
   return blob
 }
 
-// ─── Path canônico da foto de coleta ───────────────────────────────────────
-function pathColetaOS(osId) {
-  return `os/${osId}/coleta.jpg`
+// ─── Path canônico de cada foto da OS ──────────────────────────────────────
+// `tipo`: 'coleta' (default — retrocompat) | 'entrega' | futuros tipos
+function pathFotoOS(osId, tipo = 'coleta') {
+  return `os/${osId}/${tipo}.jpg`
 }
 
-// ─── Upload ────────────────────────────────────────────────────────────────
+// Alias legado — código antigo chama pathColetaOS direto
+function pathColetaOS(osId) {
+  return pathFotoOS(osId, 'coleta')
+}
+
+// ─── Upload genérico (coleta/entrega/etc) ──────────────────────────────────
 /**
- * Faz upload da foto de coleta pra o bucket privado. Comprime client-side
+ * Faz upload de foto da OS pro bucket privado. Comprime client-side
  * (max 1600px JPEG 85%) antes de enviar.
  *
  * @param {string} osId - UUID da OS
  * @param {File} file - arquivo do <input type="file">
+ * @param {string} tipo - 'coleta' | 'entrega' | etc (default 'coleta')
  * @returns {Promise<{ ok: boolean, path?: string, url?: string, error?: string }>}
  */
-export async function uploadFotoColeta(osId, file) {
+export async function uploadFotoOS(osId, file, tipo = 'coleta') {
   if (!osId)  return { ok: false, error: 'osId vazio' }
   if (!file)  return { ok: false, error: 'arquivo vazio' }
 
   try {
     const blob = await comprimirImagem(file)
-    const path = pathColetaOS(osId)
+    const path = pathFotoOS(osId, tipo)
 
     const { error: errUp } = await supabase.storage
       .from(BUCKET)
@@ -103,54 +110,73 @@ export async function uploadFotoColeta(osId, file) {
   }
 }
 
+// Alias legado — código antigo (AcaoRecebido, Header) chama uploadFotoColeta
+export function uploadFotoColeta(osId, file) {
+  return uploadFotoOS(osId, file, 'coleta')
+}
+// Helper específico pra entrega (semântico)
+export function uploadFotoEntrega(osId, file) {
+  return uploadFotoOS(osId, file, 'entrega')
+}
+
 // ─── Signed URL on-demand ──────────────────────────────────────────────────
 /**
  * Gera signed URL pra exibir a foto. TTL 1h — gere uma nova quando renderizar.
  * Retorna null se a foto não existir.
  *
  * @param {string} osId
+ * @param {string} tipo - 'coleta' | 'entrega' | etc
  * @returns {Promise<string|null>}
  */
-export async function getSignedUrlColeta(osId) {
+export async function getSignedUrlFoto(osId, tipo = 'coleta') {
   if (!osId) return null
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl(pathColetaOS(osId), SIGNED_URL_TTL_SEC)
+    .createSignedUrl(pathFotoOS(osId, tipo), SIGNED_URL_TTL_SEC)
   if (error) {
     if (!(error.message || '').includes('not found')) {
-      console.warn('[osStorage] signed URL falhou:', error.message)
+      console.warn(`[osStorage] signed URL ${tipo} falhou:`, error.message)
     }
     return null
   }
   return data?.signedUrl || null
 }
 
+// Aliases legados
+export function getSignedUrlColeta(osId) { return getSignedUrlFoto(osId, 'coleta') }
+export function getSignedUrlEntrega(osId) { return getSignedUrlFoto(osId, 'entrega') }
+
 // ─── Remoção ───────────────────────────────────────────────────────────────
-export async function removerFotoColeta(osId) {
+export async function removerFotoOS(osId, tipo = 'coleta') {
   if (!osId) return { ok: false, error: 'osId vazio' }
   const { error } = await supabase.storage
     .from(BUCKET)
-    .remove([pathColetaOS(osId)])
+    .remove([pathFotoOS(osId, tipo)])
   if (error) return { ok: false, error: error.message }
   return { ok: true }
 }
 
+export function removerFotoColeta(osId) { return removerFotoOS(osId, 'coleta') }
+export function removerFotoEntrega(osId) { return removerFotoOS(osId, 'entrega') }
+
 // ─── Detecta tipo de referência (legacy base64 vs storage) ─────────────────
 /**
- * Resolve uma string da coluna `pre_diagnostico.foto` em URL exibível.
+ * Resolve uma string da coluna `pre_diagnostico.foto` (ou foto_entrega) em
+ * URL exibível.
  * - Se começa com "data:" → base64 inline (legacy) → retorna direto
- * - Senão → é path do Storage → gera signed URL
+ * - Senão → é marker 'storage' → gera signed URL conforme `tipo`
  * - Se for null/vazio → retorna null
  *
- * @param {string|null} valor - conteúdo de os.pre_diagnostico.foto
+ * @param {string|null} valor - conteúdo do campo no jsonb
  * @param {string} osId - usado pra resolver o path do storage
+ * @param {string} tipo - 'coleta' (default) | 'entrega'
  * @returns {Promise<string|null>}
  */
-export async function resolverFotoUrl(valor, osId) {
+export async function resolverFotoUrl(valor, osId, tipo = 'coleta') {
   if (!valor) return null
   if (typeof valor === 'string' && valor.startsWith('data:')) return valor // base64 legacy
   // qualquer outro valor não-vazio = path do Storage → gera signed URL
-  return getSignedUrlColeta(osId)
+  return getSignedUrlFoto(osId, tipo)
 }
 
 // ─── Marker de "está no Storage" ───────────────────────────────────────────
