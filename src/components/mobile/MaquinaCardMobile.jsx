@@ -73,10 +73,10 @@ export default function MaquinaCardMobile({ T, dark, maquina, mostraValores = tr
         {[maquina.marca, maquina.capacidade].filter(Boolean).join(' · ')}
       </div>
 
-      {/* Linha 3: stats */}
+      {/* Linha 3: stats — minWidth: 0 + truncate no Stat protegem overflow */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 14, marginTop: 2,
-        flexWrap: 'wrap',
+        minWidth: 0,
       }}>
         {mostraValores && (
           <Stat T={T} label="Custo total"
@@ -93,7 +93,10 @@ export default function MaquinaCardMobile({ T, dark, maquina, mostraValores = tr
 
 function Stat({ T, label, value, corValor }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 1,
+      minWidth: 0,
+    }}>
       <span style={{
         fontSize: 9.5, color: T.textMuted, fontWeight: 600,
         textTransform: 'uppercase', letterSpacing: '.3px',
@@ -103,6 +106,9 @@ function Stat({ T, label, value, corValor }) {
         color: corValor || T.textPrimary,
         fontVariantNumeric: 'tabular-nums',
         lineHeight: 1.1,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
       }}>{value}</span>
     </div>
   )

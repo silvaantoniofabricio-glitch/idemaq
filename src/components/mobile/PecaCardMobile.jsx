@@ -107,14 +107,17 @@ export default function PecaCardMobile({ T, dark, peca, mostraValores = true, on
         </div>
       )}
 
-      {/* Linha 3: stats — Qtd, Venda, [Custo se dono] + status badge */}
+      {/* Linha 3: stats — Qtd, Venda, [Custo se dono] + status badge à direita.
+          Em vez de flexWrap (que pode jogar badge sozinho na 2ª linha de
+          forma feia), usa minWidth: 0 + overflow controlado pra truncar
+          graciosamente em telas estreitas. */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 14, marginTop: 2,
-        flexWrap: 'wrap',
+        display: 'flex', alignItems: 'center', gap: 10, marginTop: 2,
+        minWidth: 0,
       }}>
         <Stat T={T} dark={dark} label="Qtd"
           value={
-            <span>
+            <span style={{ whiteSpace: 'nowrap' }}>
               <span style={{ color: nv === 'esgotado' ? corStatus : nv === 'baixo' ? corStatus : corHero(dark) }}>{peca.qtdAtual}</span>
               <span style={{ color: T.textDim, fontWeight: 500 }}> / {peca.qtdMinima}</span>
             </span>
@@ -134,6 +137,7 @@ export default function PecaCardMobile({ T, dark, peca, mostraValores = true, on
           display: 'inline-flex', alignItems: 'center', gap: 4,
           whiteSpace: 'nowrap',
           textTransform: 'uppercase', letterSpacing: '.3px',
+          flexShrink: 0,
         }}>
           <i className={`ti ${info.icon}`} style={{ fontSize: 11 }} aria-hidden="true" />
           {info.label}
@@ -145,7 +149,10 @@ export default function PecaCardMobile({ T, dark, peca, mostraValores = true, on
 
 function Stat({ T, label, value, corValor }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 1,
+      minWidth: 0,            // permite truncar quando faltar espaço
+    }}>
       <span style={{
         fontSize: 9.5, color: T.textMuted, fontWeight: 600,
         textTransform: 'uppercase', letterSpacing: '.3px',
@@ -155,6 +162,9 @@ function Stat({ T, label, value, corValor }) {
         color: corValor || T.textPrimary,
         fontVariantNumeric: 'tabular-nums',
         lineHeight: 1.1,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
       }}>{value}</span>
     </div>
   )

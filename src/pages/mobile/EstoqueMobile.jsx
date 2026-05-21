@@ -38,6 +38,21 @@ import NovaPecaModal       from '../../components/estoque/NovaPecaModal'
 
 const PAGE_SIZE = 20
 
+// Formata valor BRL compacto pra caber no KPI mobile (360px tem só ~155px
+// por coluna). Acima de 1k vira "R$ 28k" / "R$ 1,2M". Abaixo fica fmt normal.
+function fmtBRLCompact(v) {
+  const n = Number(v) || 0
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000
+    return `R$ ${m.toFixed(m < 10 ? 1 : 0).replace('.', ',')}M`
+  }
+  if (n >= 1_000) {
+    const k = n / 1_000
+    return `R$ ${k.toFixed(k < 10 ? 1 : 0).replace('.', ',')}k`
+  }
+  return `R$ ${n.toFixed(0)}`
+}
+
 // Espelha o mock que o desktop usa enquanto Máquinas não está real (Módulo 07)
 const MAQUINAS_MOCK = [
   { id:1, modelo:'Lavadora Consul CWE10',     marca:'Consul',     capacidade:'10kg', estado:'disponivel', custoCompra:150, custoItens:180, custoServico:50,  precoVenda:650 },
@@ -178,14 +193,14 @@ export default function EstoqueMobile({ T, dark, user }) {
   const kpisPecas = [
     { label: 'Em estoque',  value: totalPecasQtd, color: azul },
     { label: 'Reposição',   value: pecasBaixas,   color: pecasBaixas > 0 ? amarelo : T.textDim },
-    mostraValores && { label: 'Valor', value: fmtBRL(valorPecas), color: corHero(dark) },
+    mostraValores && { label: 'Valor', value: fmtBRLCompact(valorPecas), color: corHero(dark) },
     mostraValores && { label: 'Cadastros', value: totalGlobal, color: T.textSecondary },
   ].filter(Boolean)
 
   const kpisMaquinas = [
     { label: 'Disponíveis', value: disponiveis, color: disponiveis > 0 ? verde : T.textDim },
     { label: 'Em revisão',  value: emRevisao,   color: emRevisao > 0 ? amarelo : T.textDim },
-    mostraValores && { label: 'Capital parado', value: fmtBRL(valorMaquinas), color: corHero(dark) },
+    mostraValores && { label: 'Capital parado', value: fmtBRLCompact(valorMaquinas), color: corHero(dark) },
   ].filter(Boolean)
 
   // ─── Categorias pro chip filter (Todas + as com count > 0) ────────────────
@@ -212,7 +227,10 @@ export default function EstoqueMobile({ T, dark, user }) {
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       overflowY: 'auto',
-      paddingBottom: 90,            // espaço pra FAB + BottomNav
+      // FAB tem 56px de altura + bottom 76 → ocupa de y=76 a y=132 do bottom.
+      // BottomNav fica abaixo do FAB. Padding 140 garante que o último card e
+      // a paginação não fiquem cobertos pelo FAB ao rolar até o fim.
+      paddingBottom: 140,
       background: T.bg,
     }}>
       <MobilePageHeader T={T} dark={dark}
@@ -267,7 +285,7 @@ export default function EstoqueMobile({ T, dark, user }) {
                 : pecas.length === 0
                   ? <MobileEmptyState T={T} dark={dark}
                       icon={buscando ? 'ti-search-off' : 'ti-puzzle-off'}
-                      iconColor={T.textMuted}
+                      iconColor={azul}
                       title={buscando ? 'Nenhuma peça encontrada' : 'Nenhuma peça cadastrada'}
                       description={buscando
                         ? `Sem resultados para "${buscaDebounced}"`
@@ -282,7 +300,7 @@ export default function EstoqueMobile({ T, dark, user }) {
           : (maquinasFiltradas.length === 0
               ? <MobileEmptyState T={T} dark={dark}
                   icon={busca ? 'ti-search-off' : 'ti-device-washing-machine-off'}
-                  iconColor={T.textMuted}
+                  iconColor={azul}
                   title={busca ? 'Nenhuma máquina encontrada' : 'Sem máquinas no estoque'}
                   description={busca
                     ? `Sem resultados para "${busca}"`
