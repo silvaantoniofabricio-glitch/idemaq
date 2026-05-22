@@ -1,7 +1,14 @@
 // idemaq-src/hooks/useGeocodeEnderecos.js
-// Geocoda uma lista de endereços (texto livre) → { lat, lng } usando o
-// Google Maps Geocoding API. Cache em localStorage por endereço, throttle
-// leve (200ms entre requisições) e quota de segurança por sessão.
+// Geocoda uma lista de endereços (texto livre) → { lat, lng }.
+//
+// Estratégia (21/05/2026): tenta Geocoding API primeiro. Se a chave do Google
+// não tem ela habilitada (status REQUEST_DENIED), cai automaticamente pra
+// Places API findPlaceFromQuery — que está habilitada (mesmo serviço do
+// AddressInput) e cobre o mesmo objetivo. Decisão é memoizada por sessão pra
+// não desperdiçar 1 chamada de Geocoder rejeitada em cada endereço.
+//
+// Cache em localStorage por endereço (positivos só — falhas reconsultam na
+// próxima sessão pra que ativar a API depois automaticamente preencha o mapa).
 //
 // Uso:
 //   const coordsPorEndereco = useGeocodeEnderecos(enderecos)
@@ -13,20 +20,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadMapsScript, MAPS_KEY_DISPONIVEL } from '../components/logistica/AddressInput'
 
-// v2 (21/05/2026): cache passou a guardar SÓ positivos — invalidação de v1
-// limpa entradas null antigas que ficavam grudadas pra sempre.
 const STORAGE_KEY = 'idemaq.geocode.cache.v2'
 
-// Quota por sessão — Google Geocoding tier free aceita ~40 req/s e 40k/mês.
-// 60 cobre o dia-a-dia de logística (até ~60 OS visíveis no mapa por sessão).
 const QUOTA_POR_SESSAO = 60
-
-// Throttle entre requisições. 120ms ≈ 8 req/s — bem abaixo do teto.
 const THROTTLE_MS = 120
-
-// Sufixo automático pra dar contexto pro geocoder quando o endereço não tem
-// cidade/UF — a maior parte dos clientes da Idemaq está em Naviraí/MS.
 const SUFIXO_CONTEXTO = ', Naviraí, MS, Brasil'
+
+// Estado de módulo: depois da 1ª resposta REQUEST_DENIED do Geocoder,
+// pulamos direto pro Places API em todas as próximas chamadas da sessão.
+let geocoderIndisponivel = false
+let placesServiceSingleton = null
 
 function lerCache() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') } catch { return {} }
@@ -35,11 +38,55 @@ function escreverCache(cache) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cache)) } catch { /* quota cheia, ignora */ }
 }
 
-// Heurística simples: se o endereço já tem "Naviraí" ou "MS", não anexa o sufixo.
 function comContexto(end) {
   const lower = end.toLowerCase()
   if (lower.includes('navira') || /\bms\b/.test(lower)) return end
   return end + SUFIXO_CONTEXTO
+}
+
+// Tenta via Geocoding API. Retorna { coords } | { denied: true } | { coords: null }.
+async function viaGeocoder(google, endereco) {
+  const { Geocoder } = await google.maps.importLibrary('geocoding')
+  const geocoder = new Geocoder()
+  return new Promise((resolve) => {
+    geocoder.geocode({ address: comContexto(endereco) }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        const loc = results[0].geometry.location
+        resolve({ coords: { lat: loc.lat(), lng: loc.lng() } })
+      } else if (status === 'REQUEST_DENIED') {
+        resolve({ denied: true })
+      } else {
+        console.warn('[geocode] Geocoder falhou', { endereco, status })
+        resolve({ coords: null })
+      }
+    })
+  })
+}
+
+// Fallback via Places API findPlaceFromQuery (sempre disponível quando a chave
+// tem Places habilitada — usada pelo AddressInput).
+async function viaPlaces(google, endereco) {
+  if (!placesServiceSingleton) {
+    const { PlacesService } = await google.maps.importLibrary('places')
+    // PlacesService precisa de um HTMLElement ou Map — usamos um div solto.
+    placesServiceSingleton = new PlacesService(document.createElement('div'))
+  }
+  const placesService = placesServiceSingleton
+  const { PlacesServiceStatus } = await google.maps.importLibrary('places')
+  return new Promise((resolve) => {
+    placesService.findPlaceFromQuery({
+      query: comContexto(endereco),
+      fields: ['geometry'],
+    }, (results, status) => {
+      if (status === PlacesServiceStatus.OK && results && results[0]) {
+        const loc = results[0].geometry.location
+        resolve({ lat: loc.lat(), lng: loc.lng() })
+      } else {
+        console.warn('[geocode] Places falhou', { endereco, status })
+        resolve(null)
+      }
+    })
+  })
 }
 
 export function useGeocodeEnderecos(enderecos) {
@@ -47,8 +94,6 @@ export function useGeocodeEnderecos(enderecos) {
   const cacheRef = useRef(coords)
   cacheRef.current = coords
 
-  // Chave estável pra dependência do effect — sem isso, .join novo a cada render
-  // re-dispara o effect mesmo com mesma lista de strings.
   const chave = (enderecos || []).filter(Boolean).join('|')
 
   useEffect(() => {
@@ -67,54 +112,39 @@ export function useGeocodeEnderecos(enderecos) {
       }
       if (cancelled || !google) return
 
-      let Geocoder
-      try {
-        const lib = await google.maps.importLibrary('geocoding')
-        Geocoder = lib.Geocoder
-      } catch (e) {
-        console.warn('[geocode] importLibrary("geocoding") falhou — Geocoding API pode não estar habilitada na chave do Google. Erro:', e?.message)
-        return
-      }
-      if (cancelled || !Geocoder) return
-
-      const geocoder = new Geocoder()
-
       for (const end of lista) {
         if (cancelled) return
-        // Só pula se já tiver positivo cacheado. Negativos NÃO são cacheados —
-        // se um dia faltou chave/quota, na próxima sessão tenta de novo.
         if (cacheRef.current[end]) continue
         if (usados >= QUOTA_POR_SESSAO) break
-
         usados++
-        try {
-          const res = await new Promise((resolve) => {
-            geocoder.geocode({ address: comContexto(end) }, (results, status) => {
-              if (status === 'OK' && results && results[0]) {
-                const loc = results[0].geometry.location
-                resolve({ lat: loc.lat(), lng: loc.lng() })
-              } else {
-                // Status comuns que ajudam a diagnosticar:
-                //   ZERO_RESULTS    — endereço não bate com nada (texto vago)
-                //   OVER_QUERY_LIMIT — passou da quota da chave (raro)
-                //   REQUEST_DENIED  — Geocoding API NÃO habilitada na chave
-                //   INVALID_REQUEST — endereço vazio/malformado
-                console.warn('[geocode] falhou', { endereco: end, status })
-                resolve(null)
-              }
-            })
-          })
-          if (cancelled) return
-          if (res) {
-            // Cacheia só os positivos
-            const next = { ...cacheRef.current, [end]: res }
-            cacheRef.current = next
-            setCoords(next)
-            escreverCache(next)
-          }
-        } catch { /* erro de rede, segue pro próximo */ }
 
-        // throttle
+        let coordsResult = null
+        try {
+          if (!geocoderIndisponivel) {
+            const r = await viaGeocoder(google, end)
+            if (r.denied) {
+              // Marca Geocoder como inutilizável na sessão e usa Places.
+              geocoderIndisponivel = true
+              console.warn('[geocode] Geocoding API não habilitada — caindo pra Places API.')
+              coordsResult = await viaPlaces(google, end)
+            } else {
+              coordsResult = r.coords
+            }
+          } else {
+            coordsResult = await viaPlaces(google, end)
+          }
+        } catch (e) {
+          console.warn('[geocode] erro inesperado em', end, e?.message)
+        }
+
+        if (cancelled) return
+        if (coordsResult) {
+          const next = { ...cacheRef.current, [end]: coordsResult }
+          cacheRef.current = next
+          setCoords(next)
+          escreverCache(next)
+        }
+
         await new Promise(r => setTimeout(r, THROTTLE_MS))
       }
     }
