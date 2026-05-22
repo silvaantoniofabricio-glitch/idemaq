@@ -141,15 +141,26 @@ export default function LogisticaMobile({ T, dark }) {
             const msg = (res.error.message || '').toLowerCase()
             if (msg.includes('nome') && (msg.includes('column') || msg.includes('does not exist'))) {
               setCriandoRotasFalhou(true)
+              notify('erro', 'Coluna `nome` ausente — rode sql/17')
               break
             }
+            if (msg.includes('duplicate') || msg.includes('unique') || res.error.code === '23505') {
+              setCriandoRotasFalhou(true)
+              notify('erro', `Constraint antigo bloqueando ${nome} — rode sql/18`)
+              console.error('[Logistica] UNIQUE violation criando', nome, res.error)
+              break
+            }
+            setCriandoRotasFalhou(true)
+            notify('erro', `Falha ${nome}: ${res.error.message}`)
+            console.error('[Logistica] erro inesperado criando', nome, res.error)
+            break
           }
         }
       } finally {
         criandoRotasRef.current = false
       }
     })()
-  }, [dataAtiva, slotsRotas, criandoRotasFalhou, criarRota])
+  }, [dataAtiva, slotsRotas, criandoRotasFalhou, criarRota, notify])
 
   // ─── Pinos pro mapa ───────────────────────────────────────────────────
   // Set de OS que já estão em alguma rota (não plota duas vezes).

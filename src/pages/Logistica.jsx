@@ -203,17 +203,31 @@ function LogisticaDesktop({ T, dark }) {
           })
           if (res?.error) {
             const msg = (res.error.message || '').toLowerCase()
+            // sql/17 não rodou → coluna `nome` ausente
             if (msg.includes('nome') && (msg.includes('column') || msg.includes('does not exist'))) {
               setCriandoRotasFalhou(true)
+              notify('erro', 'Coluna `nome` ausente — rode sql/17-rota-nome.sql')
               break
             }
+            // UNIQUE violation = constraint antigo ainda existe (sql/17 incompleto)
+            if (msg.includes('duplicate') || msg.includes('unique') || res.error.code === '23505') {
+              setCriandoRotasFalhou(true)
+              notify('erro', `Constraint antigo bloqueando ${nome} — rode sql/18-rota-constraint-fix.sql`)
+              console.error('[Logistica] UNIQUE violation criando', nome, res.error)
+              break
+            }
+            // Qualquer outro erro: mostra pro user e para de tentar
+            setCriandoRotasFalhou(true)
+            notify('erro', `Falha ao criar ${nome}: ${res.error.message}`)
+            console.error('[Logistica] erro inesperado criando', nome, res.error)
+            break
           }
         }
       } finally {
         criandoRotasRef.current = false
       }
     })()
-  }, [dataAtiva, slotsRotas, tabelaAusente, criandoRotasFalhou, criarRota])
+  }, [dataAtiva, slotsRotas, tabelaAusente, criandoRotasFalhou, criarRota, notify])
 
   // ─── Pinos do mapa ───────────────────────────────────────────────────────
   // Set de OS já alocadas em alguma rota — não plota duas vezes.
