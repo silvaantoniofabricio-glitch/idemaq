@@ -61,14 +61,20 @@ export function useGeocodeEnderecos(enderecos) {
 
     async function geocodar() {
       let google
-      try { google = await loadMapsScript() } catch { return }
+      try { google = await loadMapsScript() } catch (e) {
+        console.warn('[geocode] loadMapsScript falhou:', e?.message)
+        return
+      }
       if (cancelled || !google) return
 
       let Geocoder
       try {
         const lib = await google.maps.importLibrary('geocoding')
         Geocoder = lib.Geocoder
-      } catch { return }
+      } catch (e) {
+        console.warn('[geocode] importLibrary("geocoding") falhou — Geocoding API pode não estar habilitada na chave do Google. Erro:', e?.message)
+        return
+      }
       if (cancelled || !Geocoder) return
 
       const geocoder = new Geocoder()
@@ -88,6 +94,12 @@ export function useGeocodeEnderecos(enderecos) {
                 const loc = results[0].geometry.location
                 resolve({ lat: loc.lat(), lng: loc.lng() })
               } else {
+                // Status comuns que ajudam a diagnosticar:
+                //   ZERO_RESULTS    — endereço não bate com nada (texto vago)
+                //   OVER_QUERY_LIMIT — passou da quota da chave (raro)
+                //   REQUEST_DENIED  — Geocoding API NÃO habilitada na chave
+                //   INVALID_REQUEST — endereço vazio/malformado
+                console.warn('[geocode] falhou', { endereco: end, status })
                 resolve(null)
               }
             })
