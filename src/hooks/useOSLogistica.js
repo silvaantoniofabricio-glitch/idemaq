@@ -25,12 +25,17 @@ const ETAPAS_LOGISTICA_DB = [
 ]
 const ETAPA_PAGAMENTO_DB = 'pagamento'
 
-// Sugere o tipo de parada baseado na etapa atual da OS
+// Sugere o tipo de parada baseado na etapa atual da OS.
+// Inclui as 2 variações visuais "aguardando" pra MapaLogistica colorir com
+// tom mais claro (azul-claro p/ aguardando_agendamento, verde-claro p/
+// teste_final) — pedido do Toni 21/05/2026 noite pra distinguir do estado
+// "pronto pra ação" (agendamento/entrega).
 export function tipoParadaPorEtapa(etapaDb) {
   if (etapaDb === 'agendamento') return 'coleta'
+  if (etapaDb === 'aguardando_agendamento') return 'aguardando_coleta'
   if (etapaDb === 'entrega') return 'entrega'
+  if (etapaDb === 'teste_final') return 'aguardando_entrega'
   if (etapaDb === ETAPA_PAGAMENTO_DB) return 'cobranca'
-  // ag_agendamento / teste_final / outros → user escolhe (default visita)
   return 'visita'
 }
 

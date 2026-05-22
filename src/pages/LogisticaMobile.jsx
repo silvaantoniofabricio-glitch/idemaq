@@ -42,19 +42,31 @@ export const NOMES_SLOT = ['Rota A', 'Rota B', 'Rota C']
 export const LETRA_POR_SLOT = { 'Rota A': 'A', 'Rota B': 'B', 'Rota C': 'C' }
 export const ETAPAS_DEFAULT_LOGISTICA = new Set(['agendamento', 'entrega'])
 
-// Mapeamento: etapa do kanban → tipo de parada (4 tipos canônicos da UI nova).
-// Legacy jsonb com 'cobranca'/'visita'/'avulsa' é mapeado pra UI ao renderizar.
+// Mapeamento: etapa do kanban → tipo de parada pro PINO DO MAPA.
+// `aguardando_agendamento` e `teste_final` recebem tons mais claros (cor
+// secundária do MapaLogistica.TIPO_VISUAL) pra distinguir do estado "pronto":
+//   - agendamento → coleta              (azul forte)
+//   - aguardando  → aguardando_coleta   (azul claro)
+//   - entrega     → entrega             (verde forte)
+//   - teste_final → aguardando_entrega  (verde claro)
+//   - pagamento   → receber             (amarelo)
+//   - outros      → entrega             (fallback raro)
 export function tipoUiPorEtapa(etapaDb) {
-  if (etapaDb === 'agendamento' || etapaDb === 'aguardando_agendamento') return 'coleta'
+  if (etapaDb === 'agendamento') return 'coleta'
+  if (etapaDb === 'aguardando_agendamento') return 'aguardando_coleta'
+  if (etapaDb === 'entrega') return 'entrega'
+  if (etapaDb === 'teste_final') return 'aguardando_entrega'
   if (etapaDb === 'pagamento') return 'receber'
-  return 'entrega' // teste_final / oficina / etc — tudo cai em entrega
+  return 'entrega'
 }
 
-// Normaliza tipo do jsonb (que pode ter legacy) pra um dos 4 tipos da UI nova.
+// Normaliza tipo do jsonb (que pode ter legacy ou tons "aguardando") pra
+// um dos 4 tipos visuais do CARD (não do mapa). O mapa recebe o tipo bruto
+// pra colorir com tom mais escuro/claro; o card agrupa pra label clara.
 export function normalizarTipoUi(tipo) {
-  if (tipo === 'coleta')   return 'coleta'
-  if (tipo === 'entrega')  return 'entrega'
-  if (tipo === 'cobranca' || tipo === 'receber') return 'receber'
+  if (tipo === 'coleta' || tipo === 'aguardando_coleta')   return 'coleta'
+  if (tipo === 'entrega' || tipo === 'aguardando_entrega') return 'entrega'
+  if (tipo === 'cobranca' || tipo === 'receber')           return 'receber'
   return 'outros' // visita / avulsa / qualquer outro
 }
 
@@ -163,7 +175,9 @@ export default function LogisticaMobile({ T, dark }) {
         lista.push({
           lat: Number(p.lat),
           lng: Number(p.lng),
-          tipo: normalizarTipoUi(p.tipo),
+          // Tipo bruto pro mapa (preserva aguardando_coleta/aguardando_entrega).
+          // Card usa normalizarTipoUi separadamente.
+          tipo: p.tipo,
           codigo: `${letra}${idx + 1}`,
           label: `${letra}${idx + 1} · ${p.cliente_nome || 'Sem cliente'}`,
         })

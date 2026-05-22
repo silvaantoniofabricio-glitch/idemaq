@@ -500,11 +500,13 @@ function LogisticaDesktop({ T, dark }) {
             fontSize: 10.5, color: T.textDim,
             padding: '2px 4px',
           }}>
-            <LegendaDot cor={VISUAL_TIPO.coleta.cor}  titulo="Coleta" />
+            <LegendaDot cor={VISUAL_TIPO.coleta.cor}  titulo="Coleta (agendado)" />
+            <LegendaDot cor="#A6C8E5" titulo="Aguardando agendamento" />
             <LegendaDot cor={VISUAL_TIPO.entrega.cor} titulo="Entrega" />
+            <LegendaDot cor="#C5E0A4" titulo="Teste final" />
             <LegendaDot cor={VISUAL_TIPO.receber.cor} titulo="Receber" />
             <LegendaDot cor={VISUAL_TIPO.outros.cor}  titulo="Outros" />
-            <LegendaDot cor="#1a3a6e" titulo="OS disponível (sem rota)" tracejado />
+            <LegendaDot cor="#1a3a6e" titulo="OS disponível" tracejado />
             <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>
               Pino tracejado = clique pra adicionar
             </span>

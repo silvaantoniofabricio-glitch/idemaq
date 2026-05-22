@@ -27,17 +27,23 @@ const ZOOM_DEFAULT = 14
 // tem nenhum dos dois, cai pra letra do tipo (C/E/$/V/A). Pinos "disponivel"
 // (OS sem rota ainda) ficam contornados tracejado e usam "?".
 const TIPO_VISUAL = {
-  coleta:     { cor: '#5B9BD5', letra: 'C' },
-  entrega:    { cor: '#8FBC55', letra: 'E' },
-  cobranca:   { cor: '#FFD966', letra: '$' },
-  receber:    { cor: '#FFD966', letra: '$' }, // alias UI mobile
-  visita:     { cor: '#B8CCE4', letra: 'V' },
-  outros:     { cor: '#B8CCE4', letra: 'V' }, // alias UI mobile
-  avulsa:     { cor: '#9CA3AF', letra: 'A' },
+  coleta:              { cor: '#5B9BD5', letra: 'C' },
+  aguardando_coleta:   { cor: '#A6C8E5', letra: 'C' }, // azul claro p/ `aguardando_agendamento`
+  entrega:             { cor: '#8FBC55', letra: 'E' },
+  aguardando_entrega:  { cor: '#C5E0A4', letra: 'E' }, // verde claro p/ `teste_final`
+  cobranca:            { cor: '#FFD966', letra: '$' },
+  receber:             { cor: '#FFD966', letra: '$' }, // alias UI mobile
+  visita:              { cor: '#B8CCE4', letra: 'V' },
+  outros:              { cor: '#B8CCE4', letra: 'V' }, // alias UI mobile
+  avulsa:              { cor: '#9CA3AF', letra: 'A' },
   // OS na sidebar de "disponíveis" — ainda não viraram parada de rota.
   // Pin contornado tracejado pra diferenciar visualmente das paradas oficiais.
-  disponivel: { cor: '#1a3a6e', letra: '?', tracejado: true },
+  disponivel:          { cor: '#1a3a6e', letra: '?', tracejado: true },
 }
+
+// Pinos ~22% menores no display que o SVG nativo (pedido 21/05/2026 noite).
+// Aplicado via Marker.icon.scaledSize, evitando reescrever o path do SVG.
+const PIN_DISPLAY_SCALE = 0.78
 
 // Gera data URL SVG dum pin colorido com texto dentro — sem dependência externa.
 // `texto` aceita string (ex.: 'C', 'A1', '12'). Font ajusta automático.
@@ -144,14 +150,15 @@ export default function MapaLogistica({
 
         // Marcador fixo da oficina (sempre visível) — pin laranja com "O"
         const pinOficina = svgPin('#FF9800', 'O')
+        const sz = (n) => Math.round(n * PIN_DISPLAY_SCALE)
         new Marker({
           position: NAVIRAI_CENTER,
           map: mapaRef.current,
           title: 'Oficina Idemaq · Alameda Londrina, 438 · Naviraí/MS',
           icon: {
             url: pinOficina.url,
-            scaledSize: new google.maps.Size(pinOficina.w, pinOficina.h),
-            anchor: new google.maps.Point(pinOficina.cx, pinOficina.anchorY),
+            scaledSize: new google.maps.Size(sz(pinOficina.w), sz(pinOficina.h)),
+            anchor: new google.maps.Point(sz(pinOficina.cx), sz(pinOficina.anchorY)),
           },
           zIndex: 9999,
         })
@@ -200,14 +207,15 @@ export default function MapaLogistica({
       // ainda mostrarem borda tracejada por não estarem em rota ainda.
       const tracejadoFinal = p.tracejado != null ? p.tracejado : visual.tracejado
       const pin = svgPin(visual.cor, texto, tracejadoFinal, !!p.agendamento)
+      const sz = (n) => Math.round(n * PIN_DISPLAY_SCALE)
       const m = new Marker({
         position: { lat: Number(p.lat), lng: Number(p.lng) },
         map: mapaRef.current,
         title: p.label || p.tipo,
         icon: {
           url: pin.url,
-          scaledSize: new google.maps.Size(pin.w, pin.h),
-          anchor: new google.maps.Point(pin.cx, pin.anchorY),
+          scaledSize: new google.maps.Size(sz(pin.w), sz(pin.h)),
+          anchor: new google.maps.Point(sz(pin.cx), sz(pin.anchorY)),
         },
       })
       if (p.onClick) m.addListener('click', () => p.onClick(p))
