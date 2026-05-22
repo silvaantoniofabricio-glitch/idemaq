@@ -183,7 +183,7 @@ export default function Header({
     const digits = (fone || '').replace(/\D/g, '')
     if (!digits) return
     const numero = digits.startsWith('55') ? digits : '55' + digits
-    window.open(`https://wa.me/${numero}`, '_blank', 'noopener,noreferrer')
+    window.location.href = `whatsapp://send?phone=${numero}`
   }
   function abrirMapa(endereco) {
     if (!endereco) return

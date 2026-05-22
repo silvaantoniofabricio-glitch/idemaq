@@ -164,7 +164,7 @@ A entrega da sua OS #${os.numero} (${[os.marca, os.modelo].filter(Boolean).join(
 📅 ${fmtDataHora(dataAgendada)}
 
 ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reagendar. Até lá!`
-    window.open(`https://wa.me/55${num}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
+    window.location.href = `whatsapp://send?phone=55${num}&text=${encodeURIComponent(texto)}`
   }
 
   // ============================================================================

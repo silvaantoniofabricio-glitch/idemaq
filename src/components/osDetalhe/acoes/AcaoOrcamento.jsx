@@ -228,7 +228,7 @@ ${desconto > 0 ? `\nDesconto: ${fmtBRL(desconto, { fr: true })} (${descontoPct}%
 
 Pagamento via PIX, cartão ou link InfinitePay (D+1).
 Aguardo sua aprovação pra começar o serviço. Qualquer dúvida estou aqui!`
-    window.open(`https://wa.me/55${num}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
+    window.location.href = `whatsapp://send?phone=55${num}&text=${encodeURIComponent(texto)}`
   }
 
   return (

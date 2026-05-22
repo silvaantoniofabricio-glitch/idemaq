@@ -31,19 +31,13 @@ import RotaDetalheModal from '../components/logistica/RotaDetalheModal'
 import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
-// Datas-âncora pro filtro (hoje / amanhã / semana) — coerentes em qualquer dia.
+// Data-âncora — Logística mostra sempre o dia de hoje (filtro Hoje/Amanhã/
+// Semana removido a pedido do Toni em 22/05/2026).
 const HOJE = new Date().toISOString().slice(0, 10)
-const AMANHA = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-
-const FILTROS_DATA = [
-  { id: 'hoje',    label: 'Hoje',    icon: 'ti-calendar-event' },
-  { id: 'amanha',  label: 'Amanhã',  icon: 'ti-calendar-due' },
-  { id: 'semana',  label: 'Semana',  icon: 'ti-calendar-week' },
-]
 
 function whatsappUrl(fone) {
   const num = (fone || '').replace(/\D/g, '')
-  return `https://wa.me/55${num}`
+  return `whatsapp://send?phone=55${num}`
 }
 
 function mapsUrl(endereco) {
@@ -103,28 +97,6 @@ function LegendaDot({ cor, titulo, tracejado = false }) {
   )
 }
 
-// Pílula de período (Hoje / Amanhã / Semana) — substituição minimalista do
-// Tabs segmented. Estilo "ativo = pílula azul cheia", "inativo = texto puro".
-function PillPeriodo({ T, dark, ativo, onClick, children }) {
-  const azul = corEtapa('blue', dark)
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '5px 11px', borderRadius: 999,
-        border: 'none',
-        background: ativo ? `${azul}15` : 'transparent',
-        color: ativo ? azul : T?.textMuted,
-        fontSize: 12, fontWeight: ativo ? 600 : 500,
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        transition: 'background .12s, color .12s',
-      }}
-    >{children}</button>
-  )
-}
-
 export default function Logistica({ T, dark }) {
   const isMobile = useIsMobile()
   // Mobile usa página reestruturada (mapa + filtros etapa + 3 rotas A/B/C
@@ -147,7 +119,6 @@ function LogisticaDesktop({ T, dark }) {
   } = useRotas()
 
   // ─── Estado ──────────────────────────────────────────────────────────────
-  const [filtroData, setFiltroData] = useState('hoje')
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_LOGISTICA)
   const [rotaExpandida, setRotaExpandida] = useState('A')  // letra A/B/C ou null
   const [osPopup, setOsPopup] = useState(null)             // OS clicada no mapa
@@ -156,9 +127,8 @@ function LogisticaDesktop({ T, dark }) {
   const [criandoRotasFalhou, setCriandoRotasFalhou] = useState(false)
   const criandoRotasRef = useRef(false)
 
-  const dataAtiva = filtroData === 'hoje' ? HOJE
-                  : filtroData === 'amanha' ? AMANHA
-                  : null
+  // Data ativa fixa em HOJE (filtro removido em 22/05/2026)
+  const dataAtiva = HOJE
 
   // OSDetalhe inline (abre OS pra editar sem trocar de rota)
   const { abrirOSPorId, modalProps: osDetalheProps } = useOSDetalheModal({ notify })
@@ -449,25 +419,11 @@ function LogisticaDesktop({ T, dark }) {
         }
       />
 
-      {/* Toolbar — período + filtro etapas */}
+      {/* Toolbar — filtro etapas (Hoje/Amanhã/Semana removido em 22/05/2026) */}
       <div style={{
         display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
         padding: '4px 4px',
       }}>
-        <div style={{
-          display: 'flex', gap: 2, padding: 2,
-          background: T.cardAlt, borderRadius: 999,
-        }}>
-          {FILTROS_DATA.map(f => (
-            <PillPeriodo
-              key={f.id}
-              T={T} dark={dark}
-              ativo={filtroData === f.id}
-              onClick={() => setFiltroData(f.id)}
-            >{f.label}</PillPeriodo>
-          ))}
-        </div>
-
         <FiltroEtapas
           T={T} dark={dark}
           ativas={etapasAtivas}
