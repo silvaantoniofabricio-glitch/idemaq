@@ -159,7 +159,11 @@ export default function HeaderMobile({
     const digits = (fone || '').replace(/\D/g, '')
     if (!digits) return
     const numero = digits.startsWith('55') ? digits : '55' + digits
-    window.location.href = `whatsapp://send?phone=${numero}`
+    if (/Android/i.test(navigator.userAgent)) {
+      window.location.href = `intent://send?phone=${numero}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.whatsapp.w4b;end`
+    } else {
+      window.location.href = `whatsapp://send?phone=${numero}`
+    }
   }
   function abrirMapa(endereco) {
     if (!endereco) return

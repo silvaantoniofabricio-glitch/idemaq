@@ -228,7 +228,12 @@ ${desconto > 0 ? `\nDesconto: ${fmtBRL(desconto, { fr: true })} (${descontoPct}%
 
 Pagamento via PIX, cartão ou link InfinitePay (D+1).
 Aguardo sua aprovação pra começar o serviço. Qualquer dúvida estou aqui!`
-    window.location.href = `whatsapp://send?phone=55${num}&text=${encodeURIComponent(texto)}`
+    const url = `send?phone=55${num}&text=${encodeURIComponent(texto)}`
+    if (/Android/i.test(navigator.userAgent)) {
+      window.location.href = `intent://${url}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.whatsapp.w4b;end`
+    } else {
+      window.location.href = `whatsapp://${url}`
+    }
   }
 
   return (

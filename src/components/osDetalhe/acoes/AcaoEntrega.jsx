@@ -164,7 +164,12 @@ A entrega da sua OS #${os.numero} (${[os.marca, os.modelo].filter(Boolean).join(
 📅 ${fmtDataHora(dataAgendada)}
 
 ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reagendar. Até lá!`
-    window.location.href = `whatsapp://send?phone=55${num}&text=${encodeURIComponent(texto)}`
+    const url = `send?phone=55${num}&text=${encodeURIComponent(texto)}`
+    if (/Android/i.test(navigator.userAgent)) {
+      window.location.href = `intent://${url}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.whatsapp.w4b;end`
+    } else {
+      window.location.href = `whatsapp://${url}`
+    }
   }
 
   // ============================================================================
