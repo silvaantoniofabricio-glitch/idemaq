@@ -82,6 +82,7 @@ export const ETAPAS_TODOS = [
   { id:'entrega',        label:'Entrega',                 curto:'Entrega',      cor:'blue',  match:{ atendimento:'entrega', venda:'entregue' } },
   { id:'pagamento',      label:'Pagamento',               curto:'Pagamento',    cor:'yellow', match:{ atendimento:'pagamento', venda:'pagamento' } },
   { id:'concluido',      label:'Concluído',               curto:'Concluído',    cor:'green',  adminOnly:true, match:{ atendimento:'concluido', fabricacao:'concluido', venda:'concluido' } },
+  { id:'recusado',       label:'Recusado',                curto:'Recusado',     cor:'red',                   match:{ atendimento:'recusado' } },
 ]
 
 // Zonas de atividade (Externo/Interno/Financeiro) — agrupam etapas por contexto
