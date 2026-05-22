@@ -1,85 +1,71 @@
 # CLAUDE.md — Sistema de Gestão IdeMaq
 
-> Arquivo lido automaticamente pelo Claude Code em toda sessão deste projeto.
-> Aqui mora **só o que toda sessão precisa saber**: regras de ouro, arquitetura, anti-patterns, índice dos contextos por área.
-> **Detalhe vivo da área que você está mexendo está em `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md`** — leia esse arquivo no início da sessão baseado em `$env:IDEMAQ_TERMINAL`.
+> Arquivo lido automaticamente em toda sessão. Aqui mora **só o que toda sessão precisa saber**.
+> Detalhe vivo por área: `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md` — leia o seu baseado em `$env:IDEMAQ_TERMINAL`.
 
 ---
 
-## 1. Início de toda sessão — checklist
+## 1. Início de sessão
 
-1. Rode `echo $env:IDEMAQ_TERMINAL` pra saber em qual terminal você está
-2. **`git pull origin main`** — puxa o que outros terminais já enviaram
+1. `echo $env:IDEMAQ_TERMINAL` — descubra em qual terminal está
+2. `git pull origin main` — puxa o que outros terminais enviaram
 3. Leia `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md` correspondente
-4. Antes de mexer em arquivos compartilhados (App.jsx, osData.js, theme.js, índices), checar `git status` pra não conflitar com outra sessão em paralelo
+4. Antes de mexer em arquivos compartilhados (App.jsx, osData.js, theme.js), checar `git status`
 
-## 1b. Fim de toda tarefa — checklist
+## 1b. Fim de tarefa
 
-1. Atualizar `CONTEXTO PROJETO ATUALIZADO/contexto-<area>.md` com o que mudou
-2. Atualizar `CLAUDE.md` **só se** mudou regra de ouro / arquitetura / status macro (ver seção 3)
-3. **Rodar `git status --short` e revisar a lista `??` (untracked)**. Qualquer arquivo novo em `src/`, `sql/`, `supabase/functions/` que faz parte do trabalho **precisa entrar no commit**. Não confie só no que você lembra de ter criado.
-4. `git add <arquivos>` explícito (nunca `git add -A` — pode incluir sensível). Se criou arquivo novo, **inclua ele aqui** — esse é o passo onde a gente perdeu o `osPatch.js` em 18/05 e quebrou 8 deploys.
-5. **Se criou arquivo novo em `src/` que é importado por outro**: rodar `npm run build` local antes de push. Build local quebra em 5 segundos; Vercel quebra em 30s + você só descobre depois. Vale a checagem.
-6. `git commit -m "<tipo>(<area>): <descrição curta>"`
-7. **`git push origin main`** — sem push, outros terminais não veem o trabalho e o deploy Vercel não roda
+1. Atualizar `contexto-<sua-area>.md` com o que mudou
+2. Atualizar `CLAUDE.md` **só se** mudou regra de ouro / arquitetura / status macro (§11) / terminal
+3. `git status --short` — revisar `??` untracked. Arquivo novo em `src/` importado por outro **entra no commit**
+4. `git add <arquivos>` explícito (nunca `git add -A`)
+5. Se criou arquivo novo importado: `npm run build` antes de push (evita quebrar Vercel)
+6. `git commit -m "<tipo>(<area>): <descrição>"` → `git push origin main`
 
-### Por que o passo 3-5 é regra agora
-Em 19/05/2026, `src/utils/osPatch.js` ficou 1 dia como untracked (`??` no git status). Funcionava local mas o Vercel clonava o repo sem ele → 8 builds seguidos falharam com "Module not found: ../utils/osPatch", produção ficou servindo código de 2 dias atrás enquanto 7 terminais trabalhavam no vazio. `git status --short` no fim de sessão pega isso em 1 segundo.
+> **Por que o passo 3 é regra:** em 19/05, `osPatch.js` ficou untracked 1 dia → 8 builds do Vercel falharam com "Module not found" enquanto 7 terminais trabalhavam no vazio.
 
 ---
 
-## 2. Índice de contextos (mãe → filhos)
+## 2. Índice de contextos
 
-Cada terminal tem env var `IDEMAQ_TERMINAL` + um doc dedicado em `CONTEXTO PROJETO ATUALIZADO/`. Leia o seu antes de codar.
+| Terminal | Área | Arquivo |
+|---|---|---|
+| `os` | OS / Kanban | `contexto-os.md` |
+| `clientes` | Clientes | `contexto-clientes.md` |
+| `estoque` | Estoque | `contexto-estoque.md` |
+| `financeiro` | Financeiro | `contexto-financeiro.md` |
+| `logistica` | Logística | `contexto-logistica.md` |
+| `painel` | Painel (dono) | `contexto-painel.md` |
+| `painel_func` | Painel Funcionários | `contexto-painel-func.md` |
+| `relatorios` | Relatórios | `contexto-relatorios.md` |
+| `vendas` | Vendas (histórico OS) | `contexto-vendas.md` |
+| `ponto` | Ponto | `contexto-ponto.md` |
+| `geral` | Cross-area | _(só este CLAUDE.md)_ |
+| _(qualquer)_ | Construindo UI | `contexto-ui.md` |
 
-| Terminal | Área | Arquivo | Foco |
-|---|---|---|---|
-| `os` | OS Idemaq | `contexto-os.md` | Kanban, OSDetalhe, 10 ações, regras de fluxo |
-| `clientes` | Clientes Idemaq | `contexto-clientes.md` | CRUD cliente, importação Bling, schema real |
-| `estoque` | Estoque Idemaq | `contexto-estoque.md` | Peças (BCM), máquinas, baixa automática |
-| `financeiro` | Financeiro Idemaq | `contexto-financeiro.md` | Lançamentos, contas, taxas, schema parte 2 |
-| `logistica` | Logística Idemaq | `contexto-logistica.md` | Rotas, Maps Places, fotos coleta/entrega |
-| `painel` | Painel Idemaq | `contexto-painel.md` | Dashboard executivo (DONO) |
-| `painel_func` | Painel Funcionários | `contexto-painel-func.md` | Painel operacional (funcionário — não implementado) |
-| `relatorios` | Relatórios Idemaq | `contexto-relatorios.md` | 6 relatórios + 2 com Claude API |
-| `vendas` | Vendas (histórico de OS) | `contexto-vendas.md` | Lista flat de todas as OS + importação CSV |
-| `ponto` | Ponto Idemaq | `contexto-ponto.md` | Relógio de ponto (especificação completa em `idemaq-modulo-ponto-CLAUDE-CODE.md`) |
-| `geral` | Geral Idemaq | _(só este CLAUDE.md)_ | Coringa cross-area, sem foco fixo |
+**Terminal `geral`**: para tarefas cross-area. Antes de mexer em página específica, prefira o terminal dedicado.
 
-**Terminal `geral`**: não tem `contexto-geral.md` próprio — este CLAUDE.md já é "o geral". Usar pra tarefas cross-area (schema parte 2, infra, refactors trans-módulo, atualização dos próprios docs). Antes de mexer em arquivo de uma página específica, prefira abrir o terminal dedicado da área.
-
-**Padrão pra criar terminal novo**: atalho `.lnk` em `TERMINAIS/` com `cmd /c start "" wt.exe --title "<Nome>" -d "...idemaq" powershell -NoExit -Command "$env:IDEMAQ_TERMINAL = '<area>'; ...banner...; claude"`. Atualizar esta tabela + criar `contexto-<nova-area>.md` + memória `project_terminais_dedicados` ao criar.
+**Criar terminal novo**: atalho `.lnk` em `TERMINAIS/` → atualizar tabela acima + criar `contexto-<area>.md`.
 
 ---
 
-## 3. Regra de atualização dos contextos (importante)
+## 3. Regra de atualização dos contextos
 
-**Toda feature termina com 2 atualizações:**
-
-1. **`contexto-<sua-area>.md`** — SEMPRE. Detalhe completo da mudança fica aqui.
-
-2. **CLAUDE.md** — **SÓ SE**:
-   - Mudou regra de ouro / arquitetura / anti-pattern
-   - Status macro da área mudou (mock → pronto, etc — atualize a seção 11)
-   - Decisão afeta outra área (deixe ponteiro nos contextos relevantes)
-   - Adicionou/removeu terminal
-
-**Se a feature toca 2+ áreas**: atualiza cada `contexto-<x>.md` afetado. Adiciona 1 linha no CLAUDE.md só se for interseção estrutural.
+- **`contexto-<sua-area>.md`** — SEMPRE ao fim de toda feature.
+- **CLAUDE.md** — só se mudou regra de ouro / arquitetura / status macro / terminal / interseção estrutural.
+- Feature toca 2+ áreas: atualiza cada `contexto-<x>.md` afetado.
 
 ---
 
 ## 4. Contexto do projeto
 
 - **Empresa**: IDEMAQ Assistência Técnica LTDA (Naviraí/MS · 12 anos · ~50 OS/mês · meta R$ 20.000/mês)
-- **Segmento**: manutenção e limpeza de máquinas de lavar; também faz fabricação (refurbish) e venda
+- **Segmento**: manutenção e limpeza de máquinas de lavar; fabricação (refurbish) e venda
 - **Dono**: Toni — **daltônico Deutan**, não técnico. Prefere interfaces visuais e simples.
 - **Equipe**: Toni (dono/admin) · Alessandro (logística) · Guilherme (oficina)
-- **Stack**: React + Vite + Supabase (PostgreSQL) + Vercel · Tabler Icons · Chart.js · react-router-dom
-- **Produção**: https://idemaq.vercel.app
-- **GitHub**: https://github.com/silvaantoniofabricio-glitch/idemaq
-- **Supabase**: https://yfbbruxqfzgetapbvrgd.supabase.co (sa-east-1)
-- **Deploy**: automático ao `git push origin main` (~30s)
-- **Workflow**: Toni trabalha com **múltiplos terminais Claude Code em paralelo** (atalhos `.lnk` em `TERMINAIS/`).
+- **Stack**: React + Vite + Supabase (PostgreSQL) + Vercel · Tabler Icons · Chart.js
+- **Produção**: https://idemaq.vercel.app · **GitHub**: https://github.com/silvaantoniofabricio-glitch/idemaq
+- **Supabase**: https://yfbbruxqfzgetapbvrgd.supabase.co (sa-east-1) · **Deploy**: automático ao push (~30s)
+- **Workflow**: múltiplos terminais Claude Code em paralelo (atalhos `.lnk` em `TERMINAIS/`)
 
 ---
 
@@ -87,202 +73,143 @@ Cada terminal tem env var `IDEMAQ_TERMINAL` + um doc dedicado em `CONTEXTO PROJE
 
 ```
 src/
-├── theme.js                  ← TEMAS dark/claro + paleta Deutan (P) + useTheme()
-├── supabase.js               ← cliente Supabase (NÃO mexer)
-├── main.jsx                  ← entry Vite (importa global.css + App)
-├── App.jsx                   ← composição: ToastProvider + BrowserRouter + AppLayout
-│
-├── styles/global.css         ← .idemaq-card, animações, scrollbar, Inter+Tabler via @import
-│
+├── theme.js          ← TEMAS dark/claro + paleta Deutan (P) + useTheme()
+├── supabase.js       ← cliente Supabase (NÃO mexer)
+├── App.jsx           ← ToastProvider + BrowserRouter + AppLayout
+├── styles/global.css ← .idemaq-card, animações, scrollbar
 ├── utils/
-│   ├── fmt.js                ← fmtBRL, fmtPrazoCurto, fmtDataHora
-│   ├── colors.js             ← corEtapa, bgEtapa, corHero, dividerColor
-│   ├── osHelpers.js          ← regras: podeMoverOS, calcStatusPrazo, estaPagaTotal, isAdmin
-│   ├── osPatch.js            ← normalizePatchOS (UI→DB) + whitelist + COLUNAS_SAFE
-│   ├── osData.js             ← TIPOS_OS, ETAPAS_TODOS, ZONAS, MENUS, FUNCIONARIOS, mocks
-│   └── categoriasPeca.js     ← lista canônica de categorias (espelha AcaoDiagnostico)
-│
+│   ├── fmt.js        ← fmtBRL, fmtPrazoCurto, fmtDataHora
+│   ├── colors.js     ← corEtapa, bgEtapa, corHero, dividerColor
+│   ├── osHelpers.js  ← podeMoverOS, calcStatusPrazo, estaPagaTotal, isAdmin
+│   ├── osPatch.js    ← normalizePatchOS (UI→DB) + whitelist + COLUNAS_SAFE
+│   ├── osData.js     ← TIPOS_OS, ETAPAS_TODOS, ZONAS, MENUS, FUNCIONARIOS
+│   └── categoriasPeca.js
 ├── hooks/
-│   ├── useOS.js              ← consulta + mutação + Realtime + updateOS — NÃO mexer
-│   ├── useOSItens.js         ← itens da OS
-│   ├── useOSHistorico.js     ← histórico de etapas
-│   ├── useClientes.js        ← CRUD de cliente + criarClientePersist standalone
-│   ├── useFinanceiro.js      ← lançamentos (ainda mock)
-│   ├── usePecas.js           ← CRUD de peça com filtros server-side
-│   └── useUsuarios.js        ← lista de usuários — NÃO mexer
-│
+│   ├── useOS.js           ← consulta + mutação + Realtime + updateOS — NÃO mexer
+│   ├── useOSItens.js / useOSHistorico.js / useClientes.js
+│   ├── useFinanceiro.js / usePecas.js / useUsuarios.js — NÃO mexer
 ├── components/
-│   ├── ui/                   ← biblioteca de primitivos (Card, Button, Badge…)
-│   ├── layout/               ← Sidebar, Topbar, BottomNav, AppLayout
-│   ├── kanban/               ← KanbanBoard, KanbanColumn, KanbanCard, filtros
-│   ├── painel/               ← Hero, KPICard, Pipeline, AlertasCriticos (do DONO)
-│   ├── osDetalhe/            ← Modal OS (10 Ações + Tabs + Header + RelatorioDiagnostico)
-│   ├── os/                   ← OSDrawer lateral (legado, não usado)
-│   ├── clientes/             ← ClienteDetalheModal
-│   ├── estoque/              ← PecaDetalheModal · MaquinaDetalheModal · NovaPecaModal
-│   └── financeiro/           ← LancamentoDetalheModal
-│
-├── pages/                    ← 1 arquivo por rota
-│   └── mobile/               ← versões mobile (re-exports do _legacy hoje)
-│
-└── _legacy/                  ← NÃO MEXER sem aprovação
-    ├── desktopKanbanModals.jsx   ← NovaOSModal + OSDetalhe verbatim
-    └── mobileComponents.jsx      ← PainelMobile + OSMobile + PullToRefresh + BottomSheet
+│   ├── ui/        ← biblioteca de primitivos — ver contexto-ui.md
+│   ├── layout/    ← Sidebar, Topbar, BottomNav, AppLayout
+│   ├── kanban/    ← KanbanBoard, KanbanColumn, KanbanCard
+│   ├── painel/    ← Hero, KPICard, Pipeline, AlertasCriticos
+│   ├── osDetalhe/ ← Modal OS (10 Ações + Tabs + Header)
+│   ├── clientes/ · estoque/ · financeiro/
+├── pages/         ← 1 arquivo por rota
+│   └── mobile/
+└── _legacy/       ← NÃO MEXER sem aprovação (NovaOSModal + OSDetalhe + PainelMobile)
 ```
-
-### `_legacy/` — regra absoluta
-~1300 linhas extraídas verbatim do App.jsx monolítico. Funcionam, mas não estão refatorados. **Nunca mexa em arquivos de `_legacy/` sem aprovação explícita do dono.**
 
 ---
 
 ## 6. Regras de ouro (não-negociáveis)
 
-1. **Paleta Deutan obrigatória**. Cores válidas: `#5B9BD5` azul · `#FFD966` amarelo · `#FF6B6B`/`#c04242` vermelho · `#B8CCE4` azul claro · verde só com indicador adicional (ícone+texto). Nunca usar vermelho/verde puros sem reforço de forma.
-2. **Nunca cor hardcoded** em componentes. Use `T.textPrimary`, `T.card`, `T.border` (tokens) OU `P.blue`, `P.yellow` (paleta) OU `corEtapa('blue', dark)` (helpers semânticos).
-3. **Tema via prop**: passe `T` e `dark` por prop. Em top-level (página inteira) use `useTheme()` do `theme.js`.
-4. **Cards sempre via `<Card>`** — ele aplica `className="idemaq-card"` automaticamente, o que ativa sombra no light mode via CSS global.
-5. **Ícones sempre Tabler** — `<i className="ti ti-nome">`. **Nunca emoji.**
-6. **Filtros/abas/chips**: ativo = azul (`corEtapa('blue', dark)`), inativo = cinza neutro (`T.textMuted` + `T.border`). **Nunca usar cor própria do tipo nos filtros.**
-7. **Dark padrão no desktop, light padrão no mobile** — o `useTheme()` faz isso sozinho.
-8. **Light mode estilo Conta Azul**: cards com sombra suave (não bordas), valores em destaque em **preto puro e negrito**, não cinza. O CSS global cuida quando você usa `<Card>`.
-9. **Tipografia tabular para números**: sempre `fontVariantNumeric: 'tabular-nums'` em valores R$ e contagens.
-10. **Filtrar `deleted_at IS NULL`** em toda consulta Supabase (soft-delete).
+1. **Paleta Deutan obrigatória**: `#5B9BD5` azul · `#FFD966` amarelo · `#FF6B6B`/`#c04242` vermelho · `#B8CCE4` azul claro · verde só com indicador adicional.
+2. **Nunca cor hardcoded** — use `T.textPrimary`/`T.card`/`T.border` (tokens) ou `P.blue`/`P.yellow` (paleta) ou `corEtapa()` (helpers).
+3. **Tema via prop** (`T`, `dark`). Em página top-level: `useTheme()` de `theme.js`.
+4. **Cards sempre via `<Card>`** — ativa sombra no light mode automaticamente.
+5. **Ícones sempre Tabler** — `<i className="ti ti-nome">`. Nunca emoji.
+6. **Filtros/abas/chips**: ativo = azul, inativo = cinza neutro. Nunca cor própria do tipo.
+7. **Dark padrão desktop, light padrão mobile** — `useTheme()` cuida disso.
+8. **Light mode estilo Conta Azul**: sombra suave, valores em preto puro negrito.
+9. **Tipografia tabular**: `fontVariantNumeric: 'tabular-nums'` em valores R$ e contagens.
+10. **Filtrar `deleted_at IS NULL`** em toda consulta Supabase.
 
 ---
 
-## 7. Componentes UI disponíveis (`@/components/ui`)
+## 7. Componentes UI
 
-- **`Card`** — container padrão com `idemaq-card`. Props: `T`, `dark`, `padding`, `radius`, `accent` (borda lateral colorida), `hover`.
-- **`SubCard`** — card secundário (background `cardAlt`). Usar dentro de outro Card.
-- **`Button`** — 4 variantes: `primary` (gradient azul) · `secondary` · `ghost` · `danger`. Tamanhos `sm`/`md`/`lg`. Props `iconLeft`/`iconRight`.
-- **`Badge`** — variantes semânticas (`azul`/`amarelo`/`vermelho`/`verde`/`neutro`) ou cores livres.
-- **`StatusBadge`** — status pré-definidos: `vencido`, `hoje`, `amanha`, `2dias`, `esgotado`, `critico`, `baixo`, `atrasada`, `pago`.
-- **`CountBadge`** — numérico pequeno (azul ou vermelho).
-- **`Modal`** + **`ModalHeader`** — overlay padrão (ESC + click-fora fecham). Mobile: bottom sheet.
-- **`Tabs`** — segmented control (`segmented` ou `underline`). Padrão "ativo = azul".
-- **`ChipToggle`** — chip filtro on/off (sempre azul ativo).
-- **`Input`**, **`Select`**, **`Textarea`** — form fields com label opcional + ícone. Foco em azul.
-- **`EmptyState`** — ícone + título + descrição + ação opcional. Use em listas vazias.
-- **`PageHeader`** — título grande + subtítulo + stats inline + ações à direita. Use no topo de toda página.
-- **`SectionHeader`** + **`SectionAction`** — cabeçalho de seção (label uppercase) dentro de Card.
-- **`Sparkline`** — mini gráfico inline SVG (área + linha).
-- **`DeltaPill`** — pill ↗ +12% verde / ↘ -3% vermelho.
-- **`ToastProvider`** + **`useToast()`** — `notify('ok'|'erro'|'info', 'mensagem')`. Some em 3.2s.
+Ver `CONTEXTO PROJETO ATUALIZADO/contexto-ui.md` para lista completa com props e regras de uso.
 
 ---
 
-## 8. Anti-patterns (o que NÃO fazer)
+## 8. Anti-patterns
 
-- ❌ **Não crie variações de Card/Button/Badge** — se faltar uma variante, peça aprovação primeiro pra adicionar ao componente base.
-- ❌ **Não use styled-components, Tailwind, CSS Modules, emotion**. Padrão é `style={{}}` inline + `className="idemaq-card"` + `global.css`.
-- ❌ **Não use emoji como ícone** — sempre Tabler (`ti ti-nome`).
-- ❌ **Não recrie `useTheme`** nem `TEMAS` nem `P` — sempre importe de `theme.js`.
-- ❌ **Não mexa em `_legacy/`** sem aprovação explícita.
-- ❌ **Não adicione dependências** (`npm i ...`) sem aprovação.
-- ❌ **Não faça "limpezas" ou "melhorias" não pedidas**. Edite só o que foi pedido.
-- ❌ **Não use cor hardcoded** (`#fff`, `#000`, `red`, etc.). Sempre via `T.*`, `P.*` ou helpers.
-- ❌ **Não duplique lógica** que já está em `utils/osHelpers.js`.
-- ❌ **Não use `<select>`/`<input>`/`<button>` cru** quando há `<Select>`/`<Input>`/`<Button>` na lib.
-- ❌ **Não dependa SÓ do Realtime pra UI refletir mutação local** — sempre fazer **optimistic update** (`setOsList(prev => ...)` antes do `supabase.update/insert/delete`) com **rollback em erro**. Realtime tem latência variável e às vezes a publication da tabela está desabilitada no Supabase. Ex: `moverOS`/`excluirOS` no `Kanban.jsx`.
+- ❌ Não mexa em `_legacy/` sem aprovação explícita
+- ❌ Não adicione dependências (`npm i`) sem aprovação
+- ❌ Não faça limpezas ou melhorias não pedidas
+- ❌ Não use cor hardcoded nem emoji como ícone
+- ❌ Não recrie `useTheme`/`TEMAS`/`P` — importe de `theme.js`
+- ❌ Não duplique lógica que já está em `osHelpers.js`
+- ❌ Não dependa SÓ do Realtime — sempre **optimistic update** + rollback em erro
 
 ---
 
-## 9. Regras de negócio universais (toda tela precisa saber)
+## 9. Regras de negócio universais
 
-- **"Itens", não "peças"** — máquina, capa, mangueira, qualquer coisa é "item".
-- **Link de pagamento = InfinitePay D+1** (Ton Black tem link de 30 dias — inviável, não usar).
-- **Coluna "Concluído" = mês do calendário** (não 30 dias corridos). Busca escapa o filtro.
-- **Garantia = OS NOVA** com `garantia: true` e `os_origem_id` apontando pra OS original. Valor padrão R$ 0. 90 dias padrão.
-- **Sem responsável fixo por OS** — cada etapa tem seu próprio responsável (lido de `os_historico`).
-- **3 usuários**: Toni (`dono`, admin total) · Alessandro (`logistica`) · Guilherme (`oficina`).
-- **OS some do Kanban 24h após concluída** — visível via busca, relatórios, ficha do cliente.
-- **Drag-and-drop**: 1 etapa por vez (frente ou trás). `Concluído` não volta por drag. Use `podeMoverOS()` antes de mover.
-- **Filtrar `deleted_at IS NULL`** em toda consulta de tabela principal.
-- **Datas no banco em UTC** (`timestamptz`); converter pra `America/Cuiaba` na UI quando precisar.
-- **Auditoria automática**: NÃO preencher `criado_em`/`criado_por`/`atualizado_em` no front — trigger do banco faz isso.
-
----
-
-## 10. Visibilidade por papel (defesa em 3 camadas)
-
-Camada de UI baseada em `isAdmin(user)` de `utils/osHelpers.js`. **Menu esconde · Rota bloqueia · RLS no banco reforça.**
-
-- **Menu** (`Sidebar.jsx` + `BottomNav.jsx`): filtram `MENUS` removendo `financeiro` e `relatorios` pra funcionário. Constante `MENUS_ADMIN_ONLY = ['financeiro', 'relatorios']` no topo de cada arquivo.
-- **Rotas** (`App.jsx`): componente `<AdminOnly user={...}>` envolve `/financeiro` e `/relatorios` (desktop + mobile). Funcionário digita URL na mão → redireciona pro Painel.
-- **Estoque** (`pages/Estoque.jsx` + `PecaDetalheModal` + `MaquinaDetalheModal`): prop `mostraValores = isAdmin(user)` esconde Custo, Lucro/Margem, Valor em peças, Capital parado, Composição do custo, Custo un./Total. Funcionário vê só **Qtd · Venda · Status**.
-- **Etapas Pagamento e Concluído do Kanban** só visíveis pro dono (RLS no banco também bloqueia).
-- Rodapé da Sidebar mostra "Administrador" pro dono e "Funcionário" pros demais.
+- **"Itens", não "peças"** — máquina, capa, mangueira, qualquer coisa é "item"
+- **Link de pagamento = InfinitePay D+1** (Ton Black inviável)
+- **Coluna "Concluído" = mês do calendário** (não 30 dias corridos)
+- **Garantia = OS nova** com `garantia: true` + `os_origem_id`. Valor R$ 0. 90 dias padrão.
+- **Sem responsável fixo** — cada etapa tem responsável lido de `os_historico`
+- **3 usuários**: Toni (`dono`) · Alessandro (`logistica`) · Guilherme (`oficina`)
+- **OS some do Kanban 24h após concluída** — visível via busca/relatórios/cliente
+- **Drag-and-drop**: 1 etapa por vez. `Concluído` não volta. Use `podeMoverOS()`.
+- **Datas UTC no banco** (`timestamptz`) — converter pra `America/Cuiaba` na UI
+- **Auditoria automática** — não preencher `criado_em`/`atualizado_em` no front (trigger faz)
 
 ---
 
-## 11. Status macro (semáforo — detalhe em cada `contexto-<area>.md`)
+## 10. Visibilidade por papel (3 camadas)
 
-| Área | Status | Próximo passo macro |
+`isAdmin(user)` de `osHelpers.js`. **Menu esconde · Rota bloqueia · RLS reforça.**
+
+- **Menu**: `MENUS_ADMIN_ONLY = ['financeiro', 'relatorios']` em `Sidebar.jsx` + `BottomNav.jsx`
+- **Rotas**: `<AdminOnly>` envolve `/financeiro` e `/relatorios` em `App.jsx`
+- **Estoque**: `mostraValores = isAdmin(user)` esconde Custo/Margem/Capital. Funcionário vê só Qtd · Venda · Status
+- **Etapas Pagamento e Concluído**: só dono (RLS também bloqueia)
+
+---
+
+## 11. Status macro
+
+| Área | Status | Próximo passo |
 |---|---|---|
-| Painel (dono) | ✅ Real + meta diária restante + lê de `configuracoes` (20/05) | — |
-| Painel Funcionários | ✅ Real + OS específicas do funcionário via `os_historico` (fallback global) (20/05) | — |
-| Kanban (OS) | ✅ Real + Realtime + Garantia + Recusada→Fabricação | — |
-| OSDetalhe + 10 Ações | ✅ Schema parte 2 + foto no Storage + FormClienteEdit + FormEquipamentoEdit (20/05) | — |
+| Kanban (OS) + OSDetalhe | ✅ Real + Realtime + 10 Ações + fotos | — |
+| Painel dono + func | ✅ Real + meta diária + `configuracoes` | — |
 | Clientes | ✅ Real (782) + modal lista OS | — |
-| Logística | ✅ Reformulada como ferramenta de planejamento (20/05 noite): mapa real + sidebar OS Disponíveis + AdicionarOSARota (5 tipos + limite 2C+2E) + parada Avulsa + click no card abre OSDetalhe inline | — |
-| Vendas (histórico OS) | ✅ Onda 1 entregue 21/05/2026 madrugada: `/vendas` admin-only com lista + filtros + KPIs + modal "Nova OS antiga" retroativa | Onda 2: importação CSV Bling/Trello (depende de Toni exportar amostra) |
-| Estoque | ✅ Real (680) + ajuste manual + histórico real (`peca_movimentacao` aplicado 20/05) | — |
-| Financeiro | ✅ Real + OS→Financeiro + NovoLanc (avulso/parcelado/recorrente) + edição inline (20/05) | — |
-| Relatórios | ✅ 7 reais (DRE + Funcionários + Relógio de Ponto ligados ao Supabase 20/05) | Deploy da edge function `relatorio-ia` pra destravar análise IA |
-| Configurações (Mod 09) | ✅ MVP: tabela chave/valor + `useConfiguracoes` + página admin-only (20/05) | — |
-| Ponto | ✅ Schema aplicado + hook + componentes (20/05) | Funcionários começarem a bater pra povoar o histórico |
-| Schema parte 2 | ✅ Todos aplicados (01/05/06/07/08/09/10/11) | — |
-| Storage idemaq-privado | ✅ Bucket criado + foto coleta plugada (20/05) | — |
-| Env vars Vercel | ✅ Supabase URL+key setadas em prod (20/05 noite) + `VITE_GOOGLE_MAPS_KEY` setada com bootstrap loader oficial | — |
-| Edge function `relatorio-ia` | ✅ Código pronto + guia em `docs/deploy-edge-function-ia.md` | Toni rodar `supabase functions deploy` quando topar criar conta Anthropic |
-| Google Maps Places | ✅ Guia em `docs/setup-google-maps.md` | Toni criar API key + setar `VITE_GOOGLE_MAPS_KEY` no Vercel |
+| Logística | ✅ Mapa real + sidebar OS + OSDetalhe inline | — |
+| Vendas | ✅ `/vendas` com lista + KPIs + Nova OS retroativa | Onda 2: importação CSV |
+| Estoque | ✅ Real (680) + ajuste manual + histórico | — |
+| Financeiro | ✅ Real + avulso/parcelado/recorrente + edição | — |
+| Relatórios | ✅ 7 reais + DRE ligado ao Supabase | Deploy edge function `relatorio-ia` |
+| Configurações | ✅ tabela chave/valor + `useConfiguracoes` | — |
+| Ponto | ✅ Schema + hook + componentes | Funcionários começarem a bater |
+| Schema parte 2 | ✅ sql/01–11 todos aplicados | — |
+| Edge function `relatorio-ia` | ✅ Código pronto (`docs/deploy-edge-function-ia.md`) | Toni fazer deploy |
+| Google Maps Places | ✅ Guia em `docs/setup-google-maps.md` | Toni criar API key no Vercel |
 
 ---
 
 ## 12. Convenções de código
 
-- Arquivos: **PascalCase** para componentes (`Card.jsx`, `Painel.jsx`); **camelCase** para utils (`osHelpers.js`, `fmt.js`).
-- Imports relativos: `../components/ui`, `../utils/colors`. Se alias `@/` estiver configurado no `vite.config.js`, pode usar.
-- **Sempre validar sintaxe** antes de entregar — não mande JSX quebrado.
-- Quando em dúvida sobre **regra de negócio**: **pergunte ao dono, nunca assuma.**
+- **PascalCase** para componentes; **camelCase** para utils
+- Sempre validar sintaxe JSX antes de entregar
+- Quando em dúvida sobre regra de negócio: **pergunte ao dono, nunca assuma**
+- Supabase: sempre `.is('deleted_at', null)` em toda query
 
-### Padrão de conexão com Supabase
 ```js
 import { supabase } from '../supabase'
-
-const { data, error } = await supabase
-  .from('cliente')
-  .select('*')
-  .is('deleted_at', null)
-  .order('nome');
+const { data, error } = await supabase.from('cliente').select('*').is('deleted_at', null).order('nome')
 ```
 
 ---
 
 ## 13. Comunicação com o dono
 
-- Toni **não é técnico** — explique de forma visual e simples.
-- **Antes de mudanças não-triviais**: descreva o plano em 3-5 linhas e espere "ok" antes de aplicar.
-- **Nunca crie funcionalidade não pedida.** Mil "nãos" por um "sim".
-- **Modo de entrega padrão**: arquivo completo pra copiar e colar (e fazer `git push`).
-- **Modo alternativo** (só quando ele pedir): blocos `LOCALIZAR / SUBSTITUIR POR` em `.md`, para mudanças pequenas e cirúrgicas.
-- Quando achar que pode haver melhoria não pedida: **sugira marcando como "sugestão"**, não aplique.
+- Toni não é técnico — explique de forma visual e simples
+- Antes de mudanças não-triviais: descreva o plano em 3-5 linhas e espere "ok"
+- Nunca crie funcionalidade não pedida. Sugestão? Marque como "sugestão", não aplique.
+- Entrega padrão: arquivo completo pra copiar e colar
 
 ---
 
-## 14. Checklist antes de entregar código
+## 14. Checklist antes de entregar
 
-- [ ] Usei `T.*` / `P.*` / helpers em vez de cor hardcoded?
-- [ ] Usei `<Card>` em todo container visual?
-- [ ] Ícones todos Tabler (`ti ti-nome`)?
-- [ ] Filtros ativos = azul, inativos = cinza neutro?
-- [ ] Valores R$ com `fontVariantNumeric: 'tabular-nums'`?
-- [ ] Não criei variante nova de componente base?
-- [ ] Não toquei em `_legacy/`?
-- [ ] Sintaxe JSX válida (parênteses, tags fechadas)?
-- [ ] Consulta Supabase filtra `deleted_at IS NULL`?
-- [ ] Comportamento de drag-and-drop usa `podeMoverOS()`?
-- [ ] **Atualizei `contexto-<minha-area>.md`?** (sempre)
-- [ ] **Mudei status macro / regra / interseção? Atualizei CLAUDE.md?** (condicional)
-
-Se algum item falhou, **não entregue ainda** — corrija primeiro.
+- [ ] Cores via `T.*` / `P.*` / helpers (nunca hardcoded)?
+- [ ] Containers via `<Card>`? Ícones via Tabler?
+- [ ] Filtros ativos = azul, inativos = cinza?
+- [ ] `fontVariantNumeric: 'tabular-nums'` em valores R$?
+- [ ] Não toquei em `_legacy/`? Não criei variante nova de componente?
+- [ ] JSX válido? Supabase filtra `deleted_at IS NULL`?
+- [ ] Atualizei `contexto-<minha-area>.md`?

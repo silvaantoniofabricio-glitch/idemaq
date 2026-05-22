@@ -19,11 +19,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { boardsPath } from './_trello-export-path.mjs'
 
 const WRITE = process.argv.includes('--write')
-const CSV_PATH = resolve(
-  'Base de dados clientes Bling/areadetrabalho95498714_20260519_035333/boards/serviços/serviços.csv'
-)
+const CSV_PATH = resolve(boardsPath(), 'serviços/serviços.csv')
 const SQL_OUT = resolve('sql/11-cliente-importar-trello.sql')
 
 const supabase = createClient(

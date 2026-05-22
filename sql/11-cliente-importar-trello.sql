@@ -18,7 +18,7 @@
 -- IDEMPOTENTE: match por telefone normalizado (regexp_replace digits) com >= 8.
 -- Roda quantas vezes quiser, so insere os que nao existem.
 --
--- Total de candidatos: 773.
+-- Total de candidatos: 784.
 --
 -- Por que CTE e nao TEMP TABLE: Supabase SQL Editor abre uma transacao
 -- propria por statement; "CREATE TEMP TABLE ... ON COMMIT DROP" mata a tabela
@@ -85,6 +85,7 @@ WITH stg(nome, telefone, tel_norm, endereco, obs) AS (
     ('Andresa lathiel', '67 9690-1097', '6796901097', 'R. Maria Colpani Volpato, 205 - Conj. Hab. Odercio De Matos, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Andreza Sato', '67 9691-1399', '6796911399', NULL, 'Importado do Trello'),
     ('Andrielle', '67 8448-6409', '6784486409', 'Rua Saville Leyco Tacada, 359 - Vila Nova, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
+    ('Angela', '67 9936-3250', '6799363250', 'Rua Gerânio, 71 - Centro, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Angélica', '67 9644-1158', '6796441158', 'R. Irides de Almeida Toni, 184 - Jardim Paraiso, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Angelica Aparecida da Silva flor', '67 9867-8257', '6798678257', 'R. Marcos Euripedes da Silva, 408 - Jardim Paraiso, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Angelica Pereira Bombardi', '67 9617-6074', '6796176074', 'R. Palmira Passarini Perin, 70 - Jardim Paraiso, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
@@ -121,10 +122,12 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Cassia Calciolari Tonelli', '67 9809-6109', '6798096109', 'R. Paris, 118 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Cassia Hakamada', '67 9977-3439', '6799773439', 'Rua Bunji Tadano, 701 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Cauã', '67 9334-2835', '6793342835', 'R. Inglaterra, 257 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
+    ('Célia Binda', '67 9988-3453', '6799883453', 'Alameda das Garças, 334 - Classe A Residence, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Ci Freitas', '67 9948-8932', '6799488932', 'R. Maria Ribeiro Ananias, 161 - Jardim Progresso, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Cida', '67 9807-0670', '6798070670', 'R. Tom Jobim 456 - Jardim Paraiso, Naviraí - MS, 79949-280, Brasil', 'Importado do Trello'),
     ('Cidilene Vieira', '67 9800-1412', '6798001412', 'R. Higino Gomes Duarte, 197 - Centro, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Cidinha', '67 9218-5904', '6792185904', 'R. Manacá, 771 - Portal Residence, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
+    ('Cintia Cristina Da Silva', '67 8474-1224', '6784741224', 'R. São Luís, 305 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Clarisse Fernandes Ricieri Oliveira', '67 9641-7286', '6796417286', 'R. Apólo, 260 - Res. Sol Nascente, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Claudete', '67 9150-5834', '6791505834', 'R. do Bosque, 150 - Classe A Residence, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Claúdia', '67 8105-7104', '6781057104', 'R. Kobe, 277 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
@@ -205,6 +208,7 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Eduardo Bressa', '67 9999-7979', '6799997979', 'R. Fioravante Zancanaro, 245 - Jardim Progresso, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Eduardo Cicarelli Almeira Cliente', '67 9977-3125', '6799773125', 'R. Imigrantes, 361 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Edvaldo Velhão', '67 9271-1760', '6792711760', 'Chacara Gonzaga e Araujo', 'Importado do Trello'),
+    ('Efraim', '67 9844-0974', '6798440974', 'R. André Rodrigues da Silva, 628 - BNH, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Elaine Saraiva', '67 8442-8544', '6784428544', 'Alameda Rio Solimões, 515 - Chácara de Recreio Recanto do Bosque, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Eleni Sordi Maier', '67 9977-2525', '6799772525', 'R. Paris, 178 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Elenir', '67 9846-8227', '6798468227', 'Rua tarumã 86', 'Importado do Trello'),
@@ -405,6 +409,7 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Juscelina', '67 9951-5399', '6799515399', 'Alamedas dos tuiuis n 538', 'Importado do Trello'),
     ('Juscilene Rodrigues', '67 9865-1427', '6798651427', 'R. do Bosque, 125, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Jussara', '67 8204-7723', '6782047723', 'R. Yokossuka, 570 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
+    ('JUSSARA SUELEN BERLUCHI', '67 9680-5129', '6796805129', 'R. Montenegro, 42 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Kareca', '67 9313-8909', '6793138909', 'R. Niterói, 73 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Karen Dutra', '67 9250-2865', '6792502865', 'R. Minas Gerais, 72, AP 6 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Karen Evellin', '67 9673-8421', '6796738421', 'Rua Abilio Moraes de Andrade, 481 - Vila Nova, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
@@ -455,6 +460,7 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Luciana alves', '67 9137-6120', '6791376120', 'R. Sebastião Bonifácio, 378 - Jardim Paraíso, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Luciana Geromini', '67 9639-7892', '6796397892', 'Alameda dos Rouxinóis, 26 - Classe A Residence, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Luciana Guedes', '67 9661-4850', '6796614850', 'R. Jatobá, 41 - Res. Ipe, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
+    ('Luciana Nunes', '67 9931-1361', '6799311361', 'Avenida Vicente Marques da Silva 73 portal residence', 'Importado do Trello'),
     ('Luciene', '67 9837-7893', '6798377893', 'Alameda Rio Negro, 525 - Chácara de Recreio Recanto do Bosque, Naviraí - MS, 79950-000, Brasil', 'Trello: verificar barulho no cesto'),
     ('Luciene Basso', '67 9636-1441', '6796361441', 'R. Espírito Santo, 348 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Lucilda Cliente', '67 9255-4559', '6792554559', 'R. Venezuela, 384 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
@@ -574,10 +580,12 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Neia', '67 9945-3512', '6799453512', 'R. Luís Eduardo Magalhães, 188', 'Importado do Trello'),
     ('Neia do JChagas', '67 9695-8625', '6796958625', NULL, 'Importado do Trello'),
     ('Neia Garcia', '67 9256-6126', '6792566126', 'Edifício união apto 801', 'Importado do Trello'),
+    ('Neide De Bortoli Silva', '67 8447-0070', '6784470070', 'R. Fortaleza, 664 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Neide Ferreira Oliveira', '67 9908-6137', '6799086137', 'https://www.google.com/maps?q=-23.1120933,-54.157775', 'Importado do Trello'),
     ('Neide Garcia', '67 9928-2716', '6799282716', 'Av. Ponta Porã, 871 - Jardim Alvorada, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Neide Kiyoko Ito Sakurai', '67 8133-6993', '6781336993', 'R. Peru, 143 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Neimar Vitor', '67 9925-1144', '6799251144', 'R. Meteoro, 518 - Res. Sol Nascente, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
+    ('Nelci', '67 8413-8887', '6784138887', 'R. Trevo, 947 - Portal Residence, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Nelci', '67 9218-3234', '6792183234', 'R. Luzia de P Almeida, 30 - Conj. Hab. Harry Amorim Costa, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Nereide', '67 9613-4857', '6796134857', 'R. Almerindo de Souza Lima, 63 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Trello: 7 de maio'),
     ('Nete', '67 9105-9521', '6791059521', 'R. Martinho Lutero, 300 - Centro, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
@@ -698,6 +706,7 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Sidineia Rodrigues dos Santos Cardoso', '67 9317-1911', '6793171911', 'R. Argentina, 128 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Sidneia', '67 9688-8040', '6796888040', 'Área Rural', 'Importado do Trello'),
     ('Silvana Mercado Bom Dia', '67 8482-9920', '6784829920', 'R. Via Láctea, 408 - Res. Sol Nascente, Naviraí - MS, 79950-000, Brasil', 'Trello: Fazer um teste'),
+    ('Silveira', '67 9602-1941', '6796021941', 'R. Altair, 22 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Silvio Amador', '67 8449-2311', '6784492311', 'R. Itatiaia - Centro, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Silvio Talarico', '67 9977-2231', '6799772231', 'R. Nagazaki, 359 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Simone', '67 9834-4872', '6798344872', 'R. Timburi, 367 - Res. Ipe, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
@@ -719,6 +728,7 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Sônia de Fátima Marsolla Aguiar', '67 9911-4541', '6799114541', 'R. José Bonifácio, 370 - Centro, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Sonia Maria', '67 9977-7486', '6799777486', 'R. Baltazar Rocha, 633 - Centro, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Sueli Barbosa', '67 9981-1732', '6799811732', 'Rua Gerânio, 887 - Portal Residence, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
+    ('Sueli Da Silva Carvalho', '67 8445-4372', '6784454372', 'R. Via Láctea, 462 - Sol Nascente, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Sueli Freitas Pereira', '67 9279-2662', '6792792662', 'R. Antônio Moreto, 100 - Conj. Hab. Harry Amorim Costa, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Sueli Gomes', '67 9135-5609', '6791355609', 'Alameda Rio Madeira, 13 - Parque Beija Flor, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Sueli Prudêncio', '67 9204-9830', '6792049830', 'R. G, 49 - Vila João de Barros, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
@@ -780,6 +790,7 @@ Santos', '67 9999-1222', '6799991222', 'Alameda Rio Solimões, 122, Naviraí - M
     ('Vani 9693-2087', '9693-2087', '96932087', NULL, 'Importado do Trello'),
     ('Veronice', '67 9681-0802', '6796810802', 'R. Grécia, 145 - Res. Athenas, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Vicente', '67 9960-4023', '6799604023', 'Rua Vidal de Negreiros 709', 'Importado do Trello'),
+    ('VICK MANU', '67 9977-5993', '6799775993', 'R. Riachuelo, 173 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Vilma Brito', '67 8471-6238', '6784716238', 'Rua Palmeira, 164 - Res. Oasis II, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Vinicius Souza', '67 9110-3575', '6791103575', 'Rua Lírio da Paz, 262 - Portal Residence, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),
     ('Vitória', '67 9881-0742', '6798810742', 'Av. Pantanal, 945 - Jardim Vale Encantado, Naviraí - MS, 79950-000, Brasil', 'Importado do Trello'),

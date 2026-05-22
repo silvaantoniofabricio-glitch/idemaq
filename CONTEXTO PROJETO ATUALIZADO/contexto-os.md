@@ -34,6 +34,9 @@
 - ✅ **Recusada → Fabricação refeito (19/05/2026)**: agora cria OS NOVA com `os_origem_id`, preservando o cliente na OS original (em vez de UPDATE in-place)
 - ✅ **OSDetalhe acessível de outras páginas (20/05/2026 noite)**: novo hook `src/hooks/useOSDetalheModal.js` encapsula `useOS` + `useUsuarios` + auth + callbacks (`moverOS`, `updateOS`, `excluirOS`, `toggleAgPecaOS`). Retorna `{ abrirOSPorNumero, abrirOSPorId, modalProps }`. 1º consumidor: `Logistica.jsx` (click no card da sidebar abre OSDetalhe inline). Lógica é cópia da do Kanban — refator futuro pode unificar.
 - ✅ **Foto da entrega obrigatória (21/05/2026)**: `AcaoEntrega` Fase 2 (entrega agendada) agora exige foto da máquina entregue antes de confirmar — botão fica opacity 0.5 + bloqueia avanço com toast quando sem foto + scroll auto. Storage: `os/{id}/entrega.jpg`. Marker em `pre_diagnostico.foto_entrega = 'storage'` (reusa jsonb existente, sem SQL). `osStorage.js` refatorado pra parametrizar tipo (`uploadFotoOS`, `getSignedUrlFoto`, `removerFotoOS`) — aliases `uploadFotoColeta` / `uploadFotoEntrega` mantidos pra retrocompat. `resolverFotoUrl(valor, osId, tipo)` aceita tipo opcional (default 'coleta').
+- ✅ **Admin bypassa foto da entrega (21/05/2026 noite)**: `AcaoEntrega` recebe prop `admin` (vinda de `tabProps` do `OSDetalhe`) — quando `admin === true`, `confirmarEntrega()` não bloqueia se faltar foto, label do bloco vira "Foto da entrega · opcional" e o botão confirmar não fica opaco. Funcionário continua obrigado. Útil pro dono fechar entrega em mãos / OS retroativa.
+- ✅ **Nova OS mobile redesenhada (21/05/2026 noite)**: criado `src/components/os/NovaOSMobile.jsx` (novo, mobile-first). Desktop continua usando `NovaOSModal` do `_legacy/` intocado. Mudanças visíveis: bottom sheet com drag handle + animação slide-up/fade, tipo como **segmented control** sempre visível (Atendimento/Venda/Fabricação) em vez de dropdown escondido, busca de cliente com **resultados como cards de 64px com avatar de iniciais** (não dropdown stretched), endereços e máquinas como **radio cards grandes**, **equipamento colapsado em acordeão** (opcional), inputs com `font-size:16px` (evita zoom iOS) e `minHeight:48-52px`, CTA sticky 54px com gradient fade no topo + `safe-area-inset-bottom`, indicador "**N de M obrigatórios**" no header. Reusa `criarClientePersist` + `NovoClienteModal` da pasta `components/clientes`. Mesmo payload de INSERT em `os` que o legacy. Confirmação "Descartar?" se houver campos preenchidos antes de fechar.
+- ✅ **Fix zoom-on-focus iOS (21/05/2026 noite — v2)**: tentativa 1 (mexer viewport `maximum-scale`) foi revertida — afeta o app inteiro. Solução final: **media query mobile-only em `src/styles/global.css`** forçando `input, select, textarea { font-size: 16px !important; }` em telas ≤768px. Resolve sem tocar viewport e sem tocar componentes do UI lib (que continuam compactos no desktop). Atinge tanto o `NovaOSMobile` quanto o `NovoClienteModal` (que usa `<Input>` 12.5px do UI lib). `autoFocus` do input de busca de cliente também foi removido (boa prática mobile — não abre teclado sem o user pedir).
 
 **Campos persistidos hoje** (via `updateOS`):
 - Financeiro: `valor_total`, `desconto`, `valor_pago`, `pago`, `forma_pagamento`
@@ -355,63 +358,10 @@ Helper `itensMarcadosDoDiag` + map `ITENS_DIAG`.
 
 ---
 
-## 16. Fechamento sessão 20/05/2026 (terminal `os` — noite)
+## 16. Notas de implementação (decisões importantes)
 
-**Entregue:**
-- `src/components/osDetalhe/FormClienteEdit.jsx` — edita cliente vinculado à OS. SELECT fresco no mount (`useOS` só traz nome+telefone via join), parser do endereço gravado em formato `' — '` (cidade/UF + CEP), defaults Naviraí/MS, UPDATE em `cliente` por id. `onSalvarOk` dispara `osRefetch` (propagado Kanban→OSDetalhe→Header) pra o nome novo refletir.
-- `src/components/osDetalhe/FormEquipamentoEdit.jsx` — edita marca/modelo/série/defeito da OS. Patch via `onUpdateOS` (optimistic do useOS) + `normalizePatchOS` traduz `marca→marca_equipamento`, `modelo→modelo_equipamento`, `serie→numero_serie`, `defeito→defeito_relatado`.
-- `Header.jsx` — trocou os 2 `notify('info','...em breve')` por state que abre os modais; aceita prop `onRefetchOS`.
-- Chain `onRefetchOS`: `Kanban.osRefetch` → `OSDetalhe` → `Header` → `FormClienteEdit.onSalvarOk`. Mesma propagação no `OSMobile`.
-- `sql/10-os-equipamento.sql` — cria `marca_equipamento/modelo_equipamento/numero_serie/defeito_relatado` na tabela `os` + `NOTIFY pgrst reload schema`. Aplicado pelo Toni no Supabase SQL Editor.
-- `scripts/probe-useos-select.mjs` — reproduz exatamente o SELECT do `useOS` pra detectar regressão (coluna inexistente) antes do push.
-
-**Saga em 4 commits:**
-1. `0e2d9f8 feat(os)` — entrega inicial dos 2 modais + chain `onRefetchOS`.
-2. `b8ba5ff fix(os)` — hotfix tentando incluir `marca_equipamento` etc. no SELECT do `useOS`. **QUEBROU**: as colunas não existiam em prod → PostgREST 42703 → `osList` vazio → Kanban morto + criação de OS impossível.
-3. `2729546 fix(os)` — revert do hotfix + descoberta via probe de que o INSERT do `NovaOSModal` no `_legacy` também já falhava silenciosamente (PGRST204) há tempos. Tirou as 3 colunas do payload, omitiu da whitelist, criou o SQL.
-4. `552c31c feat(os)` — depois do Toni aplicar `sql/10`, reativou os 3 pontos: `useOS` SELECT+map, `osPatch.COLUNAS_SAFE`, payload do `NovaOSModal`.
-
-**Lições salvas em memória (para sessões futuras):**
-- `feedback_verificar_coluna_antes_select` — não confiar em código referenciando coluna; rodar probe primeiro.
-- `project_os_equipamento_pendente_schema` — saga resolvida; `sql/10` aplicado, código reativado.
-
-**Pendências reais (não-mocks):**
-- Hoje `useOS` traz `equipamento: ''` hardcoded (não há coluna). Continua não-essencial — marca+modelo já cobrem o display.
-- `endereco` no `os` é stale (sempre `''` no useOS) — `FormClienteEdit` salva em `cliente.endereco`, então o Header lê de lá indiretamente após refetch. OK.
-- O INSERT do `NovaOSModal` ainda não cria `os_historico` inicial (a trigger do banco cuida — confirmado no commit 0e2d9f8 do schema parte 2).
-
-**Atenção pra próximas sessões em `os`:**
-- O Header.jsx foi tocado pelo Toni no fim da sessão (linha 207 — removeu o `background: tipoCor + '08'` que vinha desde 18/05). Não revertir sem perguntar.
-- O Kanban.jsx também sofreu edição manual (dropdown unificado de filtros — `menuAberto: 'prazo' | 'resp' | 'tipos' | null` em vez dos botões inline). Não foi commit deste terminal — não mexer.
-
----
-
-## 17. Fechamento sessão 21/05/2026 (terminal `os`)
-
-**Entregue:**
-
-1. **Scroll vertical na coluna lotada (`Kanban.jsx` · commit `264ab3e`)**
-   - Antes: girar a roda do mouse sempre virava scroll horizontal do Kanban — mesmo com cursor sobre coluna com barra própria.
-   - Agora: `handleWheel` sobe do `e.target` até `kanbanRef`. Se acha ancestral com `overflowY: auto/scroll` + `scrollHeight > clientHeight` E ainda dá pra rolar na direção do gesto (`scrollTop + clientHeight < scrollHeight` pra baixo, `scrollTop > 0` pra cima), deixa o browser rolar nativamente. Caso contrário (sem barra interna, ou já no topo/fundo), converte pra `scrollLeft += deltaY` igual antes.
-   - Gesto naturalmente horizontal (touchpad com `|deltaX| ≥ |deltaY|`) passa nativo sem interferência.
-
-2. **Aba Resumo → Relatório + bloco "Relatório por etapa" (`commit bb4d8db`)**
-   - **Renomeio**: `ResumoTab.jsx` → `RelatorioTab.jsx` (via `git mv` — histórico preservado). Componente exportado: `RelatorioTab`. Aba: `id` `'resumo'` → `'relatorio'`, `label` "Resumo" → "Relatório", `icon` `ti-info-circle` → `ti-report`. `abaInicial('concluido'|'recusado')` retorna `'relatorio'`.
-   - **Novo bloco `RelatorioPorEtapaBloco`** no fim do `RelatorioTab.jsx`. Carrega 3 hooks de checklist (`useChecklistEtapa` × `recebido` / `em_oficina` / `teste_final`) + `useFalhaTeste`. Render condicional: só monta `EtapaCard` pra etapa que tem dado registrado (checklist preenchido, falha registrada, evento no histórico, valor_pago > 0).
-   - **Cada `EtapaCard`** (borda lateral colorida + ícone + título + meta data/responsável):
-     - **Recebido / Oficina / Teste**: `ChecklistResumo` (badge `X/Y OK` verde + badge `N problemas` vermelho + lista dos itens com `valor === 'defeito'|'barulho'`) + observações da etapa.
-     - **Diagnóstico**: causa apontada (`os.diagnostico?.causa`) ou ponteiro pro RelatorioDiagnostico acima.
-     - **Orçamento** (admin-only): ponteiro pro bloco de orçamento acima (sem duplicar lista).
-     - **Pagamento** (admin-only): grid 2×2 com Valor pago / Forma / Status / Saldo.
-     - **Concluído** (verde): nota de garantia (90 dias ou customizado).
-     - **Recusada** (vermelho): pointer pra decisão na aba Etapa.
-   - Estado vazio: "Nenhuma etapa registrou dados ainda — preencha as ações da OS pra alimentar o relatório."
-   - **Hook strategy**: 3 `useChecklistEtapa` + `useFalhaTeste` rodam sempre que o RelatorioTab monta (4 queries extras por abertura de OS na aba Relatório). Cada hook é silent quando `osId` não é UUID (rascunho). Se virar gargalo, dá pra mover pra carregamento lazy on-demand por etapa.
-
-**Pendências que ficaram (não bloqueantes):**
-- Dados da etapa Entrega ainda não persistem em colunas dedicadas (`entrega_data`, `entrega_hora`, `entrega_responsavel`, `entrega_obs`). EtapaCard de Entrega mostra "Detalhes ainda não persistem em colunas dedicadas". Quando criar essas colunas, atualizar `RelatorioPorEtapaBloco` pra mostrar.
-- `os.diagnostico?.causa` ainda vive em memória (não há coluna). EtapaCard de Diagnóstico só mostra causa se estiver no estado in-session — após refresh, cai pro fallback.
-
-**Atenção pra próximas sessões em `os`:**
-- `RelatorioTab.jsx` é arquivo grande agora (~700 linhas). Se for evoluir o relatório (PDF, export, mais detalhe por etapa), considerar split em sub-componentes em `osDetalhe/relatorio/`.
-- Mudanças do scroll horizontal e do bloco "Relatório por etapa" são independentes — qualquer revert pontual de uma não afeta a outra.
+- **Chain `onRefetchOS`**: `Kanban.osRefetch` → `OSDetalhe` → `Header` → `FormClienteEdit.onSalvarOk`. Mesma propagação no `OSMobile`. Necessário porque `useOS` só traz `nome+telefone` do cliente via join — após editar cliente, precisa refetch pra refletir.
+- **Saga colunas equipamento**: colunas `marca_equipamento/modelo_equipamento/numero_serie/defeito_relatado` não existiam em prod até 20/05 (`sql/10`). Se aparecer PostgREST 42703, rodar `scripts/probe-useos-select.mjs` antes de mexer no SELECT do `useOS`.
+- **Scroll horizontal Kanban**: `handleWheel` em `Kanban.jsx` detecta se coluna sob cursor ainda tem espaço pra rolar verticalmente — se sim, deixa browser rolar; senão converte pra `scrollLeft += deltaY`.
+- **RelatorioTab** (ex-ResumoTab): 3 hooks `useChecklistEtapa` + `useFalhaTeste` rodam ao montar a aba (4 queries extras). Se virar gargalo, migrar pra lazy on-demand.
+- **OSDetalhe mobile**: `HeaderMobile.jsx` + `FooterMobile.jsx` são fork do desktop (`mobile=true` no `OSDetalhe.jsx`). Swipe-down-to-close só no grab handle (não no conteúdo). Desktop zero mudança.

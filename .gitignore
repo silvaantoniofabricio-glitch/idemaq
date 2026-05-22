@@ -25,3 +25,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Dados locais / arquivos de trabalho (não são código)
+Base de dados clientes Bling/
+notas-xml/
+notas-trello/
+RELATORIO OUTRAS LOJAS/
+FERRAMENTAS/
+PRIMARIOS/
+relatorios/
+Arquivos para knowledge/
+TERMINAIS/
+
+# Arquivos temporários e mídia solta na raiz
+/*.png
+/*.jpg
+/*.docx
+/*.csv

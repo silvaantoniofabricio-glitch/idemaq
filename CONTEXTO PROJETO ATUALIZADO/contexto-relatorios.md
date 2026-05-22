@@ -247,41 +247,7 @@ Estratégias se ficar pesado:
 
 ---
 
-## 11. Bugs corrigidos (fix anterior)
-
-### #1 — Regressão dos 4 reais em prod (mostravam "dados de exemplo")
-**Causa**: `src/hooks/useRelatorios.js` **nunca foi versionado** (estava untracked). Localmente o `Relatorios.jsx` importava o hook e funcionava, mas no Vercel o arquivo não existia → build falhava → prod ficou servindo o último build bom (o anterior ao `fca1484`), que ainda tinha os 4 cards com valores mock hardcoded.
-
-**Fix**: `git add src/hooks/useRelatorios.js` + commit. Vercel rebuildou e os 4 voltaram a puxar do Supabase.
-
-**Lição**: depois de criar arquivo novo na pasta `hooks/`, sempre `git status` antes de fechar a feature. O `npm run build` local não pega esse caso porque o arquivo existe na máquina.
-
-### #2 — DRE "Inteligente" travando 20-30s
-**Causa**: o botão "Gerar análise agora" chamava `supabase.functions.invoke('relatorio-ia', ...)` numa edge function que **ainda não foi deployada**. O SDK do Supabase espera o timeout completo (~25-30s) antes de devolver erro.
-
-**Fix**: gatear o botão atrás da constante `IA_DEPLOYED` (linha ~52 de `Relatorios.jsx`). Enquanto `false`, o `onGerar` não é passado pro `InsightIA` → botão some, UI mostra "Em breve". Quando a edge function for deployada, flipar pra `true` e o botão volta sem outra mudança de código.
-
-```js
-// src/pages/Relatorios.jsx
-const IA_DEPLOYED = false  // ← flipar depois do deploy
-```
-
-### #3 — Estoque e Vendas voltaram a quebrar em prod (Onda 4, 20/05/2026)
-**Causa**: schema de `os_item` mudou desde que `useRelatorios.js` foi escrito:
-- Coluna `qtd` foi renomeada pra `quantidade`
-- Coluna `tipo` foi removida (era enum `'peca'|'servico'`)
-
-`useRelatorioEstoque` e `useRelatorioVendas` selecionavam `qtd, tipo` → PostgREST devolvia `42703 column "qtd" does not exist` → hook caía pra erro → cards exibiam "Erro ao carregar".
-
-**Fix**: trocar em `src/hooks/useRelatorios.js`:
-- `qtd` → `quantidade` em todas as agregações (soma, média, top N)
-- Filtro `.eq('tipo', 'peca')` → derivar via `peca_id IS NOT NULL` (item com FK = peça; sem FK = serviço/avulso)
-
-Estoque e Vendas voltaram a puxar números reais. Geral e Operacional não tocavam `os_item`, ficaram OK o tempo todo.
-
----
-
-## 12. Decisões nesta rodada
+## 11. Decisões nesta rodada
 
 1. **Hooks lazy por relatório** em vez de um único agregador — só carrega o que abrir, evita queries inúteis quando o usuário navega.
 2. **Sem deltas (% vs anterior)** — pra evitar fetch dobrado em cada KPI. Sparkline 12m absoluto cobre a leitura de tendência.
