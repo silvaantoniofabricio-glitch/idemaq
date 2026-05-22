@@ -1,21 +1,19 @@
 // idemaq-src/hooks/useGeocodeEnderecos.js
 // Geocoda uma lista de endereços (texto livre) → { lat, lng }.
 //
-// Estratégia (21/05/2026): tenta Geocoding API primeiro. Se a chave do Google
-// não tem ela habilitada (status REQUEST_DENIED), cai automaticamente pra
-// Places API findPlaceFromQuery — que está habilitada (mesmo serviço do
-// AddressInput) e cobre o mesmo objetivo. Decisão é memoizada por sessão pra
-// não desperdiçar 1 chamada de Geocoder rejeitada em cada endereço.
+// Estratégia (21/05/2026): tenta Google Geocoding API primeiro. Se retornar
+// REQUEST_DENIED (API não habilitada no projeto GCP), cai pra OpenStreetMap
+// Nominatim — geocoder público, sem chave, baseado em dados OSM. Decisão é
+// memoizada por sessão: depois do 1º REQUEST_DENIED do Google, todas as
+// chamadas seguintes vão direto pro Nominatim.
 //
-// Cache em localStorage por endereço (positivos só — falhas reconsultam na
-// próxima sessão pra que ativar a API depois automaticamente preencha o mapa).
+// Nominatim usage policy (https://operations.osmfoundation.org/policies/nominatim/):
+//   - máx 1 req/segundo (heavy users devem usar instância própria)
+//   - identificar via User-Agent ou Referer (browser manda Referer auto)
+//   - cache local obrigatório → fazemos via localStorage
 //
-// Uso:
-//   const coordsPorEndereco = useGeocodeEnderecos(enderecos)
-//   coordsPorEndereco['R. Acre 88, Naviraí/MS'] // { lat, lng } | undefined
-//
-// Pré-requisito: `VITE_GOOGLE_MAPS_KEY` setada (mesma chave do AddressInput).
-// Sem chave, o hook fica em no-op e devolve {} — UI continua funcionando.
+// Cache: positivos em localStorage. Falhas reconsultam na próxima sessão
+// (caso a API do Google seja ativada depois, mapa preenche automaticamente).
 
 import { useEffect, useRef, useState } from 'react'
 import { loadMapsScript, MAPS_KEY_DISPONIVEL } from '../components/logistica/AddressInput'
@@ -23,13 +21,13 @@ import { loadMapsScript, MAPS_KEY_DISPONIVEL } from '../components/logistica/Add
 const STORAGE_KEY = 'idemaq.geocode.cache.v2'
 
 const QUOTA_POR_SESSAO = 60
-const THROTTLE_MS = 120
+const THROTTLE_GOOGLE_MS = 120
+const THROTTLE_NOMINATIM_MS = 1100 // respeita política do OSM (1 req/s)
 const SUFIXO_CONTEXTO = ', Naviraí, MS, Brasil'
 
-// Estado de módulo: depois da 1ª resposta REQUEST_DENIED do Geocoder,
-// pulamos direto pro Places API em todas as próximas chamadas da sessão.
-let geocoderIndisponivel = false
-let placesServiceSingleton = null
+// Estado de módulo: depois do 1º REQUEST_DENIED do Google, marca flag e
+// pula direto pro Nominatim em todas as chamadas seguintes da sessão.
+let googleIndisponivel = false
 
 function lerCache() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') } catch { return {} }
@@ -44,8 +42,8 @@ function comContexto(end) {
   return end + SUFIXO_CONTEXTO
 }
 
-// Tenta via Geocoding API. Retorna { coords } | { denied: true } | { coords: null }.
-async function viaGeocoder(google, endereco) {
+// Google Geocoding API. Retorna { coords } | { denied: true } | { coords: null }.
+async function viaGoogle(google, endereco) {
   const { Geocoder } = await google.maps.importLibrary('geocoding')
   const geocoder = new Geocoder()
   return new Promise((resolve) => {
@@ -56,37 +54,35 @@ async function viaGeocoder(google, endereco) {
       } else if (status === 'REQUEST_DENIED') {
         resolve({ denied: true })
       } else {
-        console.warn('[geocode] Geocoder falhou', { endereco, status })
+        console.warn('[geocode] Google falhou', { endereco, status })
         resolve({ coords: null })
       }
     })
   })
 }
 
-// Fallback via Places API findPlaceFromQuery (sempre disponível quando a chave
-// tem Places habilitada — usada pelo AddressInput).
-async function viaPlaces(google, endereco) {
-  if (!placesServiceSingleton) {
-    const { PlacesService } = await google.maps.importLibrary('places')
-    // PlacesService precisa de um HTMLElement ou Map — usamos um div solto.
-    placesServiceSingleton = new PlacesService(document.createElement('div'))
-  }
-  const placesService = placesServiceSingleton
-  const { PlacesServiceStatus } = await google.maps.importLibrary('places')
-  return new Promise((resolve) => {
-    placesService.findPlaceFromQuery({
-      query: comContexto(endereco),
-      fields: ['geometry'],
-    }, (results, status) => {
-      if (status === PlacesServiceStatus.OK && results && results[0]) {
-        const loc = results[0].geometry.location
-        resolve({ lat: loc.lat(), lng: loc.lng() })
-      } else {
-        console.warn('[geocode] Places falhou', { endereco, status })
-        resolve(null)
-      }
+// OpenStreetMap Nominatim — geocoder público sem chave.
+// Endpoint: https://nominatim.openstreetmap.org/search
+async function viaNominatim(endereco) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(comContexto(endereco))}`
+  try {
+    const r = await fetch(url, {
+      headers: { 'Accept': 'application/json', 'Accept-Language': 'pt-BR' },
     })
-  })
+    if (!r.ok) {
+      console.warn('[geocode] Nominatim HTTP', r.status, endereco)
+      return null
+    }
+    const data = await r.json()
+    if (Array.isArray(data) && data[0] && data[0].lat && data[0].lon) {
+      return { lat: Number(data[0].lat), lng: Number(data[0].lon) }
+    }
+    console.warn('[geocode] Nominatim sem resultado', endereco)
+    return null
+  } catch (e) {
+    console.warn('[geocode] Nominatim erro', endereco, e?.message)
+    return null
+  }
 }
 
 export function useGeocodeEnderecos(enderecos) {
@@ -97,7 +93,6 @@ export function useGeocodeEnderecos(enderecos) {
   const chave = (enderecos || []).filter(Boolean).join('|')
 
   useEffect(() => {
-    if (!MAPS_KEY_DISPONIVEL) return
     const lista = (enderecos || []).filter(Boolean)
     if (lista.length === 0) return
 
@@ -105,12 +100,14 @@ export function useGeocodeEnderecos(enderecos) {
     let usados = 0
 
     async function geocodar() {
-      let google
-      try { google = await loadMapsScript() } catch (e) {
-        console.warn('[geocode] loadMapsScript falhou:', e?.message)
-        return
+      // Tenta carregar Google só se a chave existir e ainda não soubermos que falha.
+      let google = null
+      if (MAPS_KEY_DISPONIVEL && !googleIndisponivel) {
+        try { google = await loadMapsScript() } catch (e) {
+          console.warn('[geocode] loadMapsScript falhou:', e?.message)
+        }
       }
-      if (cancelled || !google) return
+      if (cancelled) return
 
       for (const end of lista) {
         if (cancelled) return
@@ -119,19 +116,22 @@ export function useGeocodeEnderecos(enderecos) {
         usados++
 
         let coordsResult = null
+        let usouNominatim = false
+
         try {
-          if (!geocoderIndisponivel) {
-            const r = await viaGeocoder(google, end)
+          if (google && !googleIndisponivel) {
+            const r = await viaGoogle(google, end)
             if (r.denied) {
-              // Marca Geocoder como inutilizável na sessão e usa Places.
-              geocoderIndisponivel = true
-              console.warn('[geocode] Geocoding API não habilitada — caindo pra Places API.')
-              coordsResult = await viaPlaces(google, end)
+              googleIndisponivel = true
+              console.warn('[geocode] Google indisponível — caindo pra OpenStreetMap Nominatim daqui em diante.')
+              coordsResult = await viaNominatim(end)
+              usouNominatim = true
             } else {
               coordsResult = r.coords
             }
           } else {
-            coordsResult = await viaPlaces(google, end)
+            coordsResult = await viaNominatim(end)
+            usouNominatim = true
           }
         } catch (e) {
           console.warn('[geocode] erro inesperado em', end, e?.message)
@@ -145,7 +145,8 @@ export function useGeocodeEnderecos(enderecos) {
           escreverCache(next)
         }
 
-        await new Promise(r => setTimeout(r, THROTTLE_MS))
+        // Throttle: 1.1s pra Nominatim (respeita policy OSM), 120ms pra Google.
+        await new Promise(r => setTimeout(r, usouNominatim ? THROTTLE_NOMINATIM_MS : THROTTLE_GOOGLE_MS))
       }
     }
 
