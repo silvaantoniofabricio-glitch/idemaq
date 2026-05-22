@@ -758,6 +758,8 @@ function LogisticaDesktop({ T, dark }) {
                   lat: o.lat,
                   lng: o.lng,
                   tipo: 'disponivel',
+                  // Pino mostra os 2 últimos dígitos do nº da OS em vez do "?" genérico.
+                  ordem: String(o.numero).slice(-2),
                   label: `OS #${o.numero} · ${o.cliente_nome} · ${o.etapa_label}`,
                   onClick: () => abrirOSPorId(o.id),
                 }))),
