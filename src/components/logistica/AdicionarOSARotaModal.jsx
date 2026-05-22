@@ -18,7 +18,6 @@
 import React, { useMemo, useState } from 'react'
 import { Modal, Button, useToast } from '../ui'
 import { corEtapa, corHero } from '../../utils/colors'
-import { useUsuarios } from '../../hooks/useUsuarios'
 import { tipoParadaPorEtapa } from '../../hooks/useOSLogistica'
 import AddressInput from './AddressInput'
 
@@ -59,12 +58,6 @@ export default function AdicionarOSARotaModal({
   const verde    = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
 
-  const { usuarios } = useUsuarios()
-  const motoristas = useMemo(
-    () => usuarios.filter(u => u.papel === 'logistica' || u.papel === 'dono'),
-    [usuarios]
-  )
-
   // Data sugerida: data_agendamento da OS, senão hoje
   const dataSugerida = modoAvulsa
     ? hojeISO()
@@ -74,19 +67,12 @@ export default function AdicionarOSARotaModal({
   const [data, setData]              = useState(dataSugerida)
   const [destino, setDestino]        = useState('nova') // 'nova' | rotaId
   const [tipoParada, setTipoParada]  = useState(modoAvulsa ? 'avulsa' : (os?.tipoParadaSugerido || 'coleta'))
-  const [motoristaId, setMotoristaId] = useState(() => motoristas[0]?.id || '')
   const [salvando, setSalvando]      = useState(false)
   // Campos avulsa (só usados em modo=avulsa)
   const [avulsaNome,      setAvulsaNome]      = useState('')
   const [avulsaEndereco,  setAvulsaEndereco]  = useState('')
   const [avulsaLat,       setAvulsaLat]       = useState(null)
   const [avulsaLng,       setAvulsaLng]       = useState(null)
-
-  // Quando data muda, escolhe motorista default se ainda não tem
-  // (usuarios pode carregar depois do mount)
-  React.useEffect(() => {
-    if (!motoristaId && motoristas.length > 0) setMotoristaId(motoristas[0].id)
-  }, [motoristas, motoristaId])
 
   // Rotas existentes pra essa data
   const rotasDaData = useMemo(
@@ -103,7 +89,7 @@ export default function AdicionarOSARotaModal({
 
   const estouroLimite = tipoCfg?.contaLimite && rotaAlvo && contagem[tipoParada] >= 2
   const camposAvulsaOk = !modoAvulsa || (avulsaNome.trim() && avulsaEndereco.trim())
-  const podeSalvar = !!motoristaId && !!data && !estouroLimite && camposAvulsaOk && !salvando
+  const podeSalvar = !!data && !estouroLimite && camposAvulsaOk && !salvando
 
   // ─── Submit ──────────────────────────────────────────────────────────────
   async function salvar() {
@@ -150,7 +136,7 @@ export default function AdicionarOSARotaModal({
     if (destino === 'nova') {
       res = await onCriarRota({
         data,
-        motorista_id: motoristaId,
+        motorista_id: null, // sem motorista — responsável vem do histórico
         paradas: [novaParada],
         status: 'planejada',
       })
@@ -306,27 +292,13 @@ export default function AdicionarOSARotaModal({
                   onClick={() => !lotado && setDestino(r.id)}
                   disabled={lotado}
                   icon="ti-route"
-                  titulo={`${r.motorista_nome || 'Sem motorista'} · ${r.status}`}
+                  titulo={`${r.nome || `Rota de ${data}`} · ${r.status}`}
                   subtitulo={`${(r.paradas?.length || 0)} parada(s) — ${limite}${lotado ? ' · sem vaga pra ' + tipoCfg.label.toLowerCase() : ''}`}
                 />
               )
             })}
           </div>
         </div>
-
-        {/* Motorista (só quando rota nova) */}
-        {destino === 'nova' && (
-          <div>
-            <Label T={T}>Motorista</Label>
-            <select value={motoristaId} onChange={(e) => setMotoristaId(e.target.value)}
-              style={inputStyle(T)}>
-              <option value="">— escolher —</option>
-              {motoristas.map(m => (
-                <option key={m.id} value={m.id}>{m.apelido}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Aviso de limite */}
         {estouroLimite && (

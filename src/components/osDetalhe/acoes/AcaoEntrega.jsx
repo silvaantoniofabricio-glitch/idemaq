@@ -23,7 +23,7 @@ import {
 import { useToast } from '../../ui'
 import BlocoAcao from './BlocoAcao'
 
-export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMoverOS }) {
+export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpdateOS, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
   const amarelo = cor(P.yellow, P.yellowDark)
@@ -31,8 +31,6 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
   const notify = useToast()
 
   const jaPaga = estaPagaTotal(os)
-  // Lista vem sempre do useUsuarios (vazia durante carregamento — select com 0
-  // opções é OK; o form só salva quando há responsável selecionado).
   const lista = usuarios || []
 
   // Fase 1 = sem data agendada · Fase 2 = data já marcada
@@ -43,13 +41,14 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
 
   const emFase2 = !!dataAgendada && !editando
 
-  // Estado do form de agendamento (fase 1 ou reagendar)
+  // Estado do form de agendamento (fase 1 ou reagendar) — responsável é
+  // sempre o usuário logado (auth), sem dropdown. Quem agenda fica registrado.
   const agora = new Date()
   agora.setHours(agora.getHours() + 24)  // padrão: amanhã no mesmo horário
   const padraoIso = agora.toISOString().slice(0, 16)
   const [dataHora, setDataHora] = useState(dataAgendada || padraoIso)
-  const [responsavel, setResponsavel] = useState(respAgendado || lista[0]?.id || '')
   const [obs, setObs] = useState(obsAgendada)
+  const meuApelido = lista.find(u => u.id === user?.id)?.apelido || 'Você'
 
   // ─── Foto da entrega (obrigatória pra confirmar) ──────────────────────────
   // Marker no banco vai em pre_diagnostico.foto_entrega = 'storage' (reusa
@@ -115,7 +114,8 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
     }
     onUpdateOS?.(os.numero, {
       entrega_data: dataHora,
-      entrega_responsavel: responsavel,
+      // responsável = quem agendou (usuário logado). Sem dropdown.
+      entrega_responsavel: user?.id || null,
       entrega_observacoes: obs,
     })
     setEditando(false)
@@ -128,14 +128,15 @@ export default function AcaoEntrega({ T, dark, os, usuarios, onUpdateOS, onMover
 
   function cancelarReagendar() {
     setDataHora(dataAgendada)
-    setResponsavel(respAgendado || lista[0]?.id || '')
     setObs(obsAgendada)
     setEditando(false)
   }
 
   function confirmarEntrega() {
-    // Foto da entrega é OBRIGATÓRIA — prova de devolução em bom estado
-    if (!fotoEntregaNoStorage && !fotoEntregaUrl) {
+    // Foto da entrega é obrigatória pra funcionário (prova de devolução em
+    // bom estado). Admin (dono) pode pular — útil quando entregou em mãos
+    // sem chance de tirar foto, ou pra retroativa.
+    if (!admin && !fotoEntregaNoStorage && !fotoEntregaUrl) {
       notify('erro', 'Tire a foto da entrega antes de confirmar — comprova devolução em bom estado.')
       // Scroll automático até o bloco de foto (ajuda no mobile)
       inputFotoRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
@@ -231,12 +232,14 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
                style={{ fontSize: 18, color: fotoEntregaUrl ? verde : amarelo }} aria-hidden="true" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: corHero(dark) }}>
-                Foto da entrega · obrigatória
+                Foto da entrega · {admin ? 'opcional' : 'obrigatória'}
               </div>
               <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
                 {fotoEntregaUrl
                   ? 'Foto anexada — você pode confirmar a entrega.'
-                  : 'Tire foto da máquina no local de entrega (estado em que foi devolvida).'}
+                  : admin
+                    ? 'Tire foto se possível (recomendado). Como admin, você pode confirmar sem foto.'
+                    : 'Tire foto da máquina no local de entrega (estado em que foi devolvida).'}
               </div>
             </div>
           </div>
@@ -321,7 +324,7 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
             fontSize: 13, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'inherit',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            opacity: fotoEntregaUrl ? 1 : 0.5,
+            opacity: (admin || fotoEntregaUrl) ? 1 : 0.5,
           }}>
             <i className="ti ti-check" style={{ fontSize: 17 }} aria-hidden="true" />
             {jaPaga ? 'Confirmar entrega · concluir OS' : 'Confirmar entrega · ir pra Pagamento'}
@@ -344,7 +347,7 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
       etapa={dataAgendada ? 'Reagendar entrega' : 'Entrega — aguardando agendar'}
       descricao={dataAgendada
         ? 'Mude a data/hora se o cliente pediu reagendamento.'
-        : 'Combine a entrega com o cliente e registre data, hora e responsável.'}
+        : 'Combine a entrega com o cliente e registre data e hora. Quem agendar fica registrado como responsável.'}
     >
       {!dataAgendada && (
         <div style={{
@@ -358,26 +361,23 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Campo T={T} label="Data e hora">
-          <input
-            type="datetime-local"
-            value={dataHora}
-            onChange={(e) => setDataHora(e.target.value)}
-            style={{ ...inputStyle(T), colorScheme: dark ? 'dark' : 'light' }}
-          />
-        </Campo>
-        <Campo T={T} label="Responsável">
-          <select
-            value={responsavel}
-            onChange={(e) => setResponsavel(e.target.value)}
-            style={{ ...inputStyle(T), colorScheme: dark ? 'dark' : 'light' }}
-          >
-            {lista.map(u => (
-              <option key={u.id} value={u.id}>{u.apelido || u.nome || u.id}</option>
-            ))}
-          </select>
-        </Campo>
+      <Campo T={T} label="Data e hora">
+        <input
+          type="datetime-local"
+          value={dataHora}
+          onChange={(e) => setDataHora(e.target.value)}
+          style={{ ...inputStyle(T), colorScheme: dark ? 'dark' : 'light' }}
+        />
+      </Campo>
+
+      <div style={{
+        padding: '8px 11px', borderRadius: 7,
+        background: T.cardAlt, border: `1px solid ${T.border}`,
+        fontSize: 11.5, color: T.textSecondary,
+        display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start',
+      }}>
+        <i className="ti ti-user-check" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
+        Responsável: <strong style={{ color: corHero(dark), fontWeight: 600 }}>{meuApelido}</strong>
       </div>
 
       <Campo T={T} label="Observações" opcional>

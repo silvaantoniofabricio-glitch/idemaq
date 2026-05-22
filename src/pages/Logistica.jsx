@@ -580,7 +580,7 @@ function LogisticaDesktop({ T, dark }) {
               onMouseLeave={(e) => { e.currentTarget.style.color = T.textMuted; e.currentTarget.style.borderColor = T.border }}
             >
               <i className="ti ti-pencil" style={{ fontSize: 13 }} aria-hidden="true" />
-              Editar Rota {rotaExpandida || 'A'} (motorista, ordem, status…)
+              Editar Rota {rotaExpandida || 'A'} (ordem, status, observações…)
             </button>
           )}
         </div>

@@ -16,7 +16,6 @@ import {
 } from '../ui'
 import { corEtapa } from '../../utils/colors'
 import ParadasEditor from './ParadasEditor'
-import { useUsuarios } from '../../hooks/useUsuarios'
 import { useOS } from '../../hooks/useOS'
 
 const STATUS_ROTA = [
@@ -44,23 +43,15 @@ export default function RotaDetalheModal({
   const notify = useToast()
   const vermelho = corEtapa('red', dark)
 
-  const { usuarios } = useUsuarios()
   const { osList } = useOS(false)
 
   const [data, setData] = useState(rota?.data || '')
-  const [motoristaId, setMotoristaId] = useState(rota?.motorista_id || '')
   const [status, setStatus] = useState(rota?.status || 'planejada')
   const [observacoes, setObservacoes] = useState(rota?.observacoes || '')
   const [paradas, setParadas] = useState(Array.isArray(rota?.paradas) ? rota.paradas : [])
   const [salvando, setSalvando] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [erroValidacao, setErroValidacao] = useState(null)
-
-  const motoristas = useMemo(() => {
-    return usuarios
-      .filter(u => u.papel === 'logistica' || u.papel === 'dono')
-      .map(u => ({ value: u.id, label: u.apelido }))
-  }, [usuarios])
 
   const osOptions = useMemo(() => {
     return (osList || [])
@@ -97,7 +88,6 @@ export default function RotaDetalheModal({
 
     const patch = {
       data,
-      motorista_id: motoristaId || null,
       paradas: paradasFinais,
       status,
       observacoes: observacoes.trim() || null,
@@ -158,8 +148,8 @@ export default function RotaDetalheModal({
       <ModalHeader
         T={T}
         icon="ti-route"
-        title={`Rota de ${new Date(rota.data + 'T00:00:00').toLocaleDateString('pt-BR')}`}
-        subtitle={rota.motorista_nome ? `Motorista: ${rota.motorista_nome}` : 'Sem motorista atribuído'}
+        title={`Rota ${rota.nome || ''} · ${new Date(rota.data + 'T00:00:00').toLocaleDateString('pt-BR')}`}
+        subtitle={`${(rota.paradas || []).length} ${(rota.paradas || []).length === 1 ? 'parada' : 'paradas'}`}
         onClose={onClose}
         right={statusBadge(rota.status, dark)}
       />
@@ -172,7 +162,7 @@ export default function RotaDetalheModal({
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(140px, 170px) 1fr minmax(140px, 170px)',
+          gridTemplateColumns: 'minmax(150px, 200px) minmax(150px, 200px)',
           gap: 10,
         }}>
           <Input
@@ -183,14 +173,6 @@ export default function RotaDetalheModal({
             onChange={setData}
             required
             icon="ti-calendar-event"
-          />
-          <Select
-            T={T} dark={dark}
-            label="Motorista"
-            value={motoristaId}
-            onChange={setMotoristaId}
-            placeholder="— Selecionar —"
-            options={motoristas}
           />
           <Select
             T={T} dark={dark}

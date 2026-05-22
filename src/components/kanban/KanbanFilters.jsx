@@ -9,8 +9,6 @@ import { corEtapa, bgEtapa } from '../../utils/colors'
 export default function KanbanFilters({
   T, dark,
   busca, setBusca,
-  funcionario, setFuncionario,
-  usuarios = [],
   statusF, setStatusF,
   verAgPeca, setVerAgPeca, totalAgPeca = 0,
   zona, verRecusados, setVerRecusados, totalRecusados = 0,
@@ -47,18 +45,6 @@ export default function KanbanFilters({
             fontFamily: 'inherit',
           }} />
       </div>
-
-      {/* Responsável */}
-      <FilterGroup label="Resp." T={T}>
-        {[{ id: 'todos', apelido: 'Todos' }, ...usuarios].map(u => {
-          const ativo = funcionario === u.id
-          return (
-            <FilterChip key={u.id} ativo={ativo} onClick={() => setFuncionario(u.id)} T={T} dark={dark}>
-              {u.apelido}
-            </FilterChip>
-          )
-        })}
-      </FilterGroup>
 
       {/* Prazo */}
       <FilterGroup label="Prazo" T={T}>

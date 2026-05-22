@@ -15,7 +15,6 @@ import {
   estaPagaTotal, estaPagaParcial,
   podeMoverOS, ordenarColuna, dentroMesCorrente,
   calcStatusPrazo, diasPrazo,
-  responsavelAtual,
 } from '../utils/osHelpers'
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
@@ -49,7 +48,6 @@ export default function Kanban({ T, dark, user }) {
   // Sincroniza buscaAtiva para que useOS saiba se deve mostrar concluídas >24h
   useEffect(() => { setBuscaAtiva(busca.trim().length > 0) }, [busca])
   const [statusF, setStatusF]         = useState('todos')
-  const [respF, setRespF]               = useState('todos')
   const [verRecusados, setVerRecusados] = useState(false)
   const [verAgPeca, setVerAgPeca]       = useState(false)
   const [modalNova, setModalNova] = useState(false)
@@ -211,13 +209,6 @@ export default function Kanban({ T, dark, user }) {
       if (statusF === 'ok')      return s === 'ok'
       return true
     })
-    .filter(o => {
-      if (respF === 'todos') return true
-      const resp = responsavelAtual(o)
-      if (resp === respF) return true
-      // Também considera quem passou pela OS (histórico) — facilita acompanhar tarefa
-      return (o.historico || []).some(h => h.funcionario === respF)
-    })
     // Filtro mês corrente em Concluído (escapado pela busca)
     .filter(o => buscando ? true : dentroMesCorrente(o))
     .filter(o => !buscando ||
@@ -324,7 +315,6 @@ export default function Kanban({ T, dark, user }) {
           const totalTipos = Object.keys(TIPOS_OS).length
           // Labels dinâmicos dos chip-dropdowns
           const lblPrazo = statusF === 'todos' ? 'Todos' : statusF === 'vencido' ? 'Vencidas' : statusF === 'hoje' ? 'Hoje/amanhã' : 'Em dia'
-          const lblResp = respF === 'todos' ? 'Todos' : (usuarios.find(u => u.id === respF)?.apelido || 'Todos')
           const tiposCount = tiposAtivos.size
           // Estilo chip dropdown
           const chipBase = { padding:'5px 9px', borderRadius:6, fontSize:11.5, cursor:'pointer', fontWeight:500, display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap', transition:'all .12s', position:'relative' }
@@ -391,25 +381,6 @@ export default function Kanban({ T, dark, user }) {
                       <div key={v} onClick={()=>{ setStatusF(v); setMenuAberto(null) }} style={itemStyle(statusF === v)}>
                         {statusF === v && <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" />}
                         <span style={{ marginLeft: statusF === v ? 0 : 20 }}>{l}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Dropdown Responsável */}
-              <div style={{ position:'relative' }}>
-                <button onClick={()=>setMenuAberto(m => m === 'resp' ? null : 'resp')}
-                  style={{ ...chipBase, ...(respF !== 'todos' ? chipAtivo : chipNormal) }}>
-                  Resp.: {lblResp}
-                  <i className="ti ti-chevron-down" style={{ fontSize:11, opacity:.7 }} aria-hidden="true" />
-                </button>
-                {menuAberto === 'resp' && (
-                  <div style={popupStyle}>
-                    {[{ id:'todos', apelido:'Todos' }, ...usuarios].map(u => (
-                      <div key={u.id} onClick={()=>{ setRespF(u.id); setMenuAberto(null) }} style={itemStyle(respF === u.id)}>
-                        {respF === u.id && <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" />}
-                        <span style={{ marginLeft: respF === u.id ? 0 : 20 }}>{u.apelido}</span>
                       </div>
                     ))}
                   </div>
