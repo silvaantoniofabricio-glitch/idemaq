@@ -37,34 +37,35 @@ const FILTROS_DATA = [
   { id: 'semana', label: 'Semana' },
 ]
 
-const NOMES_SLOT = ['Rota A', 'Rota B', 'Rota C']
-const LETRA_POR_SLOT = { 'Rota A': 'A', 'Rota B': 'B', 'Rota C': 'C' }
-
-// Etapas ativas por default — focam no que dá pra rotear AGORA.
-const ETAPAS_DEFAULT = new Set(['agendamento', 'entrega'])
+// Exportados pra reuso na versão desktop (mesmo conceito, layout diferente).
+export const NOMES_SLOT = ['Rota A', 'Rota B', 'Rota C']
+export const LETRA_POR_SLOT = { 'Rota A': 'A', 'Rota B': 'B', 'Rota C': 'C' }
+export const ETAPAS_DEFAULT_LOGISTICA = new Set(['agendamento', 'entrega'])
 
 // Mapeamento: etapa do kanban → tipo de parada (4 tipos canônicos da UI nova).
 // Legacy jsonb com 'cobranca'/'visita'/'avulsa' é mapeado pra UI ao renderizar.
-function tipoUiPorEtapa(etapaDb) {
+export function tipoUiPorEtapa(etapaDb) {
   if (etapaDb === 'agendamento' || etapaDb === 'aguardando_agendamento') return 'coleta'
   if (etapaDb === 'pagamento') return 'receber'
   return 'entrega' // teste_final / oficina / etc — tudo cai em entrega
 }
 
 // Normaliza tipo do jsonb (que pode ter legacy) pra um dos 4 tipos da UI nova.
-function normalizarTipoUi(tipo) {
+export function normalizarTipoUi(tipo) {
   if (tipo === 'coleta')   return 'coleta'
   if (tipo === 'entrega')  return 'entrega'
   if (tipo === 'cobranca' || tipo === 'receber') return 'receber'
   return 'outros' // visita / avulsa / qualquer outro
 }
 
-const VISUAL_TIPO = {
+export const VISUAL_TIPO = {
   coleta:  { cor: '#5B9BD5', label: 'Coleta',  icon: 'ti-arrow-down-circle' },
   entrega: { cor: '#8FBC55', label: 'Entrega', icon: 'ti-truck-delivery' },
   receber: { cor: '#FFD966', label: 'Receber', icon: 'ti-cash' },
   outros:  { cor: '#B8CCE4', label: 'Outros',  icon: 'ti-dots' },
 }
+
+const ETAPAS_DEFAULT = ETAPAS_DEFAULT_LOGISTICA
 
 export default function LogisticaMobile({ T, dark }) {
   const notify = useToast()
@@ -392,7 +393,7 @@ function PeriodoToggle({ T, dark, valor, onChange }) {
   )
 }
 
-function FiltroEtapas({ T, dark, ativas, onToggle }) {
+export function FiltroEtapas({ T, dark, ativas, onToggle }) {
   return (
     <div style={{
       display: 'flex', flexWrap: 'wrap', gap: 5,
@@ -428,7 +429,7 @@ function FiltroEtapas({ T, dark, ativas, onToggle }) {
   )
 }
 
-function DiagnosticoMapa({ T, dark, diagnostico, totalOSFiltradas, criandoRotasFalhou }) {
+export function DiagnosticoMapa({ T, dark, diagnostico, totalOSFiltradas, criandoRotasFalhou }) {
   if (totalOSFiltradas === 0) return null
   return (
     <div style={{
@@ -468,7 +469,7 @@ function DiagnosticoMapa({ T, dark, diagnostico, totalOSFiltradas, criandoRotasF
 
 // Card flutuante sobre o mapa quando OS é clicada.
 // Aparece centralizado em cima, com dados + 3 botões A/B/C.
-function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDetalhe }) {
+export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDetalhe }) {
   const azul = corEtapa('blue', dark)
   const tipoUi = tipoUiPorEtapa(os.etapa_db)
   const visual = VISUAL_TIPO[tipoUi]
@@ -563,7 +564,7 @@ function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDetalhe }) 
 }
 
 // Accordion item de cada rota (A/B/C). Header sempre visível, lista expandida no toggle.
-function RotaAccordion({ T, dark, slot, letra, expandida, onToggle, onRemoverParada, onAdicionarAvulsa, onAbrirOSDetalhe }) {
+export function RotaAccordion({ T, dark, slot, letra, expandida, onToggle, onRemoverParada, onAdicionarAvulsa, onAbrirOSDetalhe }) {
   const azul = corEtapa('blue', dark)
   const paradas = slot.rota?.paradas || []
   const indisponivel = !slot.rota

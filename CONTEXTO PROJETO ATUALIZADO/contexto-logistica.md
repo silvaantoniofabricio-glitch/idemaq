@@ -5,6 +5,42 @@
 
 ---
 
+## 0a3. Sessão 21/05/2026 noite — Desktop alinhado com Mobile (A/B/C)
+
+**Pedido do Toni:** "atualiza minha pagina logistica versao web inspirado na versão mobile".
+
+**O que mudou em `src/pages/Logistica.jsx` (LogisticaDesktop):**
+
+| Antes | Depois |
+|---|---|
+| Slots `Rota 1/2/3` (desktop) vs `Rota A/B/C` (mobile) — incompatíveis | Slots **`Rota A/B/C` em ambos** (sincronizado) |
+| Grid 2 col: sidebar `OSDisponiveisSidebar` + lista grande de paradas \| mapa | Grid 2 col: **mapa grande à esquerda** (height 580) \| **3 accordions A/B/C empilhados à direita** |
+| Click no pino → abre `RotaDetalheModal` da rota mãe | Click no pino disponível → **card flutuante `CardFlutuanteOS` sobre o mapa com +A/+B/+C** (igual mobile) |
+| `OSDisponiveisSidebar` (componente de ~400 linhas com chips de etapa, busca, lista de cards) | **Removido do layout** — etapas viraram `FiltroEtapas` no topo (chips). OS aparecem como pinos no mapa. |
+| Sem diagnóstico do mapa | `DiagnosticoMapa` mostra "X no mapa · Y geocodificando · Z sem endereço" |
+| Sem auto-criação de slots | **Auto-cria Rota A/B/C** ao abrir o dia (igual mobile) |
+
+**Subcomponentes do `LogisticaMobile.jsx` que viraram `export`** pra reuso no desktop:
+`NOMES_SLOT`, `LETRA_POR_SLOT`, `ETAPAS_DEFAULT_LOGISTICA`, `tipoUiPorEtapa`, `normalizarTipoUi`, `VISUAL_TIPO`, `CardFlutuanteOS`, `RotaAccordion`, `FiltroEtapas`, `DiagnosticoMapa`. Decisão de exportar vs criar módulo compartilhado: o CLAUDE.md desencoraja abstrações desnecessárias — `LogisticaMobile` virou home dos componentes; desktop importa de lá.
+
+**Que recursos do desktop antigo continuam acessíveis:**
+- **Editar rota** (motorista, status, DnD de paradas, excluir) → botão "Editar Rota X" abaixo dos accordions abre `RotaDetalheModal`.
+- **Nova rota extra** (fora dos 3 slots) → botão "Nova rota" no header abre `NovaRotaModal`.
+- **OSDetalhe inline** → click em parada com `os_id` no accordion ou em "Ver OS completa" no card flutuante abre `<OSDetalhe>` sem trocar de rota.
+- **Abrir rota no Google Maps** → `IconButton` de external-link no header.
+
+**Que recursos do desktop antigo foram removidos** (já que mobile não tinha e ficou mais limpo):
+- `OSDisponiveisSidebar` com busca/filtros próprios — etapas viraram chips simples no topo, OS pendentes aparecem como pinos tracejados no mapa.
+- Lista grande de paradas com botões WhatsApp/Maps/Concluir por linha — accordion mostra paradas resumidas; pra concluir uma parada, abrir `RotaDetalheModal`.
+- Toolbar de busca por texto — não tinha equivalente no mobile, era ruído.
+- Chip de filtro de slot (Rota 1/2/3 na sidebar) — `rotaSelecionadaId` filtrava o mapa; agora cada accordion é seu próprio filtro visual.
+
+**Resultado**: bundle 18KB menor (700KB vs 717KB), código do `LogisticaDesktop` reduziu de ~500 linhas pra ~280 (compartilha com mobile).
+
+**Build local OK em 259ms.**
+
+---
+
 ## 0a2. Sessão 21/05/2026 tarde — 3 slots de rota + mapa simplificado
 
 **Pedido do Toni:**
