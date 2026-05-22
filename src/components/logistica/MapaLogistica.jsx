@@ -37,19 +37,34 @@ const TIPO_VISUAL = {
 }
 
 // Gera data URL SVG dum pin colorido com texto dentro — sem dependência externa.
-// `texto` aceita string (ex.: 'C', '1', '12'). Font ajusta pra 2 dígitos.
-// `tracejado` = pin com borda branca tracejada (OS "disponível" — sem rota).
-function svgPin(cor, texto, tracejado = false) {
+// `texto` aceita string (ex.: 'C', 'A1', '12'). Font ajusta automático.
+// `tracejado` = borda branca tracejada (OS "disponível" — sem rota).
+// `agendamento` = desenha um anel amarelo externo no pino (ponto de atenção).
+function svgPin(cor, texto, tracejado = false, agendamento = false) {
   const strokeProps = tracejado
     ? 'stroke="#fff" stroke-width="2" stroke-dasharray="3,2"'
     : 'stroke="#fff" stroke-width="2"'
   const t = String(texto ?? '')
-  const fontSize = t.length >= 2 ? 12 : 15
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
-    <path d="M16 0 C7 0 0 7 0 16 C0 25 16 42 16 42 C16 42 32 25 32 16 C32 7 25 0 16 0 Z" fill="${cor}" ${strokeProps}/>
-    <text x="16" y="22" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="${fontSize}" font-weight="700">${t}</text>
+  // 1 caractere: fonte 15. 2 caracteres (A1, B2…): fonte 12. 3+: fonte 10.
+  const fontSize = t.length >= 3 ? 10 : t.length === 2 ? 12 : 15
+  // Anel amarelo de atenção quando a OS tem `data_agendamento` (precisa não atrasar).
+  // Anel maior em volta do pino. SVG cresce de 32×42 pra 40×48 nesse caso.
+  const w = agendamento ? 40 : 32
+  const h = agendamento ? 48 : 42
+  const cx = agendamento ? 20 : 16
+  const px = agendamento ? 4 : 0
+  const py = agendamento ? 3 : 0
+  const anel = agendamento
+    ? `<circle cx="${cx}" cy="20" r="19" fill="none" stroke="#FFD966" stroke-width="3"/>`
+    : ''
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    ${anel}
+    <g transform="translate(${px} ${py})">
+      <path d="M16 0 C7 0 0 7 0 16 C0 25 16 42 16 42 C16 42 32 25 32 16 C32 7 25 0 16 0 Z" fill="${cor}" ${strokeProps}/>
+      <text x="16" y="22" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="${fontSize}" font-weight="700">${t}</text>
+    </g>
   </svg>`
-  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg)
+  return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h, cx, anchorY: agendamento ? 45 : 42 }
 }
 
 export default function MapaLogistica({
@@ -57,8 +72,10 @@ export default function MapaLogistica({
   height = 460,
   center = NAVIRAI_CENTER,
   zoom = ZOOM_DEFAULT,
-  paradas = [], // [{ lat, lng, tipo, label, ordem?, onClick? }]
-                // `ordem` (número) substitui a letra do pino quando presente.
+  paradas = [], // [{ lat, lng, tipo, label, ordem?, codigo?, agendamento?, onClick? }]
+                // - `codigo` (string "A1"/"B2"…): texto do pino se a parada está em rota nomeada
+                // - `ordem` (número): fallback se sem código
+                // - `agendamento` (bool): desenha anel amarelo de atenção
 }) {
   const containerRef = useRef(null)
   const mapaRef = useRef(null)
@@ -123,14 +140,15 @@ export default function MapaLogistica({
         })
 
         // Marcador fixo da oficina (sempre visível) — pin laranja com "O"
+        const pinOficina = svgPin('#FF9800', 'O')
         new Marker({
           position: NAVIRAI_CENTER,
           map: mapaRef.current,
           title: 'Oficina Idemaq · Naviraí/MS',
           icon: {
-            url: svgPin('#FF9800', 'O'),
-            scaledSize: new google.maps.Size(32, 42),
-            anchor: new google.maps.Point(16, 42),
+            url: pinOficina.url,
+            scaledSize: new google.maps.Size(pinOficina.w, pinOficina.h),
+            anchor: new google.maps.Point(pinOficina.cx, pinOficina.anchorY),
           },
           zIndex: 9999,
         })
@@ -167,17 +185,22 @@ export default function MapaLogistica({
     for (const p of paradas) {
       if (p.lat == null || p.lng == null) continue
       const visual = TIPO_VISUAL[p.tipo] || TIPO_VISUAL.avulsa
-      // Quando a parada faz parte de uma rota, o pino mostra o NÚMERO da
-      // ordem (1, 2, …) em vez da letra do tipo.
-      const texto = p.ordem != null ? String(p.ordem) : visual.letra
+      // Prioridade do texto exibido no pino:
+      //   1. `codigo` (ex.: "A1") quando a parada está numa rota nomeada
+      //   2. `ordem` (número) quando só tem ordem mas não letra da rota
+      //   3. letra do tipo (C/E/?/...) como fallback
+      const texto = p.codigo != null
+        ? String(p.codigo)
+        : p.ordem != null ? String(p.ordem) : visual.letra
+      const pin = svgPin(visual.cor, texto, visual.tracejado, !!p.agendamento)
       const m = new Marker({
         position: { lat: Number(p.lat), lng: Number(p.lng) },
         map: mapaRef.current,
         title: p.label || p.tipo,
         icon: {
-          url: svgPin(visual.cor, texto, visual.tracejado),
-          scaledSize: new google.maps.Size(32, 42),
-          anchor: new google.maps.Point(16, 42),
+          url: pin.url,
+          scaledSize: new google.maps.Size(pin.w, pin.h),
+          anchor: new google.maps.Point(pin.cx, pin.anchorY),
         },
       })
       if (p.onClick) m.addListener('click', () => p.onClick(p))

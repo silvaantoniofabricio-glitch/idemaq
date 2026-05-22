@@ -7,6 +7,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useIsMobile } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
+import LogisticaMobile from './LogisticaMobile'
 import {
   Card, Button, Badge, Input,
   EmptyState, PageHeader, SectionHeader,
@@ -116,9 +117,17 @@ function PillPeriodo({ T, dark, ativo, onClick, children }) {
 }
 
 export default function Logistica({ T, dark }) {
+  const isMobile = useIsMobile()
+  // Mobile usa página reestruturada (mapa + filtros etapa + 3 rotas A/B/C
+  // accordion + card flutuante). Pedido 21/05/2026. Desktop intocado.
+  if (isMobile) return <LogisticaMobile T={T} dark={dark} />
+  return <LogisticaDesktop T={T} dark={dark} />
+}
+
+function LogisticaDesktop({ T, dark }) {
   const cor = (d, c) => dark ? d : c
   const notify = useToast()
-  const isMobile = useIsMobile()
+  const isMobile = false
   const {
     rotas, loading, error, tabelaAusente,
     concluirParada: concluirParadaHook,
