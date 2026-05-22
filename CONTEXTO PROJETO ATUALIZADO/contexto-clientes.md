@@ -11,6 +11,10 @@
 - ✅ **NovoClienteModal próprio** salva via Supabase
 - ✅ **Importação Bling concluída (19/05/2026 noite)**: 777 clientes únicos dos 2 CSVs em `Base de dados clientes Bling/` + 5 de seed = 782 ativos no banco
 - ✅ **Importação Trello concluída (21/05/2026)**: +144 novos do export do Trello (773 candidatos, 629 já existiam por match de telefone) = **926 ativos no banco**
+- ✅ **Importação Trello — restantes (21/05/2026)**: sql/14 cobre 69 candidatos adicionais (21 Bucket B com nome=telefone, 4 Bucket C com tel extraído do Card Name via regex, 44 cards de revisão/Aguardando/Leeds — só cliente, OS não). Pendente Toni rodar e reportar quantos entraram.
+- ✅ **Importação de OS Trello concluída (21/05/2026)**: 225-239 OS criadas via sql/12 (export inicial + export incremental 21/05 com +11 cards). Ver §4b e [[project_trello_export]] na memória.
+- ✅ **Helper export-path** (`scripts/_trello-export-path.mjs`): detecta a pasta `areadetrabalho95498714_<TS>/` mais recente automaticamente — próximo export é só jogar na pasta e rodar os scripts, sem editar código.
+- ✅ **`useOS` agora pega endereço do cliente** (21/05/2026): SELECT embed atualizado pra `cliente:cliente_id(id, nome, telefone, endereco, deleted_at)` e mapping `endereco: os.cliente?.endereco || ''`. Antes era hardcoded `''` — OS importadas do Trello apareciam sem endereço mesmo o cliente tendo. Diagnóstico de OS sem tel/end em `sql/16-diagnostico-os-trello-cliente.sql`.
 - ✅ `useClientes.criar` corrigido pro schema real
 - ✅ Helper standalone **`criarClientePersist(payload)`** exportado de `useClientes.js` — pra consumidores que não querem rehidratar 782 clientes (ex: NovaOSModal inline cadastra 1 cliente sem fetch full)
 - ✅ Schema flat de cliente (não jsonb)
@@ -20,6 +24,7 @@
 - ✅ **Histórico de OS no `ClienteDetalheModal`** (19/05/2026, v2): agora consome `osList` recebido por prop (do `useOS(true)` montado em `pages/Clientes.jsx`) e filtra `o.cliente_id === clienteId` em memória — antes era SELECT direto por modal aberto. Reaproveita Realtime do hook. Mostra `OS #numero · tipo · etapa(badge) · valor · data`. Prop `onAbrirOS(id)` no contrato — clique chama o pai pra abrir OSDetalhe.
 - ✅ **SQL `04-cliente-importar-bling.sql` v3 commitado** (19/05/2026): INSERT agora usa `telefone`/`observacoes` e concatena `endereco — cidade/uf — cep` num único campo `endereco`. Staging table mantém colunas antigas (temp, drop on commit). Roda idempotente — match por telefone normalizado em `c.telefone` (não mais `c.fone`).
 - ✅ **AddressInput plugado nos cadastros de cliente** (20/05/2026): `NovoClienteModal` próprio (em `src/components/clientes/`) e `NovoClienteModalCompleto` do `_legacy/desktopKanbanModals.jsx` (endereço 1 + extras) agora usam `<AddressInput>` (de `components/logistica/`) — autocomplete via Google Maps Places com debounce 250ms + fallback texto livre se a chave não estiver setada. Mudança cirúrgica no legacy, só o input de endereço. **Requer `VITE_GOOGLE_MAPS_KEY` no `.env.local` (local) e no Vercel (prod)** — sem a chave, cai pro modo texto com hint "Autocomplete em breve".
+- ✅ **AddressInput com fallback Photon (OSM)** (21/05/2026): Toni reportou que autocomplete não aparecia no cadastro de cliente. Causa: Places API legacy bloqueada no projeto GCP (mesmo problema do geocoder, ver commits 8ab8d8c e 80eadb2). Solução: `AddressInput.jsx` agora tenta Places legacy 1º e cai pro **Photon** (`photon.komoot.io`, OSM, público sem chave) quando vem `REQUEST_DENIED`. Decisão memoizada em flag de módulo `placesLegacyIndisponivel` — depois do 1º denied, instâncias seguintes vão direto pro Photon. Photon retorna sugestões já com lat/lng (não precisa de `getDetails` igual Places). Hint visual "autocomplete em breve" removido — agora sempre tem autocomplete (Photon não exige chave). Beneficia também `ParadasEditor` e `AdicionarOSARotaModal`.
 
 ---
 
@@ -68,22 +73,59 @@ Idempotente: rodar de novo não duplica.
 
 ---
 
-## 4b. Export do Trello (histórico pré-sistema)
+## 4b. Export do Trello (clientes + OS pré-sistema)
 
-Em `Base de dados clientes Bling/areadetrabalho95498714_20260519_035333/` mora o export completo do Trello do Toni (baixado 19/05/2026). 4 boards:
+Pasta `Base de dados clientes Bling/areadetrabalho95498714_<YYYYMMDD_HHMMSS>/`. Dois exports até agora: `20260519_035333` (876 cards) e `20260521_054331` (887 cards, +11 novos +6 mudaram de lista). **Helper `scripts/_trello-export-path.mjs` detecta o mais recente automaticamente** — próximo export é só descompactar na pasta e rodar os scripts.
 
-| Board | Cards no CSV | Conteúdo |
+| Board | Cards reais | Conteúdo |
 |---|---|---|
-| `serviços` | **1012** | Histórico real de OS. Custom fields: Valor, Telefone, Endereço, Observação, Serviços, Horário de Busca/Entrega, Pagamento, Data de Entrada, Data de Saída. JSON tem 20MB com comentários/anexos. |
-| `finalizados` | 0 (CSV vazio) | Cards arquivados — só no JSON (14KB) |
-| `tarefas` | 2 | Peças pra pedido (board fechado) |
-| `visitas` | 0 (CSV vazio) | Cards no JSON (9KB) |
+| `serviços` | **876→887** | Histórico real de OS. Custom fields: Telefone, Endereço, Valor, Pagamento, Data Entrada/Saída, Obs, Serviços. JSON tem 20MB com 30k+ actions (comentários, movimentações entre listas, etc). |
+| `finalizados` | 0 ativos | só archived no JSON (14KB) |
+| `tarefas` | 2 | "Placa LTD13", "Capacitores" — peças pra pedido, não viraram OS |
+| `visitas` | 0 ativos | só archived no JSON (9KB) |
 
-**Por que importa pra Clientes**: o campo Telefone do card é a chave natural pra cruzar com `cliente.telefone` (mesma normalização da importação Bling). Quando o Toni pedir "puxa histórico de OS pro fulano" ou "migra Trello pro sistema", aqui é a fonte. Memória `project_trello_export` registra o detalhe.
+> Atenção ao número: `wc -l serviços.csv` dá ~1100 linhas, mas cards têm campos com `\n` interno; o real é os 876/887 que começam com Card ID de 24 hex chars.
 
-**Clientes do Trello → IMPORTADOS (21/05/2026)**: `scripts/importar-clientes-trello.mjs` parseia o CSV, dedupe por telefone normalizado, e gera `sql/11-cliente-importar-trello.sql`. Resultado: **773 candidatos** únicos → **144 novos cadastrados** + 629 já existiam (telefone match com Bling). **Base agora tem 926 clientes ativos** (de 782). Bucket B (18 cards só-telefone, sem nome) e C (39 sem chave) descartados na geração. Regra de match: só telefone normalizado (≥ 8 dígitos), ver [[project_cliente_match_telefone]]. SQL é idempotente (anti-join `NOT EXISTS`); roda no SQL Editor do Supabase porque RLS bloqueia anon. **Gotcha do SQL Editor**: usa CTE com `WITH stg AS (VALUES ...)` em vez de TEMP TABLE — o editor abre transação por statement, então `ON COMMIT DROP` matava a temp antes do INSERT seguinte chegar. Diagnóstico de duplicatas pré-existentes do Bling fica em `sql/11b-diagnostico-duplicatas-cliente.sql` (não modifica nada).
+### Pipeline de importação (3 scripts + 5 SQLs)
 
-OS históricas (data de entrada/saída, serviços feitos, comentários) ainda **não importadas** — matéria-prima parada esperando decisão de schema (vira histórico em `os` retroativo? Cria tabela `os_historico_trello` separada?).
+1. **`scripts/importar-clientes-trello.mjs`** → `sql/11-cliente-importar-trello.sql`
+   Clientes únicos por telefone (≥ 8 dígitos). Anti-join contra `cliente.telefone` normalizado. **Resultado 1ª rodada: +144 novos cadastrados** (773 candidatos, 629 já existiam pelo Bling). Total 782 → 926.
+
+2. **`scripts/importar-clientes-trello-restantes.mjs`** → `sql/14-cliente-importar-trello-restantes.sql`
+   Cobre 69 candidatos que ficaram de fora do sql/11:
+   - **B (21)** — Cards com só telefone no nome: cadastrar com `nome = telefone literal`. Toni revisa depois quem tem nome=telefone.
+   - **C (4)** — Coluna Telefone vazia, mas Card Name tem padrão de telefone → regex extrai. Outros 35 cards do bucket C eram lixo ("Electrolux 12kg") e foram descartados.
+   - **R (44)** — Cards de listas que **não viram OS** (Aguardando, Leeds Limpeza, Lembretes, Máquinas pra venda): o **cliente entra**, a OS não.
+
+3. **`scripts/importar-os-trello.mjs`** → `sql/12-os-importar-trello.sql` + `sql/13` + `sql/15`
+   225-239 OS criadas, idempotente via tag `observacoes='TRELLO-CARD:<id>'`. Faz tudo numa passada: lê CSV+JSON, indexa actions por idCard, calcula data de entrada (primeira passagem por lista ≠ VISITAS/ROTA ATUAL), parseia pagamento dos comentários via regex (`"280 pix"`, `"650 cartao 12/5"`, etc), monta INSERT com JOIN em `cliente` pelo telefone normalizado pra pegar `cliente_id`. **Pagamento parseado em ~153 OS** (~66% das concluídas pagas). Cards sem cliente matchado: criar cliente novo na mesma rodada.
+
+### Mapeamento lista do Trello → etapa do banco (decisão Toni 21/05)
+
+| Lista Trello | Etapa DB | Pago |
+|---|---|---|
+| PAGOS · Finalizados/Pagos ABRIL/MARÇO/MAIO | `concluido` | `total` |
+| A RECEBER | `pagamento` | `nao` |
+| FINALIZADOS | `entrega` | `nao` (máquinas prontas pra entregar) |
+| LIMPEZAS · SERVIÇOS | `em_oficina` | `nao` |
+| DIAGNOSTICOS | `diagnostico` | `nao` |
+| Pré-Diagnostico | `recebido` | `nao` |
+| ORÇAMENTO | `orcamento` | `nao` |
+| VISITAS · ROTA ATUAL | `aguardando_agendamento` | `nao` |
+| **Aguardando · Leeds Limpeza · Lembretes · Máquinas pra venda** | **NÃO viram OS** (vão pro `notas-trello/cards-para-revisar.json`) |
+| PEDIDOS · REGISTRO DE CLIENTE · Lançados no ERP | `notas-trello/...` (todos archived, 0 ativos) |
+
+**Gotcha**: o ENUM `os_etapa` no banco usa `em_oficina`, `aguardando_agendamento`, `agendamento`, `entrega` — não os ids da UI (`oficina`, `ag_agendamento`, `agendado`, `entregue`). Ver [[feedback_etapa_ui_vs_db]].
+
+### Re-sincronização incremental (sql/15)
+
+Quando o Toni atualiza o Trello e gera export novo, o `sql/12` cobre OS novas (anti-join via tag) e `sql/15-os-trello-resync-etapas.sql` faz UPDATE condicional (`WHERE etapa <> X`) das OS que mudaram de lista — idempotente. No export 21/05: 11 cards novos + 6 mudaram de lista.
+
+### Pendentes na importação de OS
+
+- **76 OS concluídas sem comentário de pagamento parseável** → entraram com `valor_total=0` mas `pago=total`. Toni ajusta caso a caso.
+- **Equipamento** (marca/modelo/série) não tinha no Trello → ficou em branco em todas as OS importadas.
+- Sub-bucket "lembretes/aguardando/leeds" continua no JSON pra revisão futura (Toni decide depois se viram OS, agendamento de visita, ou descarte).
 
 ---
 

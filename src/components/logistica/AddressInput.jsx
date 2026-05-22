@@ -1,20 +1,20 @@
 // idemaq-src/components/logistica/AddressInput.jsx
-// Campo de endereço com autocomplete via Google Maps Places.
+// Campo de endereço com autocomplete.
+//
+// ESTRATÉGIA (21/05/2026): tenta Google Places legacy → cai pro Photon (OSM)
+// quando a Places API legacy não está habilitada no projeto GCP. Mesmo padrão
+// do useGeocodeEnderecos (Google Geocoding → Nominatim). Decisão é memoizada
+// por sessão — depois do 1º REQUEST_DENIED, todas as digitações seguintes
+// vão direto pro Photon.
 //
 // CONFIGURAÇÃO:
-//   - Variável de ambiente Vite: VITE_GOOGLE_MAPS_KEY
-//   - Se não estiver setada, o componente cai pro modo "texto livre" com hint
-//     visual — mesmo comportamento da versão anterior.
-//
-// COMPORTAMENTO COM CHAVE:
-//   1. Carrega o script `maps/api/js?libraries=places` uma vez (singleton).
-//   2. Digita → debounce 250ms → `AutocompleteService.getPlacePredictions`.
-//   3. Sugestão clicada → `PlacesService.getDetails` → devolve `{ endereco, lat, lng }`.
-//   4. Se Maps falhar, ainda permite texto livre (envia lat/lng=null).
+//   - Variável de ambiente Vite: VITE_GOOGLE_MAPS_KEY (opcional)
+//   - Sem chave OU com Places API bloqueada → autocomplete via Photon
+//     (https://photon.komoot.io/), público, gratuito, sem chave.
 //
 // USADO EM:
 //   - Cadastro/edição de cliente
-//   - Cadastro de parada na rota (modal futuro)
+//   - Cadastro de parada na rota (ParadasEditor / AdicionarOSARotaModal)
 
 import React, { useEffect, useRef, useState } from 'react'
 import { Input } from '../ui'
@@ -22,6 +22,58 @@ import { corEtapa } from '../../utils/colors'
 
 const MAPS_KEY = import.meta.env?.VITE_GOOGLE_MAPS_KEY || ''
 const MAPS_ENABLED = Boolean(MAPS_KEY)
+
+// Estado de módulo: depois do 1º REQUEST_DENIED do Places legacy, marca flag
+// e pula direto pro Photon em todas as instâncias do componente na sessão.
+let placesLegacyIndisponivel = false
+
+// Centro de Naviraí — Photon usa pra rankear sugestões próximas primeiro.
+const NAVIRAI_LAT = -23.0653
+const NAVIRAI_LON = -54.1908
+
+// Photon: autocomplete público baseado em OSM (https://photon.komoot.io/).
+// Sem chave, sem cobrança, desenhado pra typeahead (diferente do Nominatim,
+// que é só geocoding pontual). Retorna predições já com lat/lng — não precisa
+// de uma 2ª chamada tipo PlacesService.getDetails.
+async function buscarPhoton(texto) {
+  const params = new URLSearchParams({
+    q: texto,
+    lang: 'pt',
+    limit: '6',
+    lat: String(NAVIRAI_LAT),
+    lon: String(NAVIRAI_LON),
+  })
+  const url = `https://photon.komoot.io/api/?${params.toString()}`
+  try {
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
+    if (!r.ok) return []
+    const data = await r.json()
+    const feats = Array.isArray(data?.features) ? data.features : []
+    return feats
+      .filter(f => f?.properties?.countrycode === 'BR' || f?.properties?.country === 'Brasil' || f?.properties?.country === 'Brazil')
+      .map((f, i) => {
+        const p = f.properties || {}
+        const coords = f.geometry?.coordinates || [null, null]
+        // Monta uma description limpa: "Rua X, 51, Bairro, Cidade, UF".
+        const partes = [
+          [p.name, p.housenumber].filter(Boolean).join(', '),
+          p.suburb || p.district,
+          p.city || p.town || p.village,
+          p.state,
+        ].filter(Boolean)
+        return {
+          // ID estável o suficiente pra key do React
+          place_id: `photon-${p.osm_type || 't'}-${p.osm_id || i}`,
+          description: partes.join(', '),
+          lat: coords[1],
+          lng: coords[0],
+        }
+      })
+      .filter(s => s.description) // descarta sugestões sem texto
+  } catch {
+    return []
+  }
+}
 
 // ─── Loader singleton do script (exportado pra reuso em MapaLogistica) ─────
 //
@@ -168,10 +220,30 @@ export default function AddressInput({
     }
   }
 
+  async function buscarViaPlacesLegacy(texto) {
+    const ok = await garantirServicos()
+    if (!ok) return { denied: true }
+    return new Promise((resolve) => {
+      acServiceRef.current.getPlacePredictions(
+        {
+          input: texto,
+          componentRestrictions: { country: 'br' },
+          sessionToken: sessionTokenRef.current,
+        },
+        (preds, status) => {
+          const google = window.google
+          const S = google?.maps?.places?.PlacesServiceStatus
+          if (status === S?.REQUEST_DENIED) return resolve({ denied: true })
+          if (status !== S?.OK || !preds) return resolve({ preds: [] })
+          // Marca sugestões do Places legacy pra escolherSugestao saber qual rota usar
+          resolve({ preds: preds.slice(0, 6).map(p => ({ ...p, _origem: 'places' })) })
+        }
+      )
+    })
+  }
+
   function handleChange(novoTexto) {
     onChange?.({ endereco: novoTexto, lat: null, lng: null })
-
-    if (!MAPS_ENABLED || mapsErro) return
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     const texto = (novoTexto || '').trim()
@@ -182,32 +254,50 @@ export default function AddressInput({
     }
 
     debounceRef.current = setTimeout(async () => {
-      const ok = await garantirServicos()
-      if (!ok) return
       setCarregando(true)
-      acServiceRef.current.getPlacePredictions(
-        {
-          input: texto,
-          componentRestrictions: { country: 'br' },
-          sessionToken: sessionTokenRef.current,
-        },
-        (preds, status) => {
+
+      // 1ª tentativa: Places legacy (só se Maps ativo e ainda não sabemos que falha)
+      if (MAPS_ENABLED && !mapsErro && !placesLegacyIndisponivel) {
+        const r = await buscarViaPlacesLegacy(texto)
+        if (r.denied) {
+          placesLegacyIndisponivel = true
+          console.warn('[AddressInput] Places API legacy indisponível — caindo pro Photon (OSM).')
+        } else {
           setCarregando(false)
-          const google = window.google
-          if (status !== google?.maps?.places?.PlacesServiceStatus?.OK || !preds) {
-            setSugestoes([])
-            setAberto(false)
-            return
-          }
-          setSugestoes(preds.slice(0, 6))
-          setAberto(true)
+          setSugestoes(r.preds)
+          setAberto(r.preds.length > 0)
+          return
         }
-      )
+      }
+
+      // Fallback: Photon (OSM). Funciona sem chave Google.
+      const photonPreds = await buscarPhoton(texto)
+      setCarregando(false)
+      setSugestoes(photonPreds.map(p => ({ ...p, _origem: 'photon' })))
+      setAberto(photonPreds.length > 0)
     }, 250)
   }
 
   function escolherSugestao(pred) {
-    if (!placesServiceRef.current) return
+    // Sugestões do Photon já vêm com lat/lng — aplica direto sem 2ª chamada.
+    if (pred._origem === 'photon') {
+      onChange?.({
+        endereco: pred.description,
+        lat: pred.lat ?? null,
+        lng: pred.lng ?? null,
+      })
+      setSugestoes([])
+      setAberto(false)
+      return
+    }
+
+    // Places legacy: precisa do getDetails pra pegar geometry + formatted_address.
+    if (!placesServiceRef.current) {
+      onChange?.({ endereco: pred.description, lat: null, lng: null })
+      setSugestoes([])
+      setAberto(false)
+      return
+    }
     placesServiceRef.current.getDetails(
       {
         placeId: pred.place_id,
@@ -235,8 +325,11 @@ export default function AddressInput({
     )
   }
 
-  const mostrarHintSemChave = !MAPS_ENABLED
-  const mostrarHintErro = MAPS_ENABLED && mapsErro
+  // Hints só aparecem quando NEM Photon vai funcionar — hoje Photon sempre
+  // funciona (público + sem chave), então removemos os hints visuais antigos
+  // que diziam "autocomplete em breve" / "Maps indisponível".
+  const mostrarHintSemChave = false
+  const mostrarHintErro = false
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
