@@ -53,7 +53,13 @@ import EstoqueMobile from './pages/mobile/EstoqueMobile'
 
 export default function App() {
   const { T, dark, toggleTheme, isMobile } = useTheme()
-  const [user, setUser] = useState(null)
+  const [authUser, setAuthUser] = useState(null)
+  // Registro do auth user na tabela `usuarios` (papel, apelido, uuid).
+  // Antes o papel era inferido por email hardcoded — quando o Toni trocou os
+  // emails dos funcionários no Auth, eles caíam no fallback "dono" e ganhavam
+  // acesso total. Agora lemos `usuarios` por email e enriquecemos o user com
+  // o papel real. Ausência = sem permissão (defensivo).
+  const [usuarioRow, setUsuarioRow] = useState(null)
 
   // Classe no <html> para o global.css aplicar sombra no light
   useEffect(() => {
@@ -63,14 +69,47 @@ export default function App() {
   }, [dark])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null))
+    supabase.auth.getSession().then(({ data: { session } }) => setAuthUser(session?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setAuthUser(session?.user ?? null))
     return () => subscription.unsubscribe()
   }, [])
 
+  // Busca o registro na tabela `usuarios` correspondente ao email autenticado.
+  // Case-insensitive (ilike) — emails do Auth costumam vir lowercase mas a
+  // tabela pode ter qualquer capitalização.
+  useEffect(() => {
+    if (!authUser?.email) { setUsuarioRow(null); return }
+    let cancelado = false
+    supabase
+      .from('usuarios')
+      .select('id, apelido, papel, email')
+      .ilike('email', authUser.email)
+      .eq('ativo', true)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelado) return
+        if (error) console.warn('[app] erro buscando usuário:', error.message)
+        setUsuarioRow(data || null)
+      })
+    return () => { cancelado = true }
+  }, [authUser?.email])
+
+  // User enriquecido propagado pra árvore: adiciona papel/apelido/usuarioId.
+  // getRole/isAdmin usam user.papel; o resto do app continua recebendo o mesmo
+  // shape do auth (id, email, etc).
+  const user = authUser
+    ? {
+        ...authUser,
+        papel: usuarioRow?.papel || null,
+        apelido: usuarioRow?.apelido || null,
+        usuarioId: usuarioRow?.id || null,
+      }
+    : null
+
   async function sair() { await supabase.auth.signOut() }
 
-  if (!user) return <Login dark={dark} T={T} />
+  if (!authUser) return <Login dark={dark} T={T} />
 
   return (
     <ToastProvider T={T} dark={dark}>

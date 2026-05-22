@@ -136,12 +136,25 @@ export function dentroGarantia(osOrigem) {
   return new Date() <= limite
 }
 
-// Identifica papel do usuário pelo email
+// Identifica papel do usuário.
+// Fonte primária: `user.papel` enriquecido em App.jsx (lê da tabela `usuarios`
+// pelo email autenticado). Retorna o id usado pelo resto do app: `dono`, `func1`,
+// `func2`. Antes era 100% hardcoded por email — quando trocavam o email no Auth,
+// o usuário caía no fallback "dono" silencioso e ganhava admin total. Corrigido
+// em 21/05/2026.
 export function getRole(user) {
+  // Mapeamento papel-da-tabela → id usado pelo app
+  const papel = user?.papel
+  if (papel === 'dono')      return 'dono'
+  if (papel === 'logistica') return 'func1'   // Alessandro
+  if (papel === 'oficina')   return 'func2'   // Guilherme
+
+  // Fallback por email — só pra retrocompat com emails antigos.
+  // Sem cair em "dono" no default: ausência de match = sem permissão (defensivo).
   const e = (user?.email || '').toLowerCase()
   if (e === 'empresaidemaq@gmail.com') return 'dono'
   if (e === 'func1@idemaq.com') return 'func1'
   if (e === 'func2@idemaq.com') return 'func2'
-  return 'dono' // fallback durante desenvolvimento
+  return null
 }
 export function isAdmin(user) { return getRole(user) === 'dono' }
