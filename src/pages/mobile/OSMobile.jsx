@@ -21,6 +21,7 @@ import { useToast } from '../../components/ui'
 import FiltrosMobile from '../../components/mobile/FiltrosMobile'
 import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
+import { NovaOSModal } from '../../_legacy/desktopKanbanModals'
 
 export default function OSMobile({ T, dark, user }) {
   const { osList, setOsList, loading, refetch } = useOS(false)
@@ -43,6 +44,7 @@ export default function OSMobile({ T, dark, user }) {
     try { return localStorage.getItem(ETAPA_STORAGE_KEY) || null } catch { return null }
   })
   const [osAberta, setOsAberta] = useState(null)
+  const [modalNova, setModalNova] = useState(false)
 
   // ─── Filtragem ─────────────────────────────────────────────────────────────
   const osFiltradas = useMemo(() => {
@@ -245,25 +247,42 @@ export default function OSMobile({ T, dark, user }) {
         display: 'flex', flexDirection: 'column', gap: 10,
         flexShrink: 0,
       }}>
-        {/* Busca */}
-        <div style={{ position: 'relative' }}>
-          <i className="ti ti-search" style={{
-            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 16, color: T.textDim,
-          }} aria-hidden="true" />
-          <input
-            type="search"
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar OS, cliente, marca…"
+        {/* Busca + atalho Nova OS (ícone) */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <i className="ti ti-search" style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 16, color: T.textDim,
+            }} aria-hidden="true" />
+            <input
+              type="search"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Buscar OS, cliente, marca…"
+              style={{
+                width: '100%', padding: '11px 12px 11px 38px',
+                borderRadius: 10, border: `1px solid ${T.border}`,
+                background: T.card, color: T.textPrimary,
+                fontSize: 14, outline: 'none', boxSizing: 'border-box',
+                fontFamily: 'inherit', minHeight: 44,
+              }}
+            />
+          </div>
+          <button
+            onClick={() => setModalNova(true)}
+            aria-label="Nova OS"
+            title="Nova OS"
             style={{
-              width: '100%', padding: '11px 12px 11px 38px',
-              borderRadius: 10, border: `1px solid ${T.border}`,
-              background: T.card, color: T.textPrimary,
-              fontSize: 14, outline: 'none', boxSizing: 'border-box',
-              fontFamily: 'inherit', minHeight: 44,
+              width: 44, minHeight: 44, borderRadius: 10,
+              border: 'none', cursor: 'pointer',
+              background: dark ? '#5B9BD5' : '#5B9BD5',
+              color: '#ffffff',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, fontFamily: 'inherit',
             }}
-          />
+          >
+            <i className="ti ti-plus" style={{ fontSize: 20 }} aria-hidden="true" />
+          </button>
         </div>
         <FiltrosMobile T={T} dark={dark} filtros={filtros} setFiltros={setFiltros} />
       </div>
@@ -331,6 +350,18 @@ export default function OSMobile({ T, dark, user }) {
           onMoverOS={moverOS}
           onUpdateOS={updateOS}
           onRefetchOS={refetch}
+        />
+      )}
+
+      {/* Nova OS (modal do _legacy/, igual ao desktop) */}
+      {modalNova && (
+        <NovaOSModal
+          T={T} dark={dark}
+          onClose={() => setModalNova(false)}
+          tipoInicial="atendimento"
+          mobile
+          notify={notify}
+          onCriada={refetch}
         />
       )}
     </div>
