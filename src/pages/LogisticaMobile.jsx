@@ -28,14 +28,7 @@ import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
-const HOJE   = new Date().toISOString().slice(0, 10)
-const AMANHA = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-
-const FILTROS_DATA = [
-  { id: 'hoje',   label: 'Hoje' },
-  { id: 'amanha', label: 'Amanhã' },
-  { id: 'semana', label: 'Semana' },
-]
+const HOJE = new Date().toISOString().slice(0, 10)
 
 // Exportados pra reuso na versão desktop (mesmo conceito, layout diferente).
 export const NOMES_SLOT = ['Rota A', 'Rota B', 'Rota C']
@@ -84,14 +77,15 @@ export default function LogisticaMobile({ T, dark }) {
   const azul = corEtapa('blue', dark)
 
   // ─── Estado ───────────────────────────────────────────────────────────
-  const [filtroData, setFiltroData] = useState('hoje')
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT)
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
   const [criandoRotasFalhou, setCriandoRotasFalhou] = useState(false)
   const criandoRotasRef = useRef(false)
 
-  const dataAtiva = filtroData === 'hoje' ? HOJE : filtroData === 'amanha' ? AMANHA : null
+  // Logística mostra sempre o dia de hoje — filtro Hoje/Amanhã/Semana foi
+  // removido a pedido do Toni (22/05/2026).
+  const dataAtiva = HOJE
 
   // ─── Hooks de dados ───────────────────────────────────────────────────
   const incluirPagamento = etapasAtivas.has('pagamento')
@@ -314,11 +308,6 @@ export default function LogisticaMobile({ T, dark }) {
     }}>
       <HeaderMobile T={T} dark={dark} />
 
-      <PeriodoToggle
-        T={T} dark={dark}
-        valor={filtroData} onChange={setFiltroData}
-      />
-
       <FiltroEtapas
         T={T} dark={dark}
         ativas={etapasAtivas}
@@ -399,34 +388,6 @@ function HeaderMobile({ T, dark }) {
   )
 }
 
-function PeriodoToggle({ T, dark, valor, onChange }) {
-  const azul = corEtapa('blue', dark)
-  return (
-    <div style={{
-      display: 'flex', gap: 2, padding: 3,
-      background: T.cardAlt, borderRadius: 999,
-      alignSelf: 'flex-start',
-    }}>
-      {FILTROS_DATA.map(f => {
-        const ativo = valor === f.id
-        return (
-          <button
-            key={f.id}
-            onClick={() => onChange(f.id)}
-            style={{
-              padding: '5px 12px', borderRadius: 999,
-              border: 'none',
-              background: ativo ? T.card : 'transparent',
-              color: ativo ? azul : T.textMuted,
-              fontSize: 12, fontWeight: ativo ? 600 : 500,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: ativo ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
-            }}>{f.label}</button>
-        )
-      })}
-    </div>
-  )
-}
 
 export function FiltroEtapas({ T, dark, ativas, onToggle }) {
   return (

@@ -18,8 +18,26 @@
       "mcp__Claude_in_Chrome__browser_batch",
       "Bash(Select-String -Path \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\\\\.claude\\\\worktrees\\\\competent-leakey-7bd097\\\\src\\\\_legacy\\\\mobileComponents.jsx\" -Pattern \"^function Badge|^function CountBadge|^function SecTitle|^const Badge|^const CountBadge|^const SecTitle\")",
       "Bash(findstr \"LISTENING\")",
-      "Bash(findstr \":5173\")"
+      "Bash(findstr \":5173\")",
+      "Bash(npx vite *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Get-Content *)",
+      "WebFetch(domain:idemaq.vercel.app)",
+      "PowerShell(Copy-Item *)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"https://idemaq.vercel.app/logistica\" -UseBasicParsing; \"Status: \" + $r.StatusCode; \"ContentLength: \" + $r.Content.Length; \"Bundle JS encontrado: \" + \\($r.Content -match 'assets/index-[^\"]+\\\\.js'\\); if \\($Matches\\) { \"Bundle: \" + $Matches[0] })",
+      "Skill(update-config)",
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\\\\CONTEXTO PROJETO ATUALIZADO\")",
+      "Bash(Select-Object Name, Length)",
+      "Bash(Sort-Object Length -Descending)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\\\\CONTEXTO PROJETO ATUALIZADO\" | Select-Object Name, @{N='KB';E={[math]::Round\\($_.Length/1KB,1\\)}} | Sort-Object KB -Descending | Format-Table -AutoSize)",
+      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\\\\CLAUDE.md\"\\).Count; [math]::Round\\(\\(Get-Item \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\\\\CLAUDE.md\"\\).Length/1KB, 1\\))",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\" -File | Where-Object { $_.Extension -in '.md','.txt','.html' } | Select-Object Name, @{N='KB';E={[math]::Round\\($_.Length/1KB,1\\)}} | Sort-Object KB -Descending | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\" -File | Where-Object { $_.Extension -notin '.md','.txt','.html','.jsx','.js','.json','.css','.mjs','.ts','.tsx','.png','.jpg','.svg','.ico','.docx','.csv' } | Select-Object Name, Extension, @{N='KB';E={[math]::Round\\($_.Length/1KB,1\\)}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem *)"
     ],
+    "defaultMode": "auto",
     "additionalDirectories": [
       "C:\\Users\\Toni-PC\\Downloads"
     ]
