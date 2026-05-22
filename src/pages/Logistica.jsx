@@ -292,12 +292,16 @@ function LogisticaDesktop({ T, dark }) {
 
   // ─── Ações ───────────────────────────────────────────────────────────────
   async function adicionarOSemRota(os, letra) {
+    console.log('[Logistica] adicionarOSemRota', { letra, osId: os.id, osNumero: os.numero })
     const slot = slotsRotas.find(s => LETRA_POR_SLOT[s.nome] === letra)
+    console.log('[Logistica] slot encontrado:', slot ? { nome: slot.nome, temRota: !!slot.rota, rotaId: slot.rota?.id, qtdParadas: slot.rota?.paradas?.length } : null)
     if (!slot) { notify('erro', `Rota ${letra} não disponível`); return }
     if (!slot.rota) {
-      notify('erro', criandoRotasFalhou
-        ? 'Rode sql/17-rota-nome.sql pra ativar as rotas A/B/C'
-        : `Rota ${letra} ainda sendo criada…`)
+      const msg = criandoRotasFalhou
+        ? 'Rode sql/17 / sql/18 pra ativar as rotas A/B/C'
+        : `Rota ${letra} ainda sendo criada…`
+      console.warn('[Logistica] slot sem rota:', { letra, criandoRotasFalhou, slotsRotas })
+      notify('erro', msg)
       return
     }
     const tipo = tipoUiPorEtapa(os.etapa_db)
@@ -319,11 +323,14 @@ function LogisticaDesktop({ T, dark }) {
       observacoes: null,
     }
     const novasParadas = [...(slot.rota.paradas || []), novaParada]
+    console.log('[Logistica] atualizando rota', slot.rota.id, 'com', novasParadas.length, 'paradas')
     const { error: err } = await atualizarRota(slot.rota.id, { paradas: novasParadas })
     if (err) {
+      console.error('[Logistica] FALHA atualizar rota:', err)
       notify('erro', err.message || `Falha ao adicionar a Rota ${letra}`)
       return
     }
+    console.log('[Logistica] OK Rota', letra, 'agora tem', novasParadas.length, 'paradas')
     notify('ok', `Adicionada a Rota ${letra}`)
     setRotaExpandida(letra)
     setOsPopup(null)
