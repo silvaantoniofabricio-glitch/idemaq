@@ -37,6 +37,9 @@ relatorios/
 Arquivos para knowledge/
 TERMINAIS/
 
+# Design / screenshots de trabalho
+design-mobile/
+
 # Arquivos temporários e mídia solta na raiz
 /*.png
 /*.jpg
