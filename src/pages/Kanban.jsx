@@ -369,6 +369,13 @@ export default function Kanban({ T, dark, user }) {
                   style={{ width:'100%', padding:'6px 9px 6px 27px', borderRadius:6, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:12, outline:'none', boxSizing:'border-box' }} />
               </div>
 
+              {/* Atalho rápido: + Nova OS colado na busca (só ícone) */}
+              <button onClick={()=>setModalNova(true)}
+                aria-label="Nova OS" title="Nova OS"
+                style={{ width:28, height:28, borderRadius:6, border:'none', cursor:'pointer', background:azul, color: dark ? '#0b1220' : '#ffffff', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'inherit' }}>
+                <i className="ti ti-plus" style={{ fontSize:15 }} aria-hidden="true" />
+              </button>
+
               {div}
 
               {/* Dropdown Prazo */}
