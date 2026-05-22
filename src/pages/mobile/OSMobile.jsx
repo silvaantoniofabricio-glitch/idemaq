@@ -21,7 +21,7 @@ import { useToast } from '../../components/ui'
 import FiltrosMobile from '../../components/mobile/FiltrosMobile'
 import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
-import { NovaOSModal } from '../../_legacy/desktopKanbanModals'
+import NovaOSMobile from '../../components/os/NovaOSMobile'
 
 export default function OSMobile({ T, dark, user }) {
   const { osList, setOsList, loading, refetch } = useOS(false)
@@ -45,6 +45,17 @@ export default function OSMobile({ T, dark, user }) {
   })
   const [osAberta, setOsAberta] = useState(null)
   const [modalNova, setModalNova] = useState(false)
+
+  // Reidratação síncrona da OS aberta a partir do osList. Quando moverOS faz
+  // optimistic update, osList ganha referência nova com a etapa atualizada.
+  // useMemo recomputa NO MESMO render — sem ciclo extra de effect que o React
+  // pode adiar. Esse é o pattern do Kanban (linha 274). O setOsAberta inicial
+  // serve só pra "lembrar" qual OS está aberta (pelo numero); a versão vigente
+  // sempre sai do osList.
+  const osVigente = useMemo(
+    () => osAberta ? (osList.find(o => o.numero === osAberta.numero) || osAberta) : null,
+    [osAberta, osList]
+  )
 
   // ─── Filtragem ─────────────────────────────────────────────────────────────
   const osFiltradas = useMemo(() => {
@@ -157,11 +168,15 @@ export default function OSMobile({ T, dark, user }) {
     const etapaFinal = r.alvo || alvoReal
     const agora = new Date().toLocaleString('sv-SE', { timeZone: 'America/Cuiaba' }).slice(0, 16).replace('T', ' ')
     const prev = osList
-    // Optimistic
+    // Optimistic — atualiza lista e também osAberta pra que osVigente (useMemo)
+    // reflita a nova etapa imediatamente, antes do Realtime refetch sobrescrever.
+    const novoHistorico = [...(os.historico || []), { etapa: etapaFinal, funcionario: user?.id, data: agora }]
     setOsList(arr => arr.map(o => o.numero === numero ? {
-      ...o, etapa: etapaFinal,
-      historico: [...(o.historico || []), { etapa: etapaFinal, funcionario: user?.id, data: agora }],
+      ...o, etapa: etapaFinal, historico: novoHistorico,
     } : o))
+    if (osAberta?.numero === numero) {
+      setOsAberta(prev => ({ ...prev, etapa: etapaFinal, historico: novoHistorico }))
+    }
     try {
       const dbEtapa = uiEtapaToDb(os.tipo, etapaFinal)
       const patch = { etapa: dbEtapa }
@@ -334,15 +349,18 @@ export default function OSMobile({ T, dark, user }) {
         )}
       </div>
 
-      {/* OSDetalhe (mesmo do desktop, com mobile=true → bottom-sheet) */}
-      {osAberta && (
+      {/* OSDetalhe — usa `osVigente` (derivado via useMemo do osList).
+          Toda mudança em osList que atinge a OS aberta vira nova referência
+          de `osVigente` → OSDetalhe re-renderiza → useEffect interno troca aba. */}
+      {osVigente && (
         <OSDetalhe
+          key={`${osVigente.numero}-${osVigente.etapa}`}
           T={T} dark={dark}
-          os={osAberta} user={user}
+          os={osVigente} user={user}
           osBase={osList} usuarios={usuarios}
           mobile
           onClose={() => setOsAberta(null)}
-          onToggleAgPeca={() => toggleAgPeca(osAberta.numero)}
+          onToggleAgPeca={() => toggleAgPeca(osVigente.numero)}
           onAbrirOS={(numero) => {
             const o = osList.find(x => x.numero === numero)
             if (o) setOsAberta(o)
@@ -353,13 +371,12 @@ export default function OSMobile({ T, dark, user }) {
         />
       )}
 
-      {/* Nova OS (modal do _legacy/, igual ao desktop) */}
+      {/* Nova OS — versão mobile-first dedicada (21/05/2026) */}
       {modalNova && (
-        <NovaOSModal
+        <NovaOSMobile
           T={T} dark={dark}
           onClose={() => setModalNova(false)}
           tipoInicial="atendimento"
-          mobile
           notify={notify}
           onCriada={refetch}
         />

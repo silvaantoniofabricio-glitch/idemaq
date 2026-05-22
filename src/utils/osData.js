@@ -14,12 +14,15 @@ export const MENUS = [
   { id: 'meu-relatorio', label: 'Relatório',     icon: 'ti-chart-bar',        section: 'principal' },
   { id: 'configuracoes', label: 'Configurações', icon: 'ti-settings',         section: 'operacao' },
 ]
-// Bottom Nav mobile — listas separadas por papel (até 5 itens cada).
-// Dono e funcionário veem ferramentas diferentes:
-//   Dono       → finanças + histórico
-//   Funcionário → operação + ponto + relatório pessoal
-export const MENUS_MOBILE_DONO = ['painel', 'os', 'estoque', 'financeiro', 'vendas']
-export const MENUS_MOBILE_FUNC = ['painel', 'os', 'logistica', 'estoque', 'meu-relatorio']
+// Bottom Nav mobile — 4 slots fixos por papel + botão "Mais" (5º slot) que
+// abre um bottom sheet com os EXTRAS (resto das páginas + Sair).
+// Antes a barra mostrava 5 páginas, o que escondia 4 páginas importantes do
+// dono (Clientes, Logística, Relatórios, Configurações). Agora todas ficam
+// acessíveis via "Mais" (21/05/2026 noite).
+export const MENUS_MOBILE_DONO       = ['painel', 'os', 'clientes', 'financeiro']
+export const MENUS_MOBILE_DONO_EXTRA = ['estoque', 'vendas', 'logistica', 'relatorios', 'configuracoes']
+export const MENUS_MOBILE_FUNC       = ['painel', 'os', 'logistica', 'estoque']
+export const MENUS_MOBILE_FUNC_EXTRA = ['meu-relatorio']
 // Compat — antigos consumidores podem ler isso (BottomNav escolhe por papel)
 export const MENUS_MOBILE = MENUS_MOBILE_DONO
 

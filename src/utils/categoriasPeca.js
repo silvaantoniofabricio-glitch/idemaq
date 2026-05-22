@@ -21,43 +21,61 @@ export const GRUPOS_CATEGORIA = {
 // polia_motor + polia_mecanismo) pra simplificar gestão de estoque.
 export const CATEGORIAS_PECA = [
   // Motor e transmissão
-  { id: 'motor',           label: 'Motor',                grupo: 'motor' },
-  { id: 'correia',         label: 'Correia',              grupo: 'motor' },
-  { id: 'polia',           label: 'Polia',                grupo: 'motor' },
-  { id: 'mecanismo',       label: 'Mecanismo',            grupo: 'motor' },
-  { id: 'embreagem',       label: 'Embreagem',            grupo: 'motor' },
-  { id: 'catraca',         label: 'Catraca',              grupo: 'motor' },
-  { id: 'rolamento',       label: 'Rolamento',            grupo: 'motor' },
+  { id: 'motor',              label: 'Motor',                grupo: 'motor' },
+  { id: 'correia',            label: 'Correia',              grupo: 'motor' },
+  { id: 'polia',              label: 'Polia',                grupo: 'motor' },
+  { id: 'mecanismo',          label: 'Mecanismo',            grupo: 'motor' },
+  { id: 'embreagem',          label: 'Embreagem',            grupo: 'motor' },
+  { id: 'atuador_embreagem',  label: 'Atuador / Embreagem',  grupo: 'motor' },
+  { id: 'banda_freio',        label: 'Banda de freio',       grupo: 'motor' },
+  { id: 'catraca',            label: 'Catraca',              grupo: 'motor' },
+  { id: 'rolamento',          label: 'Rolamento',            grupo: 'motor' },
+  { id: 'retentor',           label: 'Retentor',             grupo: 'motor' },
 
   // Sistema de água
-  { id: 'eletrobomba',     label: 'Eletrobomba',          grupo: 'agua' },
-  { id: 'valvula',         label: 'Válvula',              grupo: 'agua' },
-  { id: 'mangueira',       label: 'Mangueira',            grupo: 'agua' },
-  { id: 'pressostato',     label: 'Pressostato',          grupo: 'agua' },
-  { id: 'borracha_porta',  label: 'Borracha da porta',    grupo: 'agua' },
+  { id: 'eletrobomba',        label: 'Eletrobomba',          grupo: 'agua' },
+  { id: 'valvula',            label: 'Válvula',              grupo: 'agua' },
+  { id: 'mangueira',          label: 'Mangueira',            grupo: 'agua' },
+  { id: 'pressostato',        label: 'Pressostato',          grupo: 'agua' },
+  { id: 'borracha_porta',     label: 'Borracha da porta',    grupo: 'agua' },
+  { id: 'braco_injetor',      label: 'Braço injetor',        grupo: 'agua' },
+  { id: 'espalhador',         label: 'Espalhador',           grupo: 'agua' },
 
   // Sistema elétrico
-  { id: 'placa',           label: 'Placa eletrônica',     grupo: 'eletrico' },
-  { id: 'timer',           label: 'Timer',                grupo: 'eletrico' },
-  { id: 'capacitor',       label: 'Capacitor',            grupo: 'eletrico' },
-  { id: 'sensor',          label: 'Sensor',               grupo: 'eletrico' },
-  { id: 'trava_porta',     label: 'Trava da porta',       grupo: 'eletrico' },
-  { id: 'termostato',      label: 'Termostato',           grupo: 'eletrico' },
+  { id: 'placa',              label: 'Placa eletrônica',     grupo: 'eletrico' },
+  { id: 'timer',              label: 'Timer',                grupo: 'eletrico' },
+  { id: 'capacitor',          label: 'Capacitor',            grupo: 'eletrico' },
+  { id: 'sensor',             label: 'Sensor',               grupo: 'eletrico' },
+  { id: 'trava_porta',        label: 'Trava da porta',       grupo: 'eletrico' },
+  { id: 'termostato',         label: 'Termostato',           grupo: 'eletrico' },
+  { id: 'botao',              label: 'Botão',                grupo: 'eletrico' },
+  { id: 'chave_seletora',     label: 'Chave seletora',       grupo: 'eletrico' },
+  { id: 'interruptor',        label: 'Interruptor',          grupo: 'eletrico' },
+  { id: 'microchave',         label: 'Microchave',           grupo: 'eletrico' },
+  { id: 'rele',               label: 'Relé',                 grupo: 'eletrico' },
+  { id: 'chicote',            label: 'Chicote',              grupo: 'eletrico' },
 
   // Estrutura
-  { id: 'cesto',           label: 'Cesto',                grupo: 'estrutura' },
-  { id: 'agitador',        label: 'Agitador',             grupo: 'estrutura' },
-  { id: 'suspensao',       label: 'Suspensão',            grupo: 'estrutura' },
-  { id: 'tirantes',        label: 'Tirantes',             grupo: 'estrutura' },
-  { id: 'pe_nivelador',    label: 'Pé nivelador',         grupo: 'estrutura' },
+  { id: 'cesto',              label: 'Cesto',                grupo: 'estrutura' },
+  { id: 'agitador',           label: 'Agitador',             grupo: 'estrutura' },
+  { id: 'suspensao',          label: 'Suspensão',            grupo: 'estrutura' },
+  { id: 'tirantes',           label: 'Tirantes',             grupo: 'estrutura' },
+  { id: 'molas_dobradicas',   label: 'Molas e dobradiças',   grupo: 'estrutura' },
+  { id: 'pe_nivelador',       label: 'Pé nivelador',         grupo: 'estrutura' },
+  { id: 'suporte',            label: 'Suporte',              grupo: 'estrutura' },
+  { id: 'tanquinho',          label: 'Peças de tanquinho',   grupo: 'estrutura' },
 
   // Externo / acabamento (não estão no diagnóstico mas são peças que a oficina vende)
-  { id: 'capa',            label: 'Capa',                 grupo: 'externo' },
-  { id: 'filtro',          label: 'Filtro pluma',         grupo: 'externo' },
-  { id: 'tampa',           label: 'Tampa',                grupo: 'externo' },
+  { id: 'capa',               label: 'Capa',                 grupo: 'externo' },
+  { id: 'filtro',             label: 'Filtro pluma',         grupo: 'externo' },
+  { id: 'tampa',              label: 'Tampa',                grupo: 'externo' },
+  { id: 'painel',             label: 'Painel',               grupo: 'externo' },
+  { id: 'painel_decorativo',  label: 'Painel decorativo',    grupo: 'externo' },
+  { id: 'puxador',            label: 'Puxador',              grupo: 'externo' },
 
   // Outros — fallback pra peças que não se encaixam
-  { id: 'outros',          label: 'Outros',               grupo: 'outros' },
+  { id: 'recipiente',         label: 'Recipiente',           grupo: 'outros' },
+  { id: 'outros',             label: 'Outros',               grupo: 'outros' },
 ]
 
 // Mapa rápido id → categoria (pra renderizar badge da categoria)

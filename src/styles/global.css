@@ -92,3 +92,17 @@ html.idemaq-theme-claro .idemaq-card.idemaq-card-hover:hover {
   height: 100vh;
   height: 100dvh;
 }
+
+/*
+ * MOBILE — anti-zoom-on-focus do iOS Safari.
+ * Quando o usuário toca em qualquer input/select/textarea com font-size < 16px,
+ * o iOS faz auto-zoom "pra ajudar". Resolve forçando 16px só no mobile
+ * (desktop mantém os tamanhos compactos que o UI lib define).
+ * Inclui os inputs do Input/Select/Textarea do components/ui, que rodam menores
+ * (11.5–14px) e disparam o bug no NovoClienteModal e em outros forms compactos.
+ */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
