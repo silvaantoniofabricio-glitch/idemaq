@@ -1,16 +1,18 @@
 // idemaq-src/hooks/useGeocodeEnderecos.js
 // Geocoda uma lista de endereços (texto livre) → { lat, lng }.
 //
-// Estratégia (21/05/2026): tenta Google Geocoding API primeiro. Se retornar
-// REQUEST_DENIED (API não habilitada no projeto GCP), cai pra OpenStreetMap
-// Nominatim — geocoder público, sem chave, baseado em dados OSM. Decisão é
-// memoizada por sessão: depois do 1º REQUEST_DENIED do Google, todas as
-// chamadas seguintes vão direto pro Nominatim.
+// Estratégia (21/05/2026 noite): tenta Google Geocoding API primeiro. Se
+// retornar REQUEST_DENIED (API não habilitada no projeto GCP), cai pro
+// **Photon** (https://photon.komoot.io/) — geocoder público baseado em OSM,
+// sem chave, CORS habilitado, rate-limit generoso pra uso razoável. Decisão
+// é memoizada por sessão: depois do 1º REQUEST_DENIED do Google, todas as
+// chamadas seguintes vão direto pro Photon.
 //
-// Nominatim usage policy (https://operations.osmfoundation.org/policies/nominatim/):
-//   - máx 1 req/segundo (heavy users devem usar instância própria)
-//   - identificar via User-Agent ou Referer (browser manda Referer auto)
-//   - cache local obrigatório → fazemos via localStorage
+// HISTÓRICO: a versão anterior usava OSM Nominatim, mas o uso em prod (~30
+// endereços simultâneos) bate no rate-limit de 1 req/s — Nominatim retorna
+// 429 e *omite o header CORS*, fazendo o browser interpretar como CORS fail.
+// Photon usa a mesma base OSM, tem CORS sempre, e a versão pública aguenta
+// muito mais que 1 req/s. Mesma escolha do AddressInput (autocomplete).
 //
 // Cache: positivos em localStorage. Falhas reconsultam na próxima sessão
 // (caso a API do Google seja ativada depois, mapa preenche automaticamente).
@@ -22,8 +24,12 @@ const STORAGE_KEY = 'idemaq.geocode.cache.v2'
 
 const QUOTA_POR_SESSAO = 60
 const THROTTLE_GOOGLE_MS = 120
-const THROTTLE_NOMINATIM_MS = 1100 // respeita política do OSM (1 req/s)
+const THROTTLE_PHOTON_MS = 200 // generoso o suficiente sem stress no serviço público
 const SUFIXO_CONTEXTO = ', Naviraí, MS, Brasil'
+
+// Centro de Naviraí — Photon usa pra rankear resultados próximos primeiro.
+const NAVIRAI_LAT = -23.0653
+const NAVIRAI_LON = -54.1908
 
 // Estado de módulo: depois do 1º REQUEST_DENIED do Google, marca flag e
 // pula direto pro Nominatim em todas as chamadas seguintes da sessão.
@@ -110,33 +116,27 @@ async function viaGoogle(google, endereco) {
   })
 }
 
-// Viewbox em volta de Naviraí/MS — diz pro Nominatim que resultados
-// fora dessa área são improváveis. Formato: lon_min,lat_min,lon_max,lat_max.
-// Caixa generosa (~50km) que cobre Naviraí + cidades vizinhas.
-const NAVIRAI_VIEWBOX = '-54.35,-23.30,-54.00,-22.85'
-
-// Faz 1 requisição ao Nominatim com a query passada.
-// Usa viewbox + bounded=1 quando preferirRegiao=true (1ª tentativa) e sem
-// bounded na 2ª tentativa pra permitir match aproximado fora do viewbox.
-async function nominatimFetch(query, preferirRegiao = true) {
+// Faz 1 requisição ao Photon. Retorna { coords } | { vazio: true } | { erro }.
+// `lat`/`lon` no params funciona como bias (não restriction) — resultados
+// próximos a Naviraí vêm primeiro, mas o serviço ainda aceita endereços fora
+// do raio se forem o melhor match.
+async function photonFetch(query) {
   const params = new URLSearchParams({
-    format: 'json',
-    limit: '1',
     q: query,
-    countrycodes: 'br',
-    viewbox: NAVIRAI_VIEWBOX,
+    limit: '1',
+    lat: String(NAVIRAI_LAT),
+    lon: String(NAVIRAI_LON),
   })
-  if (preferirRegiao) params.set('bounded', '1')
-
-  const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`
+  const url = `https://photon.komoot.io/api/?${params.toString()}`
   try {
-    const r = await fetch(url, {
-      headers: { 'Accept': 'application/json', 'Accept-Language': 'pt-BR' },
-    })
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
     if (!r.ok) return { httpErro: r.status }
     const data = await r.json()
-    if (Array.isArray(data) && data[0] && data[0].lat && data[0].lon) {
-      return { coords: { lat: Number(data[0].lat), lng: Number(data[0].lon) } }
+    const feat = Array.isArray(data?.features) ? data.features[0] : null
+    const coords = feat?.geometry?.coordinates
+    if (coords && coords.length === 2 && coords[0] != null && coords[1] != null) {
+      // Photon retorna [lon, lat] (GeoJSON), oposto do Nominatim
+      return { coords: { lat: Number(coords[1]), lng: Number(coords[0]) } }
     }
     return { vazio: true }
   } catch (e) {
@@ -144,32 +144,22 @@ async function nominatimFetch(query, preferirRegiao = true) {
   }
 }
 
-// OpenStreetMap Nominatim — geocoder público sem chave.
-// Estratégia: 1ª tentativa com endereço normalizado completo. Se vazio,
-// tenta versão simplificada (só "Rua X, Naviraí, MS") respeitando o
-// throttle policy entre as 2 chamadas.
-async function viaNominatim(endereco) {
+// Photon (OSM) — geocoder público sem chave, CORS habilitado.
+// Estratégia: tentativa completa + se vazio cai pra versão simplificada
+// (só "Rua X, Naviraí, MS"). Sem retry por timeout pq Photon raramente falha.
+async function viaPhoton(endereco) {
   const queryCompleta = comContexto(endereco)
-  // 1ª: completo + bounded (resultados só dentro de Naviraí)
-  const r1 = await nominatimFetch(queryCompleta, true)
+  const r1 = await photonFetch(queryCompleta)
   if (r1.coords) return r1.coords
-  if (r1.httpErro) console.warn('[geocode] Nominatim HTTP', r1.httpErro, endereco)
+  if (r1.httpErro) console.warn('[geocode] Photon HTTP', r1.httpErro, endereco)
 
   if (r1.vazio) {
-    // 2ª: completo + sem bounded (aceita match mesmo se o ponto cair fora,
-    // ex: rua de cidade vizinha que o OSM aponta no centro de Naviraí).
-    await new Promise(r => setTimeout(r, 1100))
-    const r2 = await nominatimFetch(queryCompleta, false)
-    if (r2.coords) return r2.coords
-
-    // 3ª: versão simplificada — só "Rua X, Naviraí, MS" (sem número/bairro).
     const simplificado = versaoSimplificada(normalizarEndereco(endereco))
     if (simplificado && simplificado !== queryCompleta) {
-      await new Promise(r => setTimeout(r, 1100))
-      const r3 = await nominatimFetch(simplificado, false)
-      if (r3.coords) return r3.coords
+      const r2 = await photonFetch(simplificado)
+      if (r2.coords) return r2.coords
     }
-    console.warn('[geocode] Nominatim sem resultado', endereco)
+    console.warn('[geocode] Photon sem resultado', endereco)
   }
   return null
 }
@@ -205,22 +195,22 @@ export function useGeocodeEnderecos(enderecos) {
         usados++
 
         let coordsResult = null
-        let usouNominatim = false
+        let usouPhoton = false
 
         try {
           if (google && !googleIndisponivel) {
             const r = await viaGoogle(google, end)
             if (r.denied) {
               googleIndisponivel = true
-              console.warn('[geocode] Google indisponível — caindo pra OpenStreetMap Nominatim daqui em diante.')
-              coordsResult = await viaNominatim(end)
-              usouNominatim = true
+              console.warn('[geocode] Google indisponível — caindo pro Photon (OSM) daqui em diante.')
+              coordsResult = await viaPhoton(end)
+              usouPhoton = true
             } else {
               coordsResult = r.coords
             }
           } else {
-            coordsResult = await viaNominatim(end)
-            usouNominatim = true
+            coordsResult = await viaPhoton(end)
+            usouPhoton = true
           }
         } catch (e) {
           console.warn('[geocode] erro inesperado em', end, e?.message)
@@ -234,8 +224,8 @@ export function useGeocodeEnderecos(enderecos) {
           escreverCache(next)
         }
 
-        // Throttle: 1.1s pra Nominatim (respeita policy OSM), 120ms pra Google.
-        await new Promise(r => setTimeout(r, usouNominatim ? THROTTLE_NOMINATIM_MS : THROTTLE_GOOGLE_MS))
+        // Throttle: 200ms pra Photon (uso público responsável), 120ms pra Google.
+        await new Promise(r => setTimeout(r, usouPhoton ? THROTTLE_PHOTON_MS : THROTTLE_GOOGLE_MS))
       }
     }
 
