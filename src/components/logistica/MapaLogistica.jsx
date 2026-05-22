@@ -13,8 +13,9 @@ import React, { useEffect, useRef, useState } from 'react'
 import { loadMapsScript, MAPS_KEY_DISPONIVEL } from './AddressInput'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 
-// Centro default: Oficina Idemaq · Naviraí/MS
-const NAVIRAI_CENTER = { lat: -23.0653, lng: -54.1903 }
+// Centro default: Oficina Idemaq · Alameda Londrina, 438 · Naviraí/MS
+// Coordenadas geocodadas via Nominatim (21/05/2026).
+const NAVIRAI_CENTER = { lat: -23.0630348, lng: -54.1803840 }
 const ZOOM_DEFAULT = 14
 
 // Esquema visual SIMPLIFICADO (pedido 21/05/2026):
@@ -144,7 +145,7 @@ export default function MapaLogistica({
         new Marker({
           position: NAVIRAI_CENTER,
           map: mapaRef.current,
-          title: 'Oficina Idemaq · Naviraí/MS',
+          title: 'Oficina Idemaq · Alameda Londrina, 438 · Naviraí/MS',
           icon: {
             url: pinOficina.url,
             scaledSize: new google.maps.Size(pinOficina.w, pinOficina.h),
