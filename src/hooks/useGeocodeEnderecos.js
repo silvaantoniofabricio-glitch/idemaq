@@ -36,10 +36,46 @@ function escreverCache(cache) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cache)) } catch { /* quota cheia, ignora */ }
 }
 
+// Normaliza o endereço pra um formato que geocoders (Google e Nominatim)
+// conseguem parsear melhor. Os cadastros da Idemaq vêm do Bling/Trello com
+// abreviações ("R.", "Av."), separadores por hífen ("X - Bairro - Cidade") e
+// CEP no final — formato que confunde principalmente o Nominatim.
+//
+// Antes:  "R. Cravo, 51 - Jardim Vale Encantado, Naviraí - MS, 79950-000"
+// Depois: "Rua Cravo, 51, Jardim Vale Encantado, Naviraí, MS"
+function normalizarEndereco(end) {
+  return end
+    // expande abreviações comuns de tipo de logradouro
+    .replace(/\bR\.\s*/gi, 'Rua ')
+    .replace(/\bAv\.\s*/gi, 'Avenida ')
+    .replace(/\bAl\.\s*/gi, 'Alameda ')
+    .replace(/\bTv\.\s*/gi, 'Travessa ')
+    .replace(/\bPç\.\s*/gi, 'Praça ')
+    .replace(/\bEstr\.\s*/gi, 'Estrada ')
+    // " X - Y " vira " X, Y " (Nominatim quase sempre falha com hífen)
+    .replace(/\s+-\s+/g, ', ')
+    // remove CEP no final ou no meio (geocoder confunde)
+    .replace(/\b\d{5}-?\d{3}\b/g, '')
+    // limpa vírgulas duplas, espaços extras, vírgula no fim
+    .replace(/,\s*,/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/,\s*$/, '')
+    .trim()
+}
+
+// Versão simplificada quando a normalização completa não bate (último recurso):
+// só tipo de logradouro + nome + cidade + UF (sem número, sem bairro, sem CEP).
+function versaoSimplificada(end) {
+  const match = end.match(/(Rua|Avenida|Alameda|Travessa|Praça|Estrada|Rodovia)\s+[A-Za-zÀ-ÿ\s\.0-9]+?(?=,)/i)
+  if (!match) return null
+  return `${match[0]}, Naviraí, MS, Brasil`
+}
+
 function comContexto(end) {
-  const lower = end.toLowerCase()
-  if (lower.includes('navira') || /\bms\b/.test(lower)) return end
-  return end + SUFIXO_CONTEXTO
+  const normalizado = normalizarEndereco(end)
+  const lower = normalizado.toLowerCase()
+  if (lower.includes('navira') || /\bms\b/.test(lower)) return normalizado
+  return normalizado + SUFIXO_CONTEXTO
 }
 
 // Google Geocoding API. Retorna { coords } | { denied: true } | { coords: null }.
@@ -61,28 +97,46 @@ async function viaGoogle(google, endereco) {
   })
 }
 
-// OpenStreetMap Nominatim — geocoder público sem chave.
-// Endpoint: https://nominatim.openstreetmap.org/search
-async function viaNominatim(endereco) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(comContexto(endereco))}`
+// Faz 1 requisição ao Nominatim com a query passada.
+async function nominatimFetch(query) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`
   try {
     const r = await fetch(url, {
       headers: { 'Accept': 'application/json', 'Accept-Language': 'pt-BR' },
     })
-    if (!r.ok) {
-      console.warn('[geocode] Nominatim HTTP', r.status, endereco)
-      return null
-    }
+    if (!r.ok) return { httpErro: r.status }
     const data = await r.json()
     if (Array.isArray(data) && data[0] && data[0].lat && data[0].lon) {
-      return { lat: Number(data[0].lat), lng: Number(data[0].lon) }
+      return { coords: { lat: Number(data[0].lat), lng: Number(data[0].lon) } }
+    }
+    return { vazio: true }
+  } catch (e) {
+    return { erro: e?.message || 'fetch falhou' }
+  }
+}
+
+// OpenStreetMap Nominatim — geocoder público sem chave.
+// Estratégia: 1ª tentativa com endereço normalizado completo. Se vazio,
+// tenta versão simplificada (só "Rua X, Naviraí, MS") respeitando o
+// throttle policy entre as 2 chamadas.
+async function viaNominatim(endereco) {
+  const queryCompleta = comContexto(endereco)
+  const r1 = await nominatimFetch(queryCompleta)
+  if (r1.coords) return r1.coords
+  if (r1.httpErro) console.warn('[geocode] Nominatim HTTP', r1.httpErro, endereco)
+
+  // 2ª tentativa simplificada — só faz sentido pra status "vazio" (achar a rua
+  // ao menos, mesmo sem número). Throttle entre as 2 chamadas pra respeitar OSM.
+  if (r1.vazio) {
+    const simplificado = versaoSimplificada(normalizarEndereco(endereco))
+    if (simplificado && simplificado !== queryCompleta) {
+      await new Promise(r => setTimeout(r, 1100))
+      const r2 = await nominatimFetch(simplificado)
+      if (r2.coords) return r2.coords
     }
     console.warn('[geocode] Nominatim sem resultado', endereco)
-    return null
-  } catch (e) {
-    console.warn('[geocode] Nominatim erro', endereco, e?.message)
-    return null
   }
+  return null
 }
 
 export function useGeocodeEnderecos(enderecos) {
