@@ -180,12 +180,23 @@ function LogisticaDesktop({ T, dark }) {
   const coordsPorEndereco = useGeocodeEnderecos(enderecos)
 
   // ─── Slots A/B/C da data ativa ───────────────────────────────────────────
+  // Defensivo: se houver duplicatas (mesma data + nome), prefere a com MAIS
+  // paradas (preserva o trabalho do Toni). Empate → mais antiga. Bug raiz
+  // resolvido em sql/19 com NULLS NOT DISTINCT, mas mantemos o sort caso
+  // duplicatas legacy ainda existam.
   const slotsRotas = useMemo(() => {
     if (!dataAtiva) return NOMES_SLOT.map(nome => ({ nome, rota: null }))
-    return NOMES_SLOT.map(nome => ({
-      nome,
-      rota: rotas.find(r => r.data === dataAtiva && r.nome === nome) || null,
-    }))
+    return NOMES_SLOT.map(nome => {
+      const candidatas = rotas
+        .filter(r => r.data === dataAtiva && r.nome === nome)
+        .sort((a, b) => {
+          const na = (a.paradas?.length || 0)
+          const nb = (b.paradas?.length || 0)
+          if (na !== nb) return nb - na
+          return (a.criado_em || '').localeCompare(b.criado_em || '')
+        })
+      return { nome, rota: candidatas[0] || null }
+    })
   }, [rotas, dataAtiva])
 
   // Auto-cria Rota A/B/C vazias na 1ª vez que o dia abre
@@ -292,16 +303,12 @@ function LogisticaDesktop({ T, dark }) {
 
   // ─── Ações ───────────────────────────────────────────────────────────────
   async function adicionarOSemRota(os, letra) {
-    console.log('[Logistica] adicionarOSemRota', { letra, osId: os.id, osNumero: os.numero })
     const slot = slotsRotas.find(s => LETRA_POR_SLOT[s.nome] === letra)
-    console.log('[Logistica] slot encontrado:', slot ? { nome: slot.nome, temRota: !!slot.rota, rotaId: slot.rota?.id, qtdParadas: slot.rota?.paradas?.length } : null)
     if (!slot) { notify('erro', `Rota ${letra} não disponível`); return }
     if (!slot.rota) {
-      const msg = criandoRotasFalhou
-        ? 'Rode sql/17 / sql/18 pra ativar as rotas A/B/C'
-        : `Rota ${letra} ainda sendo criada…`
-      console.warn('[Logistica] slot sem rota:', { letra, criandoRotasFalhou, slotsRotas })
-      notify('erro', msg)
+      notify('erro', criandoRotasFalhou
+        ? 'Rode sql/19-rota-duplicatas-cleanup.sql pra ativar as rotas A/B/C'
+        : `Rota ${letra} ainda sendo criada…`)
       return
     }
     const tipo = tipoUiPorEtapa(os.etapa_db)
@@ -323,14 +330,11 @@ function LogisticaDesktop({ T, dark }) {
       observacoes: null,
     }
     const novasParadas = [...(slot.rota.paradas || []), novaParada]
-    console.log('[Logistica] atualizando rota', slot.rota.id, 'com', novasParadas.length, 'paradas')
     const { error: err } = await atualizarRota(slot.rota.id, { paradas: novasParadas })
     if (err) {
-      console.error('[Logistica] FALHA atualizar rota:', err)
       notify('erro', err.message || `Falha ao adicionar a Rota ${letra}`)
       return
     }
-    console.log('[Logistica] OK Rota', letra, 'agora tem', novasParadas.length, 'paradas')
     notify('ok', `Adicionada a Rota ${letra}`)
     setRotaExpandida(letra)
     setOsPopup(null)

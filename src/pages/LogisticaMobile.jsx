@@ -115,13 +115,23 @@ export default function LogisticaMobile({ T, dark }) {
   )
   const coordsPorEndereco = useGeocodeEnderecos(enderecos)
 
-  // Rotas do dia ativo + map dos slots A/B/C
+  // Rotas do dia ativo + map dos slots A/B/C.
+  // Defensivo contra duplicatas: prefere a rota com MAIS paradas (vai
+  // resolvido em sql/19 com NULLS NOT DISTINCT, mas o sort defende
+  // duplicatas legacy que ainda possam existir).
   const slotsRotas = useMemo(() => {
     if (!dataAtiva) return NOMES_SLOT.map(nome => ({ nome, rota: null }))
-    return NOMES_SLOT.map(nome => ({
-      nome,
-      rota: rotas.find(r => r.data === dataAtiva && r.nome === nome) || null,
-    }))
+    return NOMES_SLOT.map(nome => {
+      const candidatas = rotas
+        .filter(r => r.data === dataAtiva && r.nome === nome)
+        .sort((a, b) => {
+          const na = (a.paradas?.length || 0)
+          const nb = (b.paradas?.length || 0)
+          if (na !== nb) return nb - na
+          return (a.criado_em || '').localeCompare(b.criado_em || '')
+        })
+      return { nome, rota: candidatas[0] || null }
+    })
   }, [rotas, dataAtiva])
 
   // Auto-cria Rota A/B/C vazias pra o dia ativo
