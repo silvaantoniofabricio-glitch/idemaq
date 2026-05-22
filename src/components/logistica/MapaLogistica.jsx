@@ -18,20 +18,22 @@ import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 const NAVIRAI_CENTER = { lat: -23.0630348, lng: -54.1803840 }
 const ZOOM_DEFAULT = 14
 
-// Esquema visual SIMPLIFICADO (pedido 21/05/2026):
-//   - coleta:  azul
-//   - entrega: verde
-//   - outro:   azul claro (cobranca/visita/avulsa caem aqui)
-// Quando a parada faz parte de uma rota, o texto do pino é o NÚMERO da ordem
-// (1, 2, 3, …) — passado via prop `ordem` em cada parada. Quando NÃO tem
-// ordem, cai pra letra do tipo (C/E/?/...). Pinos "disponivel" (OS da sidebar
-// sem rota ainda) ficam contornados tracejado e usam "?".
+// Esquema visual (revisado 21/05/2026 noite): 5 tipos canônicos + 2 aliases
+// que o mobile usa (`receber` = cobranca, `outros` = visita). Alinhado com a
+// tabela do contexto-logistica.md §3 e com o `VISUAL_TIPO` do LogisticaMobile.
+//
+// Quando a parada faz parte de uma rota, o texto do pino é o `codigo` (ex.
+// "A1") ou `ordem` numérica — passado via prop em cada parada. Quando NÃO
+// tem nenhum dos dois, cai pra letra do tipo (C/E/$/V/A). Pinos "disponivel"
+// (OS sem rota ainda) ficam contornados tracejado e usam "?".
 const TIPO_VISUAL = {
   coleta:     { cor: '#5B9BD5', letra: 'C' },
   entrega:    { cor: '#8FBC55', letra: 'E' },
-  cobranca:   { cor: '#B8CCE4', letra: '$' },
+  cobranca:   { cor: '#FFD966', letra: '$' },
+  receber:    { cor: '#FFD966', letra: '$' }, // alias UI mobile
   visita:     { cor: '#B8CCE4', letra: 'V' },
-  avulsa:     { cor: '#B8CCE4', letra: 'A' },
+  outros:     { cor: '#B8CCE4', letra: 'V' }, // alias UI mobile
+  avulsa:     { cor: '#9CA3AF', letra: 'A' },
   // OS na sidebar de "disponíveis" — ainda não viraram parada de rota.
   // Pin contornado tracejado pra diferenciar visualmente das paradas oficiais.
   disponivel: { cor: '#1a3a6e', letra: '?', tracejado: true },
