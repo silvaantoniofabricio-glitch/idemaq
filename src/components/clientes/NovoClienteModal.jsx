@@ -144,6 +144,7 @@ export default function NovoClienteModal({
         padding: 14, borderTop: `1px solid ${T.border}`,
         display: 'flex', gap: 8, justifyContent: 'flex-end',
         background: T.cardAlt,
+        flexShrink: 0, // mantém os botões fixos quando o form rola
       }}>
         <Button variant="secondary" T={T} dark={dark} onClick={onClose} disabled={salvando}>
           Cancelar
