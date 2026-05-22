@@ -44,7 +44,7 @@ function escreverCache(cache) {
 // Antes:  "R. Cravo, 51 - Jardim Vale Encantado, Naviraí - MS, 79950-000"
 // Depois: "Rua Cravo, 51, Jardim Vale Encantado, Naviraí, MS"
 function normalizarEndereco(end) {
-  return end
+  let s = end
     // expande abreviações comuns de tipo de logradouro
     .replace(/\bR\.\s*/gi, 'Rua ')
     .replace(/\bAv\.\s*/gi, 'Avenida ')
@@ -61,14 +61,27 @@ function normalizarEndereco(end) {
     .replace(/\s{2,}/g, ' ')
     .replace(/,\s*$/, '')
     .trim()
+
+  // Remove tokens duplicados consecutivos (ex: "Naviraí, MS, Brasil, Naviraí, MS").
+  // Acontece quando o endereço original já vem com cidade/UF colados no final
+  // depois do bairro.
+  const tokens = s.split(',').map(t => t.trim()).filter(Boolean)
+  const semDup = []
+  for (const t of tokens) {
+    const tLower = t.toLowerCase()
+    if (!semDup.some(x => x.toLowerCase() === tLower)) semDup.push(t)
+  }
+  return semDup.join(', ')
 }
 
 // Versão simplificada quando a normalização completa não bate (último recurso):
 // só tipo de logradouro + nome + cidade + UF (sem número, sem bairro, sem CEP).
 function versaoSimplificada(end) {
-  const match = end.match(/(Rua|Avenida|Alameda|Travessa|Praça|Estrada|Rodovia)\s+[A-Za-zÀ-ÿ\s\.0-9]+?(?=,)/i)
+  const match = end.match(/(Rua|Avenida|Alameda|Travessa|Praça|Estrada|Rodovia)\s+[A-Za-zÀ-ÿ\s\.0-9]+?(?=,|$)/i)
   if (!match) return null
-  return `${match[0]}, Naviraí, MS, Brasil`
+  // Remove o número do final do nome da rua se houver ("Rua Cravo 51" → "Rua Cravo").
+  const ruaSemNumero = match[0].replace(/\s+\d+\s*$/, '').trim()
+  return `${ruaSemNumero}, Naviraí, MS, Brasil`
 }
 
 function comContexto(end) {
@@ -97,9 +110,25 @@ async function viaGoogle(google, endereco) {
   })
 }
 
+// Viewbox em volta de Naviraí/MS — diz pro Nominatim que resultados
+// fora dessa área são improváveis. Formato: lon_min,lat_min,lon_max,lat_max.
+// Caixa generosa (~50km) que cobre Naviraí + cidades vizinhas.
+const NAVIRAI_VIEWBOX = '-54.35,-23.30,-54.00,-22.85'
+
 // Faz 1 requisição ao Nominatim com a query passada.
-async function nominatimFetch(query) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`
+// Usa viewbox + bounded=1 quando preferirRegiao=true (1ª tentativa) e sem
+// bounded na 2ª tentativa pra permitir match aproximado fora do viewbox.
+async function nominatimFetch(query, preferirRegiao = true) {
+  const params = new URLSearchParams({
+    format: 'json',
+    limit: '1',
+    q: query,
+    countrycodes: 'br',
+    viewbox: NAVIRAI_VIEWBOX,
+  })
+  if (preferirRegiao) params.set('bounded', '1')
+
+  const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`
   try {
     const r = await fetch(url, {
       headers: { 'Accept': 'application/json', 'Accept-Language': 'pt-BR' },
@@ -121,18 +150,24 @@ async function nominatimFetch(query) {
 // throttle policy entre as 2 chamadas.
 async function viaNominatim(endereco) {
   const queryCompleta = comContexto(endereco)
-  const r1 = await nominatimFetch(queryCompleta)
+  // 1ª: completo + bounded (resultados só dentro de Naviraí)
+  const r1 = await nominatimFetch(queryCompleta, true)
   if (r1.coords) return r1.coords
   if (r1.httpErro) console.warn('[geocode] Nominatim HTTP', r1.httpErro, endereco)
 
-  // 2ª tentativa simplificada — só faz sentido pra status "vazio" (achar a rua
-  // ao menos, mesmo sem número). Throttle entre as 2 chamadas pra respeitar OSM.
   if (r1.vazio) {
+    // 2ª: completo + sem bounded (aceita match mesmo se o ponto cair fora,
+    // ex: rua de cidade vizinha que o OSM aponta no centro de Naviraí).
+    await new Promise(r => setTimeout(r, 1100))
+    const r2 = await nominatimFetch(queryCompleta, false)
+    if (r2.coords) return r2.coords
+
+    // 3ª: versão simplificada — só "Rua X, Naviraí, MS" (sem número/bairro).
     const simplificado = versaoSimplificada(normalizarEndereco(endereco))
     if (simplificado && simplificado !== queryCompleta) {
       await new Promise(r => setTimeout(r, 1100))
-      const r2 = await nominatimFetch(simplificado)
-      if (r2.coords) return r2.coords
+      const r3 = await nominatimFetch(simplificado, false)
+      if (r3.coords) return r3.coords
     }
     console.warn('[geocode] Nominatim sem resultado', endereco)
   }
