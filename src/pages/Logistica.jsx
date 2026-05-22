@@ -757,8 +757,12 @@ function LogisticaDesktop({ T, dark }) {
                 .map(o => ({
                   lat: o.lat,
                   lng: o.lng,
-                  tipo: 'disponivel',
-                  // Pino mostra os 2 últimos dígitos do nº da OS em vez do "?" genérico.
+                  // Cor pelo tipo de parada sugerido (coleta/entrega/cobranca/visita)
+                  // — mesma paleta das paradas oficiais pra facilitar leitura.
+                  tipo: o.tipoParadaSugerido || 'visita',
+                  // Borda tracejada pra diferenciar de paradas já em rota.
+                  tracejado: true,
+                  // Pino mostra os 2 últimos dígitos do nº da OS.
                   ordem: String(o.numero).slice(-2),
                   label: `OS #${o.numero} · ${o.cliente_nome} · ${o.etapa_label}`,
                   onClick: () => abrirOSPorId(o.id),

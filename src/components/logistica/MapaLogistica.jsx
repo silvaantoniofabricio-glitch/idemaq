@@ -192,7 +192,11 @@ export default function MapaLogistica({
       const texto = p.codigo != null
         ? String(p.codigo)
         : p.ordem != null ? String(p.ordem) : visual.letra
-      const pin = svgPin(visual.cor, texto, visual.tracejado, !!p.agendamento)
+      // `tracejado` da parada sobrescreve o do TIPO_VISUAL — usado pra OS
+      // "disponíveis" terem cor por tipo (coleta/entrega/cobrança/etc) MAS
+      // ainda mostrarem borda tracejada por não estarem em rota ainda.
+      const tracejadoFinal = p.tracejado != null ? p.tracejado : visual.tracejado
+      const pin = svgPin(visual.cor, texto, tracejadoFinal, !!p.agendamento)
       const m = new Marker({
         position: { lat: Number(p.lat), lng: Number(p.lng) },
         map: mapaRef.current,
