@@ -27,9 +27,13 @@ const MAPS_ENABLED = Boolean(MAPS_KEY)
 // e pula direto pro Photon em todas as instâncias do componente na sessão.
 let placesLegacyIndisponivel = false
 
-// Centro de Naviraí — Photon usa pra rankear sugestões próximas primeiro.
+// Centro de Naviraí — Photon usa pra rankear sugestões próximas primeiro,
+// e o Google Places usa como location + radius (bias soft, não restrição).
 const NAVIRAI_LAT = -23.0653
 const NAVIRAI_LON = -54.1908
+// 30km cobre Naviraí + Itaquiraí + Juti + Mundo Novo. Endereços fora do
+// raio ainda aparecem (é bias soft, não restriction) mas ranqueados depois.
+const NAVIRAI_BIAS_RAIO_M = 30000
 
 // Photon: autocomplete público baseado em OSM (https://photon.komoot.io/).
 // Sem chave, sem cobrança, desenhado pra typeahead (diferente do Nominatim,
@@ -227,10 +231,13 @@ export default function AddressInput({
     const ok = await garantirServicos()
     if (!ok) return { denied: true }
     return new Promise((resolve) => {
+      const google = window.google
       acServiceRef.current.getPlacePredictions(
         {
           input: texto,
           componentRestrictions: { country: 'br' },
+          location: new google.maps.LatLng(NAVIRAI_LAT, NAVIRAI_LON),
+          radius: NAVIRAI_BIAS_RAIO_M,
           sessionToken: sessionTokenRef.current,
         },
         (preds, status) => {
