@@ -35,10 +35,13 @@ const NAVIRAI_LON = -54.1908
 // Sem chave, sem cobrança, desenhado pra typeahead (diferente do Nominatim,
 // que é só geocoding pontual). Retorna predições já com lat/lng — não precisa
 // de uma 2ª chamada tipo PlacesService.getDetails.
+//
+// IMPORTANTE: Photon só aceita lang ∈ {default, de, en, fr} — `lang=pt`
+// retorna HTTP 400 e quebra a busca toda. Omitir o param = comportamento
+// default (multilíngue baseado nas tags OSM, que em BR já vêm em pt).
 async function buscarPhoton(texto) {
   const params = new URLSearchParams({
     q: texto,
-    lang: 'pt',
     limit: '6',
     lat: String(NAVIRAI_LAT),
     lon: String(NAVIRAI_LON),
