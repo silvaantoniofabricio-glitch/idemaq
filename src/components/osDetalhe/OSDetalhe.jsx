@@ -1,223 +1,175 @@
-// src/components/osDetalhe/OSDetalhe.jsx
-// Modal centralizado de detalhe da OS.
-// Desktop: 780px centrado.
-// Mobile (mobile=true): bottom-sheet com grab handle, swipe-down-to-close,
-// HeaderMobile + FooterMobile dedicados (mais touch-friendly).
+import React, { useState, useMemo } from 'react';
+import { useTheme } from '../../theme';
+import { TI, PALETA } from '../_shared/PrimitivasMobile';
+import HeaderMobile from './HeaderMobile';
+import FooterMobile from './FooterMobile';
 
-import React, { useState, useEffect, useRef } from 'react'
-import { isAdmin } from '../../utils/osHelpers'
-import Header from './Header'
-import HeaderMobile from './HeaderMobile'
-import Footer from './Footer'
-import FooterMobile from './FooterMobile'
-import HistoricoPanel from './HistoricoPanel'
-import RelatorioTab from './tabs/RelatorioTab'
-import PagamentoTab from './tabs/PagamentoTab'
-import EtapaTab from './tabs/EtapaTab'
+import AcaoAgendamento from './acoes/AcaoAgendamento';
+import AcaoRecebido    from './acoes/AcaoRecebido';
+import AcaoDiagnostico from './acoes/AcaoDiagnostico';
+import AcaoOrcamento   from './acoes/AcaoOrcamento';
+import AcaoOficina     from './acoes/AcaoOficina';
+import AcaoConcluido   from './acoes/AcaoConcluido';
 
-function abaInicial(etapa) {
-  if (etapa === 'pagamento') return 'pagamento'
-  if (etapa === 'concluido' || etapa === 'recusado') return 'relatorio'
-  return 'etapa'
-}
+import RelatorioTab    from './tabs/RelatorioTab';
+import PagamentoTab    from './tabs/PagamentoTab';
 
-export default function OSDetalhe({
-  T, dark,
-  os, user, osBase, usuarios,
+const TABS = [
+  { id: 'etapa',     label: 'Etapa',     icon: 'clipboard-list' },
+  { id: 'relatorio', label: 'Relatório', icon: 'info-circle' },
+  { id: 'pagamento', label: 'Pagamento', icon: 'receipt' },
+];
+
+const ACAO_POR_ETAPA = {
+  ag_agenda:   AcaoAgendamento,
+  agendado:    AcaoAgendamento,
+  recebido:    AcaoRecebido,
+  diagnostico: AcaoDiagnostico,
+  orcamento:   AcaoOrcamento,
+  oficina:     AcaoOficina,
+  teste_final: AcaoOficina,
+  concluida:   AcaoConcluido,
+};
+
+const PROXIMA_LABEL = {
+  ag_agenda:   'Agendado',
+  agendado:    'Recebido',
+  recebido:    'Diagnóstico',
+  diagnostico: 'Orçamento',
+  orcamento:   'Em oficina',
+  oficina:     'Teste final',
+  teste_final: 'Concluir',
+  concluida:   null,
+};
+
+const OSDetalhe = ({
+  os,
+  mobile = true,
   onClose,
-  onToggleAgPeca,
-  onAbrirOS,
-  onMoverOS,
+  onAvancar,
+  onVoltar,
   onUpdateOS,
-  onExcluir,
-  onRefetchOS,
-  mobile = false,
-}) {
-  const admin = isAdmin(user)
-  const [aba, setAba] = useState(() => abaInicial(os.etapa))
-  const [showHistorico, setShowHistorico] = useState(false)
+  onHistory,
+}) => {
+  const { T } = useTheme();
+  const [tab, setTab] = useState('etapa');
 
-  // Quando a OS avança de etapa (footer Avançar →), troca a aba automaticamente
-  // pra que a UI já mostre a ação da nova etapa em vez de deixar o user perdido
-  // na aba antiga. Usa ref pra distinguir "etapa mudou de verdade" de "render
-  // normal" — sem isso, qualquer re-render resetava a aba escolhida pelo user.
-  const etapaRef = useRef(os.etapa)
-  useEffect(() => {
-    if (os.etapa !== etapaRef.current) {
-      etapaRef.current = os.etapa
-      setAba(abaInicial(os.etapa))
+  const AcaoEtapa = useMemo(
+    () => ACAO_POR_ETAPA[os?.etapa] || AcaoAgendamento,
+    [os?.etapa]
+  );
+
+  const bloqueio = useMemo(() => {
+    if (os?.etapa === 'oficina' && !os?.orcamento?.itens?.length) {
+      return 'Conclua o orçamento antes de executar.';
     }
-  }, [os.etapa])
-
-  // ESC fecha o modal (ignorado se o painel de histórico estiver aberto — ele tem seu próprio listener)
-  useEffect(() => {
-    function fn(e) {
-      if (e.key === 'Escape' && !showHistorico) onClose()
+    if (os?.etapa === 'teste_final' && !os?.limpezaConcluida) {
+      return 'Limpeza e manutenção precisam estar concluídas antes do teste final.';
     }
-    document.addEventListener('keydown', fn)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', fn)
-      document.body.style.overflow = prev
-    }
-  }, [onClose, showHistorico])
+    return null;
+  }, [os]);
 
-  // === Swipe-down-to-close (só mobile, gesto na top area) ===
-  // Pattern padrão de bottom-sheet: o usuário arrasta o cabeçalho pra baixo;
-  // se passar de 100px de deslocamento, fecha. Senão volta pro lugar.
-  // O listener fica só na área do grab handle / topbar pra não brigar com o
-  // scroll vertical do conteúdo interno (que é o que mais incomoda quando o
-  // gesto é capturado errado).
-  const sheetRef = useRef(null)
-  const dragRef = useRef(null)
-  const [dragY, setDragY] = useState(0)
-
-  function onDragStart(e) {
-    if (!mobile) return
-    const t = e.touches?.[0]
-    if (!t) return
-    dragRef.current = { y0: t.clientY, active: true }
-  }
-  function onDragMove(e) {
-    if (!mobile || !dragRef.current?.active) return
-    const t = e.touches?.[0]
-    if (!t) return
-    const dy = Math.max(0, t.clientY - dragRef.current.y0) // só pra baixo
-    setDragY(dy)
-  }
-  function onDragEnd() {
-    if (!mobile || !dragRef.current?.active) return
-    const dy = dragY
-    dragRef.current = null
-    if (dy > 100) {
-      // anima a queda final e fecha
-      setDragY(window.innerHeight)
-      setTimeout(() => { setDragY(0); onClose() }, 160)
-    } else {
-      setDragY(0)
-    }
-  }
-
-  // Props comuns repassados às abas.
-  const tabProps = {
-    T, dark, os, user, osBase, usuarios, admin,
-    onAbrirOS, onToggleAgPeca, onMoverOS, onUpdateOS,
-    setAba,
-    mobile,
-  }
-
-  const HeaderC = mobile ? HeaderMobile : Header
-  const FooterC = mobile ? FooterMobile : Footer
+  const podeAvancar = !bloqueio && PROXIMA_LABEL[os?.etapa] !== null;
+  const showFooter = os?.etapa !== 'concluida';
 
   return (
-    <>
-      {/* Overlay + container — full-screen no mobile, centralizado no desktop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 200,
-          background: 'rgba(0,0,0,0.6)',
-          backdropFilter: 'blur(2px)',
-          display: 'flex',
-          alignItems: mobile ? 'stretch' : 'center',
-          justifyContent: 'center',
-          padding: mobile ? 0 : '2rem',
-          animation: 'os-detalhe-fade .15s ease-out',
-        }}
-      >
-        <div
-          ref={sheetRef}
-          onClick={(e) => e.stopPropagation()}
-          className={mobile ? '' : 'idemaq-card'}
-          style={{
-            background: T.card,
-            color: T.textPrimary,
-            borderRadius: mobile ? 0 : 14,
-            width: '100%',
-            maxWidth: mobile ? '100%' : 780,
-            // Mobile: tamanho fixo full-screen (dvh respeita barra de URL dinâmica do iOS Safari).
-            // Conteúdo varia internamente via overflow do bloco do meio, mas o shell não muda.
-            height: mobile ? '100dvh' : 'auto',
-            maxHeight: mobile ? '100dvh' : 'calc(100vh - 4rem)',
-            minHeight: mobile ? '100dvh' : undefined,
-            border: mobile ? 'none' : `1px solid ${T.border}`,
-            boxShadow: mobile ? 'none' : '0 -8px 40px rgba(0,0,0,0.5)',
-            display: 'flex', flexDirection: 'column',
-            overflow: 'hidden',
-            animation: mobile
-              ? 'os-detalhe-slide-up .22s cubic-bezier(.2,.7,.2,1)'
-              : 'os-detalhe-in .22s cubic-bezier(.2,.7,.2,1)',
-            transform: dragY ? `translateY(${dragY}px)` : undefined,
-            transition: dragRef.current?.active ? 'none' : 'transform .18s ease-out',
-          }}
-        >
-          {/* Grab handle (só mobile) — captura o gesto de arrastar pra fechar */}
-          {mobile && (
-            <div
-              onTouchStart={onDragStart}
-              onTouchMove={onDragMove}
-              onTouchEnd={onDragEnd}
-              onTouchCancel={onDragEnd}
-              style={{
-                flexShrink: 0,
-                padding: '8px 0 6px',
-                display: 'flex', justifyContent: 'center',
-                background: T.card,
-                cursor: 'grab',
-                touchAction: 'none',
-              }}
-              aria-hidden="true"
-            >
-              <div style={{
-                width: 40, height: 4, borderRadius: 2,
-                background: T.border,
-              }} />
-            </div>
-          )}
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(15,18,23,.45)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: 640, height: 'calc(100% - 6px)',
+        background: T.bg,
+        borderTopLeftRadius: 18, borderTopRightRadius: 18,
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        boxShadow: '0 -20px 40px -10px rgba(0,0,0,.25)',
+      }}>
+        {/* grabber */}
+        <div style={{
+          width: 36, height: 4, background: '#D1D5DB',
+          borderRadius: 99, margin: '6px auto 4px',
+        }}/>
 
-          <HeaderC
-            T={T} dark={dark} os={os} admin={admin}
-            aba={aba} setAba={setAba}
-            onShowHistorico={() => setShowHistorico(true)}
-            onClose={onClose}
-            onUpdateOS={onUpdateOS}
-            onExcluir={onExcluir}
-            onRefetchOS={onRefetchOS}
-            mobile={mobile}
-          />
+        <HeaderMobile
+          os={os}
+          onClose={onClose}
+          onHistory={onHistory}
+          historyCount={os?.historicoCount || 0}
+          onAdicionarEquipamento={() => onUpdateOS?.({ action: 'adicionar_equipamento' })}
+          onMore={() => onUpdateOS?.({ action: 'open_more_menu' })}
+        />
 
-          <div style={{
-            flex: 1, overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            background: T.bg,
-            overscrollBehavior: 'contain',
-          }}>
-            {aba === 'etapa'     && <EtapaTab {...tabProps} />}
-            {aba === 'relatorio' && <RelatorioTab {...tabProps} />}
-            {aba === 'pagamento' && <PagamentoTab {...tabProps} />}
-          </div>
-
-          <FooterC
-            T={T} dark={dark} os={os} admin={admin}
-            onMoverOS={onMoverOS}
-          />
+        {/* Tabs B1 (underline) */}
+        <div style={{
+          display: 'flex', background: T.card,
+          borderBottom: `1px solid ${T.border}`,
+        }}>
+          {TABS.map(t => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{
+                  flex: 1, border: 'none', background: 'transparent',
+                  padding: '14px 6px', cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontSize: 13.5,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? PALETA.blueStrong : T.textMuted,
+                  position: 'relative',
+                }}
+              >
+                <TI name={t.icon} size={15} />
+                {t.label}
+                {active && (
+                  <span style={{
+                    position: 'absolute', left: '18%', right: '18%', bottom: -1,
+                    height: 2, background: PALETA.blue, borderRadius: 2,
+                  }}/>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <style>{`
-          @keyframes os-detalhe-fade { from { opacity: 0 } to { opacity: 1 } }
-          @keyframes os-detalhe-in   { from { transform: translateY(24px); opacity: .85 } to { transform: translateY(0); opacity: 1 } }
-          @keyframes os-detalhe-slide-up { from { transform: translateY(100%); opacity: 1 } to { transform: translateY(0); opacity: 1 } }
-        `}</style>
-      </div>
+        {/* Conteúdo da aba */}
+        <div style={{
+          flex: 1, overflow: 'auto', background: T.bg,
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          {tab === 'etapa' && (
+            <AcaoEtapa
+              os={os}
+              onUpdateOS={onUpdateOS}
+              onAbrirAba={setTab}
+            />
+          )}
+          {tab === 'relatorio' && (
+            <RelatorioTab os={os} />
+          )}
+          {tab === 'pagamento' && (
+            <PagamentoTab
+              os={os}
+              onUpdateOS={onUpdateOS}
+              mobile
+            />
+          )}
+        </div>
 
-      {/* Painel de histórico (sobreposto, z-index maior) */}
-      {showHistorico && (
-        <HistoricoPanel
-          T={T} dark={dark} os={os} mobile={mobile}
-          onClose={() => setShowHistorico(false)}
-        />
-      )}
-    </>
-  )
-}
+        {showFooter && (
+          <FooterMobile
+            onVoltar={onVoltar}
+            onAvancar={onAvancar}
+            proximaEtapaLabel={PROXIMA_LABEL[os?.etapa] || 'Próximo'}
+            podeAvancar={podeAvancar}
+            bloqueio={bloqueio}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default OSDetalhe;
