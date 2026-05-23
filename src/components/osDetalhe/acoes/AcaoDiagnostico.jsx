@@ -1,414 +1,253 @@
-// src/components/osDetalhe/acoes/AcaoDiagnostico.jsx
-// Diagnóstico técnico com checklist de componentes 2×2 (colapsível).
-// Técnico marca "man." e/ou "troca" por item → dados vão pro Orçamento.
-// Botão "Concluir diagnóstico" → avança pra Orçamento.
+import React, { useState, useMemo } from 'react';
+import { useTheme } from '../../../theme';
+import {
+  TI, NowCard, Group, Input, TextArea, BtnMobile, PALETA, Pill,
+} from '../../_shared/PrimitivasMobile';
 
-import React, { useState } from 'react'
-import { P } from '../../../theme'
-import { ETAPAS_TODOS } from '../../../utils/osData'
-import { corEtapa } from '../../../utils/colors'
-import BlocoAcao from './BlocoAcao'
+const GRUPOS_PADRAO = [
+  { id: 'motor',    label: 'Motor',     icon: 'engine',  total: 8 },
+  { id: 'agua',     label: 'Água',      icon: 'droplet', total: 6 },
+  { id: 'eletrico', label: 'Elétrico',  icon: 'bolt',    total: 5 },
+  { id: 'estrut',   label: 'Estrutura', icon: 'tool',    total: 4 },
+];
 
-// ─── Definição dos grupos e itens ───────────────────────────────────────────
-const GRUPOS = [
-  {
-    id: 'motor',
-    label: 'Motor e transmissão',
-    icon: 'ti-engine',
-    itens: [
-      { id: 'motor_principal',    label: 'Motor principal',      temMan: true },
-      { id: 'correia',            label: 'Correia',              temMan: true },
-      { id: 'polia_motor',        label: 'Polia do motor',       temMan: true },
-      { id: 'mecanismo',          label: 'Mecanismo',            temMan: true },
-      { id: 'embreagem',          label: 'Embreagem',            temMan: true },
-      { id: 'polia_mecanismo',    label: 'Polia do mecanismo',   temMan: true },
-      { id: 'catraca',            label: 'Catraca / engaste',    temMan: true },
-      { id: 'rolamentos_cesto',   label: 'Rolamentos do cesto',  temMan: true },
-      { id: 'rolamento_eixo',     label: 'Rolamento do eixo',    temMan: true },
-      { id: 'rolamentos_motor',   label: 'Rolamentos do motor',  temMan: true },
-    ],
-  },
-  {
-    id: 'agua',
-    label: 'Sistema de água',
-    icon: 'ti-droplet',
-    itens: [
-      { id: 'bomba_drenagem',     label: 'Bomba de drenagem',    temMan: true  },
-      { id: 'valvula_entrada',    label: 'Válvula de entrada',   temMan: true  },
-      { id: 'mangueira_entrada',  label: 'Mangueira de entrada', temMan: false },
-      { id: 'mangueira_saida',    label: 'Mangueira de saída',   temMan: false },
-      { id: 'mangueira_interna',  label: 'Mangueira interna',    temMan: false },
-      { id: 'pressostato',        label: 'Pressostato',          temMan: true  },
-      { id: 'borracha_porta',     label: 'Borracha da porta',    temMan: false },
-    ],
-  },
-  {
-    id: 'eletrico',
-    label: 'Sistema elétrico',
-    icon: 'ti-bolt',
-    itens: [
-      { id: 'placa_potencia',     label: 'Placa de potência',    temMan: true  },
-      { id: 'placa_interface',    label: 'Placa interface',      temMan: true  },
-      { id: 'timer_mecanico',     label: 'Timer mecânico',       temMan: true  },
-      { id: 'capacitor',          label: 'Capacitor',            temMan: false },
-      { id: 'sensor_temperatura', label: 'Sensor de temperatura',temMan: true  },
-      { id: 'sensor_tampa',       label: 'Sensor da tampa',      temMan: true  },
-      { id: 'trava_porta',        label: 'Trava da porta',       temMan: true  },
-    ],
-  },
-  {
-    id: 'estrutura',
-    label: 'Estrutura',
-    icon: 'ti-tool',
-    itens: [
-      { id: 'cesto',              label: 'Cesto',                temMan: true },
-      { id: 'agitador',           label: 'Agitador',             temMan: true },
-      { id: 'suporte_cesto',      label: 'Suporte do cesto',     temMan: true },
-      // Eixo do cesto removido por solicitação
-      { id: 'suspensao',          label: 'Suspensão',            temMan: true },
-      { id: 'tirantes',           label: 'Tirantes da suspensão',temMan: true },
-      { id: 'pe_nivelador',       label: 'Pé nivelador',         temMan: true },
-    ],
-  },
-]
+const PRE_TONES = {
+  ok:      { tone: 'green',  icon: 'check' },
+  defeito: { tone: 'red',    icon: 'alert-triangle' },
+  barulho: { tone: 'yellow', icon: 'volume' },
+};
 
-// ─── Componente principal ────────────────────────────────────────────────────
-export default function AcaoDiagnostico({ T, dark, os, onUpdateOS, onMoverOS }) {
-  const cor = (d, c) => dark ? d : c
-  const amarelo   = cor(P.yellow, P.yellowDark)
-  const azul      = corEtapa('blue', dark)
-
-  // Estado da causa (obrigatória)
-  const salvo = os.diagnostico || {}
-  const [causa, setCausa] = useState(salvo.causa || '')
-
-  // checklist: { item_id: { man: bool, troca: bool } }
-  const [check, setCheck] = useState(() => salvo.checklist || {})
-
-  // Busca no checklist
-  const [busca, setBusca] = useState('')
-  const sem = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  const buscaNorm = sem(busca.trim())
-
-  // Grupos abertos/fechados — todos fechados por padrão
-  const [abertos, setAbertos] = useState({})
-
-  function toggleGrupo(id) {
-    setAbertos(prev => ({ ...prev, [id]: !prev[id] }))
-  }
-
-  // Quando há busca: grupo está "aberto" se tiver resultados
-  function grupoVisivel(grupo) {
-    if (!buscaNorm) return true
-    return grupo.itens.some(i => sem(i.label).includes(buscaNorm))
-  }
-
-  function itensFiltrados(grupo) {
-    if (!buscaNorm) return grupo.itens
-    return grupo.itens.filter(i => sem(i.label).includes(buscaNorm))
-  }
-
-  function grupoAberto(grupo) {
-    if (buscaNorm) return true   // busca ativa → sempre aberto se tiver resultado
-    return !!abertos[grupo.id]
-  }
-
-  function toggleFlag(itemId, flag) {
-    setCheck(prev => {
-      const atual = prev[itemId] || {}
-      return { ...prev, [itemId]: { ...atual, [flag]: !atual[flag] } }
-    })
-  }
-
-  // Conta itens marcados de um grupo
-  function contaMarcados(grupo) {
-    return grupo.itens.filter(i => {
-      const c = check[i.id] || {}
-      return c.man || c.troca
-    }).length
-  }
-
-  // Total global marcado
-  const totalMarcado = GRUPOS.reduce((s, g) => s + contaMarcados(g), 0)
-
-  function concluir() {
-    onUpdateOS(os.numero, {
-      diagnostico: { causa, checklist: check },
-    })
-    const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'orcamento')
-    if (proxima) onMoverOS(os.numero, proxima.id)
-  }
-
-  const podeConcluir = causa.trim().length > 0
-
+const ChecklistPill = ({ grupo, marcados, aberto, onClick }) => {
+  const { T } = useTheme();
   return (
-    <BlocoAcao
-      T={T} dark={dark} icon="ti-stethoscope"
-      etapa="Diagnóstico técnico"
-      descricao="Descreva a causa e marque os itens que precisam de manutenção ou troca."
-    >
-      {/* Causa (campo de texto obrigatório) */}
-      <div>
-        <label style={labelStyle(T)}>Causa identificada</label>
-        <input
-          value={causa}
-          onChange={e => setCausa(e.target.value)}
-          placeholder="Ex: Rolamento do tambor desgastado, correia partida…"
-          style={inputStyle(T)}
-        />
-      </div>
+    <button type="button" onClick={onClick}
+      style={{
+        background: T.card,
+        border: `1px solid ${aberto ? PALETA.blue : T.border}`,
+        borderRadius: 12, padding: '10px 12px', minHeight: 60,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'flex-start', justifyContent: 'center', gap: 4,
+        cursor: 'pointer', textAlign: 'left',
+        boxShadow: aberto ? `0 0 0 2px ${PALETA.blueBg}` : 'none',
+        transition: 'box-shadow .12s, border-color .12s',
+      }}>
+      <span style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 13, fontWeight: 600, color: T.textPrimary,
+      }}>
+        <TI name={grupo.icon} size={16} color={PALETA.blueStrong} />
+        {grupo.label}
+      </span>
+      <span style={{
+        fontSize: 11, letterSpacing: '.04em',
+        color: marcados > 0 ? PALETA.blueStrong : T.textMuted,
+        fontWeight: marcados > 0 ? 700 : 500,
+      }}>
+        {marcados} / {grupo.total} {marcados > 0 ? 'marcados' : ''}
+      </span>
+    </button>
+  );
+};
 
-      {/* Checklist 2×2 */}
-      <div>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 6,
-        }}>
-          <label style={labelStyle(T)}>Checklist de componentes</label>
-          {totalMarcado > 0 && (
-            <span style={{
-              fontSize: 11, color: azul, fontWeight: 700,
-              background: `${azul}18`, borderRadius: 20,
-              padding: '2px 8px',
-            }}>
-              {totalMarcado} {totalMarcado === 1 ? 'item' : 'itens'} marcados
-            </span>
-          )}
-        </div>
-
-        {/* Campo de busca */}
-        <div style={{ position: 'relative', marginBottom: 6 }}>
-          <i className="ti ti-search" style={{
-            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 13, color: T.textMuted, pointerEvents: 'none',
-          }} aria-hidden="true" />
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar componente…"
-            style={{
-              ...inputStyle(T),
-              paddingLeft: 30,
-              paddingRight: busca ? 28 : 12,
-            }}
-          />
-          {busca && (
-            <button
-              type="button"
-              onClick={() => setBusca('')}
-              style={{
-                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                color: T.textMuted, display: 'flex', alignItems: 'center', padding: 2,
-              }}
-              aria-label="Limpar busca"
-            >
-              <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 8,
-        }}>
-          {GRUPOS.filter(grupoVisivel).map(grupo => {
-            const aberto   = grupoAberto(grupo)
-            const marcados = contaMarcados(grupo)
-            const itens    = itensFiltrados(grupo)
-            return (
-              <GrupoCard
-                key={grupo.id}
-                T={T} dark={dark}
-                grupo={grupo}
-                aberto={aberto}
-                marcados={marcados}
-                itens={itens}
-                check={check}
-                amarelo={amarelo}
-                azul={azul}
-                onToggle={() => !buscaNorm && toggleGrupo(grupo.id)}
-                onToggleFlag={toggleFlag}
-                buscaAtiva={!!buscaNorm}
-              />
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Botão concluir */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          onClick={concluir}
-          disabled={!podeConcluir}
-          title={!podeConcluir ? 'Informe a causa antes de concluir' : 'Avança pra Orçamento'}
-          style={{
-            padding: '10px 16px', borderRadius: 7, border: 'none',
-            background: amarelo, color: '#0a0a0d',
-            fontSize: 12.5, fontWeight: 700,
-            cursor: podeConcluir ? 'pointer' : 'not-allowed',
-            opacity: podeConcluir ? 1 : 0.45,
-            fontFamily: 'inherit',
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-          }}>
-          <i className="ti ti-check" style={{ fontSize: 16 }} aria-hidden="true" />
-          Concluir diagnóstico
-        </button>
-      </div>
-    </BlocoAcao>
-  )
-}
-
-// ─── Card colapsável de grupo ────────────────────────────────────────────────
-function GrupoCard({ T, dark, grupo, aberto, marcados, itens, check, amarelo, azul, onToggle, onToggleFlag, buscaAtiva }) {
-  const cor = (d, c) => dark ? d : c
-
+const ItensDoGrupo = ({ itens, marcados, onToggle }) => {
+  const { T } = useTheme();
   return (
-    <div style={{
-      borderRadius: 8,
-      border: `1px solid ${marcados > 0 ? `${azul}55` : T.border}`,
-      overflow: 'hidden',
-      transition: 'border-color .15s',
+    <div className="idemaq-card" style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 12, overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
     }}>
-      {/* Cabeçalho clicável */}
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          width: '100%',
-          display: 'flex', alignItems: 'center', gap: 7,
-          padding: '9px 10px',
-          background: marcados > 0
-            ? cor(`${azul}18`, `${azul}10`)
-            : dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-          border: 'none', cursor: buscaAtiva ? 'default' : 'pointer', fontFamily: 'inherit',
-          borderBottom: aberto ? `1px solid ${T.border}` : 'none',
-          transition: 'background .15s',
-        }}
-      >
-        <i className={`ti ${grupo.icon}`} style={{ fontSize: 13, color: marcados > 0 ? azul : T.textMuted, flexShrink: 0 }} aria-hidden="true" />
-        <span style={{
-          flex: 1, textAlign: 'left',
-          fontSize: 11.5, fontWeight: 700, color: marcados > 0 ? azul : T.textSecondary,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      {itens.map((it, idx) => {
+        const ativo = marcados.includes(it.id);
+        return (
+          <button key={it.id} type="button" onClick={() => onToggle(it.id)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', fontSize: 14, border: 'none',
+              background: ativo ? PALETA.blueBg : T.card,
+              borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+              cursor: 'pointer', width: '100%', textAlign: 'left',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <span style={{
+              width: 22, height: 22, borderRadius: 6,
+              border: `1.5px solid ${ativo ? PALETA.blueStrong : '#D1D5DB'}`,
+              background: ativo ? PALETA.blue : 'transparent',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', flexShrink: 0,
+            }}>
+              {ativo && <TI name="check" size={14} />}
+            </span>
+            <span style={{
+              flex: 1, color: ativo ? PALETA.blueStrong : T.textPrimary,
+              fontWeight: ativo ? 600 : 500,
+            }}>{it.label}</span>
+            {it.acao && (
+              <span style={{
+                fontSize: 11, color: ativo ? PALETA.blueStrong : T.textMuted,
+                fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
+              }}>{it.acao}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+const ITENS_PADRAO = {
+  motor: [
+    { id: 'rolam', label: 'Rolamento do tambor',     acao: 'trocar' },
+    { id: 'corr',  label: 'Correia de transmissão',  acao: 'trocar' },
+    { id: 'acopl', label: 'Acoplamento motor' },
+    { id: 'polia', label: 'Polia' },
+    { id: 'bobin', label: 'Bobina' },
+  ],
+  agua: [
+    { id: 'valv-ent', label: 'Válvula de entrada' },
+    { id: 'valv-sai', label: 'Válvula de saída' },
+    { id: 'mang',     label: 'Mangueiras' },
+  ],
+  eletrico: [
+    { id: 'painel', label: 'Placa do painel' },
+    { id: 'sensor', label: 'Sensor de nível' },
+  ],
+  estrut: [
+    { id: 'amort', label: 'Amortecedores' },
+    { id: 'pe',    label: 'Pés' },
+  ],
+};
+
+const AcaoDiagnostico = ({ os, onUpdateOS }) => {
+  const { T } = useTheme();
+  const [causa, setCausa] = useState(os?.diagnostico?.causa || '');
+  const [busca, setBusca] = useState('');
+  const [grupoAberto, setGrupoAberto] = useState(null);
+
+  const grupos = os?.checklistGrupos || GRUPOS_PADRAO;
+  const marcadosPorGrupo = os?.checklistMarcados || {};
+  const preDiag = os?.preDiagnostico || {};
+  const testesComResultado = Object.entries(preDiag);
+
+  const itensAtuais = useMemo(() => {
+    if (!grupoAberto) return [];
+    const base = os?.itensPorGrupo?.[grupoAberto] || ITENS_PADRAO[grupoAberto] || [];
+    if (!busca.trim()) return base;
+    const q = busca.toLowerCase();
+    return base.filter(i => i.label.toLowerCase().includes(q));
+  }, [grupoAberto, busca, os?.itensPorGrupo]);
+
+  const toggleItem = (itemId) => onUpdateOS?.({
+    action: 'toggle_checklist_item', grupo: grupoAberto, item: itemId,
+  });
+
+  const updateCausa = (v) => {
+    setCausa(v);
+    onUpdateOS?.({ action: 'set_causa', causa: v });
+  };
+
+  const totalMarcados = Object.values(marcadosPorGrupo).reduce(
+    (s, arr) => s + (arr?.length || 0), 0
+  );
+  const podeConcluir = causa.trim().length > 0 && totalMarcados > 0;
+
+  return (
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <NowCard icon="stethoscope" titulo="diagnóstico técnico"
+               descricao="Descreva a causa e marque os itens que precisam de manutenção ou troca." />
+
+      {testesComResultado.length > 0 && (
+        <div className="idemaq-card" style={{
+          background: T.card, border: `1px solid ${T.border}`,
+          borderRadius: 12, padding: 12,
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          {grupo.label}
-        </span>
-        {/* Badge de marcados */}
-        {marcados > 0 && (
-          <span style={{
-            fontSize: 10, fontWeight: 700, color: azul,
-            background: `${azul}22`, borderRadius: 10,
-            padding: '1px 6px', flexShrink: 0,
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            fontSize: 11, color: T.textMuted, fontWeight: 700,
+            letterSpacing: '.06em', textTransform: 'uppercase',
           }}>
-            {marcados}
-          </span>
-        )}
-        {/* Chevron */}
-        <i
-          className={`ti ti-chevron-${aberto ? 'up' : 'down'}`}
-          style={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }}
-          aria-hidden="true"
-        />
-      </button>
-
-      {/* Lista de itens */}
-      {aberto && (
-        <div>
-          {itens.map((item, idx) => {
-            const c     = check[item.id] || {}
-            const manAtivo   = !!c.man
-            const trocaAtivo = !!c.troca
-            return (
-              <div
-                key={item.id}
-                style={{
-                  display: 'flex', alignItems: 'center',
-                  padding: '7px 10px',
-                  borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
-                  background: (manAtivo || trocaAtivo)
-                    ? cor('rgba(255,255,255,0.02)', 'rgba(0,0,0,0.015)')
-                    : 'transparent',
-                  gap: 6,
-                }}
-              >
-                {/* Nome */}
-                <span style={{
-                  flex: 1, fontSize: 12, fontWeight: 500,
-                  color: (manAtivo || trocaAtivo) ? T.textPrimary : T.textSecondary,
-                  minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {item.label}
-                </span>
-
-                {/* Botão man. */}
-                {item.temMan && (
-                  <PillBtn
-                    ativo={manAtivo}
-                    cor={amarelo}
-                    corTexto="#0a0a0d"
-                    dark={dark}
-                    onClick={() => onToggleFlag(item.id, 'man')}
-                  >
-                    man.
-                  </PillBtn>
-                )}
-
-                {/* Botão troca */}
-                <PillBtn
-                  ativo={trocaAtivo}
-                  cor={azul}
-                  corTexto={dark ? '#fff' : '#fff'}
-                  dark={dark}
-                  onClick={() => onToggleFlag(item.id, 'troca')}
-                >
-                  troca
-                </PillBtn>
-              </div>
-            )
-          })}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <TI name="clipboard-check" size={13} color={PALETA.blueStrong} />
+              PRÉ-DIAGNÓSTICO
+            </span>
+            {os?.preDiagnosticoHaMin && (
+              <span style={{
+                color: T.textMuted, fontWeight: 500,
+                textTransform: 'none', letterSpacing: 0,
+              }}>há {os.preDiagnosticoHaMin}min</span>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {testesComResultado.map(([testeId, resultado]) => {
+              const meta = PRE_TONES[resultado] || PRE_TONES.ok;
+              const testeLabel = os?.testesPreDiagnostico?.find(
+                t => t.id === testeId
+              )?.label || testeId;
+              return (
+                <Pill key={testeId} tone={meta.tone} icon={meta.icon}>
+                  {testeLabel}
+                </Pill>
+              );
+            })}
+          </div>
         </div>
       )}
+
+      <Group label={(
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <TI name="message-2" size={13} color={PALETA.blueStrong} />
+          CAUSA IDENTIFICADA
+        </span>
+      )}>
+        <TextArea placeholder="Ex: Rolamento do tambor desgastado, correia rompida…"
+                  value={causa} onChange={(e) => updateCausa(e.target.value)} />
+      </Group>
+
+      <Group label={(
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <TI name="list-check" size={13} color={PALETA.blueStrong} />
+          CHECKLIST DE COMPONENTES
+        </span>
+      )}>
+        <Input icon="search" placeholder="Buscar componente…"
+               value={busca} onChange={(e) => setBusca(e.target.value)} />
+
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4,
+        }}>
+          {grupos.map(g => (
+            <ChecklistPill key={g.id} grupo={g}
+              marcados={(marcadosPorGrupo[g.id] || []).length}
+              aberto={grupoAberto === g.id}
+              onClick={() => setGrupoAberto(grupoAberto === g.id ? null : g.id)} />
+          ))}
+        </div>
+
+        {grupoAberto && itensAtuais.length > 0 && (
+          <div style={{ marginTop: 4 }}>
+            <ItensDoGrupo itens={itensAtuais}
+              marcados={marcadosPorGrupo[grupoAberto] || []}
+              onToggle={toggleItem} />
+          </div>
+        )}
+
+        {grupoAberto && itensAtuais.length === 0 && (
+          <div style={{
+            background: T.card, border: `1px dashed ${T.border}`,
+            borderRadius: 12, padding: 14, textAlign: 'center',
+            fontSize: 13, color: T.textMuted,
+          }}>Nenhum item encontrado nesse grupo.</div>
+        )}
+
+        <BtnMobile variant="yellow" icon="check" disabled={!podeConcluir}
+          onClick={() => onUpdateOS?.({ action: 'concluir_diagnostico', causa })}
+          style={{ marginTop: 6 }}>
+          Concluir diagnóstico
+        </BtnMobile>
+      </Group>
     </div>
-  )
-}
+  );
+};
 
-// ─── Pill toggle ─────────────────────────────────────────────────────────────
-function PillBtn({ ativo, cor, corTexto, dark, onClick, children }) {
-  const bgInativo = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'
-  const txtInativo = dark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)'
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '3px 7px', borderRadius: 20, border: 'none',
-        background: ativo ? cor : bgInativo,
-        color: ativo ? corTexto : txtInativo,
-        fontSize: 10.5, fontWeight: 700,
-        cursor: 'pointer', fontFamily: 'inherit',
-        flexShrink: 0,
-        transition: 'background .12s, color .12s',
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-// ─── Helpers de estilo ───────────────────────────────────────────────────────
-function labelStyle(T) {
-  return {
-    display: 'flex', alignItems: 'center', gap: 5,
-    fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-    marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.3px',
-  }
-}
-function inputStyle(T) {
-  return {
-    width: '100%', padding: '9px 12px', borderRadius: 7,
-    border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
-    fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
-  }
-}
+export default AcaoDiagnostico;
