@@ -1,166 +1,182 @@
 // idemaq-src/components/mobile/OSCardMobile.jsx
-// Card de OS otimizado pra toque mobile — vertical, alvo touch ≥44px.
-// Mostra: cliente, marca/modelo, etapa colorida, prazo com status.
+// Card de OS mobile — espelha o layout denso do KanbanCard desktop.
+// Grid 2-col, cliente+valor lado a lado, endereço e tags abaixo.
 
 import React from 'react'
-import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
-import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial } from '../../utils/osHelpers'
-import { fmtPrazoCurto } from '../../utils/fmt'
+import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
-
-function labelEtapa(os) {
-  const cfg = TIPOS_OS[os.tipo]
-  const e = cfg?.etapas?.find(x => x.id === os.etapa) || cfg?.lateral
-  return e?.curto || e?.label || os.etapa
-}
-
-function corDaEtapa(os, dark) {
-  const cfg = TIPOS_OS[os.tipo]
-  const e = cfg?.etapas?.find(x => x.id === os.etapa) || cfg?.lateral
-  return corEtapa(e?.cor || 'neutro', dark)
-}
-
-function bgDaEtapa(os, dark) {
-  const cfg = TIPOS_OS[os.tipo]
-  const e = cfg?.etapas?.find(x => x.id === os.etapa) || cfg?.lateral
-  return bgEtapa(e?.cor || 'neutro', dark)
-}
-
-// Retorna null se a string nao tiver nenhuma letra/numero — dados placeholder do Trello
-// (cobre "--", "-- · --", " - - ", "...", e qualquer combinacao de simbolos)
-function naoVazio(v) { return (v && /[\p{L}\p{N}]/u.test(v)) ? v : null }
+import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar } from '../../utils/osHelpers'
+import { fmtPrazoCurto } from '../../utils/fmt'
+import { corEtapa } from '../../utils/colors'
 
 export default function OSCardMobile({ T, dark, os, onClick }) {
   const cor = (d, c) => dark ? d : c
-  const etapaCor = corDaEtapa(os, dark)
-  const etapaBg = bgDaEtapa(os, dark)
-  const tipo = TIPOS_OS[os.tipo]
-  const tipoCor = corEtapa(tipo?.cor || 'blue', dark)
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
-  const pagaTotal = estaPagaTotal(os)
-  const pagaParcial = !pagaTotal && estaPagaParcial(os)
+  const tipoCfg = TIPOS_OS[os.tipo] || {}
+  const corLinha = corEtapa(tipoCfg.cor || 'blue', dark)
+  const pagoTotal = estaPagaTotal(os)
+  const pagoParcial = !pagoTotal && estaPagaParcial(os)
+  const mostrarValor = os.valor > 0
+  const semPrazo = os.etapa === 'concluido' || os.etapa === 'recusado' || !os.prazo
 
-  // Prazo: vermelho vencido / amarelo hoje-amanhã / cinza padrão
-  const prazoCor = status === 'vencido' ? corEtapa('red', dark)
-                 : status === 'hoje' || status === 'amanha' ? corEtapa('yellow', dark)
-                 : T.textMuted
-  const prazoIcon = status === 'vencido' ? 'ti-alert-triangle'
-                  : status === 'hoje' ? 'ti-clock'
-                  : status === 'amanha' ? 'ti-calendar-due'
-                  : 'ti-calendar-event'
+  const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
+  const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento
+
+  // Pill do prazo — mesma logica do desktop
+  let prazoPillText = null
+  let prazoPillStyle = null
+  if (!semPrazo) {
+    if (status === 'vencido') {
+      prazoPillStyle = { background: cor('#2e0e0e', '#fde8e8'), color: cor(P.red, P.redDark) }
+      prazoPillText = `${Math.abs(dias)}d atras.`
+    } else if (status === 'hoje') {
+      prazoPillStyle = { background: cor('#2e2204', '#fff8d8'), color: cor(P.yellow, P.yellowDark) }
+      prazoPillText = 'Hoje'
+    } else if (status === 'amanha') {
+      prazoPillStyle = { background: cor('#2e2204', '#fff8d8'), color: cor(P.yellow, P.yellowDark) }
+      prazoPillText = 'Amanhã'
+    } else if (status === 'ok') {
+      prazoPillStyle = { background: 'transparent', color: T.textMuted, padding: '1px 0' }
+      prazoPillText = `${fmtPrazoCurto(os.prazo)} · ${dias}d`
+    }
+  }
+
+  const tagStyle = (bg, fg) => ({
+    padding: '1px 5px', borderRadius: 3,
+    fontSize: 9.5, fontWeight: 700,
+    background: bg, color: fg,
+    display: 'inline-flex', alignItems: 'center', gap: 3,
+  })
+
+  const baseStyle = dark
+    ? { background: T.card, border: `1px solid ${T.border}`, borderLeft: `3px solid ${corLinha}` }
+    : { background: T.card, border: 'none', borderLeft: `3px solid ${corLinha}`, boxShadow: T.shadow }
+
+  const temTags = os.garantia || pagoTotal || pagoParcial || os.aguardando_peca
 
   return (
     <button onClick={onClick}
       className="idemaq-card"
       style={{
-        display: 'flex', flexDirection: 'column',
-        gap: 8, padding: '12px 13px',
-        background: T.card,
-        border: `1px solid ${T.border}`,
-        borderLeft: `3px solid ${tipoCor}`,
-        borderRadius: 12,
-        cursor: 'pointer', fontFamily: 'inherit',
-        textAlign: 'left', width: '100%', minHeight: 76,
+        ...baseStyle,
+        borderRadius: 10,
+        padding: '10px 12px',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        textAlign: 'left',
+        width: '100%',
         flexShrink: 0,
       }}>
-      {/* Linha 1: OS# + etapa + badge pagamento */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-      }}>
-        <span style={{
-          fontSize: 12, fontWeight: 800, color: corHero(dark),
-          fontVariantNumeric: 'tabular-nums',
-        }}>OS #{os.numero}</span>
 
-        {os.garantia && (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
+
+        {/* Linha 1: tipo + número | prazo pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+          {tipoCfg.icon && (
+            <i className={`ti ${tipoCfg.icon}`}
+               style={{ fontSize: 12, color: corEtapa(tipoCfg.cor, dark), flexShrink: 0 }}
+               aria-hidden="true" title={tipoCfg.label} />
+          )}
           <span style={{
-            fontSize: 9.5, fontWeight: 700,
-            padding: '2px 7px', borderRadius: 4,
-            background: cor('#0d2035', '#e6f1fb'),
-            color: corEtapa('blue', dark),
+            fontSize: 11, fontWeight: 700, color: T.textMuted,
+            fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+            fontVariantNumeric: 'tabular-nums',
+          }}>#{os.numero}</span>
+        </div>
+        {prazoPillText ? (
+          <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 3,
-            textTransform: 'uppercase', letterSpacing: '.3px',
-          }}>
-            <i className="ti ti-shield-check" style={{ fontSize: 11 }} aria-hidden="true" />
-            garantia
-          </span>
-        )}
+            padding: '1px 6px', borderRadius: 3,
+            fontSize: 10.5, fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            justifySelf: 'end',
+            ...prazoPillStyle,
+          }}>{prazoPillText}</span>
+        ) : <span />}
 
-        <span style={{
-          fontSize: 10, fontWeight: 700,
-          padding: '2px 8px', borderRadius: 12,
-          background: etapaBg, color: etapaCor,
-          textTransform: 'uppercase', letterSpacing: '.3px',
-          marginLeft: 'auto',
-        }}>{labelEtapa(os)}</span>
-
-        {pagaTotal && (
+        {/* Linha 2: cliente | valor */}
+        <div style={{
+          fontSize: 14, fontWeight: 600, color: T.textPrimary,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          minWidth: 0,
+        }}>{os.cliente || (os.tipo === 'fabricacao' ? 'Fabricação interna' : '—')}</div>
+        {mostrarValor ? (
           <span style={{
-            fontSize: 9.5, fontWeight: 700,
-            padding: '2px 7px', borderRadius: 4,
-            background: cor('#0f2a15', '#e8f5ec'),
-            color: corEtapa('green', dark),
-            display: 'inline-flex', alignItems: 'center', gap: 3,
-          }}>
-            <i className="ti ti-check" style={{ fontSize: 11 }} aria-hidden="true" />
-            pago
-          </span>
-        )}
-        {pagaParcial && (
+            fontSize: 13, color: cor(P.blue, P.blueDark), fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+            justifySelf: 'end',
+          }}>R$ {(os.valor - (os.desconto || 0)).toLocaleString('pt-BR')}</span>
+        ) : (
           <span style={{
-            fontSize: 9.5, fontWeight: 700,
-            padding: '2px 7px', borderRadius: 4,
-            background: cor('#2a2000', '#fdf6dc'),
-            color: corEtapa('yellow', dark),
-            display: 'inline-flex', alignItems: 'center', gap: 3,
-          }}>parcial</span>
+            fontSize: 11.5, color: T.textMuted, fontWeight: 600,
+            justifySelf: 'end',
+          }}>—</span>
         )}
-      </div>
 
-      {/* Linha 2: cliente em destaque (OS de fabricação não tem cliente por
-          design — mostra 'Fabricação interna' em vez de placeholder de erro). */}
-      <div style={{
-        fontSize: 14.5,
-        fontWeight: os.cliente ? 700 : 600,
-        color: os.cliente ? corHero(dark) : T.textMuted,
-        fontStyle: os.cliente ? 'normal' : 'italic',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        lineHeight: 1.2,
-      }}>
-        {naoVazio(os.cliente)
-          || (os.tipo === 'fabricacao' ? 'Fabricação interna' : 'Cliente sem cadastro')}
-      </div>
-
-      {/* Linha 3: equipamento + prazo. Se não tem marca/modelo mas tem defeito
-          relatado, mostra o defeito (útil pra OS importadas do Trello que
-          vieram só com defeito). */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 10, fontSize: 11.5, color: T.textMuted,
-      }}>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          minWidth: 0, flex: 1,
-        }}>
-          <i className="ti ti-device-washing-machine" style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
-          {[naoVazio(os.marca), naoVazio(os.modelo)].filter(Boolean).join(' · ')
-            || naoVazio(os.equipamento)
-            || naoVazio(os.defeito)
-            || 'Sem equipamento cadastrado'}
-        </span>
-
-        {os.prazo && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            color: prazoCor, fontWeight: 600,
-            fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        {/* Linha 3: equipamento + S/N (span 2) */}
+        {linhaEquip && (
+          <div style={{
+            gridColumn: '1 / -1',
+            fontSize: 12, color: T.textSecondary,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
-            <i className={`ti ${prazoIcon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-            {status === 'vencido' ? `${Math.abs(dias)}d atraso` : fmtPrazoCurto(os.prazo)}
-          </span>
+            {linhaEquip}
+            {os.serie && (
+              <span style={{
+                color: T.textMuted,
+                fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+                fontSize: 11,
+                marginLeft: 6,
+              }}>· S/N {os.serie}</span>
+            )}
+          </div>
         )}
+
+        {/* Linha 4: endereço (span 2) */}
+        {endResumido && (
+          <div style={{
+            gridColumn: '1 / -1',
+            fontSize: 11.5, color: T.textMuted,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            marginTop: 1,
+          }}>{endResumido}</div>
+        )}
+
+        {/* Linha 5: tags (span 2) */}
+        {temTags && (
+          <div style={{
+            gridColumn: '1 / -1',
+            display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap',
+            marginTop: 5,
+          }}>
+            {os.garantia && (
+              <span title={`Garantia da OS #${os.os_origem_id}`}
+                    style={tagStyle(cor('#0d2035', '#e6f1fb'), cor(P.blue, P.blueDark))}>
+                <i className="ti ti-shield-check" style={{ fontSize: 10 }} aria-hidden="true" />Garantia
+              </span>
+            )}
+            {pagoTotal && (
+              <span style={tagStyle(cor('#0e2818', '#e6f7ed'), cor(P.green, P.greenDark))}>
+                <i className="ti ti-check" style={{ fontSize: 10 }} aria-hidden="true" />Pago
+              </span>
+            )}
+            {pagoParcial && (
+              <span style={{
+                ...tagStyle(cor('#2e2204', '#fff8d8'), cor(P.yellow, P.yellowDark)),
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                R$ {(os.valor_pago || 0).toLocaleString('pt-BR')}/{(totalAPagar(os)).toLocaleString('pt-BR')}
+              </span>
+            )}
+            {os.aguardando_peca && (
+              <span style={tagStyle(cor('#3a2200', '#fff4e0'), '#ff9800')}>
+                <i className="ti ti-package" style={{ fontSize: 10 }} aria-hidden="true" />peça
+              </span>
+            )}
+          </div>
+        )}
+
       </div>
     </button>
   )
