@@ -7,7 +7,6 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import TopbarMobile from './TopbarMobile'
 import BottomNav from './BottomNav'
 
 // Mapa pagina-id → rota
@@ -54,11 +53,10 @@ export default function AppLayout({
         background: T.bg, width: '100%',
         fontFamily: 'inherit', overflow: 'hidden',
       }}>
-        <TopbarMobile pagina={pagina} dark={dark} toggleTheme={toggleTheme} T={T} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           {children}
         </div>
-        <BottomNav pagina={pagina} setPagina={setPagina} sair={sair} user={user} T={T} dark={dark} />
+        <BottomNav pagina={pagina} setPagina={setPagina} sair={sair} user={user} T={T} dark={dark} toggleTheme={toggleTheme} />
       </div>
     )
   }

@@ -19,7 +19,7 @@ import {
 import { isAdmin } from '../../utils/osHelpers'
 import { corHero } from '../../utils/colors'
 
-export default function BottomNav({ pagina, setPagina, sair, user, T, dark }) {
+export default function BottomNav({ pagina, setPagina, sair, user, T, dark, toggleTheme }) {
   const admin = isAdmin(user)
   const idsFixos  = admin ? MENUS_MOBILE_DONO       : MENUS_MOBILE_FUNC
   const idsExtras = admin ? MENUS_MOBILE_DONO_EXTRA : MENUS_MOBILE_FUNC_EXTRA
@@ -77,6 +77,7 @@ export default function BottomNav({ pagina, setPagina, sair, user, T, dark }) {
           onNavegar={navegar}
           onSair={() => { setMaisAberto(false); sair() }}
           onClose={() => setMaisAberto(false)}
+          onToggleTheme={toggleTheme}
         />
       )}
     </>
@@ -121,7 +122,7 @@ function BotaoNav({ m, ativo, T, activeClr, activeBg, onClick }) {
 }
 
 // ─── Bottom sheet "Mais" ───────────────────────────────────────────────────
-function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClose }) {
+function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClose, onToggleTheme }) {
   const azul = dark ? P.blue : P.blueDark
   const vermelho = dark ? P.red : P.redDark
 
@@ -217,14 +218,31 @@ function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClo
           })}
         </div>
 
-        {/* Sair — separado abaixo */}
+        {/* Tema + Sair — separado abaixo */}
         <div style={{
           borderTop: `1px solid ${T.border}`,
           padding: '12px 12px 4px',
+          display: 'flex', gap: 8,
         }}>
+          {onToggleTheme && (
+            <button onClick={onToggleTheme}
+              aria-label={dark ? 'Modo claro' : 'Modo escuro'}
+              title={dark ? 'Modo claro' : 'Modo escuro'}
+              style={{
+                flex: '0 0 48px', padding: '12px',
+                borderRadius: 12, minHeight: 48,
+                background: 'transparent',
+                border: `1px solid ${T.border}`,
+                color: T.textPrimary,
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+              <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 18 }} aria-hidden="true" />
+            </button>
+          )}
           <button onClick={onSair}
             style={{
-              width: '100%', padding: '12px 16px',
+              flex: 1, padding: '12px 16px',
               borderRadius: 12, minHeight: 48,
               background: 'transparent',
               border: `1px solid ${T.border}`,
