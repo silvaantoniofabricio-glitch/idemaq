@@ -45,6 +45,15 @@ export default function OSMobile({ T, dark, user }) {
     zona: 'todos',
     tipos: new Set(['atendimento', 'fabricacao', 'venda']),
   })
+  // Modo de visualização: 'normal' (1 coluna por vez) ou 'compact' (2 colunas
+  // estreitas, igual o botão de "afastar" do Trello mobile). Persiste no LS.
+  const VIEW_STORAGE_KEY = 'idemaq.osmobile.view'
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem(VIEW_STORAGE_KEY) === 'compact' ? 'compact' : 'normal' } catch { return 'normal' }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(VIEW_STORAGE_KEY, viewMode) } catch {}
+  }, [viewMode])
   // Etapa selecionada nas abas. Sempre tem que existir uma (regra de UX).
   // Estado inicial:
   //  - lê do localStorage se houver entrada válida
@@ -322,10 +331,10 @@ export default function OSMobile({ T, dark, user }) {
                 key={col.id}
                 ref={(el) => { if (el) colunaRefs.current[col.id] = el }}
                 style={{
-                  flex: '0 0 88%',
-                  scrollSnapAlign: 'center',
+                  flex: viewMode === 'compact' ? '0 0 52%' : '0 0 88%',
+                  scrollSnapAlign: viewMode === 'compact' ? 'start' : 'center',
                   display: 'flex', flexDirection: 'column',
-                  padding: idx === 0 ? '12px 6px 0 14px' : '12px 6px 0',
+                  padding: idx === 0 ? '12px 4px 0 14px' : '12px 4px 0',
                   minWidth: 0,
                 }}
               >
@@ -376,6 +385,7 @@ export default function OSMobile({ T, dark, user }) {
                     }}>Sem OS nesta etapa</div>
                   ) : col.cards.map(os => (
                     <OSCardMobile key={os.numero} T={T} dark={dark} os={os}
+                      compact={viewMode === 'compact'}
                       onClick={() => setOsAberta(os)} />
                   ))}
                 </div>
@@ -385,6 +395,29 @@ export default function OSMobile({ T, dark, user }) {
           {/* Spacer final pra última coluna conseguir centralizar */}
           <div aria-hidden="true" style={{ flex: '0 0 6%' }} />
         </div>
+      )}
+
+      {/* Botão flutuante: alterna entre 1-coluna (normal) e 2-colunas (compact)
+          — equivalente ao botão "afastar/aproximar" do Trello mobile. */}
+      {!loading && (
+        <button
+          onClick={() => setViewMode(v => v === 'compact' ? 'normal' : 'compact')}
+          aria-label={viewMode === 'compact' ? 'Expandir cards' : 'Compactar cards'}
+          title={viewMode === 'compact' ? 'Expandir cards' : 'Compactar cards'}
+          style={{
+            position: 'absolute',
+            right: 16, bottom: 80,
+            width: 48, height: 48, borderRadius: 24,
+            background: dark ? '#5B9BD5' : '#5B9BD5',
+            color: '#fff', border: 'none', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            zIndex: 50, fontFamily: 'inherit',
+          }}>
+          <i
+            className={`ti ${viewMode === 'compact' ? 'ti-arrows-maximize' : 'ti-arrows-minimize'}`}
+            style={{ fontSize: 22 }} aria-hidden="true" />
+        </button>
       )}
 
       {/* OSDetalhe — usa `osVigente` (derivado via useMemo do osList).

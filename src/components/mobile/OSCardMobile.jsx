@@ -9,7 +9,7 @@ import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar
 import { fmtPrazoCurto } from '../../utils/fmt'
 import { corEtapa } from '../../utils/colors'
 
-export default function OSCardMobile({ T, dark, os, onClick }) {
+export default function OSCardMobile({ T, dark, os, onClick, compact = false }) {
   const cor = (d, c) => dark ? d : c
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
@@ -61,7 +61,7 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
       style={{
         ...baseStyle,
         borderRadius: 10,
-        padding: '10px 12px',
+        padding: compact ? '7px 9px' : '10px 12px',
         cursor: 'pointer',
         fontFamily: 'inherit',
         textAlign: 'left',
@@ -69,7 +69,11 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
         flexShrink: 0,
       }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr auto',
+        columnGap: compact ? 6 : 10, rowGap: compact ? 2 : 3,
+        alignItems: 'baseline',
+      }}>
 
         {/* Linha 1: tipo + número | prazo pill */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
@@ -133,8 +137,8 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
           </div>
         )}
 
-        {/* Linha 4: endereço (span 2) */}
-        {endResumido && (
+        {/* Linha 4: endereço (span 2) — oculto no modo compact */}
+        {!compact && endResumido && (
           <div style={{
             gridColumn: '1 / -1',
             fontSize: 11.5, color: T.textMuted,
@@ -143,8 +147,8 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
           }}>{endResumido}</div>
         )}
 
-        {/* Linha 5: tags (span 2) */}
-        {temTags && (
+        {/* Linha 5: tags (span 2) — oculto no modo compact */}
+        {!compact && temTags && (
           <div style={{
             gridColumn: '1 / -1',
             display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap',
