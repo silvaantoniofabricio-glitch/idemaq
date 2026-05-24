@@ -357,7 +357,10 @@ export default function OSMobile({ T, dark, user }) {
                   }}>{col.count}</span>
                 </div>
 
-                {/* Cards da coluna - scroll vertical interno */}
+                {/* Cards da coluna - scroll vertical interno.
+                    touchAction 'pan-x pan-y' permite que swipe horizontal
+                    iniciado DENTRO da coluna passe pro container pai (que
+                    rola horizontalmente entre colunas). */}
                 <div style={{
                   flex: 1, minHeight: 0,
                   overflowY: 'auto', WebkitOverflowScrolling: 'touch',
@@ -365,7 +368,7 @@ export default function OSMobile({ T, dark, user }) {
                   borderRadius: '0 0 10px 10px',
                   padding: '10px 8px',
                   display: 'flex', flexDirection: 'column', gap: 8,
-                  touchAction: 'pan-y',
+                  touchAction: 'pan-x pan-y',
                 }}>
                   {col.cards.length === 0 ? (
                     <div style={{
