@@ -131,9 +131,11 @@ export default function App() {
 // Painel renderizado conforme papel do usuário logado:
 //   - Dono (Toni)         → Painel executivo com financeiro
 //   - Func (Alessandro/Guilherme) → PainelFuncionario sem financeiro + card de ponto
-function PainelPorPerfil({ T, dark, user }) {
+function PainelPorPerfil({ T, dark, user, isMobile }) {
   if (isAdmin(user)) {
-    return <Painel T={T} dark={dark} />
+    return isMobile
+      ? <PainelMobile T={T} dark={dark} user={user} />
+      : <Painel T={T} dark={dark} />
   }
   return <PainelFuncionario T={T} dark={dark} funcId={getRole(user)} />
 }
@@ -170,7 +172,7 @@ function RoutesMobile({ T, dark, user }) {
   // explícitos de refresh em telas críticas cobrem o caso.
   return (
     <Routes>
-      <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} />} />
+      <Route path="/"            element={<PainelPorPerfil T={T} dark={dark} user={user} isMobile />} />
       <Route path="/os"          element={<OSMobile T={T} dark={dark} user={user} />} />
       <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
       <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
