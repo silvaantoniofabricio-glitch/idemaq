@@ -83,6 +83,36 @@ forma_pagamento text · os_id uuid|null · deleted_at timestamptz
 
 ---
 
+## 1c. View `vw_lancamentos_validos` + integração no hook (24/05/2026)
+
+✅ Aplicado: criada view que espelha `lancamento_financeiro` (mesmas colunas) mas EXCLUI:
+- Lançamentos com `deleted_at IS NOT NULL` (soft-delete normal)
+- Lançamentos cujo `id` está em `lancamento_duplicata.id_duplicata` (duplicações marcadas via sql/29-35)
+
+**SQL**: `sql/38-view-lancamentos-validos.sql`. Define `GRANT SELECT TO anon, authenticated` (RLS herda da tabela base via row-level inheritance).
+
+**Hook modificado**: `src/hooks/useFinanceiro.js` lê de `vw_lancamentos_validos` em vez de `lancamento_financeiro`. Fallback automático pra tabela direta se a view não existir (graceful degradation). CRUD continua escrevendo na tabela base — views não aceitam INSERT/UPDATE.
+
+**Impacto na UI**: Painel/DRE/Relatórios passam a mostrar números LÍQUIDOS automaticamente, sem duplicação de:
+- Faturas de cartão pagas no Cresol (já lançadas em Bling-PAG)
+- PIX pessoais (dízimo, esposa, intra-contas)
+- Transferências Cresol1↔Cresol2 do próprio Toni
+- Vendas em cartão duplicadas (BLING-REC + InfinitePay)
+
+Total dedup: 719 lançamentos marcados. Receita ~R$ 572k (não 799k bruto), despesa ~R$ 579k (não 765k bruto), em 28 meses (~R$ 20k/mês cada).
+
+## 1b. Importação Bling + Cresol (22/05/2026 madrugada — pendente Toni rodar)
+
+3 SQLs gerados pra importação massiva do histórico financeiro:
+
+- **`sql/20-bling-financeiro-import.sql`** (388 KB) — 680 receitas + 1235 despesas do Bling (contas_receber.csv + contas_pagar.csv). Cobertura: nov/2024 → abr/2026. Total: R$ 213k rec + R$ 203k pag. Conta nova `Caixa Bling` (separada do Cresol pra rastrear). Idempotente via tag `BLING-REC:<id>` ou `BLING-PAG:<id>` em descricao.
+- **`sql/21-cresol-ofx-import.sql`** (53 KB) — 362 transações da Cresol conta 358510-7, jan/2024 → mai/2026. Dedupe via FITID. Categorização heurística por MEMO. R$ 99k receitas + R$ 80k despesas. Idempotente via tag `CRESOL-FITID:<id>`.
+- **`sql/22-bling-os-import.sql`** (258 KB) — 535 OS retroativas + 1656 os_item. Faz matching DENTRO do SQL (RLS bloqueia probe anon key): JOIN cliente por telefone normalizado + LEFT JOIN os por TRELLO-CARD tag. UPDATE OS Trello existente OU INSERT nova OS retroativa em etapa `concluido`. Idempotente via tag `BLING-PEDIDO:<num>` em observacoes.
+
+Scripts geradores em `scripts/gerar-sql-bling-financeiro.mjs`, `scripts/gerar-sql-ofx-cresol.mjs`, `scripts/gerar-sql-bling-os.mjs`. Re-rodam idempotente — sair com `.json` paralelo em `relatorios/` pra review.
+
+**Instruções completas + reversão**: `relatorios/IMPORTACAO-BLING-CRESOL-README.md`.
+
 ## 2. Pendências (ordem)
 
 1. ✅ ~~Rodar `sql/01-lancamento-financeiro.sql` no Supabase~~ — **feito 20/05/2026** (migração v1→v2 forçada + seed de 8 lançamentos)

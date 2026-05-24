@@ -132,8 +132,14 @@ export function useFinanceiro(filtros = {}) {
       // Server-side: filtros por tipo, conta_id, status (via pago_em), e
       // janela de vencimento. Join lateral com conta_bancaria pra ter o nome
       // sem 2ª round-trip.
+      // LEITURA via view vw_lancamentos_validos: espelha lancamento_financeiro
+      // mas exclui automaticamente IDs marcados em lancamento_duplicata
+      // (faturas cartão duplicadas, intra-contas, PIX pessoais, etc — ver sql/29-35).
+      // CRUD continua escrevendo direto na tabela real (views não aceitam INSERT).
+      // Fallback: se a view não existir (sql/38 não aplicado), cai pra tabela direta.
+      const tabelaLeitura = 'vw_lancamentos_validos'
       let q = supabase
-        .from('lancamento_financeiro')
+        .from(tabelaLeitura)
         .select(`
           id, tipo, valor, conta_id, categoria, descricao,
           vencimento, pago_em, taxa_pct, forma_pagamento, os_id,
@@ -151,7 +157,30 @@ export function useFinanceiro(filtros = {}) {
 
       q = q.order('vencimento', { ascending: false })
 
-      const { data: lancs, error: errLanc } = await q
+      let { data: lancs, error: errLanc } = await q
+
+      // Se a view não existe ainda (sql/38 não aplicado), cai pra tabela direta
+      if (errLanc && isMissingTable(errLanc) && tabelaLeitura !== 'lancamento_financeiro') {
+        let qFallback = supabase
+          .from('lancamento_financeiro')
+          .select(`
+            id, tipo, valor, conta_id, categoria, descricao,
+            vencimento, pago_em, taxa_pct, forma_pagamento, os_id,
+            deleted_at,
+            conta:conta_id ( id, nome, tipo )
+          `)
+          .is('deleted_at', null)
+        if (filtros.tipo)        qFallback = qFallback.eq('tipo', filtros.tipo)
+        if (filtros.conta_id)    qFallback = qFallback.eq('conta_id', filtros.conta_id)
+        if (filtros.status === 'pago')   qFallback = qFallback.not('pago_em', 'is', null)
+        if (filtros.status === 'aberto') qFallback = qFallback.is('pago_em', null)
+        if (filtros.dataInicio)  qFallback = qFallback.gte('vencimento', filtros.dataInicio)
+        if (filtros.dataFim)     qFallback = qFallback.lte('vencimento', filtros.dataFim)
+        qFallback = qFallback.order('vencimento', { ascending: false })
+        const r = await qFallback
+        lancs = r.data
+        errLanc = r.error
+      }
 
       if (errLanc) {
         if (isMissingTable(errLanc)) {

@@ -40,6 +40,19 @@ Inicialmente fui com chips de presets inline + 2 inputs date no header. Toni ped
 
 🔴 **Onda 2 (importação CSV) — ainda pendente** — depende de Toni exportar CSV de exemplo do Bling/Trello pra mapeamento de colunas.
 
+## 1b. Importação retroativa Bling (22/05/2026 madrugada — pendente Toni rodar)
+
+SQL gerado pra criar 535 OS retroativas a partir de `pedidos_venda.csv` do Bling.
+
+- **`sql/22-bling-os-import.sql`** (258 KB, idempotente) — cruza com OS Trello existentes via tag `TRELLO-CARD:<id>` em `observacoes`. Pra OS Trello casada → UPDATE enriquece (valor_total, valor_pago, pago, forma_pagamento, cliente_id, desconto). Pra pedido Bling sem OS Trello → INSERT nova OS retroativa em `etapa=concluido` + `data_conclusao` da data do pedido.
+- Match cliente por telefone normalizado (últimos 8-11 dígitos, ignora DDI 55) — JOIN dentro do SQL.
+- 1656 `os_item` inseridos junto, todos com `peca_id=NULL` (item avulso, não baixa estoque).
+- 21 pedidos sem URL Trello, 516 com URL — 96.6% potencial de cross-link.
+- Idempotência via tag `BLING-PEDIDO:<num>` em observacoes. Re-rodar não duplica.
+- Limitações: clientes com mesmo telefone podem casar errado; OS criadas sempre em `etapa=concluido` mesmo se forma=a_prazo (a parte "A Receber" vem do lançamento financeiro separado em sql/20).
+
+Script gerador: `scripts/gerar-sql-bling-os.mjs`. Análise prévia: `relatorios/bling-pedidos-analise.json`.
+
 ---
 
 ## 2. Por que existe
