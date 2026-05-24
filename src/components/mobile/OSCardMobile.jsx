@@ -26,8 +26,9 @@ function bgDaEtapa(os, dark) {
   return bgEtapa(e?.cor || 'neutro', dark)
 }
 
-// Retorna null se a string for só traços/espaços/pontos — dados placeholder do Trello
-function naoVazio(v) { return (v && !/^[\s\-–—·.]+$/.test(v)) ? v : null }
+// Retorna null se a string nao tiver nenhuma letra/numero — dados placeholder do Trello
+// (cobre "--", "-- · --", " - - ", "...", e qualquer combinacao de simbolos)
+function naoVazio(v) { return (v && /[\p{L}\p{N}]/u.test(v)) ? v : null }
 
 export default function OSCardMobile({ T, dark, os, onClick }) {
   const cor = (d, c) => dark ? d : c
