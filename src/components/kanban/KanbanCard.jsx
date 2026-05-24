@@ -27,7 +27,7 @@ export default function KanbanCard({
   const pagoTotal = estaPagaTotal(os)
   const pagoParcial = !pagoTotal && estaPagaParcial(os)
   const mostrarValor = os.valor > 0
-  const semPrazo = os.etapa === 'concluido' || os.etapa === 'recusado'
+  const semPrazo = os.etapa === 'concluido' || os.etapa === 'recusado' || !os.prazo
 
   const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
   const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento

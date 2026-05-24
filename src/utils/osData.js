@@ -5,13 +5,13 @@
 export const MENUS = [
   { id: 'painel',        label: 'Painel',        icon: 'ti-layout-dashboard', section: 'principal' },
   { id: 'os',            label: 'OS',            icon: 'ti-clipboard-list',   section: 'principal' },
+  { id: 'logistica',     label: 'Logística',     icon: 'ti-truck',            section: 'principal' },
   { id: 'clientes',      label: 'Clientes',      icon: 'ti-user',             section: 'principal' },
+  { id: 'estoque',       label: 'Estoque',       icon: 'ti-package',          section: 'principal' },
   { id: 'vendas',        label: 'Vendas',        icon: 'ti-receipt-2',        section: 'principal' },
-  { id: 'logistica',     label: 'Logística',     icon: 'ti-truck',            section: 'operacao' },
-  { id: 'estoque',       label: 'Estoque',       icon: 'ti-package',          section: 'operacao' },
   { id: 'financeiro',    label: 'Financeiro',    icon: 'ti-cash',             section: 'operacao' },
   { id: 'relatorios',    label: 'Relatórios',    icon: 'ti-chart-bar',        section: 'operacao' },
-  { id: 'meu-relatorio', label: 'Relatório',     icon: 'ti-chart-bar',        section: 'principal' },
+  { id: 'meu-relatorio', label: 'Relatório',     icon: 'ti-chart-bar',        section: 'operacao' },
   { id: 'configuracoes', label: 'Configurações', icon: 'ti-settings',         section: 'operacao' },
 ]
 // Bottom Nav mobile — 4 slots fixos por papel + botão "Mais" (5º slot) que
@@ -19,8 +19,8 @@ export const MENUS = [
 // Antes a barra mostrava 5 páginas, o que escondia 4 páginas importantes do
 // dono (Clientes, Logística, Relatórios, Configurações). Agora todas ficam
 // acessíveis via "Mais" (21/05/2026 noite).
-export const MENUS_MOBILE_DONO       = ['painel', 'os', 'clientes', 'financeiro']
-export const MENUS_MOBILE_DONO_EXTRA = ['estoque', 'vendas', 'logistica', 'relatorios', 'configuracoes']
+export const MENUS_MOBILE_DONO       = ['painel', 'os', 'logistica', 'clientes']
+export const MENUS_MOBILE_DONO_EXTRA = ['estoque', 'vendas', 'financeiro', 'relatorios', 'configuracoes']
 export const MENUS_MOBILE_FUNC       = ['painel', 'os', 'logistica', 'estoque']
 export const MENUS_MOBILE_FUNC_EXTRA = ['meu-relatorio']
 // Compat — antigos consumidores podem ler isso (BottomNav escolhe por papel)

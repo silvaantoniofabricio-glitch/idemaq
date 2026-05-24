@@ -26,6 +26,9 @@ function bgDaEtapa(os, dark) {
   return bgEtapa(e?.cor || 'neutro', dark)
 }
 
+// Retorna null se a string for só traços/espaços/pontos — dados placeholder do Trello
+function naoVazio(v) { return (v && !/^[\s\-–—·.]+$/.test(v)) ? v : null }
+
 export default function OSCardMobile({ T, dark, os, onClick }) {
   const cor = (d, c) => dark ? d : c
   const etapaCor = corDaEtapa(os, dark)
@@ -123,7 +126,7 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         lineHeight: 1.2,
       }}>
-        {os.cliente
+        {naoVazio(os.cliente)
           || (os.tipo === 'fabricacao' ? 'Fabricação interna' : 'Cliente sem cadastro')}
       </div>
 
@@ -140,9 +143,9 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
           minWidth: 0, flex: 1,
         }}>
           <i className="ti ti-device-washing-machine" style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
-          {[os.marca, os.modelo].filter(Boolean).join(' · ')
-            || os.equipamento
-            || os.defeito
+          {[naoVazio(os.marca), naoVazio(os.modelo)].filter(Boolean).join(' · ')
+            || naoVazio(os.equipamento)
+            || naoVazio(os.defeito)
             || 'Sem equipamento cadastrado'}
         </span>
 

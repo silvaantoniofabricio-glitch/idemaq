@@ -25,6 +25,7 @@ export function responsavelAtual(os) {
 // Status de prazo: 'ok' | 'vencido' | 'hoje' | 'amanha'
 export function calcStatusPrazo(prazoIso, etapaId) {
   if (etapaId === 'concluido' || etapaId === 'recusado') return 'ok'
+  if (!prazoIso) return 'ok'
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const prazo = new Date(prazoIso); prazo.setHours(0, 0, 0, 0)
   const diff = Math.round((prazo - hoje) / 86400000)
@@ -35,6 +36,7 @@ export function calcStatusPrazo(prazoIso, etapaId) {
 }
 
 export function diasPrazo(prazoIso) {
+  if (!prazoIso) return null
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const prazo = new Date(prazoIso); prazo.setHours(0, 0, 0, 0)
   return Math.round((prazo - hoje) / 86400000)
