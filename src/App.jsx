@@ -50,6 +50,7 @@ import EmConstrucao from './pages/EmConstrucao'
 import PainelMobile from './pages/mobile/PainelMobile'
 import OSMobile from './pages/mobile/OSMobile'
 import EstoqueMobile from './pages/mobile/EstoqueMobile'
+import FinanceiroMobile from './pages/mobile/FinanceiroMobile'
 
 export default function App() {
   const { T, dark, toggleTheme, isMobile } = useTheme()
@@ -177,7 +178,7 @@ function RoutesMobile({ T, dark, user }) {
       <Route path="/clientes"    element={<Clientes T={T} dark={dark} />} />
       <Route path="/logistica"   element={<Logistica T={T} dark={dark} />} />
       <Route path="/estoque"     element={<EstoqueMobile T={T} dark={dark} user={user} />} />
-      <Route path="/financeiro"    element={<AdminOnly user={user}><Financeiro T={T} dark={dark} /></AdminOnly>} />
+      <Route path="/financeiro"    element={<AdminOnly user={user}><FinanceiroMobile T={T} dark={dark} /></AdminOnly>} />
       <Route path="/vendas"        element={<AdminOnly user={user}><Vendas T={T} dark={dark} user={user} /></AdminOnly>} />
       <Route path="/relatorios"    element={<AdminOnly user={user}><Relatorios T={T} dark={dark} /></AdminOnly>} />
       <Route path="/configuracoes" element={<AdminOnly user={user}><Configuracoes T={T} dark={dark} /></AdminOnly>} />
