@@ -39,6 +39,8 @@ export default function Clientes({ T, dark }) {
   const [busca, setBusca] = useState('')
   const [modalNovo, setModalNovo] = useState(false)
   const [clienteAberto, setClienteAberto] = useState(null)
+  const [pagina, setPagina] = useState(1)
+  const POR_PAGINA = 20
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -49,6 +51,16 @@ export default function Clientes({ T, dark }) {
       (c.endereco || '').toLowerCase().includes(q)
     )
   }, [clientes, busca])
+
+  const buscando = busca.trim().length > 0
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA))
+  const paginaAtual = Math.min(pagina, totalPaginas)
+  const visiveis = filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA)
+
+  function mudarBusca(v) {
+    setBusca(v)
+    setPagina(1)
+  }
 
   function abrirFicha(c) {
     setClienteAberto(c)
@@ -106,7 +118,7 @@ export default function Clientes({ T, dark }) {
       <Card T={T} dark={dark}>
         <Input T={T} dark={dark}
           value={busca}
-          onChange={setBusca}
+          onChange={mudarBusca}
           icon="ti-search"
           placeholder="Buscar por nome, telefone ou endereço…"
         />
@@ -172,13 +184,13 @@ export default function Clientes({ T, dark }) {
                   fontSize: 11, color: T.textMuted,
                   fontVariantNumeric: 'tabular-nums',
                 }}>
-                  {filtrados.length} de {clientes.length}
+                  {`${(paginaAtual - 1) * POR_PAGINA + 1}–${Math.min(paginaAtual * POR_PAGINA, filtrados.length)} de ${filtrados.length}${buscando ? ` (de ${clientes.length})` : ''}`}
                 </span>
               }
             >Lista</SectionHeader>
           </div>
 
-          {filtrados.map((c) => (
+          {visiveis.map((c) => (
             <div key={c.id}
               onClick={() => abrirFicha(c)}
               role="button"
@@ -249,6 +261,32 @@ export default function Clientes({ T, dark }) {
               </div>
             </div>
           ))}
+
+          {totalPaginas > 1 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 10, padding: '12px 16px',
+              borderTop: `1px solid ${T.border}`,
+            }}>
+              <span style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                Página {paginaAtual} de {totalPaginas}
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Button T={T} dark={dark} variant="secondary" size="sm"
+                  iconLeft="ti-chevron-left"
+                  disabled={paginaAtual <= 1}
+                  onClick={() => setPagina(p => Math.max(1, p - 1))}>
+                  Anterior
+                </Button>
+                <Button T={T} dark={dark} variant="secondary" size="sm"
+                  iconRight="ti-chevron-right"
+                  disabled={paginaAtual >= totalPaginas}
+                  onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}>
+                  Próxima
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       )}
 
