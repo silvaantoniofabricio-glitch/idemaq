@@ -23,6 +23,17 @@ import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
 import NovaOSMobile from '../../components/os/NovaOSMobile'
 
+// Cores das etapas — usadas pelo header de cada coluna kanban
+const COR_ETAPA = {
+  yellow: '#b8860b', red: '#c04242', blue: '#5B9BD5',
+  blueLight: '#5B9BD5', neutro: '#6b7280', green: '#2e7d5e',
+}
+const BG_ETAPA = {
+  yellow: 'rgba(255,217,102,.18)', red: 'rgba(255,107,107,.18)',
+  blue: 'rgba(91,155,213,.18)', blueLight: 'rgba(91,155,213,.18)',
+  neutro: 'rgba(107,114,128,.18)', green: 'rgba(46,125,94,.18)',
+}
+
 export default function OSMobile({ T, dark, user }) {
   const { osList, setOsList, loading, refetch } = useOS(false)
   const { usuarios } = useUsuarios()
@@ -89,32 +100,26 @@ export default function OSMobile({ T, dark, user }) {
     })
   }, [osList, busca, filtros, admin])
 
-  // ─── Abas por etapa: contadores + filtragem secundária ────────────────────
-  const { abasDisponiveis, osExibidas } = useMemo(() => {
-    // Conta quantas OS há em cada etapa unificada
-    const contadores = {}
+  // ─── Colunas estilo Trello mobile ──────────────────────────────────────────
+  // Cada etapa vira uma coluna com seus cards. Mostra todas as etapas visíveis
+  // pro papel do usuário (admin vê concluído/recusado, funcionário não).
+  const colunas = useMemo(() => {
+    // Agrupa OS por etapa unificada
+    const porEtapa = {}
     for (const os of osFiltradas) {
       const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
       if (!uni) continue
-      contadores[uni.id] = (contadores[uni.id] || 0) + 1
+      if (uni.adminOnly && !admin) continue
+      ;(porEtapa[uni.id] = porEtapa[uni.id] || []).push(os)
     }
-    // Abas na ordem canônica, só as que têm OS
-    const abasDisponiveis = ETAPAS_TODOS.filter(e => contadores[e.id] > 0)
-      .map(e => ({ ...e, count: contadores[e.id] }))
+    // Retorna todas as etapas (mesmo vazias — como Trello), na ordem canônica
+    return ETAPAS_TODOS
+      .filter(e => !(e.adminOnly && !admin))
+      .map(e => ({ ...e, cards: porEtapa[e.id] || [], count: (porEtapa[e.id] || []).length }))
+  }, [osFiltradas, admin])
 
-    // Filtra a lista pela aba ativa. Se a aba não casa com nenhuma disponível
-    // (ainda decidindo, ou trocou filtro e a anterior sumiu), mostra tudo
-    // enquanto o useEffect abaixo escolhe a nova etapa default.
-    const abaValida = etapaAba && abasDisponiveis.some(a => a.id === etapaAba)
-    const osExibidas = abaValida
-      ? osFiltradas.filter(os => {
-          const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
-          return uni?.id === etapaAba
-        })
-      : osFiltradas
-
-    return { abasDisponiveis, osExibidas }
-  }, [osFiltradas, etapaAba])
+  // Compat com refs antigas (Swipe/persistência) — abasDisponiveis = colunas com >0
+  const abasDisponiveis = useMemo(() => colunas.filter(c => c.count > 0), [colunas])
 
   // Garante que uma etapa sempre fica selecionada — regra de UX. Roda quando
   // abasDisponiveis muda (load inicial, troca de filtro/zona, novo dado via
@@ -202,51 +207,39 @@ export default function OSMobile({ T, dark, user }) {
     updateOS(numero, { aguardando_peca: !os.aguardando_peca })
   }
 
-  // ─── Swipe horizontal entre abas (etapas) ──────────────────────────────────
-  // Arrasta a LISTA de OS pra esquerda → próxima aba; direita → anterior.
-  // Quando está em 'todas', primeiro swipe vai pra primeira/última aba.
-  // Nos extremos das abas, o swipe pra fora não muda nada (não dá wrap-around).
-  // Threshold 60px + detecção de eixo dominante pra não brigar com scroll vertical.
-  const touchRef = useRef(null)
+  // ─── Scroll horizontal nativo entre colunas (estilo Trello) ───────────────
+  // Cada coluna ocupa ~88% da tela. CSS scroll-snap garante que para no centro
+  // de uma coluna por vez. Refs pra (a) auto-scrollar pra etapa salva no mount
+  // e (b) detectar qual coluna está visível pra persistir no localStorage.
+  const scrollRef = useRef(null)
+  const colunaRefs = useRef({})
 
-  function trocarAbaPorSwipe(direcao) {
-    if (abasDisponiveis.length === 0) return
-    const ids = abasDisponiveis.map(a => a.id)
-    const idx = ids.indexOf(etapaAba)
-    if (idx < 0) {
-      // Está em 'todas' → entra pela primeira (se foi pra esquerda) ou última (direita)
-      setEtapaAba(ids[direcao > 0 ? 0 : ids.length - 1])
-      return
-    }
-    const proxIdx = idx + direcao
-    if (proxIdx < 0 || proxIdx >= ids.length) return // extremo — não wraps
-    setEtapaAba(ids[proxIdx])
-  }
+  // Mount inicial: scroll horizontal pra coluna salva (etapaAba)
+  useEffect(() => {
+    if (loading) return
+    const el = colunaRefs.current[etapaAba]
+    const root = scrollRef.current
+    if (!el || !root) return
+    // sem animação no primeiro paint pra evitar flash
+    root.scrollLeft = el.offsetLeft - 12
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
 
-  function onTouchStartLista(e) {
-    const t = e.touches[0]
-    touchRef.current = { x0: t.clientX, y0: t.clientY, swiping: null }
-  }
-  function onTouchMoveLista(e) {
-    if (!touchRef.current) return
-    const t = e.touches[0]
-    const dx = t.clientX - touchRef.current.x0
-    const dy = t.clientY - touchRef.current.y0
-    // Define o eixo dominante no primeiro movimento > 10px e mantém — evita
-    // que um scroll vertical iniciado vire troca de aba no meio do caminho.
-    if (touchRef.current.swiping == null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
-      touchRef.current.swiping = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+  // Atualiza etapaAba conforme o usuário rola horizontalmente — debounced
+  function onScrollColunas() {
+    const root = scrollRef.current
+    if (!root) return
+    const centro = root.scrollLeft + root.clientWidth / 2
+    let maisProxima = null
+    let menorDist = Infinity
+    for (const col of colunas) {
+      const el = colunaRefs.current[col.id]
+      if (!el) continue
+      const centroCol = el.offsetLeft + el.offsetWidth / 2
+      const dist = Math.abs(centro - centroCol)
+      if (dist < menorDist) { menorDist = dist; maisProxima = col.id }
     }
-  }
-  function onTouchEndLista(e) {
-    if (!touchRef.current) return
-    const ref = touchRef.current
-    touchRef.current = null
-    if (ref.swiping !== 'h') return
-    const t = e.changedTouches[0]
-    const dx = t.clientX - ref.x0
-    if (Math.abs(dx) < 60) return
-    trocarAbaPorSwipe(dx < 0 ? +1 : -1) // dx<0 = arrasta pra esquerda = próxima aba
+    if (maisProxima && maisProxima !== etapaAba) setEtapaAba(maisProxima)
   }
 
   return (
@@ -302,52 +295,95 @@ export default function OSMobile({ T, dark, user }) {
         <FiltrosMobile T={T} dark={dark} filtros={filtros} setFiltros={setFiltros} />
       </div>
 
-      {/* Abas por etapa */}
-      {!loading && abasDisponiveis.length > 0 && (
-        <AbasEtapa
-          T={T} dark={dark}
-          abas={abasDisponiveis}
-          ativa={etapaAba}
-          onSelect={id => setEtapaAba(id)}
-        />
-      )}
-
-      {/* Lista scrollable — swipe horizontal troca de aba */}
-      <div
-        onTouchStart={onTouchStartLista}
-        onTouchMove={onTouchMoveLista}
-        onTouchEnd={onTouchEndLista}
-        style={{
-          flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          padding: '12px 14px 80px',
-          display: 'flex', flexDirection: 'column', gap: 10,
-          touchAction: 'pan-y', // permite scroll vertical; browser não tenta voltar/avançar página
-        }}
-      >
-        {loading && (
+      {/* Kanban horizontal estilo Trello — scroll-snap entre colunas */}
+      {loading ? (
+        <div style={{ flex: 1, padding: '12px 14px 80px' }}>
           <SkeletonList T={T} />
-        )}
+        </div>
+      ) : (
+        <div
+          ref={scrollRef}
+          onScroll={onScrollColunas}
+          className="idemaq-no-scrollbar"
+          style={{
+            flex: 1, minHeight: 0,
+            display: 'flex',
+            overflowX: 'auto', overflowY: 'hidden',
+            scrollSnapType: 'x mandatory',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: 80,
+          }}
+        >
+          {colunas.map((col, idx) => {
+            const corCol = COR_ETAPA[col.cor] || COR_ETAPA.neutro
+            const bgCol = BG_ETAPA[col.cor] || BG_ETAPA.neutro
+            return (
+              <div
+                key={col.id}
+                ref={(el) => { if (el) colunaRefs.current[col.id] = el }}
+                style={{
+                  flex: '0 0 88%',
+                  scrollSnapAlign: 'center',
+                  display: 'flex', flexDirection: 'column',
+                  padding: idx === 0 ? '12px 6px 0 14px' : '12px 6px 0',
+                  minWidth: 0,
+                }}
+              >
+                {/* Header da coluna */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 12px',
+                  background: dark ? '#1a1d28' : '#f5f7fa',
+                  borderRadius: '10px 10px 0 0',
+                  borderBottom: `2px solid ${corCol}`,
+                  flexShrink: 0,
+                }}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: corCol, flexShrink: 0,
+                  }} />
+                  <span style={{
+                    fontSize: 13, fontWeight: 700, color: T.textPrimary,
+                    flex: 1, minWidth: 0,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{col.label}</span>
+                  <span style={{
+                    background: bgCol, color: corCol,
+                    fontSize: 11, fontWeight: 800,
+                    minWidth: 22, height: 20, borderRadius: 10,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 7px', fontVariantNumeric: 'tabular-nums',
+                  }}>{col.count}</span>
+                </div>
 
-        {!loading && osExibidas.length === 0 && (
-          <EmptyState T={T} busca={busca} />
-        )}
-
-        {!loading && osExibidas.length > 0 && (
-          <>
-            <div style={{
-              fontSize: 11, color: T.textMuted, fontWeight: 600,
-              textTransform: 'uppercase', letterSpacing: '.3px',
-              paddingLeft: 2,
-            }}>
-              {osExibidas.length} OS encontrada{osExibidas.length !== 1 ? 's' : ''}
-            </div>
-            {osExibidas.map(os => (
-              <OSCardMobile key={os.numero} T={T} dark={dark} os={os}
-                onClick={() => setOsAberta(os)} />
-            ))}
-          </>
-        )}
-      </div>
+                {/* Cards da coluna - scroll vertical interno */}
+                <div style={{
+                  flex: 1, minHeight: 0,
+                  overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                  background: dark ? '#0f1118' : '#eef1f5',
+                  borderRadius: '0 0 10px 10px',
+                  padding: '10px 8px',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                  touchAction: 'pan-y',
+                }}>
+                  {col.cards.length === 0 ? (
+                    <div style={{
+                      color: T.textMuted, fontSize: 12, fontStyle: 'italic',
+                      textAlign: 'center', padding: '24px 8px',
+                    }}>Sem OS nesta etapa</div>
+                  ) : col.cards.map(os => (
+                    <OSCardMobile key={os.numero} T={T} dark={dark} os={os}
+                      onClick={() => setOsAberta(os)} />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {/* Spacer final pra última coluna conseguir centralizar */}
+          <div aria-hidden="true" style={{ flex: '0 0 6%' }} />
+        </div>
+      )}
 
       {/* OSDetalhe — usa `osVigente` (derivado via useMemo do osList).
           Toda mudança em osList que atinge a OS aberta vira nova referência
