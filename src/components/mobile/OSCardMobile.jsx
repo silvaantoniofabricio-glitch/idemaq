@@ -62,6 +62,7 @@ export default function OSCardMobile({ T, dark, os, onClick }) {
         borderRadius: 12,
         cursor: 'pointer', fontFamily: 'inherit',
         textAlign: 'left', width: '100%', minHeight: 76,
+        flexShrink: 0,
       }}>
       {/* Linha 1: OS# + etapa + badge pagamento */}
       <div style={{
