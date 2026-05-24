@@ -312,7 +312,6 @@ export default function OSMobile({ T, dark, user }) {
             scrollSnapType: 'x mandatory',
             scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
-            paddingBottom: 80,
           }}
         >
           {colunas.map((col, idx) => {
@@ -366,7 +365,7 @@ export default function OSMobile({ T, dark, user }) {
                   overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                   background: dark ? '#0f1118' : '#eef1f5',
                   borderRadius: '0 0 10px 10px',
-                  padding: '10px 8px',
+                  padding: '10px 8px 80px',
                   display: 'flex', flexDirection: 'column', gap: 8,
                   touchAction: 'pan-x pan-y',
                 }}>
