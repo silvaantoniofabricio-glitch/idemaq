@@ -489,6 +489,11 @@ function ListaPecas({
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
+                {p.favorito && (
+                  <i className="ti ti-star-filled"
+                     title="Peça favorita"
+                     style={{ color: '#f59e0b', flexShrink: 0, fontSize: 14 }} />
+                )}
                 {p.nome}
                 {p.categoria && catInfo && (
                   <span style={{

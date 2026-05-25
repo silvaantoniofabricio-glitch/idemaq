@@ -78,6 +78,11 @@ export default function PecaCardMobile({ T, dark, peca, mostraValores = true, on
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           flex: 1, minWidth: 0, lineHeight: 1.25,
         }}>
+          {peca.favorito && (
+            <i className="ti ti-star-filled"
+               title="Favorita"
+               style={{ color: '#f59e0b', marginRight: 4, fontSize: 14 }} />
+          )}
           {peca.nome}
         </span>
         {cat && (
