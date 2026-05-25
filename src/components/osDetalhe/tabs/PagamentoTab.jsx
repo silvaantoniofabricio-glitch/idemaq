@@ -11,7 +11,7 @@ const TIPOS = [
 ];
 
 const TipoBadge = ({ tipo, onChange }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const [aberto, setAberto] = useState(false);
   const t = TIPOS.find(x => x.id === tipo) || TIPOS[0];
   return (
@@ -63,7 +63,7 @@ const TipoBadge = ({ tipo, onChange }) => {
 };
 
 const ItemCard = ({ item, onChange, onRemove }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const update = (patch) => onChange({ ...item, ...patch });
   const decQty = () => update({ qtd: Math.max(1, (item.qtd || 1) - 1) });
   const incQty = () => update({ qtd: (item.qtd || 1) + 1 });
@@ -105,7 +105,7 @@ const ItemCard = ({ item, onChange, onRemove }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8 }}>
         <div style={{
-          background: '#F8F9FB', border: `1px solid ${T.border}`,
+          background: dark ? 'rgba(255,255,255,0.04)' : '#F8F9FB', border: `1px solid ${T.border}`,
           borderRadius: 10, display: 'flex', alignItems: 'center',
           minHeight: 44, padding: '0 4px',
         }}>
@@ -132,7 +132,7 @@ const ItemCard = ({ item, onChange, onRemove }) => {
         </div>
 
         <div style={{
-          background: '#F8F9FB', border: `1px solid ${T.border}`,
+          background: dark ? 'rgba(255,255,255,0.04)' : '#F8F9FB', border: `1px solid ${T.border}`,
           borderRadius: 10, display: 'flex', alignItems: 'center',
           gap: 6, minHeight: 44, padding: '0 12px',
         }}>
@@ -161,10 +161,10 @@ const fmtBRL = (n) => {
 };
 
 const TotaisCard = ({ subtotal, descontoRS, total }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   return (
     <div className="idemaq-card" style={{
-      background: '#F4F9FE', border: `1px solid ${PALETA.blueLight}`,
+      background: dark ? 'rgba(91,155,213,0.10)' : '#F4F9FE', border: `1px solid ${dark ? 'rgba(91,155,213,0.30)' : PALETA.blueLight}`,
       borderRadius: MOBILE.radiusCard, padding: 14,
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
@@ -202,7 +202,7 @@ const TotaisCard = ({ subtotal, descontoRS, total }) => {
 };
 
 const PagamentoTab = ({ os, onUpdateOS }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const itens = os?.orcamento?.itens || [];
   const [descontoRS, setDescontoRS] = useState(os?.orcamento?.descontoRS || 0);
   const [descontoPct, setDescontoPct] = useState(os?.orcamento?.descontoPct || 0);
@@ -292,7 +292,7 @@ const PagamentoTab = ({ os, onUpdateOS }) => {
               onClick={() => onUpdateOS?.({ action: 'set_metodo_pagamento', metodo: m.id })}
               style={{
                 minHeight: 48,
-                background: os?.pagamento?.metodo === m.id ? PALETA.blueBg : T.card,
+                background: os?.pagamento?.metodo === m.id ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.card,
                 borderColor: os?.pagamento?.metodo === m.id ? PALETA.blueLight : T.border,
                 color: os?.pagamento?.metodo === m.id ? PALETA.blueStrong : T.textPrimary,
               }}

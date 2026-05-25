@@ -12,7 +12,7 @@ const ETAPAS_SEQ = [
 ];
 
 const StepTrail = ({ os, onAbrirAba }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
 
   const statusOf = (etapaId) => {
     if (etapaId === 'oficina') return 'now-blocked';
@@ -130,7 +130,7 @@ const StepTrail = ({ os, onAbrirAba }) => {
 };
 
 const ResumoDiagnostico = ({ os }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const causa = os?.diagnostico?.causa;
   const itensMarcados = os?.diagnostico?.componentesMarcados || [];
   if (!causa && !itensMarcados.length) return null;
@@ -162,7 +162,9 @@ const ResumoDiagnostico = ({ os }) => {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {itensMarcados.map((c, i) => (
             <Pill key={i} tone="neutral" icon="package" style={{
-              background: '#F1ECF8', color: '#5A3FA0', borderColor: '#E0D4F0',
+              background: dark ? 'rgba(140,100,200,0.18)' : '#F1ECF8',
+              color: dark ? '#c4a8f0' : '#5A3FA0',
+              borderColor: dark ? 'rgba(140,100,200,0.40)' : '#E0D4F0',
               fontSize: 11.5,
             }}>{c.label || c}</Pill>
           ))}
@@ -173,7 +175,7 @@ const ResumoDiagnostico = ({ os }) => {
 };
 
 const AcaoOficina = ({ os, onUpdateOS, onAbrirAba }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const orcamentoVazio = !os?.orcamento?.itens?.length;
 
   if (orcamentoVazio) {

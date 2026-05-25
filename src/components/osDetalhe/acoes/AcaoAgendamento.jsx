@@ -46,7 +46,7 @@ const fmtBR = (iso) => {
 };
 
 const SubAgAgenda = ({ os, onUpdateOS }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const dias = useMemo(() => proxNDias(14), []);
   const [diaSel, setDiaSel] = useState(os?.coleta?.data || dias[1]?.iso);
   const [periodoSel, setPeriodoSel] = useState(os?.coleta?.periodo || 'tarde');
@@ -145,7 +145,7 @@ const SubAgAgenda = ({ os, onUpdateOS }) => {
               <button key={p.id} onClick={() => setPeriodoSel(p.id)}
                 style={{
                   flex: 1, padding: '8px 4px',
-                  background: sel ? PALETA.blueBg : T.card,
+                  background: sel ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.card,
                   border: `1px solid ${sel ? PALETA.blueLight : T.border}`,
                   borderRadius: 10,
                   display: 'flex', flexDirection: 'column',
@@ -187,7 +187,7 @@ const SubAgAgenda = ({ os, onUpdateOS }) => {
                 onClick={() => !gone && setHoraSel(h)}
                 style={{
                   minHeight: MOBILE.btnHeight, borderRadius: 10,
-                  background: sel ? PALETA.blue : (gone ? '#F8F9FB' : T.card),
+                  background: sel ? PALETA.blue : (gone ? (dark ? 'rgba(255,255,255,0.04)' : '#F8F9FB') : T.card),
                   border: `1px solid ${sel ? PALETA.blueStrong : T.border}`,
                   color: sel ? '#fff' : (gone ? '#D1D5DB' : T.textPrimary),
                   fontSize: 14.5, fontWeight: 600,
@@ -213,7 +213,7 @@ const SubAgAgenda = ({ os, onUpdateOS }) => {
 };
 
 const SubAgendado = ({ os, onUpdateOS }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setAgora(new Date()), 60_000);
@@ -282,7 +282,7 @@ const SubAgendado = ({ os, onUpdateOS }) => {
           <TI name="calendar-event" size={14} />
           <b style={{ color: T.textPrimary, fontWeight: 600 }}>{coletaLabel}</b>
         </div>
-        <div style={{ height: 6, background: '#E5E7EB', borderRadius: 99, overflow: 'hidden' }}>
+        <div style={{ height: 6, background: dark ? 'rgba(255,255,255,0.10)' : '#E5E7EB', borderRadius: 99, overflow: 'hidden' }}>
           <span style={{
             display: 'block', height: '100%', width: `${pct}%`,
             background: 'linear-gradient(90deg,#5B9BD5,#4A86C0)',
@@ -308,7 +308,7 @@ const SubAgendado = ({ os, onUpdateOS }) => {
           }}>
           <span style={{
             width: 36, height: 36, borderRadius: 10,
-            background: '#E8F8EC', color: '#25804E',
+            background: dark ? 'rgba(46,125,94,0.20)' : '#E8F8EC', color: dark ? '#7FCEA8' : '#25804E',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}><TI name="brand-whatsapp" size={16} color="#25D366" /></span>
           <span>
@@ -332,7 +332,7 @@ const SubAgendado = ({ os, onUpdateOS }) => {
           }}>
           <span style={{
             width: 36, height: 36, borderRadius: 10,
-            background: PALETA.blueBg, color: PALETA.blueStrong,
+            background: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg, color: dark ? PALETA.blue : PALETA.blueStrong,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}><TI name="map-pin" size={16} /></span>
           <span>
@@ -360,7 +360,7 @@ const SubAgendado = ({ os, onUpdateOS }) => {
       ) : (
         <button onClick={() => setShowIdent(true)}
           style={{
-            background: '#F8F9FB', border: `1px dashed ${T.border}`,
+            background: dark ? 'rgba(255,255,255,0.04)' : '#F8F9FB', border: `1px dashed ${T.border}`,
             borderRadius: MOBILE.radiusCard, padding: 14,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
             cursor: 'pointer', textAlign: 'center',
