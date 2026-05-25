@@ -585,6 +585,8 @@ function LinhaEquipamento({ T, azul, equipamento, serie, defeito, fone, onClick,
           fontSize: 13, color: azul, flexShrink: 0,
           cursor: 'pointer',
         }} aria-hidden="true" />
+
+      {/* Equipamento (ou placeholder) */}
       {vazio ? (
         <span
           onClick={onClick}
@@ -599,46 +601,50 @@ function LinhaEquipamento({ T, azul, equipamento, serie, defeito, fone, onClick,
           Equipamento não preenchido — clique pra adicionar
         </span>
       ) : (
+        <strong
+          onClick={onClick}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          title="Abrir cadastro do equipamento"
+          style={{
+            color: hover ? azul : T.textPrimary,
+            fontWeight: 700,
+            cursor: 'pointer', transition: 'color .12s',
+          }}>
+          {equipamento}
+        </strong>
+      )}
+
+      {/* S/N e defeito só fazem sentido quando tem equipamento */}
+      {!vazio && serie && (
+        <span style={{
+          color: T.textMuted, fontSize: 10.5,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        }}>S/N {serie}</span>
+      )}
+      {!vazio && defeito && (
         <>
-          <strong
-            onClick={onClick}
-            onMouseEnter={() => setHover(true)}
-            onMouseLeave={() => setHover(false)}
-            title="Abrir cadastro do equipamento"
-            style={{
-              color: hover ? azul : T.textPrimary,
-              fontWeight: 700,
-              cursor: 'pointer', transition: 'color .12s',
-            }}>
-            {equipamento}
-          </strong>
-          {serie && (
-            <span style={{
-              color: T.textMuted, fontSize: 10.5,
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            }}>S/N {serie}</span>
-          )}
-          {defeito && (
-            <>
-              <SeparadorPonto />
-              <span style={{
-                color: T.textMuted,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                minWidth: 0, flex: '0 1 auto',
-              }}>
-                {defeito}
-              </span>
-            </>
-          )}
-          {fone && (
-            <>
-              <SeparadorPonto />
-              <ChunkClicavel T={T} azul={azul}
-                icon="ti-phone" texto={fone}
-                onClick={onWhats} title="Abrir conversa no WhatsApp"
-              />
-            </>
-          )}
+          <SeparadorPonto />
+          <span style={{
+            color: T.textMuted,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            minWidth: 0, flex: '0 1 auto',
+          }}>
+            {defeito}
+          </span>
+        </>
+      )}
+
+      {/* Telefone aparece SEMPRE quando existir — independente do equipamento.
+          Antes ficava dentro do else do "vazio" e sumia quando OS nao tinha
+          equipamento cadastrado. */}
+      {fone && (
+        <>
+          <SeparadorPonto />
+          <ChunkClicavel T={T} azul={azul}
+            icon="ti-phone" texto={fone}
+            onClick={onWhats} title="Abrir conversa no WhatsApp"
+          />
         </>
       )}
     </div>
