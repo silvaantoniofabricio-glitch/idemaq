@@ -13,10 +13,12 @@ import LogoIdemaq from '../ui/LogoIdemaq'
 export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
   return (
     <header style={{
-      background: T.card,
-      borderBottom: `1px solid ${T.border}`,
+      background: dark ? 'rgba(22,22,26,0.92)' : 'rgba(255,255,255,0.92)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
       padding: '0 12px',
-      height: 42,
+      height: 34,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0,
       position: 'sticky', top: 0, zIndex: 50,
@@ -26,7 +28,7 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
       <LogoIdemaq
         dark={dark}
         style={{
-          height: 22, width: 'auto', maxWidth: 100,
+          height: 17, width: 'auto', maxWidth: 90,
           objectFit: 'contain', display: 'block',
         }}
       />
@@ -36,13 +38,13 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
         aria-label={dark ? 'Modo claro' : 'Modo escuro'}
         style={{
           position: 'absolute', right: 10,
-          width: 30, height: 30, borderRadius: 7,
+          width: 26, height: 26, borderRadius: 6,
           background: 'transparent', border: 'none', cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           color: dark ? P.yellow : T.textMuted,
           fontFamily: 'inherit',
         }}>
-        <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 16 }} aria-hidden="true" />
+        <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 14 }} aria-hidden="true" />
       </button>
     </header>
   )

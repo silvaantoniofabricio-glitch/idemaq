@@ -258,18 +258,18 @@ export default function OSMobile({ T, dark, user }) {
     }}>
       {/* Header fixo: busca + filtros */}
       <div style={{
-        padding: '12px 14px 10px',
+        padding: '6px 10px 6px',
         background: T.bg,
         borderBottom: `1px solid ${T.border}`,
-        display: 'flex', flexDirection: 'column', gap: 10,
+        display: 'flex', flexDirection: 'column', gap: 6,
         flexShrink: 0,
       }}>
         {/* Busca + atalho Nova OS (ícone) */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
             <i className="ti ti-search" style={{
-              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 16, color: T.textDim,
+              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 13, color: T.textDim,
             }} aria-hidden="true" />
             <input
               type="search"
@@ -277,11 +277,11 @@ export default function OSMobile({ T, dark, user }) {
               onChange={e => setBusca(e.target.value)}
               placeholder="Buscar OS, cliente, marca…"
               style={{
-                width: '100%', padding: '11px 12px 11px 38px',
-                borderRadius: 10, border: `1px solid ${T.border}`,
+                width: '100%', padding: '7px 10px 7px 30px',
+                borderRadius: 8, border: `1px solid ${T.border}`,
                 background: T.card, color: T.textPrimary,
-                fontSize: 14, outline: 'none', boxSizing: 'border-box',
-                fontFamily: 'inherit', minHeight: 44,
+                fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                fontFamily: 'inherit', minHeight: 32,
               }}
             />
           </div>
@@ -290,15 +290,15 @@ export default function OSMobile({ T, dark, user }) {
             aria-label="Nova OS"
             title="Nova OS"
             style={{
-              width: 44, minHeight: 44, borderRadius: 10,
+              width: 32, minHeight: 32, borderRadius: 8,
               border: 'none', cursor: 'pointer',
-              background: dark ? '#5B9BD5' : '#5B9BD5',
+              background: '#5B9BD5',
               color: '#ffffff',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, fontFamily: 'inherit',
             }}
           >
-            <i className="ti ti-plus" style={{ fontSize: 20 }} aria-hidden="true" />
+            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
           </button>
         </div>
         <FiltrosMobile T={T} dark={dark} filtros={filtros} setFiltros={setFiltros} />
