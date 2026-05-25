@@ -26,10 +26,11 @@ export default function PipelineMobile({ T, dark, osList = [], admin = false }) 
       background: T.card,
       border: `1px solid ${T.border}`,
       borderRadius: 14,
-      padding: '14px 14px',
+      padding: '12px 12px 10px',
     }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+        display: 'flex', alignItems: 'center', gap: 6,
+        marginBottom: 6, padding: '0 2px',
       }}>
         <i className="ti ti-route" style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
         <span style={{
@@ -38,7 +39,7 @@ export default function PipelineMobile({ T, dark, osList = [], admin = false }) 
         }}>Pipeline · {etapas.reduce((s, e) => s + e.n, 0)} OS</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {etapas.map(e => {
           const corE = corEtapa(e.cor, dark)
           const bgE = bgEtapa(e.cor, dark)
@@ -50,7 +51,7 @@ export default function PipelineMobile({ T, dark, osList = [], admin = false }) 
                 display: 'grid',
                 gridTemplateColumns: '10px 1fr auto',
                 gap: 10, alignItems: 'center',
-                padding: '10px 10px', minHeight: 44,
+                padding: '8px 10px', minHeight: 40,
                 background: 'transparent',
                 border: 'none', borderRadius: 8,
                 cursor: 'pointer', fontFamily: 'inherit',
@@ -67,6 +68,7 @@ export default function PipelineMobile({ T, dark, osList = [], admin = false }) 
               <span style={{
                 fontSize: 13.5, fontWeight: ativa ? 600 : 500,
                 color: ativa ? corHero(dark) : T.textMuted,
+                minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{e.label}</span>
               <span style={{
                 fontSize: 13, fontWeight: 700,
@@ -76,6 +78,7 @@ export default function PipelineMobile({ T, dark, osList = [], admin = false }) 
                 borderRadius: 12,
                 background: ativa ? bgE : 'transparent',
                 minWidth: 32, textAlign: 'center',
+                flexShrink: 0,
               }}>{e.n}</span>
             </button>
           )

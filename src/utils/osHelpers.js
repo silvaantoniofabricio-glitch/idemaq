@@ -44,9 +44,18 @@ export function diasPrazo(prazoIso) {
 
 // Regras de movimentação de etapa — drag-and-drop ou botões manuais
 // Retorna { ok: bool, motivo?: string, alvo?: string } — alvo pode redirecionar
-export function podeMoverOS(os, etapaAlvo) {
+export function podeMoverOS(os, etapaAlvo, opts = {}) {
+  const { pularEtapas = false } = opts
   if (os.etapa === etapaAlvo) return { ok: false, motivo: 'OS já está nesta etapa' }
-  if (os.etapa === 'concluido') return { ok: false, motivo: 'OS concluída não pode ser movida — reabra se necessário' }
+  if (os.etapa === 'concluido') {
+    const config = TIPOS_OS[os.tipo]
+    const idxAtual = config.etapas.findIndex(e => e.id === os.etapa)
+    const idxAlvo  = config.etapas.findIndex(e => e.id === etapaAlvo)
+    if (!pularEtapas && idxAlvo !== idxAtual - 1) {
+      return { ok: false, motivo: 'De Concluído só é possível voltar uma etapa' }
+    }
+    return { ok: true }
+  }
   if (os.etapa === 'recusado' && etapaAlvo !== 'diagnostico') {
     return { ok: false, motivo: 'De Recusado só é possível voltar para Diagnóstico ou converter em Fabricação' }
   }
@@ -56,7 +65,7 @@ export function podeMoverOS(os, etapaAlvo) {
   const idxAlvo  = config.etapas.findIndex(e => e.id === etapaAlvo)
   if (idxAlvo === -1) return { ok: false, motivo: `Etapa "${etapaAlvo}" não existe no fluxo de ${config.label}` }
 
-  if (Math.abs(idxAlvo - idxAtual) > 1) {
+  if (!pularEtapas && Math.abs(idxAlvo - idxAtual) > 1) {
     return { ok: false, motivo: 'Não é possível pular etapas. Avance ou volte uma de cada vez.' }
   }
 

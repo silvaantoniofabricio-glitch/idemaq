@@ -91,7 +91,7 @@ export default function Kanban({ T, dark, user }) {
       notify('erro', `Esta coluna não aceita OS de ${TIPOS_OS[os.tipo].label}`)
       return
     }
-    const r = podeMoverOS(os, alvoReal)
+    const r = podeMoverOS(os, alvoReal, { pularEtapas: true })
     if (!r.ok) {
       notify('erro', r.motivo)
       setShakingNum(numero)

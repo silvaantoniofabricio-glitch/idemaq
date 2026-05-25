@@ -58,8 +58,8 @@ export default function PainelMobile({ T, dark, user }) {
 
   return (
     <div style={{
-      padding: '14px 14px 80px',
-      display: 'flex', flexDirection: 'column', gap: 12,
+      padding: '12px 12px 88px',
+      display: 'flex', flexDirection: 'column', gap: 10,
       overflowY: 'auto', flex: 1,
       background: T.bg,
     }}>

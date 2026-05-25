@@ -23,16 +23,6 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
   const isConcluido = os.etapa === 'concluido'
   const isRecusado = os.etapa === 'recusado'
 
-  // Casos especiais: banner informativo no lugar dos botões
-  if (isConcluido) {
-    return (
-      <BannerEstado T={T} dark={dark}
-        icon="ti-circle-check"
-        cor={cor(P.green, P.greenDark)}
-        texto="OS finalizada — somente leitura"
-      />
-    )
-  }
   if (isRecusado) {
     return (
       <BannerEstado T={T} dark={dark}

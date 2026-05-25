@@ -36,27 +36,27 @@ export default function HeroMobile({ T, dark, apelido = 'parceiro', faturamentoM
       background: T.card,
       border: `1px solid ${T.border}`,
       borderRadius: 14,
-      padding: '16px 16px',
-      display: 'flex', flexDirection: 'column', gap: 10,
+      padding: '14px 14px 16px',
+      display: 'flex', flexDirection: 'column', gap: 12,
     }}>
-      {/* Linha 1: avatar + saudação */}
+      {/* Linha 1: avatar + saudação + data */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{
-          width: 42, height: 42, borderRadius: 12,
+          width: 40, height: 40, borderRadius: 11,
           background: `linear-gradient(135deg, ${azul}, ${cor('#3a7bbf', '#2860a0')})`,
           color: '#fff',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, fontWeight: 800, letterSpacing: '.5px',
+          fontSize: 14.5, fontWeight: 800, letterSpacing: '.5px',
           boxShadow: `0 4px 12px ${azul}33`,
           flexShrink: 0,
         }}>{iniciais(apelido)}</div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{
-            fontSize: 11, color: T.textMuted, fontWeight: 600,
+            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: '.5px',
           }}>{saudacao()},</div>
           <div style={{
-            fontSize: 18, fontWeight: 800, color: corHero(dark),
+            fontSize: 17, fontWeight: 800, color: corHero(dark),
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             marginTop: 1, letterSpacing: '-.01em',
           }}>{apelido}</div>
@@ -67,11 +67,11 @@ export default function HeroMobile({ T, dark, apelido = 'parceiro', faturamentoM
         }}>{dataLabel}</div>
       </div>
 
-      {/* Linha 2: faturamento do mês destacado */}
+      {/* Linha 2: faturamento do mês — sem subcard, separado por divisor sutil */}
       <div style={{
-        display: 'flex', alignItems: 'baseline', gap: 10,
-        padding: '10px 12px', borderRadius: 10,
-        background: T.cardAlt, border: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'flex-end', gap: 10,
+        paddingTop: 12,
+        borderTop: `1px solid ${T.border}`,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -79,9 +79,10 @@ export default function HeroMobile({ T, dark, apelido = 'parceiro', faturamentoM
             textTransform: 'uppercase', letterSpacing: '.3px',
           }}>Faturamento do mês</div>
           <div style={{
-            fontSize: 22, fontWeight: 800, color: corHero(dark),
+            fontSize: 24, fontWeight: 800, color: corHero(dark),
             fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em',
-            marginTop: 2,
+            marginTop: 4, lineHeight: 1.1,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{fmtBRL(faturamentoMes)}</div>
         </div>
         {deltaPct != null && (

@@ -33,7 +33,7 @@ export default function KPIGridMobile({ T, dark, osList = [], loading = false })
 
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
     }}>
       {items.map((k, i) => (
         <KpiCard key={i} T={T} dark={dark} item={k} loading={loading} />
@@ -50,14 +50,17 @@ function KpiCard({ T, dark, item, loading }) {
       border: `1px solid ${T.border}`,
       borderTop: `3px solid ${item.cor}`,
       borderRadius: 12,
-      padding: '12px 13px',
-      minHeight: 88,
+      padding: '10px 12px 12px',
+      minHeight: 76,
+      display: 'flex', flexDirection: 'column', gap: 4,
+      minWidth: 0, overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <i className={`ti ${item.icon}`} style={{ fontSize: 16, color: item.cor }} aria-hidden="true" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <i className={`ti ${item.icon}`} style={{ fontSize: 16, color: item.cor, flexShrink: 0 }} aria-hidden="true" />
         <span style={{
           fontSize: 11, color: T.textMuted, fontWeight: 600,
           textTransform: 'uppercase', letterSpacing: '.3px',
+          minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{item.label}</span>
       </div>
       {loading ? (
@@ -69,6 +72,7 @@ function KpiCard({ T, dark, item, loading }) {
         <div style={{
           fontSize: 26, fontWeight: 800, color: valorCor,
           fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+          marginTop: 2,
         }}>{item.valor}</div>
       )}
     </div>

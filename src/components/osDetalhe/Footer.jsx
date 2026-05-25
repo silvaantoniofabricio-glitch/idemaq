@@ -17,23 +17,6 @@ export default function Footer({ T, dark, os, admin, onMoverOS }) {
   const isConcluido = os.etapa === 'concluido'
   const isRecusado = os.etapa === 'recusado'
 
-  // Caso especial — OS finalizada
-  if (isConcluido) {
-    return (
-      <div style={{
-        flexShrink: 0, padding: '14px 18px',
-        borderTop: `1px solid ${T.border}`,
-        background: T.cardAlt,
-        textAlign: 'center',
-        fontSize: 12.5, color: T.textMuted,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-      }}>
-        <i className="ti ti-circle-check" style={{ fontSize: 16, color: cor(P.green, P.greenDark) }} aria-hidden="true" />
-        <span>OS finalizada — somente leitura</span>
-      </div>
-    )
-  }
-
   // Caso especial — OS recusada
   if (isRecusado) {
     return (
@@ -70,77 +53,63 @@ export default function Footer({ T, dark, os, admin, onMoverOS }) {
 
   return (
     <div style={{
-      flexShrink: 0, padding: '12px 18px',
+      flexShrink: 0, padding: '10px 16px',
       borderTop: `1px solid ${T.border}`,
       background: T.card,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
     }}>
-      {/* Esquerda — Voltar etapa */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-        {anteriorCfg && (
-          <>
-            <button
-              onClick={() => { if (podeVoltar.ok && anteriorUnif) onMoverOS(os.numero, anteriorUnif.id) }}
-              disabled={!podeVoltar.ok || !anteriorUnif}
-              title={podeVoltar.ok ? `Voltar para ${anteriorCfg.label}` : podeVoltar.motivo}
-              style={{
-                padding: '8px 14px', borderRadius: 7,
-                border: `1px solid ${podeVoltar.ok ? T.border : T.border}`,
-                background: 'transparent',
-                color: podeVoltar.ok ? T.textSecondary : T.textDim,
-                fontSize: 12, fontWeight: 600,
-                cursor: podeVoltar.ok && anteriorUnif ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', gap: 5,
-                opacity: podeVoltar.ok ? 1 : 0.55,
-                fontFamily: 'inherit', flexShrink: 0,
-              }}>
-              <i className="ti ti-arrow-left" style={{ fontSize: 14 }} aria-hidden="true" />
-              Voltar etapa
-            </button>
-            <span style={{
-              fontSize: 10.5, color: T.textMuted,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              minWidth: 0,
-            }}>
-              para <strong style={{ color: T.textSecondary, fontWeight: 600 }}>{anteriorCfg.label}</strong>
-            </span>
-          </>
-        )}
-      </div>
+      <MiniBtn
+        T={T} azul={azul}
+        habilitado={podeVoltar.ok && !!anteriorUnif}
+        motivo={podeVoltar.motivo}
+        label={anteriorCfg?.label}
+        direcao="voltar"
+        onClick={() => { if (podeVoltar.ok && anteriorUnif) onMoverOS(os.numero, anteriorUnif.id) }}
+        visivel={!!anteriorCfg}
+      />
 
-      {/* Direita — Avançar etapa */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        {proximaCfg && (
-          <span style={{
-            fontSize: 10.5,
-            color: podeAvancar.ok ? T.textMuted : cor(P.red, P.redDark),
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}>
-            {!podeAvancar.ok && <i className="ti ti-lock" style={{ fontSize: 12 }} aria-hidden="true" />}
-            {podeAvancar.ok
-              ? <>Avançar para <strong style={{ color: T.textPrimary, fontWeight: 600 }}>{proximaCfg.label}</strong></>
-              : <span>{podeAvancar.motivo}</span>}
-          </span>
-        )}
-        <button
-          onClick={() => { if (podeAvancar.ok && proximaUnif) onMoverOS(os.numero, proximaUnif.id) }}
-          disabled={!podeAvancar.ok || !proximaUnif}
-          title={podeAvancar.ok ? `Avançar para ${proximaCfg?.label}` : podeAvancar.motivo}
-          style={{
-            padding: '9px 16px', borderRadius: 7, border: 'none',
-            cursor: podeAvancar.ok && proximaUnif ? 'pointer' : 'not-allowed',
-            background: podeAvancar.ok ? `linear-gradient(135deg, ${P.blue}, #3a7bbf)` : T.cardAlt,
-            color: podeAvancar.ok ? '#fff' : T.textDim,
-            fontSize: 12.5, fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 6,
-            opacity: podeAvancar.ok ? 1 : 0.6,
-            fontFamily: 'inherit',
-            boxShadow: podeAvancar.ok ? '0 2px 8px rgba(91,155,213,.25)' : 'none',
-          }}>
-          Avançar etapa
-          <i className="ti ti-arrow-right" style={{ fontSize: 14 }} aria-hidden="true" />
-        </button>
-      </div>
+      <MiniBtn
+        T={T} azul={azul}
+        habilitado={podeAvancar.ok && !!proximaUnif}
+        motivo={podeAvancar.motivo}
+        label={proximaCfg?.label}
+        direcao="avancar"
+        onClick={() => { if (podeAvancar.ok && proximaUnif) onMoverOS(os.numero, proximaUnif.id) }}
+        visivel={!!proximaCfg}
+      />
     </div>
+  )
+}
+
+function MiniBtn({ T, azul, habilitado, motivo, label, direcao, onClick, visivel }) {
+  if (!visivel) return <span style={{ width: 1 }} aria-hidden="true" />
+  const isAvancar = direcao === 'avancar'
+  const titulo = habilitado
+    ? (isAvancar ? `Avançar para ${label}` : `Voltar para ${label}`)
+    : motivo
+  return (
+    <button
+      onClick={onClick}
+      disabled={!habilitado}
+      title={titulo}
+      aria-label={titulo}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '6px 10px', borderRadius: 6,
+        border: 'none', background: 'transparent',
+        color: habilitado ? T.textSecondary : T.textDim,
+        fontSize: 12, fontWeight: 500,
+        cursor: habilitado ? 'pointer' : 'not-allowed',
+        opacity: habilitado ? 1 : 0.45,
+        fontFamily: 'inherit',
+        transition: 'color .15s, background .15s',
+      }}
+      onMouseEnter={e => { if (habilitado) { e.currentTarget.style.color = azul } }}
+      onMouseLeave={e => { if (habilitado) { e.currentTarget.style.color = T.textSecondary } }}
+    >
+      {!isAvancar && <i className="ti ti-chevron-left" style={{ fontSize: 16 }} aria-hidden="true" />}
+      <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+      {isAvancar && <i className="ti ti-chevron-right" style={{ fontSize: 16 }} aria-hidden="true" />}
+    </button>
   )
 }

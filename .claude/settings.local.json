@@ -35,7 +35,12 @@
       "PowerShell(\\(Get-Content \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\\\\CLAUDE.md\"\\).Count; [math]::Round\\(\\(Get-Item \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\\\\CLAUDE.md\"\\).Length/1KB, 1\\))",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\" -File | Where-Object { $_.Extension -in '.md','.txt','.html' } | Select-Object Name, @{N='KB';E={[math]::Round\\($_.Length/1KB,1\\)}} | Sort-Object KB -Descending | Format-Table -AutoSize)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Toni-PC\\\\projetos\\\\idemaq\" -File | Where-Object { $_.Extension -notin '.md','.txt','.html','.jsx','.js','.json','.css','.mjs','.ts','.tsx','.png','.jpg','.svg','.ico','.docx','.csv' } | Select-Object Name, Extension, @{N='KB';E={[math]::Round\\($_.Length/1KB,1\\)}} | Format-Table -AutoSize)",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Split-Path *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\Toni-PC\\\\.claude\\\\projects\\\\C--Users-Toni-PC-projetos-idemaq\\\\4822cf4b-83e3-4c10-b02e-0195e67d9ff3.jsonl\")",
+      "Bash(Select-String \"PrimitivasMobile|AcaoRecebido\")",
+      "Bash(Select-Object -Last 20)"
     ],
     "defaultMode": "auto",
     "additionalDirectories": [

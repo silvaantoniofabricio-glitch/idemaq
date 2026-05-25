@@ -112,7 +112,7 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
 
         {/* Nav */}
         <div style={{ flex: 1, padding: '6px 0', overflowY: 'auto', overflowX: 'hidden' }}>
-          <div style={{ padding: '0 6px' }}>
+          <div style={{ padding: '4px 6px 0' }}>
             {menusVisiveis.map(m =>
               <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={!expanded} T={T} dark={dark} />
             )}
