@@ -21,6 +21,7 @@ const VAZIO = {
   modelosCompativeis: '',
   qtdAtual: '',
   qtdMinima: '',
+  favorito: false,
   qtdMaxima: '',
   custoAtual: '',
   precoVenda: '',
@@ -95,6 +96,7 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
       qtdMaxima: form.qtdMaxima === '' ? toNum(form.qtdMinima) * 3 : toNum(form.qtdMaxima),
       custoAtual: custo,
       precoVenda: venda,
+      favorito: !!form.favorito,
     }
     setSalvando(true)
     try {
@@ -365,6 +367,22 @@ export default function NovaPecaModal({ T, dark, onClose, onSalvar }) {
         display: 'flex', justifyContent: 'flex-end', gap: 8,
         background: T.cardAlt, flexShrink: 0,
       }}>
+        <button
+          type="button"
+          onClick={() => setForm(f => ({ ...f, favorito: !f.favorito }))}
+          disabled={salvando}
+          title={form.favorito ? 'Remover dos favoritos' : 'Marcar como favorito (aparece primeiro nos seletores)'}
+          style={{
+            marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+            border: `1px solid ${form.favorito ? '#f59e0b' : T.border}`,
+            background: form.favorito ? '#fef3c7' : 'transparent',
+            color: form.favorito ? '#92400e' : T.text,
+            fontWeight: form.favorito ? 600 : 400,
+          }}>
+          <i className={form.favorito ? 'ti ti-star-filled' : 'ti ti-star'} style={{ color: form.favorito ? '#f59e0b' : 'inherit' }} />
+          {form.favorito ? 'Favorita' : 'Favoritar'}
+        </button>
         <Button T={T} dark={dark} variant="secondary" onClick={onClose} disabled={salvando}>
           Cancelar
         </Button>

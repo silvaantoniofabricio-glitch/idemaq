@@ -20,7 +20,7 @@ const SELECT_COLS = [
   'marca', 'tipo', 'referencia', 'modelo', 'modelos_compativeis',
   'qtd_atual', 'qtd_minima', 'qtd_maxima',
   'custo_atual', 'custo_medio', 'preco_venda',
-  'fornecedor',
+  'fornecedor', 'favorito',
 ].join(', ')
 
 function dbToUi(row) {
@@ -50,6 +50,7 @@ function dbToUi(row) {
     custoMedio:         Number(row.custo_medio ?? 0),
     precoVenda:         Number(row.preco_venda ?? 0),
     fornecedor:         row.fornecedor || '',
+    favorito:           Boolean(row.favorito),
   }
 }
 
@@ -106,6 +107,7 @@ function uiToDb(patch) {
     custoAtual:         'custo_atual',
     custoMedio:         'custo_medio',
     precoVenda:         'preco_venda',
+    favorito:           'favorito',
   }
   const out = {}
   for (const [k, v] of Object.entries(patch || {})) {
@@ -161,6 +163,7 @@ export function usePecas({ categoria = null, busca = '', page = 1, pageSize = 20
       .from('peca')
       .select(SELECT_COLS, { count: 'exact' })
       .is('deleted_at', null)
+      .order('favorito', { ascending: false })
       .order('nome', { ascending: true })
 
     if (cat) query = query.eq('categoria', cat)

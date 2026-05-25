@@ -118,6 +118,7 @@ function diffPatch(form, peca, mostraValores) {
   setIf('qtdMaxima', toNum(form.qtdMaxima))
   setIf('precoVenda', toNum(form.precoVenda))
   if (mostraValores) setIf('custoAtual', toNum(form.custoAtual))
+  setIf('favorito', !!form.favorito)
   return out
 }
 
@@ -146,6 +147,7 @@ export default function PecaDetalheModal({
     qtdMaxima: String(peca.qtdMaxima ?? 0),
     custoAtual: String(peca.custoAtual ?? 0),
     precoVenda: String(peca.precoVenda ?? 0),
+    favorito: !!peca.favorito,
   }))
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -555,10 +557,32 @@ export default function PecaDetalheModal({
           </>
         ) : (
           <>
-            <Button T={T} dark={dark} variant="ghost" iconLeft="ti-pencil"
-              onClick={entrarEdicao}>
-              Editar peça
-            </Button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button T={T} dark={dark} variant="ghost" iconLeft="ti-pencil"
+                onClick={entrarEdicao}>
+                Editar peça
+              </Button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const novoFav = !peca.favorito
+                  setForm(f => ({ ...f, favorito: novoFav }))
+                  await onSalvar?.({ favorito: novoFav })
+                }}
+                title={peca.favorito ? 'Remover dos favoritos' : 'Marcar como favorito'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+                  border: `1px solid ${peca.favorito ? '#f59e0b' : T.border}`,
+                  background: peca.favorito ? '#fef3c7' : 'transparent',
+                  color: peca.favorito ? '#92400e' : T.text,
+                  fontWeight: peca.favorito ? 600 : 400,
+                }}>
+                <i className={peca.favorito ? 'ti ti-star-filled' : 'ti ti-star'}
+                   style={{ color: peca.favorito ? '#f59e0b' : 'inherit' }} />
+                {peca.favorito ? 'Favorita' : 'Favoritar'}
+              </button>
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button T={T} dark={dark} variant="secondary" onClick={onClose}>Fechar</Button>
               {/* Ajuste manual só pro dono — funcionário não mexe em estoque
