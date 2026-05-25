@@ -59,7 +59,7 @@ export function useOSDetalheModal({ notify, buscando = false } = {}) {
       notify?.('erro', `Esta coluna não aceita OS de ${TIPOS_OS[os.tipo].label}`)
       return
     }
-    const r = podeMoverOS(os, alvoReal)
+    const r = podeMoverOS(os, alvoReal, { pularEtapas: true })
     if (!r.ok) {
       notify?.('erro', r.motivo)
       return

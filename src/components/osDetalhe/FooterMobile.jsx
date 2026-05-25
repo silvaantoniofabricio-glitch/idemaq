@@ -9,7 +9,7 @@
 //   • Safe-area-inset-bottom respeitada (iPhones com home bar)
 //   • Estados concluído/recusado mostram banner-info no lugar dos botões
 
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS, ETAPAS_TODOS } from '../../utils/osData'
 import { podeMoverOS } from '../../utils/osHelpers'
@@ -49,6 +49,14 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
   const azul = cor(P.blue, P.blueDark)
   const avancarHabilitado = podeAvancar.ok && proximaUnif
   const voltarHabilitado = podeVoltar.ok && anteriorUnif
+
+  const etapasAlcancaveis = etapas
+    .filter(e => e.id !== os.etapa)
+    .map(e => {
+      const r = podeMoverOS(os, e.id, { pularEtapas: true })
+      const unif = ETAPAS_TODOS.find(et => et.match?.[os.tipo] === e.id)
+      return { ...e, ok: r.ok, motivo: r.motivo, unifId: unif?.id }
+    })
 
   return (
     <div style={{
@@ -109,6 +117,12 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
           <div style={{ width: 48, flexShrink: 0 }} aria-hidden="true" />
         )}
 
+        {/* Pular para — menu */}
+        <PularMenuMobile T={T} dark={dark} azul={azul}
+          etapas={etapasAlcancaveis}
+          onEscolher={(unifId) => onMoverOS(os.numero, unifId)}
+        />
+
         {/* Avançar — primário, expande */}
         <button
           onClick={() => { if (avancarHabilitado) onMoverOS(os.numero, proximaUnif.id) }}
@@ -140,6 +154,66 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
           )}
         </button>
       </div>
+    </div>
+  )
+}
+
+function PularMenuMobile({ T, dark, azul, etapas, onEscolher }) {
+  const [aberto, setAberto] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!aberto) return
+    function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setAberto(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('touchstart', onDoc)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('touchstart', onDoc)
+    }
+  }, [aberto])
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setAberto(v => !v)}
+        title="Pular para uma etapa específica"
+        aria-label="Pular para etapa"
+        style={{
+          width: 48, minHeight: 48, borderRadius: 12,
+          border: `1px solid ${T.border}`,
+          background: T.cardAlt, color: T.textPrimary,
+          cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'inherit',
+          WebkitTapHighlightColor: 'transparent',
+        }}>
+        <i className="ti ti-chevrons-right" style={{ fontSize: 20 }} />
+      </button>
+      {aberto && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+          minWidth: 220, maxHeight: 320, overflowY: 'auto',
+          background: T.card, border: `1px solid ${T.border}`, borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(0,0,0,.25)', zIndex: 100, padding: 6,
+        }}>
+          {etapas.map(e => (
+            <button
+              key={e.id}
+              disabled={!e.ok || !e.unifId}
+              title={e.ok ? `Ir para ${e.label}` : e.motivo}
+              onClick={() => { if (e.ok && e.unifId) { onEscolher(e.unifId); setAberto(false) } }}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '10px 12px', borderRadius: 6, border: 'none',
+                background: 'transparent', color: e.ok ? T.text : T.textDim,
+                fontSize: 14, fontFamily: 'inherit',
+                cursor: e.ok ? 'pointer' : 'not-allowed',
+                opacity: e.ok ? 1 : 0.5,
+              }}>
+              {e.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
