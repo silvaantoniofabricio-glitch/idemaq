@@ -8,28 +8,14 @@
 
 import React from 'react'
 import { corEtapa } from '../../utils/colors'
+import { CATEGORIAS_PECA } from '../../utils/categoriasPeca'
 
 // Cor por papel — alinhada com a paleta Deutan. Usada como fallback quando
 // `usuarios` ainda está carregando ou o id do histórico não bate com ninguém.
 const COR_PAPEL = { dono: '#5B9BD5', logistica: '#FFD966', oficina: '#B8CCE4' }
 
-// Espelha os ids/labels do checklist de AcaoDiagnostico.jsx.
-// Mantido aqui pra não importar do arquivo de uma etapa específica.
-export const ITENS_DIAG = {
-  motor_principal: 'Motor principal', correia: 'Correia', polia_motor: 'Polia do motor',
-  mecanismo: 'Mecanismo', embreagem: 'Embreagem', polia_mecanismo: 'Polia do mecanismo',
-  catraca: 'Catraca / engaste', rolamentos_cesto: 'Rolamentos do cesto',
-  rolamento_eixo: 'Rolamento do eixo', rolamentos_motor: 'Rolamentos do motor',
-  bomba_drenagem: 'Bomba de drenagem', valvula_entrada: 'Válvula de entrada',
-  mangueira_entrada: 'Mangueira de entrada', mangueira_saida: 'Mangueira de saída',
-  mangueira_interna: 'Mangueira interna', pressostato: 'Pressostato',
-  borracha_porta: 'Borracha da porta', placa_potencia: 'Placa de potência',
-  placa_interface: 'Placa interface', timer_mecanico: 'Timer mecânico',
-  capacitor: 'Capacitor', sensor_temperatura: 'Sensor de temperatura',
-  sensor_tampa: 'Sensor da tampa', trava_porta: 'Trava da porta',
-  cesto: 'Cesto', agitador: 'Agitador', suporte_cesto: 'Suporte do cesto',
-  suspensao: 'Suspensão', tirantes: 'Tirantes da suspensão', pe_nivelador: 'Pé nivelador',
-}
+// Mapa id → label derivado de categoriasPeca.js — única fonte da verdade.
+export const ITENS_DIAG = Object.fromEntries(CATEGORIAS_PECA.map(c => [c.id, c.label]))
 
 // Converte o checklist do diagnóstico em lista plana — 1 entrada por flag.
 // Item com man + troca vira 2 entradas (mais escaneável).

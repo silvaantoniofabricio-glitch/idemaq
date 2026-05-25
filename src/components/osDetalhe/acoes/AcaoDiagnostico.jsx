@@ -3,13 +3,31 @@ import { useTheme } from '../../../theme';
 import {
   TI, NowCard, Group, Input, TextArea, BtnMobile, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile';
+import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca';
 
-const GRUPOS_PADRAO = [
-  { id: 'motor',    label: 'Motor',     icon: 'engine',  total: 8 },
-  { id: 'agua',     label: 'Água',      icon: 'droplet', total: 6 },
-  { id: 'eletrico', label: 'Elétrico',  icon: 'bolt',    total: 5 },
-  { id: 'estrut',   label: 'Estrutura', icon: 'tool',    total: 4 },
-];
+// Deriva grupos e itens das categorias do estoque — única fonte da verdade
+const ICON_MAP = {
+  motor:     'engine',
+  agua:      'droplet',
+  eletrico:  'bolt',
+  estrutura: 'tool',
+  externo:   'package',
+  outros:    'puzzle',
+};
+
+const GRUPOS_PADRAO = Object.entries(GRUPOS_CATEGORIA).map(([id, g]) => ({
+  id,
+  label: g.label,
+  icon: ICON_MAP[id] || 'tool',
+  total: CATEGORIAS_PECA.filter(c => c.grupo === id).length,
+}));
+
+const ITENS_PADRAO = Object.fromEntries(
+  Object.keys(GRUPOS_CATEGORIA).map(grupoId => [
+    grupoId,
+    CATEGORIAS_PECA.filter(c => c.grupo === grupoId).map(c => ({ id: c.id, label: c.label })),
+  ])
+);
 
 const PRE_TONES = {
   ok:      { tone: 'green',  icon: 'check' },
@@ -95,28 +113,6 @@ const ItensDoGrupo = ({ itens, marcados, onToggle }) => {
   );
 };
 
-const ITENS_PADRAO = {
-  motor: [
-    { id: 'rolam', label: 'Rolamento do tambor',     acao: 'trocar' },
-    { id: 'corr',  label: 'Correia de transmissão',  acao: 'trocar' },
-    { id: 'acopl', label: 'Acoplamento motor' },
-    { id: 'polia', label: 'Polia' },
-    { id: 'bobin', label: 'Bobina' },
-  ],
-  agua: [
-    { id: 'valv-ent', label: 'Válvula de entrada' },
-    { id: 'valv-sai', label: 'Válvula de saída' },
-    { id: 'mang',     label: 'Mangueiras' },
-  ],
-  eletrico: [
-    { id: 'painel', label: 'Placa do painel' },
-    { id: 'sensor', label: 'Sensor de nível' },
-  ],
-  estrut: [
-    { id: 'amort', label: 'Amortecedores' },
-    { id: 'pe',    label: 'Pés' },
-  ],
-};
 
 const AcaoDiagnostico = ({ os, onUpdateOS }) => {
   const { T } = useTheme();
