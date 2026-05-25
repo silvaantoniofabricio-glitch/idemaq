@@ -11,7 +11,7 @@ const ICON_MAP = {
   agua:      'droplet',
   eletrico:  'bolt',
   estrutura: 'tool',
-  externo:   'package',
+  acabamento: 'package',
   outros:    'puzzle',
 };
 
