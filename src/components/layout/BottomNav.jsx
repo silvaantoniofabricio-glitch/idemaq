@@ -42,14 +42,16 @@ export default function BottomNav({ pagina, setPagina, sair, user, T, dark, togg
   return (
     <>
       <nav style={{
-        background: T.card,
-        borderTop: `1px solid ${T.border}`,
+        background: dark ? 'rgba(22,22,26,0.92)' : 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderTop: `1px solid ${dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
         display: 'flex',
         zIndex: 100,
-        height: 64,
+        height: 52,
         flexShrink: 0,
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        boxShadow: dark ? '0 -4px 12px rgba(0,0,0,0.25)' : '0 -2px 8px rgba(0,0,0,0.04)',
+        boxShadow: dark ? '0 -2px 16px rgba(0,0,0,0.35)' : '0 -1px 12px rgba(0,0,0,0.06)',
       }}>
         {itemsFixos.map(m => {
           const ativo = pagina === m.id
@@ -92,30 +94,30 @@ function BotaoNav({ m, ativo, T, activeClr, activeBg, onClick }) {
         flex: 1, position: 'relative',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        gap: 2, padding: '6px 4px',
+        gap: 1, padding: '4px 2px',
         background: 'transparent', border: 'none', cursor: 'pointer',
         color: ativo ? activeClr : T.textMuted,
         fontFamily: 'inherit',
-        transition: 'color .12s',
+        transition: 'color .15s',
       }}>
       {ativo && (
         <div style={{
-          position: 'absolute', top: 6,
-          width: 48, height: 30, borderRadius: 16,
+          position: 'absolute', top: 5,
+          width: 38, height: 24, borderRadius: 12,
           background: activeBg,
           zIndex: 0,
         }} />
       )}
       <i className={`ti ${m.icon}`}
          style={{
-           fontSize: 20, position: 'relative', zIndex: 1,
-           marginTop: ativo ? 2 : 0,
-           transition: 'transform .12s',
-           transform: ativo ? 'translateY(-1px)' : 'none',
+           fontSize: 18, position: 'relative', zIndex: 1,
+           transition: 'transform .15s',
+           transform: ativo ? 'translateY(-1px) scale(1.08)' : 'none',
          }} aria-hidden="true" />
       <span style={{
-        fontSize: 10, fontWeight: 600,
+        fontSize: 9.5, fontWeight: ativo ? 700 : 500,
         position: 'relative', zIndex: 1,
+        letterSpacing: '0.01em',
       }}>{m.label}</span>
     </button>
   )
