@@ -112,6 +112,7 @@ export default function OSMobile({ T, dark, user }) {
   // ─── Colunas estilo Trello mobile ──────────────────────────────────────────
   // Cada etapa vira uma coluna com seus cards. Mostra todas as etapas visíveis
   // pro papel do usuário (admin vê concluído/recusado, funcionário não).
+  // Quando uma zona está selecionada, exibe APENAS as colunas daquela zona.
   const colunas = useMemo(() => {
     // Agrupa OS por etapa unificada
     const porEtapa = {}
@@ -121,11 +122,15 @@ export default function OSMobile({ T, dark, user }) {
       if (uni.adminOnly && !admin) continue
       ;(porEtapa[uni.id] = porEtapa[uni.id] || []).push(os)
     }
-    // Retorna todas as etapas (mesmo vazias — como Trello), na ordem canônica
+    // Etapas permitidas pela zona (se 'todos', mostra todas)
+    const zonaCfg = ZONAS.find(z => z.id === filtros.zona)
+    const etapasZonaSet = zonaCfg ? new Set(zonaCfg.etapas) : null
+
     return ETAPAS_TODOS
       .filter(e => !(e.adminOnly && !admin))
+      .filter(e => !etapasZonaSet || etapasZonaSet.has(e.id))
       .map(e => ({ ...e, cards: porEtapa[e.id] || [], count: (porEtapa[e.id] || []).length }))
-  }, [osFiltradas, admin])
+  }, [osFiltradas, admin, filtros.zona])
 
   // Compat com refs antigas (Swipe/persistência) — abasDisponiveis = colunas com >0
   const abasDisponiveis = useMemo(() => colunas.filter(c => c.count > 0), [colunas])
