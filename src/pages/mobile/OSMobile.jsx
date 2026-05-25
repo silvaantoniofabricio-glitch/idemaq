@@ -303,10 +303,10 @@ export default function OSMobile({ T, dark, user }) {
                 key={col.id}
                 ref={(el) => { if (el) colunaRefs.current[col.id] = el }}
                 style={{
-                  flex: viewMode === 'compact' ? '0 0 52%' : '0 0 88%',
+                  flex: viewMode === 'compact' ? '0 0 50%' : '0 0 88%',
                   scrollSnapAlign: viewMode === 'compact' ? 'start' : 'center',
                   display: 'flex', flexDirection: 'column',
-                  padding: idx === 0 ? '12px 4px 0 14px' : '12px 4px 0',
+                  padding: viewMode === 'compact' ? '12px 4px 0 4px' : (idx === 0 ? '12px 4px 0 14px' : '12px 4px 0'),
                   minWidth: 0,
                 }}
               >
@@ -364,8 +364,8 @@ export default function OSMobile({ T, dark, user }) {
               </div>
             )
           })}
-          {/* Spacer final pra última coluna conseguir centralizar */}
-          <div aria-hidden="true" style={{ flex: '0 0 6%' }} />
+          {/* Spacer final pra última coluna conseguir centralizar (no compacto é menor) */}
+          <div aria-hidden="true" style={{ flex: viewMode === 'compact' ? '0 0 4px' : '0 0 6%' }} />
         </div>
       )}
 
