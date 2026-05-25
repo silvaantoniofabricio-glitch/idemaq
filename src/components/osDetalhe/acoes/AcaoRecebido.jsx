@@ -9,7 +9,6 @@ const TESTES_PADRAO = [
   { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
   { id: 'agitacao',      label: 'Agitação',         icon: 'refresh' },
   { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
-  { id: 'aquecimento',   label: 'Aquecimento',      icon: 'flame' },
   { id: 'painel',        label: 'Painel / botões',  icon: 'device-laptop' },
 ];
 
