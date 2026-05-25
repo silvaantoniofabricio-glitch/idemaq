@@ -21,7 +21,7 @@ const fmtBRLShort = (n) => {
 };
 
 const GrupoBlock = ({ tipo, itens, subtotal, onAdd, onEditItem }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   return (
     <div className="idemaq-card" style={{
       background: T.card, border: `1px solid ${T.border}`,
@@ -30,7 +30,8 @@ const GrupoBlock = ({ tipo, itens, subtotal, onAdd, onEditItem }) => {
     }}>
       <div style={{
         padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
-        background: '#F8F9FB', borderBottom: `1px solid ${T.border}`,
+        background: dark ? 'rgba(255,255,255,0.04)' : '#F8F9FB',
+        borderBottom: `1px solid ${T.border}`,
       }}>
         <span style={{
           width: 28, height: 28, borderRadius: 8,
@@ -101,7 +102,7 @@ const GrupoBlock = ({ tipo, itens, subtotal, onAdd, onEditItem }) => {
 };
 
 const ResumoDiagnostico = ({ os }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const causa = os?.diagnostico?.causa;
   const itensMarcados = os?.diagnostico?.componentesMarcados || [];
   if (!causa && !itensMarcados.length) return null;
@@ -146,7 +147,9 @@ const ResumoDiagnostico = ({ os }) => {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {itensMarcados.map((c, i) => (
               <Pill key={i} tone="neutral" icon="package" style={{
-                background: '#F1ECF8', color: '#5A3FA0', borderColor: '#E0D4F0',
+                background: dark ? 'rgba(140,100,200,0.18)' : '#F1ECF8',
+                color: dark ? '#c4a8f0' : '#5A3FA0',
+                borderColor: dark ? 'rgba(140,100,200,0.40)' : '#E0D4F0',
                 fontSize: 11.5,
               }}>{c.label || c}</Pill>
             ))}
@@ -158,7 +161,7 @@ const ResumoDiagnostico = ({ os }) => {
 };
 
 const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   const itens = os?.orcamento?.itens || [];
 
   const porTipo = useMemo(() => {
@@ -216,8 +219,10 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
       ))}
 
       <div className="idemaq-card" style={{
-        background: 'linear-gradient(180deg,#F4F9FE 0%,#fff 100%)',
-        border: `1px solid ${PALETA.blueLight}`,
+        background: dark
+          ? 'linear-gradient(180deg,rgba(91,155,213,0.08) 0%,rgba(91,155,213,0.02) 100%)'
+          : 'linear-gradient(180deg,#F4F9FE 0%,#fff 100%)',
+        border: `1px solid ${dark ? 'rgba(91,155,213,0.30)' : PALETA.blueLight}`,
         borderRadius: MOBILE.radiusCard, padding: 14,
         display: 'flex', flexDirection: 'column', gap: 8,
       }}>

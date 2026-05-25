@@ -106,18 +106,18 @@ export const Pill = ({ tone = 'neutral', icon, children, style }) => {
 };
 
 export const NowCard = ({ icon = 'sparkles', titulo, descricao, children }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
   return (
     <div className="idemaq-card" style={{
-      background: PALETA.blueBg,
-      border: `1px solid #D2E1F1`,
+      background: dark ? 'rgba(91,155,213,0.10)' : PALETA.blueBg,
+      border: `1px solid ${dark ? 'rgba(91,155,213,0.35)' : '#D2E1F1'}`,
       borderRadius: MOBILE.radiusCard,
       padding: 14,
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        color: PALETA.blueStrong, fontWeight: 700, fontSize: 11,
+        color: dark ? PALETA.blue : PALETA.blueStrong, fontWeight: 700, fontSize: 11,
         letterSpacing: '.08em', textTransform: 'uppercase',
       }}>
         <TI name={icon} size={16} />
