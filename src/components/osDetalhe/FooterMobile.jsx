@@ -100,9 +100,9 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
             title={voltarHabilitado ? `Voltar para ${anteriorCfg.label}` : podeVoltar.motivo}
             aria-label={voltarHabilitado ? `Voltar para ${anteriorCfg.label}` : podeVoltar.motivo}
             style={{
-              width: 48, minHeight: 48, borderRadius: 12,
+              width: 44, minHeight: 48, borderRadius: 10,
               border: `1px solid ${T.border}`,
-              background: T.cardAlt,
+              background: 'transparent',
               color: voltarHabilitado ? T.textPrimary : T.textDim,
               cursor: voltarHabilitado ? 'pointer' : 'not-allowed',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -111,10 +111,10 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
               fontFamily: 'inherit',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className="ti ti-arrow-left" style={{ fontSize: 20 }} aria-hidden="true" />
+            <i className="ti ti-arrow-left" style={{ fontSize: 18 }} aria-hidden="true" />
           </button>
         ) : (
-          <div style={{ width: 48, flexShrink: 0 }} aria-hidden="true" />
+          <div style={{ width: 44, flexShrink: 0 }} aria-hidden="true" />
         )}
 
         {/* Pular para — menu */}
@@ -123,34 +123,47 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
           onEscolher={(unifId) => onMoverOS(os.numero, unifId)}
         />
 
-        {/* Avançar — primário, expande */}
+        {/* Avançar — primário, expande. Visual flat com hierarquia tipografica:
+            "Avançar" em bold, etapa-alvo em weight regular sutil. */}
         <button
           onClick={() => { if (avancarHabilitado) onMoverOS(os.numero, proximaUnif.id) }}
           disabled={!avancarHabilitado}
           title={proximaCfg ? `Avançar para ${proximaCfg.label}` : ''}
           style={{
-            flex: 1, minHeight: 48, borderRadius: 12, border: 'none',
+            flex: 1, minHeight: 48, borderRadius: 10,
             cursor: avancarHabilitado ? 'pointer' : 'not-allowed',
-            background: avancarHabilitado
-              ? `linear-gradient(135deg, ${P.blue}, #3a7bbf)`
-              : T.cardAlt,
+            background: avancarHabilitado ? azul : T.cardAlt,
+            border: avancarHabilitado
+              ? `1px solid ${dark ? '#3a7bbf' : '#3a7bbf'}`
+              : `1px solid ${T.border}`,
             color: avancarHabilitado ? '#fff' : T.textDim,
-            fontSize: 14.5, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
             opacity: avancarHabilitado ? 1 : 0.55,
             fontFamily: 'inherit',
-            boxShadow: avancarHabilitado ? '0 4px 14px rgba(91,155,213,.35)' : 'none',
             WebkitTapHighlightColor: 'transparent',
             padding: '0 14px',
             overflow: 'hidden',
-          }}>
+            transition: 'transform .08s, filter .12s',
+          }}
+          onTouchStart={e => { if (avancarHabilitado) e.currentTarget.style.filter = 'brightness(.92)' }}
+          onTouchEnd={e => { e.currentTarget.style.filter = 'none' }}>
           <span style={{
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {proximaCfg ? `Avançar → ${proximaCfg.label}` : 'Última etapa'}
-          </span>
+            fontSize: 14.5, fontWeight: 700, letterSpacing: '.01em',
+          }}>Avançar</span>
           {proximaCfg && (
-            <i className="ti ti-arrow-right" style={{ fontSize: 18, flexShrink: 0 }} aria-hidden="true" />
+            <>
+              <i className="ti ti-arrow-right" style={{
+                fontSize: 15, flexShrink: 0, opacity: 0.85,
+              }} aria-hidden="true" />
+              <span style={{
+                fontSize: 13.5, fontWeight: 500, opacity: 0.92,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                minWidth: 0,
+              }}>{proximaCfg.label}</span>
+            </>
+          )}
+          {!proximaCfg && (
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Última etapa</span>
           )}
         </button>
       </div>
@@ -178,15 +191,16 @@ function PularMenuMobile({ T, dark, azul, etapas, onEscolher }) {
         title="Pular para uma etapa específica"
         aria-label="Pular para etapa"
         style={{
-          width: 48, minHeight: 48, borderRadius: 12,
+          width: 44, minHeight: 48, borderRadius: 10,
           border: `1px solid ${T.border}`,
-          background: T.cardAlt, color: T.textPrimary,
+          background: 'transparent', color: T.textMuted,
           cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: 'inherit',
           WebkitTapHighlightColor: 'transparent',
+          transition: 'background .12s, color .12s',
         }}>
-        <i className="ti ti-chevrons-right" style={{ fontSize: 20 }} />
+        <i className="ti ti-dots" style={{ fontSize: 18 }} />
       </button>
       {aberto && (
         <div style={{
