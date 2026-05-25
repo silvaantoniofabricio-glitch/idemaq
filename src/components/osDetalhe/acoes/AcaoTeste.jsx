@@ -21,11 +21,14 @@ import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import BlocoAcao from './BlocoAcao'
 
+// Espelha exatamente o checklist do AcaoRecebido (mesma ordem, mesmos labels).
+// Se mudar lá, atualizar aqui — a Idemaq quer paridade visual entre as 2 etapas.
 const TESTES = [
   { id: 'entrada_agua',  label: 'Entrada de água', icon: 'ti-droplet' },
   { id: 'saida_agua',    label: 'Saída de água',   icon: 'ti-droplet-off' },
   { id: 'agitacao',      label: 'Agitação',        icon: 'ti-refresh' },
   { id: 'centrifugacao', label: 'Centrifugação',   icon: 'ti-rotate-clockwise' },
+  { id: 'painel',        label: 'Painel / botões', icon: 'ti-device-laptop' },
 ]
 
 const OPCOES = [

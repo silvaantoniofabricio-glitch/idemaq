@@ -12,7 +12,7 @@
 //     Ao confirmar: vai pra Pagamento — ou DIRETO pra Concluído se OS já estiver
 //     paga (estaPagaTotal) — mesma regra do CLAUDE.md.
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa, bgEtapa, corHero } from '../../../utils/colors'
@@ -22,6 +22,39 @@ import {
 } from '../../../utils/osStorage'
 import { useToast } from '../../ui'
 import BlocoAcao from './BlocoAcao'
+
+// ─── Seletor de data/hora estilo Ag. agendamento ─────────────────────────────
+const DOW = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+const PERIODOS = [
+  { id: 'manha', label: 'Manhã', icon: 'ti-sunrise', ini: 6,  fim: 12 },
+  { id: 'tarde', label: 'Tarde', icon: 'ti-sun',     ini: 12, fim: 18 },
+  { id: 'noite', label: 'Noite', icon: 'ti-moon',    ini: 18, fim: 22 },
+]
+const proxNDias = (n = 14) => {
+  const out = []
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  for (let i = 0; i < n; i++) {
+    const d = new Date(hoje); d.setDate(d.getDate() + i)
+    out.push({ iso: d.toISOString().slice(0, 10), dia: d.getDate(), dow: DOW[d.getDay()], isHoje: i === 0 })
+  }
+  return out
+}
+const horariosDoPeriodo = (id) => {
+  const p = PERIODOS.find(x => x.id === id) || PERIODOS[1]
+  const out = []
+  for (let h = p.ini; h < p.fim; h++) {
+    for (let m = 0; m < 60; m += 15) out.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+  }
+  return out
+}
+const detectarPeriodo = (hora) => {
+  if (!hora) return 'tarde'
+  const h = parseInt(hora.split(':')[0], 10)
+  if (h < 12) return 'manha'
+  if (h < 18) return 'tarde'
+  return 'noite'
+}
 
 export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpdateOS, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
@@ -41,12 +74,16 @@ export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpda
 
   const emFase2 = !!dataAgendada && !editando
 
-  // Estado do form de agendamento (fase 1 ou reagendar) — responsável é
-  // sempre o usuário logado (auth), sem dropdown. Quem agenda fica registrado.
-  const agora = new Date()
-  agora.setHours(agora.getHours() + 24)  // padrão: amanhã no mesmo horário
-  const padraoIso = agora.toISOString().slice(0, 16)
-  const [dataHora, setDataHora] = useState(dataAgendada || padraoIso)
+  // Estado do form de agendamento (fase 1 ou reagendar) — UI estilo
+  // Ag. agendamento: chip de dia + período + slot 15-em-15min.
+  // Combina diaSel + horaSel em ISO datetime ao salvar.
+  const dias = useMemo(() => proxNDias(14), [])
+  const dataAgendadaIso = dataAgendada ? dataAgendada.slice(0, 10) : null
+  const dataAgendadaHora = dataAgendada ? dataAgendada.slice(11, 16) : null
+  const [diaSel, setDiaSel] = useState(dataAgendadaIso || dias[1]?.iso || dias[0]?.iso)
+  const [periodoSel, setPeriodoSel] = useState(detectarPeriodo(dataAgendadaHora))
+  const [horaSel, setHoraSel] = useState(dataAgendadaHora || null)
+  const horariosSlots = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel])
   const [obs, setObs] = useState(obsAgendada)
   const meuApelido = lista.find(u => u.id === user?.id)?.apelido || 'Você'
 
@@ -108,18 +145,19 @@ export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpda
   }
 
   function agendar() {
-    if (!dataHora) {
-      notify('erro', 'Defina data e hora da entrega')
+    if (!diaSel || !horaSel) {
+      notify('erro', 'Escolha o dia e o horário da entrega')
       return
     }
+    const dataHoraIso = `${diaSel}T${horaSel}`
     onUpdateOS?.(os.numero, {
-      entrega_data: dataHora,
+      entrega_data: dataHoraIso,
       // responsável = quem agendou (usuário logado). Sem dropdown.
       entrega_responsavel: user?.id || null,
       entrega_observacoes: obs,
     })
     setEditando(false)
-    notify('ok', `Entrega agendada para ${fmtDataHora(dataHora)}`)
+    notify('ok', `Entrega agendada para ${fmtDataHora(dataHoraIso)}`)
   }
 
   function reagendar() {
@@ -127,10 +165,14 @@ export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpda
   }
 
   function cancelarReagendar() {
-    setDataHora(dataAgendada)
+    setDiaSel(dataAgendadaIso || dias[1]?.iso || dias[0]?.iso)
+    setHoraSel(dataAgendadaHora || null)
+    setPeriodoSel(detectarPeriodo(dataAgendadaHora))
     setObs(obsAgendada)
     setEditando(false)
   }
+
+  const podeAgendar = !!diaSel && !!horaSel
 
   function confirmarEntrega() {
     // Foto da entrega é obrigatória pra funcionário (prova de devolução em
@@ -366,14 +408,103 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
         </div>
       )}
 
-      <Campo T={T} label="Data e hora">
-        <input
-          type="datetime-local"
-          value={dataHora}
-          onChange={(e) => setDataHora(e.target.value)}
-          style={{ ...inputStyle(T), colorScheme: dark ? 'dark' : 'light' }}
-        />
-      </Campo>
+      {/* DIA — chips horizontais (próximos 14 dias) */}
+      <div>
+        <div style={secaoHdr(T, azul)}>
+          <i className="ti ti-calendar" style={{ fontSize: 13 }} aria-hidden="true" />
+          DIA · próximos 14 dias
+        </div>
+        <div style={{
+          display: 'flex', gap: 6, overflowX: 'auto',
+          margin: '0 -14px', padding: '0 14px', scrollbarWidth: 'none',
+        }} className="idemaq-no-scrollbar">
+          {dias.map(d => {
+            const sel = d.iso === diaSel
+            return (
+              <button key={d.iso} type="button" onClick={() => setDiaSel(d.iso)}
+                style={{
+                  flex: '0 0 auto', width: 54, padding: '8px 0', borderRadius: 12,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  background: sel ? azul : T.card,
+                  border: `1px solid ${sel ? azul : T.border}`,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <span style={{
+                  fontSize: 9.5, fontWeight: 700,
+                  color: sel ? 'rgba(255,255,255,.85)' : T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.08em',
+                }}>{d.dow}</span>
+                <span style={{
+                  fontSize: 18, fontWeight: 700,
+                  color: sel ? '#fff' : T.textPrimary,
+                  marginTop: 2, lineHeight: 1.1,
+                }}>{d.dia}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* PERÍODO — Manhã / Tarde / Noite */}
+      <div>
+        <div style={secaoHdr(T, azul)}>
+          <i className="ti ti-clock" style={{ fontSize: 13 }} aria-hidden="true" />
+          PERÍODO
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {PERIODOS.map(p => {
+            const sel = p.id === periodoSel
+            return (
+              <button key={p.id} type="button" onClick={() => setPeriodoSel(p.id)}
+                style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 10,
+                  background: sel ? (dark ? 'rgba(91,155,213,0.18)' : '#EAF2FA') : T.card,
+                  border: `1px solid ${sel ? azul : T.border}`,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 2,
+                  fontSize: 11, fontWeight: 600,
+                  color: sel ? azul : T.textMuted,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}>
+                <i className={`ti ${p.icon}`} style={{ fontSize: 18, color: sel ? azul : T.textDim }} aria-hidden="true" />
+                <span>{p.label}</span>
+                <span style={{
+                  fontSize: 10, color: T.textDim,
+                  fontFamily: 'ui-monospace,monospace',
+                }}>{p.ini}–{p.fim}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* HORÁRIO — grid 3 colunas, 15-em-15min */}
+      <div>
+        <div style={secaoHdr(T, azul)}>
+          <i className="ti ti-clock-hour-4" style={{ fontSize: 13 }} aria-hidden="true" />
+          HORÁRIO · 15 em 15 min
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          {horariosSlots.map(h => {
+            const sel = h === horaSel
+            return (
+              <button key={h} type="button" onClick={() => setHoraSel(h)}
+                style={{
+                  minHeight: 44, borderRadius: 10,
+                  background: sel ? azul : T.card,
+                  border: `1px solid ${sel ? azul : T.border}`,
+                  color: sel ? '#fff' : T.textPrimary,
+                  fontSize: 14.5, fontWeight: 600,
+                  fontFamily: 'ui-monospace,monospace',
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>{h}</button>
+            )
+          })}
+        </div>
+      </div>
 
       <div style={{
         padding: '8px 11px', borderRadius: 7,
@@ -400,10 +531,13 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
             Cancelar
           </button>
         )}
-        <button onClick={agendar} style={{
+        <button onClick={agendar} disabled={!podeAgendar} style={{
           padding: '11px 16px', borderRadius: 7, border: 'none',
-          background: azul, color: '#fff',
-          fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          background: podeAgendar ? azul : T.cardAlt,
+          color: podeAgendar ? '#fff' : T.textDim,
+          fontSize: 13, fontWeight: 700,
+          cursor: podeAgendar ? 'pointer' : 'not-allowed',
+          opacity: podeAgendar ? 1 : 0.6,
           fontFamily: 'inherit',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
@@ -469,6 +603,14 @@ function inputStyle(T) {
     width: '100%', padding: '9px 12px', borderRadius: 7,
     border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
     fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+  }
+}
+
+function secaoHdr(T, cor) {
+  return {
+    fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase',
+    color: T.textMuted, fontWeight: 700,
+    display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6,
   }
 }
 
