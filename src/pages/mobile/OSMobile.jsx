@@ -256,52 +256,19 @@ export default function OSMobile({ T, dark, user }) {
       display: 'flex', flexDirection: 'column', flex: 1,
       overflow: 'hidden', background: T.bg,
     }}>
-      {/* Header fixo: busca + filtros */}
+      {/* Header fixo: filtros (busca e Nova OS ficam dentro do sheet "Mais") */}
       <div style={{
-        padding: '6px 10px 6px',
+        padding: '6px 10px',
         background: T.bg,
         borderBottom: `1px solid ${T.border}`,
-        display: 'flex', flexDirection: 'column', gap: 6,
         flexShrink: 0,
       }}>
-        {/* Busca + atalho Nova OS (ícone) */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-            <i className="ti ti-search" style={{
-              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 13, color: T.textDim,
-            }} aria-hidden="true" />
-            <input
-              type="search"
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar OS, cliente, marca…"
-              style={{
-                width: '100%', padding: '7px 10px 7px 30px',
-                borderRadius: 8, border: `1px solid ${T.border}`,
-                background: T.card, color: T.textPrimary,
-                fontSize: 13, outline: 'none', boxSizing: 'border-box',
-                fontFamily: 'inherit', minHeight: 32,
-              }}
-            />
-          </div>
-          <button
-            onClick={() => setModalNova(true)}
-            aria-label="Nova OS"
-            title="Nova OS"
-            style={{
-              width: 32, minHeight: 32, borderRadius: 8,
-              border: 'none', cursor: 'pointer',
-              background: '#5B9BD5',
-              color: '#ffffff',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, fontFamily: 'inherit',
-            }}
-          >
-            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
-          </button>
-        </div>
-        <FiltrosMobile T={T} dark={dark} filtros={filtros} setFiltros={setFiltros} />
+        <FiltrosMobile
+          T={T} dark={dark}
+          filtros={filtros} setFiltros={setFiltros}
+          busca={busca} setBusca={setBusca}
+          onNova={() => setModalNova(true)}
+        />
       </div>
 
       {/* Kanban horizontal estilo Trello — scroll-snap entre colunas */}
