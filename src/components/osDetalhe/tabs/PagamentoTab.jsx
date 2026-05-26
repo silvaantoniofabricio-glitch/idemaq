@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTheme } from '../../../theme';
+import { useOSItens } from '../../../hooks/useOSItens';
+import { useToast } from '../../ui';
 import {
   TI, BtnMobile, MOBILE, PALETA, Group, Input,
 } from '../../_shared/PrimitivasMobile';
@@ -203,7 +205,19 @@ const TotaisCard = ({ subtotal, descontoRS, total }) => {
 
 const PagamentoTab = ({ os, onUpdateOS }) => {
   const { T, dark } = useTheme();
-  const itens = os?.orcamento?.itens || [];
+  const notify = useToast();
+  // Itens vem do hook real (tabela os_item) — antes lia de os.orcamento.itens
+  // que era um mock que nunca conectou no banco. Schema real: nome,
+  // quantidade, valor_unitario. UI usa qtd/valor — mapeio nos dois sentidos.
+  const { itens: itensDb, addItem: addItemDb, updateItem: updateItemDb, removeItem: removeItemDb } = useOSItens(os?.id);
+  const itens = useMemo(() => itensDb.map(it => ({
+    id: it.id,
+    nome: it.nome || '',
+    qtd: it.quantidade || 1,
+    valor: it.valor_unitario || 0,
+    tipo: it.tipo || 'servico', // tipo nao existe no DB hoje — mantem em memoria
+  })), [itensDb]);
+
   const [descontoRS, setDescontoRS] = useState(os?.orcamento?.descontoRS || 0);
   const [descontoPct, setDescontoPct] = useState(os?.orcamento?.descontoPct || 0);
 
@@ -217,12 +231,29 @@ const PagamentoTab = ({ os, onUpdateOS }) => {
   );
   const total = Math.max(0, subtotal - descontoTotal);
 
-  const updateItem = (idx, novo) =>
-    onUpdateOS?.({ action: 'orcamento_update_item', idx, item: novo });
-  const removeItem = (idx) =>
-    onUpdateOS?.({ action: 'orcamento_remove_item', idx });
-  const addItem = () =>
-    onUpdateOS?.({ action: 'orcamento_add_item', item: { tipo: 'servico', nome: '', qtd: 1, valor: 0 } });
+  // Helpers — convertem UI (qtd/valor) -> DB (quantidade/valor_unitario)
+  const uiToDb = (ui) => ({
+    nome: ui.nome ?? '',
+    quantidade: Number(ui.qtd) || 1,
+    valor_unitario: Number(String(ui.valor || '').replace(',', '.')) || 0,
+  });
+
+  const updateItem = async (idx, novo) => {
+    const id = itensDb[idx]?.id;
+    if (!id) return;
+    const { error } = await updateItemDb(id, uiToDb(novo));
+    if (error) notify('erro', 'Erro ao atualizar item');
+  };
+  const removeItem = async (idx) => {
+    const id = itensDb[idx]?.id;
+    if (!id) return;
+    const { error } = await removeItemDb(id);
+    if (error) notify('erro', 'Erro ao remover item');
+  };
+  const addItem = async () => {
+    const { error } = await addItemDb({ nome: '', quantidade: 1, valor_unitario: 0 });
+    if (error) notify('erro', 'Erro ao adicionar item');
+  };
 
   return (
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
