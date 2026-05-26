@@ -45,7 +45,7 @@ export function useOSItens(osId) {
 
   // Adicionar item novo
   async function addItem(novoItem) {
-    // novoItem: { nome, quantidade, valor_unitario, peca_id? }
+    // novoItem: { nome, qtd, valor_unitario, tipo, peca_id? }
     // peca_id NULL = item avulso/serviço; preenchido = peça do catálogo.
     const { data, error } = await supabase
       .from('os_item')

@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTheme } from '../../../theme';
 import {
   TI, NowCard, BtnMobile, MOBILE, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile';
+import { useOSItens } from '../../../hooks/useOSItens';
 
 const TIPOS = [
   { id: 'servico', label: 'Serviços',     icon: 'tool',    bg: PALETA.blueBg,   fg: PALETA.blueStrong },
@@ -20,8 +21,92 @@ const fmtBRLShort = (n) => {
   return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
-const GrupoBlock = ({ tipo, itens, subtotal, onAdd, onEditItem }) => {
-  const { T, dark } = useTheme();
+const inputStyle = (T) => ({
+  width: '100%', boxSizing: 'border-box',
+  padding: '9px 11px', fontSize: 14,
+  background: T.bg, color: T.textPrimary,
+  border: `1px solid ${T.border}`, borderRadius: 8,
+  outline: 'none', fontFamily: 'inherit',
+});
+
+const AddItemForm = ({ tipo, T, onSave, onCancel, saving }) => {
+  const [nome, setNome]   = useState('');
+  const [qtd, setQtd]     = useState('1');
+  const [valor, setValor] = useState('');
+
+  const valido = nome.trim().length > 0 && Number(qtd) > 0;
+
+  function handleSave() {
+    if (!valido) return;
+    onSave({
+      nome:           nome.trim(),
+      qtd:            Number(qtd)   || 1,
+      valor_unitario: Number(valor) || 0,
+      tipo:           tipo.id,
+    });
+  }
+
+  return (
+    <div style={{
+      background: tipo.bg, border: `1px solid ${tipo.fg}44`,
+      borderRadius: 10, padding: 12,
+      display: 'flex', flexDirection: 'column', gap: 8,
+      marginTop: 4,
+    }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: tipo.fg,
+        textTransform: 'uppercase', letterSpacing: '.06em',
+        display: 'flex', alignItems: 'center', gap: 5,
+      }}>
+        <TI name={tipo.icon} size={12} color={tipo.fg} />
+        Novo {tipo.label.slice(0, -1).toLowerCase()}
+      </div>
+
+      <input
+        style={inputStyle(T)}
+        placeholder="Descrição (ex: Troca de correia)"
+        value={nome}
+        onChange={e => setNome(e.target.value)}
+        autoFocus
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 3 }}>Qtd</div>
+          <input
+            style={inputStyle(T)}
+            type="number" min="1" step="1"
+            value={qtd}
+            onChange={e => setQtd(e.target.value)}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 3 }}>Valor unit. (R$)</div>
+          <input
+            style={inputStyle(T)}
+            type="number" min="0" step="0.01"
+            placeholder="0,00"
+            value={valor}
+            onChange={e => setValor(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
+        <BtnMobile variant="ghost" icon="x" onClick={onCancel} disabled={saving}>
+          Cancelar
+        </BtnMobile>
+        <BtnMobile variant="blue" icon="check" onClick={handleSave}
+          disabled={!valido || saving}>
+          {saving ? 'Salvando…' : 'Salvar'}
+        </BtnMobile>
+      </div>
+    </div>
+  );
+};
+
+const GrupoBlock = ({ tipo, itens, subtotal, T, onAdd, onRemoveItem, adicionandoTipo }) => {
+  const { dark } = useTheme();
   return (
     <div className="idemaq-card" style={{
       background: T.card, border: `1px solid ${T.border}`,
@@ -56,18 +141,12 @@ const GrupoBlock = ({ tipo, itens, subtotal, onAdd, onEditItem }) => {
       </div>
 
       {itens.map((it, idx) => (
-        <button
-          key={it.id || idx}
-          type="button"
-          onClick={() => onEditItem?.(idx)}
-          style={{
-            padding: '9px 14px', border: 'none', background: T.card,
-            borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
-            display: 'flex', alignItems: 'center', gap: 10,
-            fontSize: 13.5, cursor: 'pointer', textAlign: 'left',
-            width: '100%',
-          }}
-        >
+        <div key={it.id || idx} style={{
+          padding: '9px 14px', border: 'none', background: T.card,
+          borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: 13.5,
+        }}>
           <span style={{
             flex: 1, color: T.textPrimary, fontWeight: 500,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -80,23 +159,35 @@ const GrupoBlock = ({ tipo, itens, subtotal, onAdd, onEditItem }) => {
             fontWeight: 600, color: T.textPrimary,
             fontFamily: 'ui-monospace,monospace',
             minWidth: 60, textAlign: 'right',
-          }}>{fmtBRLShort((it.qtd || 1) * (it.valor || 0))}</span>
-        </button>
+          }}>{fmtBRLShort((it.qtd || 1) * (it.valor_unitario || 0))}</span>
+          {onRemoveItem && (
+            <button type="button" onClick={() => onRemoveItem(it.id)} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#aaa', padding: 2, display: 'inline-flex',
+            }}>
+              <TI name="trash" size={14} />
+            </button>
+          )}
+        </div>
       ))}
 
-      <button
-        type="button"
-        onClick={() => onAdd?.(tipo.id)}
-        style={{
-          padding: '10px 14px', background: 'transparent', border: 'none',
-          borderTop: itens.length ? `1px dashed ${T.border}` : 'none',
-          color: PALETA.blueStrong, fontWeight: 600, fontSize: 13,
-          cursor: 'pointer', display: 'flex', alignItems: 'center',
-          gap: 6, justifyContent: 'flex-start', width: '100%',
-        }}
-      >
-        <TI name="plus" size={14} /> adicionar {tipo.label.toLowerCase()}
-      </button>
+      {adicionandoTipo === tipo.id
+        ? null
+        : (
+          <button
+            type="button"
+            onClick={() => onAdd(tipo.id)}
+            style={{
+              padding: '10px 14px', background: 'transparent', border: 'none',
+              borderTop: itens.length ? `1px dashed ${T.border}` : 'none',
+              color: PALETA.blueStrong, fontWeight: 600, fontSize: 13,
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              gap: 6, justifyContent: 'flex-start', width: '100%',
+            }}
+          >
+            <TI name="plus" size={14} /> adicionar {tipo.label.toLowerCase().replace(/s$/, '')}
+          </button>
+        )}
     </div>
   );
 };
@@ -162,7 +253,9 @@ const ResumoDiagnostico = ({ os }) => {
 
 const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
   const { T, dark } = useTheme();
-  const itens = os?.orcamento?.itens || [];
+  const { itens, addItem, removeItem } = useOSItens(os?.id);
+  const [adicionandoTipo, setAdicionandoTipo] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const porTipo = useMemo(() => {
     const map = { servico: [], peca: [], desloc: [] };
@@ -177,7 +270,7 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
     const out = { servico: 0, peca: 0, desloc: 0 };
     Object.entries(porTipo).forEach(([k, arr]) => {
       out[k] = arr.reduce(
-        (s, it) => s + (Number(it.qtd) || 0) * (Number(it.valor) || 0),
+        (s, it) => s + (Number(it.qtd) || 0) * (Number(it.valor_unitario) || 0),
         0
       );
     });
@@ -186,16 +279,19 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
 
   const total = subtotais.servico + subtotais.peca + subtotais.desloc;
 
-  const addItem = (tipoId) => onUpdateOS?.({
-    action: 'orcamento_add_item',
-    item: { tipo: tipoId, nome: '', qtd: 1, valor: 0 },
-  });
-  const editItem = (idx) => onUpdateOS?.({ action: 'orcamento_edit_item', idx });
+  async function handleSaveItem(dados) {
+    setSaving(true);
+    await addItem(dados);
+    setSaving(false);
+    setAdicionandoTipo(null);
+  }
+
+  async function handleRemove(id) {
+    await removeItem(id);
+  }
 
   return (
-    <div style={{
-      padding: 12, display: 'flex', flexDirection: 'column', gap: 12,
-    }}>
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <NowCard
         icon="currency-real"
         titulo="orçamento"
@@ -205,17 +301,26 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
       <ResumoDiagnostico os={os} />
 
       {TIPOS.map(t => (
-        <GrupoBlock
-          key={t.id}
-          tipo={t}
-          itens={porTipo[t.id]}
-          subtotal={subtotais[t.id]}
-          onAdd={addItem}
-          onEditItem={(idx) => {
-            const globalIdx = itens.findIndex(it => it === porTipo[t.id][idx]);
-            editItem(globalIdx);
-          }}
-        />
+        <React.Fragment key={t.id}>
+          <GrupoBlock
+            tipo={t}
+            itens={porTipo[t.id]}
+            subtotal={subtotais[t.id]}
+            T={T}
+            onAdd={(tipoId) => setAdicionandoTipo(tipoId)}
+            onRemoveItem={handleRemove}
+            adicionandoTipo={adicionandoTipo}
+          />
+          {adicionandoTipo === t.id && (
+            <AddItemForm
+              tipo={t}
+              T={T}
+              saving={saving}
+              onSave={handleSaveItem}
+              onCancel={() => setAdicionandoTipo(null)}
+            />
+          )}
+        </React.Fragment>
       ))}
 
       <div className="idemaq-card" style={{
@@ -261,7 +366,7 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <BtnMobile variant="ghost" icon="file-text"
-          onClick={() => onUpdateOS?.({ action: 'gerar_pdf' })}>
+          onClick={() => onUpdateOS?.(os.numero, { action: 'gerar_pdf' })}>
           Gerar PDF
         </BtnMobile>
         <BtnMobile variant="ghost" icon="receipt"
@@ -270,7 +375,7 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
         </BtnMobile>
       </div>
       <BtnMobile variant="dashed" icon="brand-whatsapp"
-        onClick={() => onUpdateOS?.({ action: 'enviar_orcamento_whatsapp' })}>
+        onClick={() => onUpdateOS?.(os.numero, { action: 'enviar_orcamento_whatsapp' })}>
         Enviar orçamento por WhatsApp
       </BtnMobile>
     </div>
