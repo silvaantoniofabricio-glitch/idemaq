@@ -348,10 +348,10 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   const relatoCliente    = (os?.defeito || '').trim()
   const temVazamento     = Object.values(vazamentos).some(Boolean)
 
-  // Cor do CTA
-  const ctaBg = !podeAvancar
-    ? (dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA')
-    : naoLiga ? HIG_COLOR.red : HIG_COLOR.tintIdemaq
+  // Cor do CTA — sempre azul (vermelho só no toggle, não em botões)
+  const ctaBg = podeAvancar
+    ? HIG_COLOR.tintIdemaq
+    : (dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA')
 
   return (
     <div style={{
