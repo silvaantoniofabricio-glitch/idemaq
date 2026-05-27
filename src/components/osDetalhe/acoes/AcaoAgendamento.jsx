@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTheme } from '../../../theme';
 import {
   TI, BtnMobile, NowCard, Group, Input, PALETA, MOBILE,
 } from '../../_shared/PrimitivasMobile';
 import BlocoAcao from './BlocoAcao';
+import { uploadFotoOS, resolverFotoUrl, removerFotoOS, FOTO_STORAGE_MARKER } from '../../../utils/osStorage';
 
 // ─── Wrapper flat sem titulo "FAZER AGORA" — so children com gap entre eles.
 // Mantido como funcao pra deixar facil voltar o header depois se mudar de ideia.
@@ -439,37 +440,219 @@ const SubAgendado = ({ os, onUpdateOS }) => {
   );
 };
 
-const IdentificacaoMaquina = ({ os, onUpdateOS }) => {
-  const [modelo, setModelo] = useState(os?.equipamento?.modelo || '');
-  const [serie,  setSerie ] = useState(os?.equipamento?.serie  || '');
-  const temIdent = !!os?.fotoUrl || (modelo && serie);
+// V2: 2 sub-blocos separados (Dados + Fotos) + CTA. Fragment retornado pra
+// que cada bloco apareça como card independente no V2.
+const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
+  const { T, dark } = useTheme();
+  const [modelo, setModelo] = useState(os?.modelo || '');
+  const [serie,  setSerie ] = useState(os?.serie  || '');
+  // 2 fotos: 'coleta_1' (etiqueta) + 'coleta_2' (estado).
+  // Markers ficam em pre_diagnostico.foto_coleta_1 / _2.
+  const ref1 = pre => pre?.foto_coleta_1 || pre?.foto_coleta || null;
+  const ref2 = pre => pre?.foto_coleta_2 || null;
+  const [foto1Url, setFoto1Url] = useState(null);
+  const [foto2Url, setFoto2Url] = useState(null);
+  const [up1, setUp1] = useState(false);
+  const [up2, setUp2] = useState(false);
+  const input1 = useRef(null);
+  const input2 = useRef(null);
+
+  useEffect(() => {
+    let canc = false;
+    (async () => {
+      const u1 = await resolverFotoUrl(ref1(os?.pre_diagnostico), os?.id, 'coleta_1');
+      const u2 = await resolverFotoUrl(ref2(os?.pre_diagnostico), os?.id, 'coleta_2');
+      if (!canc) { setFoto1Url(u1); setFoto2Url(u2); }
+    })();
+    return () => { canc = true };
+  }, [os?.id, os?.pre_diagnostico]);
+
+  async function escolherFoto(file, slot) {
+    if (!file?.type?.startsWith('image/')) return;
+    const setUp = slot === 1 ? setUp1 : setUp2;
+    setUp(true);
+    const tipo = slot === 1 ? 'coleta_1' : 'coleta_2';
+    const res = await uploadFotoOS(os.id, file, tipo);
+    setUp(false);
+    if (!res.ok) return;
+    if (slot === 1) setFoto1Url(res.url);
+    else setFoto2Url(res.url);
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        [`foto_coleta_${slot}`]: FOTO_STORAGE_MARKER,
+      },
+    });
+  }
+  async function removerFotoSlot(slot) {
+    if (!window.confirm('Remover esta foto?')) return;
+    const tipo = slot === 1 ? 'coleta_1' : 'coleta_2';
+    await removerFotoOS(os.id, tipo);
+    if (slot === 1) setFoto1Url(null); else setFoto2Url(null);
+    const key = `foto_coleta_${slot}`;
+    const { [key]: _, ...resto } = os.pre_diagnostico || {};
+    onUpdateOS?.(os.numero, { pre_diagnostico: resto });
+  }
+
+  const temIdent = !!(modelo || foto1Url || foto2Url);
+
+  function confirmar() {
+    // Persiste modelo + serie e move pra Recebido
+    const patch = {};
+    if (modelo !== (os?.modelo || '')) patch.modelo_equipamento = modelo;
+    if (serie  !== (os?.serie  || '')) patch.numero_serie = serie;
+    if (Object.keys(patch).length) onUpdateOS?.(os.numero, patch);
+    onMoverOS?.(os.numero, 'recebido');
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <BtnMobile variant="dashed" icon="camera"
-        onClick={() => onUpdateOS?.({ action: 'tirar_foto' })}>
-        {os?.fotoUrl ? 'Trocar foto da máquina' : 'Tirar foto da máquina'}
-      </BtnMobile>
-      <div style={{
-        textAlign: 'center', fontSize: 11, letterSpacing: '.1em',
-        color: '#9CA3AF', fontWeight: 700,
-      }}>OU</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <Input placeholder="Ex: BWK11A" value={modelo}
-               onChange={(e) => setModelo(e.target.value)} />
-        <Input placeholder="Ex: BR-2024-887" value={serie}
-               onChange={(e) => setSerie(e.target.value)} />
-      </div>
-      <BtnMobile variant="yellow" icon="package-import" disabled={!temIdent}
-        onClick={() => onUpdateOS?.({
-          action: 'confirmar_recebimento', modelo, serie,
-        })}
-        style={{ marginTop: 4 }}>
+    <>
+      {/* SUB-BLOCO 1: Dados do equipamento (modelo + serie) */}
+      <SubBloco T={T} dark={dark} icon="device-laptop" label="Dados do equipamento" color="blue">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{
+              fontSize: 10, color: T.textMuted, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '.04em',
+            }}>Modelo</span>
+            <input
+              placeholder="Ex: BWK11A" value={modelo}
+              onChange={(e) => setModelo(e.target.value)}
+              style={{
+                padding: '7px 9px', borderRadius: 6,
+                border: `1px solid ${T.border}`,
+                background: T.bg, color: T.textPrimary,
+                fontSize: 13, outline: 'none', fontFamily: 'inherit',
+              }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span style={{
+              fontSize: 10, color: T.textMuted, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '.04em',
+            }}>Nº de série</span>
+            <input
+              placeholder="Ex: BR-2024-887" value={serie}
+              onChange={(e) => setSerie(e.target.value)}
+              style={{
+                padding: '7px 9px', borderRadius: 6,
+                border: `1px solid ${T.border}`,
+                background: T.bg, color: T.textPrimary,
+                fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                fontFamily: 'ui-monospace, monospace',
+              }}
+            />
+          </label>
+        </div>
+      </SubBloco>
+
+      {/* SUB-BLOCO 2: Fotos do equipamento (2 slots lado a lado) */}
+      <SubBloco T={T} dark={dark} icon="camera" label="Fotos do equipamento" color="blue">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <FotoSlot
+            T={T} dark={dark}
+            label="Etiqueta"
+            url={foto1Url} uploading={up1}
+            onPick={() => input1.current?.click()}
+            onRemove={() => removerFotoSlot(1)}
+          />
+          <input ref={input1} type="file" accept="image/*" capture="environment"
+            onChange={(e) => escolherFoto(e.target.files?.[0], 1)}
+            style={{ display: 'none' }} />
+          <FotoSlot
+            T={T} dark={dark}
+            label="Estado"
+            url={foto2Url} uploading={up2}
+            onPick={() => input2.current?.click()}
+            onRemove={() => removerFotoSlot(2)}
+          />
+          <input ref={input2} type="file" accept="image/*" capture="environment"
+            onChange={(e) => escolherFoto(e.target.files?.[0], 2)}
+            style={{ display: 'none' }} />
+        </div>
+      </SubBloco>
+
+      {/* CTA: Confirmar recebimento — avança pra Recebido */}
+      <button onClick={confirmar} disabled={!temIdent}
+        style={{
+          minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
+          background: temIdent ? PALETA.yellow : T.cardAlt,
+          color: temIdent ? '#0a0a0d' : T.textDim,
+          fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+          cursor: temIdent ? 'pointer' : 'not-allowed',
+          opacity: temIdent ? 1 : 0.55,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+        <TI name="package-import" size={14} />
         Confirmar recebimento
-      </BtnMobile>
-    </div>
+      </button>
+    </>
   );
 };
+
+// Slot de foto compacto (114x76) — placeholder com "+" quando vazio
+function FotoSlot({ T, dark, label, url, uploading, onPick, onRemove }) {
+  return (
+    <div style={{
+      position: 'relative',
+      borderRadius: 8, overflow: 'hidden',
+      border: `1px ${url ? 'solid' : 'dashed'} ${T.border}`,
+      background: url ? '#000' : (dark ? 'rgba(255,255,255,0.03)' : T.cardAlt),
+      aspectRatio: '4 / 3', minHeight: 76,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {url ? (
+        <>
+          <img src={url} alt={label}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <button type="button" onClick={onPick}
+            title="Trocar foto"
+            style={{
+              position: 'absolute', top: 4, right: 26,
+              width: 22, height: 22, borderRadius: 5,
+              background: 'rgba(0,0,0,0.6)', color: '#fff',
+              border: 'none', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <TI name="camera" size={12} />
+          </button>
+          <button type="button" onClick={onRemove}
+            title="Remover"
+            style={{
+              position: 'absolute', top: 4, right: 4,
+              width: 22, height: 22, borderRadius: 5,
+              background: 'rgba(192,66,66,0.85)', color: '#fff',
+              border: 'none', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <TI name="x" size={12} />
+          </button>
+          <span style={{
+            position: 'absolute', bottom: 4, left: 6,
+            fontSize: 10, color: '#fff', fontWeight: 600,
+            background: 'rgba(0,0,0,0.5)', padding: '1px 6px', borderRadius: 4,
+          }}>{label}</span>
+        </>
+      ) : (
+        <button type="button" onClick={onPick}
+          disabled={uploading}
+          style={{
+            width: '100%', height: '100%',
+            background: 'transparent', border: 'none',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 4,
+            color: PALETA.blueStrong, fontFamily: 'inherit',
+            cursor: uploading ? 'wait' : 'pointer',
+          }}>
+          <TI name={uploading ? 'loader-2' : 'camera-plus'} size={20} />
+          <span style={{ fontSize: 11, fontWeight: 600 }}>
+            {uploading ? 'Enviando…' : label}
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ============================================================================
 // V2 — DEV ONLY. Replica o padrão visual do AcaoOrcamento:
@@ -787,41 +970,9 @@ const SubAgendadoV2 = ({ os, onUpdateOS, onMoverOS }) => {
         </button>
       </div>
 
-      {/* Bloco identificação na coleta */}
-      <SubBloco T={T} dark={dark} icon="package-import" label="Na hora da coleta" color="yellow">
-        {showIdent ? (
-          <IdentificacaoMaquina os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
-        ) : (
-          <button onClick={() => setShowIdent(true)}
-            style={{
-              width: '100%', border: 'none', background: 'transparent',
-              padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-              textAlign: 'left', color: T.textMuted, fontSize: 12, lineHeight: 1.3,
-            }}>
-            Quando a máquina chegar, abra aqui pra <b style={{ color: T.textPrimary }}>identificar e confirmar</b>.
-            <span style={{
-              display: 'block', marginTop: 4,
-              fontSize: 11, color: PALETA.blueStrong, fontWeight: 600,
-            }}>
-              <TI name="chevron-down" size={12} style={{ marginRight: 4 }} />
-              tirar foto agora (opcional)
-            </span>
-          </button>
-        )}
-      </SubBloco>
-
-      {/* CTA confirmar coleta — avança pra Recebido */}
-      <button onClick={confirmarRecebimento}
-        style={{
-          minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
-          background: PALETA.yellow, color: '#0a0a0d',
-          fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
-          cursor: 'pointer',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}>
-        <TI name="package-import" size={14} />
-        Confirmar recebimento
-      </button>
+      {/* Dados do equipamento + Fotos + CTA — sao 3 elementos retornados
+          pelo IdentificacaoMaquina (2 SubBlocos + 1 button) */}
+      <IdentificacaoMaquina os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
     </HeaderFlat>
   );
 };
