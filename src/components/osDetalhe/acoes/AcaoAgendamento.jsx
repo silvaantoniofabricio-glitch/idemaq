@@ -518,8 +518,7 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
 
   return (
     <HeaderFlat T={T} dark={dark} icon="calendar-event"
-      etapa="Aguardando agendamento"
-      descricao="Escolha o dia, depois o horário.">
+      etapa="Aguardando agendamento">
 
       {/* Bloco DIA — chips compactos 44x44 */}
       <SubBloco T={T} dark={dark} icon="calendar" label="Dia · próximos 14 dias" color="blue">
@@ -675,8 +674,7 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
 
   return (
     <HeaderFlat T={T} dark={dark} icon="truck-loading"
-      etapa="Agendado · coleta agendada"
-      descricao="Acompanhe a coleta e confirme com o cliente quando chegar a hora.">
+      etapa="Agendado · coleta agendada">
 
       {/* Card grande do countdown */}
       <SubBloco T={T} dark={dark} icon="clock" label="Coleta em" color="blue">
