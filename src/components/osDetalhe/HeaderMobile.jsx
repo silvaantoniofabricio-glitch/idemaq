@@ -2,6 +2,12 @@ import React from 'react';
 import { useTheme } from '../../theme';
 import { TI, PALETA } from '../_shared/PrimitivasMobile';
 
+const ABAS = [
+  { id: 'etapa',     label: 'Etapa',     icon: 'checkup-list' },
+  { id: 'relatorio', label: 'Relatório', icon: 'report' },
+  { id: 'pagamento', label: 'Pagamento', icon: 'cash-banknote' },
+];
+
 const BADGE_TONE = {
   ag_agenda:   'blue',
   agendado:    'blue',
@@ -35,8 +41,10 @@ const HeaderMobile = ({
   onHistory,
   onAdicionarEquipamento,
   historyCount = 0,
+  aba,
+  setAba,
 }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
 
   const atrasoLabel = formatAtraso(os?.diasAtraso);
   const isLate = !!atrasoLabel;
@@ -174,6 +182,40 @@ const HeaderMobile = ({
           <TI name="plus" size={14} color={PALETA.blueStrong} />
           adicionar equipamento
         </button>
+      )}
+
+      {/* Linha 4 · abas (Etapa / Relatório / Pagamento) — restauradas em
+          27/05/2026 (commit e6f3864 tinha removido sem querer apesar da
+          mensagem dizer "OSDetalhe com 3 abas"). Touch target 48px. */}
+      {setAba && (
+        <div style={{
+          display: 'flex',
+          borderTop: `1px solid ${T.border}`,
+        }}>
+          {ABAS.map(a => {
+            const ativo = aba === a.id;
+            return (
+              <button key={a.id}
+                onClick={() => setAba(a.id)}
+                style={{
+                  flex: 1, minHeight: 48, padding: '0 8px',
+                  border: 'none', background: ativo
+                    ? (dark ? 'rgba(91,155,213,0.08)' : 'rgba(91,155,213,0.06)')
+                    : 'transparent',
+                  borderBottom: `2px solid ${ativo ? PALETA.blueStrong : 'transparent'}`,
+                  color: ativo ? PALETA.blueStrong : T.textMuted,
+                  fontSize: 13, fontWeight: ativo ? 700 : 600,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  transition: 'all .12s',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <TI name={a.icon} size={15} />
+                {a.label}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
