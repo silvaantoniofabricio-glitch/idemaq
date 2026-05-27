@@ -1,7 +1,7 @@
 // src/components/osDetalhe/acoes/AcaoOrcamento.jsx
 // Etapa Orçamento — mobile-first, padrão novo (T/dark props, Tabler icons, BlocoAcao).
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { P } from '../../../theme'
 import { corEtapa, bgEtapa } from '../../../utils/colors'
 import { fmtBRL } from '../../../utils/fmt'
@@ -253,9 +253,15 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
 }
 
 // ─── Card de totais ───────────────────────────────────────────────────────────
-function TotaisCard({ T, dark, subtotais, total }) {
+function TotaisCard({
+  T, dark, subtotais, subtotalBruto, total,
+  descontoRS, onChangeRS, onChangePct, onCommit,
+}) {
   const azul = corEtapa('blue', dark)
+  const vermelho = corEtapa('red', dark)
   const cor = (d, c) => dark ? d : c
+  const podeAplicarDesc = subtotalBruto > 0
+  const descontoPctCalc = podeAplicarDesc ? (descontoRS / subtotalBruto * 100) : 0
 
   return (
     <div style={{
@@ -295,16 +301,97 @@ function TotaisCard({ T, dark, subtotais, total }) {
           fontSize: 11, fontWeight: 700, color: T.textMuted,
           textTransform: 'uppercase', letterSpacing: '.06em',
         }}>
-          Total
+          {descontoRS > 0 ? 'Total c/ desconto' : 'Total'}
         </span>
-        <span style={{
-          fontSize: 26, fontWeight: 700, color: T.textPrimary,
-          fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em',
-        }}>
-          {fmtBRL(total)}
-        </span>
+        <div style={{ textAlign: 'right' }}>
+          {descontoRS > 0 && (
+            <div style={{
+              fontSize: 11, color: T.textMuted,
+              textDecoration: 'line-through',
+              fontVariantNumeric: 'tabular-nums',
+            }}>{fmtBRL(subtotalBruto)}</div>
+          )}
+          <div style={{
+            fontSize: 26, fontWeight: 700, color: T.textPrimary,
+            fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em',
+            lineHeight: 1,
+          }}>
+            {fmtBRL(total)}
+          </div>
+        </div>
+      </div>
+
+      {/* Desconto interligado R$ ↔ % */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+        padding: '12px 14px',
+        borderTop: `1px dashed ${azul}44`,
+        background: cor('rgba(0,0,0,0.12)', 'rgba(255,255,255,0.4)'),
+      }}>
+        <DescontoCampo
+          T={T} dark={dark}
+          label="Desconto R$" prefix="R$"
+          value={descontoRS > 0 ? Number(descontoRS).toFixed(2).replace('.', ',') : ''}
+          onChange={(v) => onChangeRS(String(v).replace(',', '.'))}
+          onCommit={onCommit}
+          disabled={!podeAplicarDesc}
+          accent={vermelho}
+        />
+        <DescontoCampo
+          T={T} dark={dark}
+          label="Desconto %" suffix="%"
+          value={descontoPctCalc > 0 ? descontoPctCalc.toFixed(1).replace('.', ',') : ''}
+          onChange={(v) => onChangePct(String(v).replace(',', '.'))}
+          onCommit={onCommit}
+          disabled={!podeAplicarDesc}
+          accent={vermelho}
+        />
       </div>
     </div>
+  )
+}
+
+function DescontoCampo({ T, dark, label, prefix, suffix, value, onChange, onCommit, disabled, accent }) {
+  return (
+    <label style={{
+      display: 'flex', flexDirection: 'column', gap: 4,
+      opacity: disabled ? 0.5 : 1,
+    }}>
+      <span style={{
+        fontSize: 10, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.04em',
+      }}>{label}</span>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        padding: '6px 9px', borderRadius: 7,
+        border: `1px solid ${T.border}`,
+        background: T.bg,
+      }}>
+        {prefix && (
+          <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>{prefix}</span>
+        )}
+        <input
+          type="text" inputMode="decimal"
+          placeholder="0"
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onCommit}
+          style={{
+            flex: 1, minWidth: 0,
+            border: 'none', background: 'transparent', outline: 'none',
+            color: value ? accent : T.textPrimary,
+            fontSize: 14, fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+            textAlign: 'right',
+            fontFamily: 'inherit',
+          }}
+        />
+        {suffix && (
+          <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>{suffix}</span>
+        )}
+      </div>
+    </label>
   )
 }
 
@@ -504,7 +591,30 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onAbrirAba }) {
     return out
   }, [porTipo])
 
-  const total = subtotais.servico + subtotais.peca + subtotais.desloc
+  const subtotalBruto = subtotais.servico + subtotais.peca + subtotais.desloc
+
+  // Desconto interligado R$↔% — persiste em os.desconto (coluna text/decimal).
+  // Re-hidrata se os.desconto mudar (Realtime). Persist debounced em onBlur
+  // pra evitar 1 UPDATE por keystroke.
+  const [descontoRS, setDescontoRS] = useState(() => Number(os?.desconto || 0))
+  useEffect(() => {
+    setDescontoRS(Number(os?.desconto || 0))
+  }, [os?.desconto])
+
+  const total = Math.max(0, subtotalBruto - descontoRS)
+
+  function aplicarDescontoRS(rs) {
+    const v = Math.max(0, Math.min(subtotalBruto, Number(rs) || 0))
+    setDescontoRS(v)
+  }
+  function aplicarDescontoPct(pct) {
+    const p = Math.max(0, Math.min(100, Number(pct) || 0))
+    setDescontoRS(subtotalBruto * (p / 100))
+  }
+  function persistDesconto() {
+    if (Number(os?.desconto || 0) === descontoRS) return
+    onUpdateOS?.(os.numero, { desconto: descontoRS })
+  }
 
   async function handleSaveItem(dados) {
     setSaving(true)
@@ -543,8 +653,17 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onAbrirAba }) {
         </React.Fragment>
       ))}
 
-      {/* Totais */}
-      <TotaisCard T={T} dark={dark} subtotais={subtotais} total={total} />
+      {/* Totais + Desconto */}
+      <TotaisCard
+        T={T} dark={dark}
+        subtotais={subtotais}
+        subtotalBruto={subtotalBruto}
+        total={total}
+        descontoRS={descontoRS}
+        onChangeRS={aplicarDescontoRS}
+        onChangePct={aplicarDescontoPct}
+        onCommit={persistDesconto}
+      />
 
       {/* Status do orçamento */}
       <BotaoStatus T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} />
