@@ -186,6 +186,33 @@ const ItensDoGrupo = ({ T, dark, itens, marcados, onSetAcao }) => (
   </div>
 );
 
+// ─── Histórico de causas (autocomplete) ──────────────────────────────────
+// Salva no localStorage as frases já usadas. Conforme o tecnico digita,
+// sugere as que batem (substring case-insensitive), priorizando recentes.
+const CAUSAS_KEY = 'idemaq:diagnostico:causas_historico';
+const CAUSAS_MAX = 80;
+
+function lerCausasHistorico() {
+  try {
+    const raw = localStorage.getItem(CAUSAS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : [];
+  } catch { return []; }
+}
+
+function salvarCausaHistorico(frase) {
+  const f = (frase || '').trim();
+  if (f.length < 4) return;
+  try {
+    const atual = lerCausasHistorico();
+    // dedupe case-insensitive, mais recentes no topo
+    const semDup = atual.filter(x => x.toLowerCase() !== f.toLowerCase());
+    const novo = [f, ...semDup].slice(0, CAUSAS_MAX);
+    localStorage.setItem(CAUSAS_KEY, JSON.stringify(novo));
+  } catch {}
+}
+
 // Migra estado antigo (array de ids) pro novo (objeto { id: 'troca' })
 function normalizeMarcados(raw) {
   const out = {};
@@ -213,6 +240,8 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
   const [busca, setBusca] = useState('');
   const [grupoAberto, setGrupoAberto] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [causaFocada, setCausaFocada] = useState(false);
+  const [historicoCausas, setHistoricoCausas] = useState(() => lerCausasHistorico());
 
   // Re-sincroniza se a OS mudar (Realtime)
   useEffect(() => {
@@ -253,8 +282,9 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
   );
   const podeConcluir = causa.trim().length > 0 && totalMarcados > 0;
 
-  // Persist causa via onBlur (debounce simples)
+  // Persist causa via onBlur (debounce simples) + salva no historico
   const persistCausa = () => {
+    setCausaFocada(false);
     if (causa === (preDiagSalvo.causa_diagnostico || '')) return;
     onUpdateOS?.(os.numero, {
       pre_diagnostico: {
@@ -262,6 +292,29 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
         causa_diagnostico: causa,
       },
     });
+    salvarCausaHistorico(causa);
+    setHistoricoCausas(lerCausasHistorico());
+  };
+
+  // Sugestões: filtra por substring se tem texto, senão mostra recentes.
+  const sugestoesCausa = useMemo(() => {
+    const q = causa.trim().toLowerCase();
+    const base = historicoCausas.filter(f => f.toLowerCase() !== q);
+    if (!q) return base.slice(0, 5);
+    return base.filter(f => f.toLowerCase().includes(q)).slice(0, 5);
+  }, [causa, historicoCausas]);
+
+  const aplicarSugestao = (frase) => {
+    setCausa(frase);
+    setCausaFocada(false);
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        causa_diagnostico: frase,
+      },
+    });
+    salvarCausaHistorico(frase);
+    setHistoricoCausas(lerCausasHistorico());
   };
 
   async function concluir() {
@@ -274,6 +327,7 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
         componentes_marcados: marcadosPorGrupo,
       },
     });
+    salvarCausaHistorico(causa);
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'orcamento');
     setSalvando(false);
     if (proxima) onMoverOS?.(os.numero, proxima.id);
@@ -362,7 +416,8 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
           placeholder="Ex: Rolamento do tambor desgastado, correia rompida…"
           value={causa}
           onChange={(e) => setCausa(e.target.value)}
-          onBlur={persistCausa}
+          onFocus={() => setCausaFocada(true)}
+          onBlur={() => setTimeout(persistCausa, 150)}
           rows={3}
           style={{
             width: '100%', boxSizing: 'border-box',
@@ -373,6 +428,47 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
             outline: 'none', resize: 'vertical',
           }}
         />
+
+        {/* Sugestões do histórico (autocomplete) */}
+        {causaFocada && sugestoesCausa.length > 0 && (
+          <div style={{
+            marginTop: 6,
+            background: T.bg, border: `1px solid ${T.border}`,
+            borderRadius: 6, overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '4px 8px', fontSize: 10, fontWeight: 700,
+              color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.06em',
+              background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
+              borderBottom: `1px solid ${T.border}`,
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              <TI name="history" size={10} />
+              {causa.trim() ? 'Sugestões' : 'Usadas recentemente'}
+            </div>
+            {sugestoesCausa.map((f, idx) => (
+              <button key={idx} type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => aplicarSugestao(f)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  width: '100%', textAlign: 'left',
+                  padding: '7px 8px', fontSize: 12,
+                  background: 'transparent', color: T.textPrimary,
+                  border: 'none',
+                  borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <TI name="corner-down-left" size={11} color={PALETA.blueStrong} />
+                <span style={{
+                  flex: 1, overflow: 'hidden', textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>{f}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </SubBloco>
 
       {/* SUB-BLOCO 3: Checklist de componentes */}
