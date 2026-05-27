@@ -1,7 +1,7 @@
 // src/components/osDetalhe/acoes/AcaoRecebido.jsx
-// Pré-diagnóstico de recebimento: registra estado inicial da máquina antes
-// de enviar pro diagnóstico. Persiste via checklist_etapa (etapa='recebido').
-// UI mobile-first: cards de teste com SegOption (OK/Defeito/Barulho).
+// Pré-diagnóstico de recebimento (Avaliação): registra estado inicial da
+// máquina antes de enviar pro diagnóstico. Persiste via checklist_etapa.
+// V2: padrão Orçamento/Agenda — HeaderFlat + SubBloco com cards compactos.
 
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../../theme';
@@ -10,6 +10,41 @@ import {
 } from '../../_shared/PrimitivasMobile';
 import { ETAPAS_TODOS } from '../../../utils/osData';
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa';
+
+// ─── Sub-card compacto (igual ao da Agenda/Coleta V2) ─────────────────────
+function SubBloco({ T, dark, icon, label, color = 'blue', children }) {
+  const colorMap = {
+    blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
+    yellow: { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg },
+  };
+  const c = colorMap[color] || colorMap.blue;
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '3px 6px 3px 8px',
+        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 7,
+      }}>
+        <span style={{
+          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+          background: c.bg, color: c.fg,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <TI name={icon} size={11} />
+        </span>
+        <span style={{
+          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>{label}</span>
+      </div>
+      <div style={{ padding: '10px 12px' }}>{children}</div>
+    </div>
+  );
+}
 
 const TESTES = [
   { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
@@ -133,41 +168,56 @@ export default function AcaoRecebido({ os, onMoverOS }) {
 
   const todosPreenchidos = TESTES.every(t => testes[t.id] != null);
 
+  const { T, dark } = useTheme();
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <NowCard
-        icon="clipboard-check"
-        titulo="pré-diagnóstico"
-        descricao={<>Teste cada função e marque <b>OK</b>, <b>Defeito</b> ou <b>Barulho</b>.</>}
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* SUB-BLOCO 1: Checklist de testes (4 funções com OK/Defeito/Barulho) */}
+      <SubBloco T={T} dark={dark} icon="clipboard-check" label="Testes de funcionamento" color="blue">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {TESTES.map(t => (
+            <TesteCard key={t.id}
+              teste={t}
+              valor={testes[t.id]}
+              onChange={(v) => setResultado(t.id, v)} />
+          ))}
+        </div>
+      </SubBloco>
 
-      {TESTES.map(t => (
-        <TesteCard key={t.id}
-          teste={t}
-          valor={testes[t.id]}
-          onChange={(v) => setResultado(t.id, v)} />
-      ))}
-
-      <Group label={(
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <TI name="message-2" size={13} color={PALETA.blueStrong} />
-          OBSERVAÇÕES
-        </span>
-      )}>
-        <TextArea
+      {/* SUB-BLOCO 2: Observações */}
+      <SubBloco T={T} dark={dark} icon="message-2" label="Observações" color="blue">
+        <textarea
           placeholder="Ex: máquina chegou com cabo arrancado, painel arranhado…"
           value={obs}
           onChange={(e) => setObs(e.target.value)}
+          rows={3}
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            padding: '8px 10px', borderRadius: 6,
+            border: `1px solid ${T.border}`,
+            background: T.bg, color: T.textPrimary,
+            fontSize: 12.5, fontFamily: 'inherit',
+            outline: 'none', resize: 'vertical',
+          }}
         />
-      </Group>
+      </SubBloco>
 
-      <BtnMobile variant="blue" icon="arrow-right"
+      {/* CTA compacto amarelo — avança pro Diagnóstico */}
+      <button onClick={avancar}
         disabled={!todosPreenchidos || salvando}
-        onClick={avancar}>
-        {salvando ? 'Salvando…' : todosPreenchidos
-          ? 'Salvar e ir para Diagnóstico'
+        style={{
+          minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
+          background: todosPreenchidos ? PALETA.yellow : T.cardAlt,
+          color: todosPreenchidos ? '#0a0a0d' : T.textDim,
+          fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+          cursor: (todosPreenchidos && !salvando) ? 'pointer' : 'not-allowed',
+          opacity: (todosPreenchidos && !salvando) ? 1 : 0.55,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+        <TI name="arrow-right" size={14} />
+        {salvando ? 'Salvando…'
+          : todosPreenchidos ? 'Avançar pro Diagnóstico'
           : `Preencha os ${TESTES.length} testes`}
-      </BtnMobile>
+      </button>
     </div>
   );
 }
