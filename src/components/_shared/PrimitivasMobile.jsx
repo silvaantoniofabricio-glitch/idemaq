@@ -82,13 +82,24 @@ export const BtnMobile = ({
 };
 
 export const Pill = ({ tone = 'neutral', icon, children, style }) => {
-  const { T } = useTheme();
+  const { T, dark } = useTheme();
+  // Dark mode: bg vira rgba transparente da cor forte + border do mesmo tom.
+  // Light mode: mantem PALETA.*Bg original (cinza claro do tom).
   const tones = {
-    neutral: { bg: T.card,        fg: T.textPrimary, bd: T.border },
-    blue:    { bg: PALETA.blueBg, fg: PALETA.blueStrong, bd: '#CDDFEF' },
-    red:     { bg: PALETA.redBg,  fg: PALETA.redStrong,  bd: '#F6CFCF' },
-    yellow:  { bg: PALETA.yellowBg, fg: PALETA.yellowStrong, bd: '#F0DDA0' },
-    green:   { bg: PALETA.greenBg,  fg: PALETA.greenStrong,  bd: '#CFE7DA' },
+    neutral: { bg: dark ? 'transparent' : T.card,
+               fg: T.textPrimary, bd: T.border },
+    blue:    { bg: dark ? 'rgba(91,155,213,0.15)' : PALETA.blueBg,
+               fg: dark ? PALETA.blue : PALETA.blueStrong,
+               bd: dark ? 'rgba(91,155,213,0.35)' : '#CDDFEF' },
+    red:     { bg: dark ? 'rgba(192,66,66,0.15)' : PALETA.redBg,
+               fg: dark ? '#FF8888' : PALETA.redStrong,
+               bd: dark ? 'rgba(192,66,66,0.35)' : '#F6CFCF' },
+    yellow:  { bg: dark ? 'rgba(255,217,102,0.15)' : PALETA.yellowBg,
+               fg: dark ? '#FFD966' : PALETA.yellowStrong,
+               bd: dark ? 'rgba(255,217,102,0.35)' : '#F0DDA0' },
+    green:   { bg: dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg,
+               fg: dark ? '#7FCEA8' : PALETA.greenStrong,
+               bd: dark ? 'rgba(46,125,94,0.40)' : '#CFE7DA' },
   };
   const v = tones[tone];
   return (
