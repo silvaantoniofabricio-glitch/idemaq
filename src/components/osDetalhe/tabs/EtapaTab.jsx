@@ -24,6 +24,7 @@ import {
   AcaoRecusada,
 } from '../acoes'
 import AcaoAgendamentoHIG from '../acoes/AcaoAgendamentoHIG'
+import AcaoRecebidoHIG from '../acoes/AcaoRecebidoHIG'
 
 const MAP = {
   // HIG aplicado em TODAS as etapas.
@@ -31,7 +32,7 @@ const MAP = {
   // tem layout especial (segmented control iOS, day chips, etc).
   ag_agendamento: AcaoAgendamentoHIG,
   agendado: AcaoAgendamentoHIG,
-  recebido: AcaoRecebido,
+  recebido: AcaoRecebidoHIG,
   diagnostico: AcaoDiagnostico,
   orcamento: AcaoOrcamento,
   oficina: AcaoOficina,
