@@ -5,32 +5,11 @@ import {
 } from '../../_shared/PrimitivasMobile';
 import BlocoAcao from './BlocoAcao';
 
-// ─── Header flat "FAZER AGORA · etapa" — sem fundo/borda amarela ────────────
-// V2: compacto + gap 8 entre filhos pra tudo caber sem scroll.
-function HeaderFlat({ T, dark, icon, etapa, descricao, children, gap = 8 }) {
-  const cor = (d, c) => dark ? d : c
-  const amarelo = cor(PALETA.yellow, PALETA.yellowStrong)
+// ─── Wrapper flat sem titulo "FAZER AGORA" — so children com gap entre eles.
+// Mantido como funcao pra deixar facil voltar o header depois se mudar de ideia.
+function HeaderFlat({ children, gap = 8 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <TI name={icon} size={15} color={amarelo} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{
-            fontSize: 10, fontWeight: 700, color: amarelo,
-            textTransform: 'uppercase', letterSpacing: '.5px',
-            display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2,
-          }}>
-            FAZER AGORA
-            <span style={{ opacity: 0.5 }}>·</span>
-            <span>{etapa}</span>
-          </div>
-          {descricao && (
-            <div style={{ fontSize: 11.5, color: T.textSecondary, marginTop: 2, lineHeight: 1.3 }}>
-              {descricao}
-            </div>
-          )}
-        </div>
-      </div>
       {children}
     </div>
   )
