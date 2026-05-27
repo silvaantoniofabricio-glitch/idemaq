@@ -509,22 +509,8 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
         </div>
       </SubBloco>
 
-      {/* Observacoes — destaque amarelo quando houver, pra tecnico nao esquecer
-          do que precisa levar (capa, mangueira, etc) */}
-      {obsAgendada && (
-        <SubBloco T={T} dark={dark} icon="alert-circle"
-          label="Atenção · observações da OS" color="yellow"
-          action={<span style={{
-            fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-            background: PALETA.yellowStrong, color: '#fff',
-            textTransform: 'uppercase', letterSpacing: '.05em',
-          }}>NÃO ESQUECER</span>}>
-          <div style={{
-            fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
-            whiteSpace: 'pre-wrap',
-          }}>{obsAgendada}</div>
-        </SubBloco>
-      )}
+      {/* Obs: o alerta amarelo "ATENÇÃO · observações da OS" agora eh
+          renderizado pelo EtapaTab no topo de toda etapa automaticamente. */}
 
       {/* 2 atalhos: WhatsApp + Rota */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
