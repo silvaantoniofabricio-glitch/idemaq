@@ -244,9 +244,10 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
         )}
       </SubBloco>
 
-      {/* SUB-BLOCO 2: Resumo da avaliação (testes feitos no Recebido) */}
-      {testesComResultado.length > 0 && (
-        <SubBloco T={T} dark={dark} icon="clipboard-check" label="Resumo da avaliação" color="blue">
+      {/* SUB-BLOCO 2: Resumo da avaliação — sempre visível.
+          Se vazio, mostra placeholder pedindo pra voltar e preencher. */}
+      <SubBloco T={T} dark={dark} icon="clipboard-check" label="Resumo da avaliação" color="blue">
+        {testesComResultado.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {testesComResultado.map(t => {
               const meta = PRE_TONES[t.valor] || PRE_TONES.ok;
@@ -257,8 +258,14 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
               );
             })}
           </div>
-        </SubBloco>
-      )}
+        ) : (
+          <div style={{
+            fontSize: 12, color: T.textMuted, fontStyle: 'italic',
+          }}>
+            Nenhum teste registrado na etapa de Avaliação.
+          </div>
+        )}
+      </SubBloco>
 
       {/* SUB-BLOCO 2: Causa identificada */}
       <SubBloco T={T} dark={dark} icon="message-2" label="Causa identificada" color="blue">
