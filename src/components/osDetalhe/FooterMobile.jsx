@@ -91,7 +91,7 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
       {/* Footer flat estilo desktop — 3 botoes igualmente subtis com nome
           da etapa em ambos os lados (Voltar e Avancar) + Pular no meio. */}
       <div style={{
-        padding: '10px 14px 12px',
+        padding: '4px 12px 6px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
       }}>
         {/* Voltar — com nome da etapa anterior */}
@@ -148,15 +148,15 @@ function PularMenuMobile({ T, dark, azul, etapas, onEscolher }) {
         title="Pular para uma etapa específica"
         aria-label="Pular para etapa"
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '8px 12px', borderRadius: 6,
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          padding: '4px 10px', borderRadius: 6,
           border: 'none', background: 'transparent',
-          color: T.textSecondary, fontSize: 13, fontWeight: 500,
+          color: T.textSecondary, fontSize: 12, fontWeight: 500,
           cursor: 'pointer', fontFamily: 'inherit',
           WebkitTapHighlightColor: 'transparent',
-          minHeight: 44,
+          minHeight: 32,
         }}>
-        <i className="ti ti-chevrons-right" style={{ fontSize: 17 }} aria-hidden="true" />
+        <i className="ti ti-chevrons-right" style={{ fontSize: 14 }} aria-hidden="true" />
         <span>Pular para…</span>
       </button>
       {aberto && (
@@ -203,20 +203,20 @@ function MiniBtnMobile({ T, azul, habilitado, motivo, label, direcao, onClick })
       title={titulo}
       aria-label={titulo}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '8px 12px', borderRadius: 6,
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '4px 10px', borderRadius: 6,
         border: 'none', background: 'transparent',
         color: habilitado ? T.textSecondary : T.textDim,
-        fontSize: 13, fontWeight: 500,
+        fontSize: 12, fontWeight: 500,
         cursor: habilitado ? 'pointer' : 'not-allowed',
         opacity: habilitado ? 1 : 0.45,
         fontFamily: 'inherit',
         WebkitTapHighlightColor: 'transparent',
-        minHeight: 44,
+        minHeight: 32,
       }}>
-      {!isAvancar && <i className="ti ti-chevron-left" style={{ fontSize: 17 }} aria-hidden="true" />}
+      {!isAvancar && <i className="ti ti-chevron-left" style={{ fontSize: 14 }} aria-hidden="true" />}
       <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
-      {isAvancar && <i className="ti ti-chevron-right" style={{ fontSize: 17 }} aria-hidden="true" />}
+      {isAvancar && <i className="ti ti-chevron-right" style={{ fontSize: 14 }} aria-hidden="true" />}
     </button>
   )
 }
