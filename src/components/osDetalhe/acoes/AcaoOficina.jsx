@@ -44,6 +44,7 @@ function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
     <div style={{
       background: T.card, border: `1px solid ${T.border}`,
       borderRadius: 10, overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', height: '100%',
     }}>
       <div style={{
         padding: '3px 6px 3px 8px',
@@ -64,7 +65,7 @@ function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
         }}>{label}</span>
         {action}
       </div>
-      <div style={{ padding: '8px' }}>{children}</div>
+      <div style={{ padding: '8px', flex: 1, display: 'flex', flexDirection: 'column' }}>{children}</div>
     </div>
   );
 }
@@ -291,16 +292,23 @@ function CardLado({
   return (
     <SubBloco T={T} dark={dark} icon={icon} label={titulo} color={color}
       action={<StatusBolinha status={status} />}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
         <SecaoChecklist T={T} dark={dark}
           titulo="Desmontagem" icon="tools-off"
           checks={desmCheck} valores={desmVal} onToggle={onToggleDesm}
           sync />
-        <SecaoChecklist T={T} dark={dark}
-          titulo={titulo === 'Limpeza' ? 'Limpeza' : 'Manutenção'}
-          icon={titulo === 'Limpeza' ? 'droplet' : 'tool'}
-          checks={servCheck} valores={servVal} onToggle={onToggleServ}
-          sempreLista={titulo === 'Manutenção'} />
+        {/* O servico (Limpeza/Manutencao) cresce pra ocupar a diferenca de
+            altura entre os 2 cards — assim Desmontagem e Montagem ficam
+            alinhadas horizontalmente. */}
+        <div style={{ flex: 1, display: 'flex' }}>
+          <div style={{ flex: 1 }}>
+            <SecaoChecklist T={T} dark={dark}
+              titulo={titulo === 'Limpeza' ? 'Limpeza' : 'Manutenção'}
+              icon={titulo === 'Limpeza' ? 'droplet' : 'tool'}
+              checks={servCheck} valores={servVal} onToggle={onToggleServ}
+              sempreLista={titulo === 'Manutenção'} />
+          </div>
+        </div>
         <SecaoChecklist T={T} dark={dark}
           titulo="Montagem" icon="tools"
           checks={montCheck} valores={montVal} onToggle={onToggleMont}
@@ -457,7 +465,7 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
           display: 'grid',
           gridTemplateColumns: (temLimpeza && temManutencao) ? '1fr 1fr' : '1fr',
           gap: 8,
-          alignItems: 'start',
+          alignItems: 'stretch',
         }}>
           {temLimpeza && (
             <CardLado T={T} dark={dark}
