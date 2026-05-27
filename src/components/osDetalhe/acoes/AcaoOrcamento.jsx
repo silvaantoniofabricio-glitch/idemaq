@@ -748,6 +748,12 @@ const STATUS_META = {
 function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
   const [status, setStatus] = useState(os?.orcamento_status || 'idle')
   const [confirmando, setConfirmando] = useState(false)
+  const [desfazendo, setDesfazendo] = useState(false)
+
+  // Re-sincroniza se a OS mudar (Realtime / outro device)
+  useEffect(() => {
+    setStatus(os?.orcamento_status || 'idle')
+  }, [os?.orcamento_status])
   const azul    = corEtapa('blue', dark)
   const verde   = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
@@ -772,6 +778,65 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
     if (novo === 'confirmado') {
       onMoverOS?.(os.numero, 'oficina')
     }
+  }
+
+  // Cliente desistiu / mudou de ideia → volta pra 'aguardando' e devolve
+  // a OS pra etapa Orcamento (caso ja tenha avancado pra Conserto).
+  function reverterParaAguardando() {
+    setStatus('aguardando')
+    setDesfazendo(false)
+    onUpdateOS?.(os.numero, { orcamento_status: 'aguardando' })
+    if (os?.etapa !== 'orcamento') {
+      onMoverOS?.(os.numero, 'orcamento')
+    }
+  }
+
+  // Desfazer (cliente desistiu / mudou de ideia)
+  if (desfazendo) {
+    const acento = status === 'confirmado' ? verde : vermelho
+    const titulo = status === 'confirmado'
+      ? 'Cliente desistiu do orçamento?'
+      : 'Cliente mudou de ideia?'
+    return (
+      <div style={{
+        background: T.card, border: `1px solid ${T.border}`,
+        borderRadius: 10, padding: 14,
+        display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        <div style={{
+          fontSize: 12.5, fontWeight: 700, color: T.textMuted,
+          textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.05em',
+        }}>{titulo}</div>
+        <div style={{
+          fontSize: 12, color: T.textMuted, textAlign: 'center',
+          lineHeight: 1.4,
+        }}>
+          {status === 'confirmado'
+            ? 'A OS volta pra etapa Orçamento e o status fica como "Aguardando resposta".'
+            : 'O status volta pra "Aguardando resposta" — você pode reabrir a decisão.'}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <button type="button" onClick={() => setDesfazendo(false)} style={{
+            height: 44, borderRadius: 9, cursor: 'pointer',
+            border: `1px solid ${T.border}`, fontFamily: 'inherit',
+            background: 'transparent', color: T.textMuted,
+            fontSize: 13.5, fontWeight: 600,
+          }}>
+            Cancelar
+          </button>
+          <button type="button" onClick={reverterParaAguardando} style={{
+            height: 44, borderRadius: 9, cursor: 'pointer',
+            border: `1px solid ${acento}55`, fontFamily: 'inherit',
+            background: cor('rgba(255,255,255,0.04)', T.cardAlt), color: acento,
+            fontSize: 13.5, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <i className="ti ti-arrow-back-up" style={{ fontSize: 15 }} aria-hidden="true" />
+            Reabrir
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Escolha confirmado/recusado
@@ -821,24 +886,36 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
   }
   const meta = STATUS_META[status] || STATUS_META.idle
   const s = estilos[status] || estilos.idle
-  const clicavel = status === 'idle' || status === 'aguardando'
+  const resolvido = status === 'confirmado' || status === 'recusado'
+
+  const handleClick = () => {
+    if (status === 'idle' || status === 'aguardando') avancar()
+    else if (resolvido) setDesfazendo(true)
+  }
 
   return (
     <button
       type="button"
-      onClick={clicavel ? avancar : undefined}
+      onClick={handleClick}
       style={{
         width: '100%', height: 48, borderRadius: 9,
         fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
-        cursor: clicavel ? 'pointer' : 'default',
+        cursor: 'pointer',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         WebkitTapHighlightColor: 'transparent',
         background: s.bg, color: s.color, border: s.border,
         transition: 'background .15s',
+        position: 'relative',
       }}
     >
       <i className={`ti ${meta.icon}`} style={{ fontSize: 17 }} aria-hidden="true" />
       {meta.label}
+      {resolvido && (
+        <i className="ti ti-dots-vertical" aria-hidden="true"
+          style={{
+            position: 'absolute', right: 10, fontSize: 14, opacity: 0.55,
+          }} />
+      )}
     </button>
   )
 }
