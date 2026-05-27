@@ -37,6 +37,7 @@ function HeaderFlat({ T, dark, icon, etapa, descricao, children, gap = 12 }) {
 }
 
 // ─── Sub-card estilo Orçamento (GrupoBlock) — reutilizado pela V2 ────────────
+// Header compacto (~50% mais fino que o original): padding 4px, icone 20x20.
 function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
   const colorMap = {
     blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
@@ -51,20 +52,20 @@ function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
       borderRadius: 10, overflow: 'hidden',
     }}>
       <div style={{
-        padding: '8px 6px 8px 14px',
+        padding: '4px 6px 4px 10px',
         background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
         borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 10,
+        display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span style={{
-          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+          width: 22, height: 22, borderRadius: 6, flexShrink: 0,
           background: c.bg, color: c.fg,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <TI name={icon} size={14} />
+          <TI name={icon} size={12} />
         </span>
         <span style={{
-          flex: 1, fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+          flex: 1, fontSize: 11.5, fontWeight: 700, color: T.textPrimary,
           textTransform: 'uppercase', letterSpacing: '.04em',
         }}>{label}</span>
         {action}
