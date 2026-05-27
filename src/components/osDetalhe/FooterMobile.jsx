@@ -14,12 +14,12 @@ import { P } from '../../theme'
 import { TIPOS_OS, ETAPAS_TODOS } from '../../utils/osData'
 import { podeMoverOS } from '../../utils/osHelpers'
 
-// Material 3 — aplicado quando etapa atual eh Agendamento (teste)
-const ETAPAS_M3 = new Set(['ag_agendamento', 'agendado', 'agendamento'])
+// HIG / M3 generic style flag — aplicado quando etapa atual eh Agendamento
+const ETAPAS_CUSTOM = new Set(['ag_agendamento', 'agendado', 'agendamento'])
 
 export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
-  const m3 = ETAPAS_M3.has(os.etapa)
+  const m3 = ETAPAS_CUSTOM.has(os.etapa) // mantem nome 'm3' mas comporta HIG
   const config = TIPOS_OS[os.tipo]
   const etapas = (config?.etapas || []).filter(e => admin || !e.adminOnly)
   const etapaIdx = etapas.findIndex(e => e.id === os.etapa)
@@ -152,15 +152,16 @@ function PularMenuMobile({ T, dark, azul, etapas, onEscolher, m3 }) {
         title="Pular para uma etapa específica"
         aria-label="Pular para etapa"
         style={m3 ? {
-          // M3 Text button — pill, label-large
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '0 12px', borderRadius: 999,
+          // HIG plain button
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '0 8px',
           border: 'none', background: 'transparent',
-          color: azul, fontSize: 14, fontWeight: 500,
-          letterSpacing: '0.1px',
-          cursor: 'pointer', fontFamily: 'inherit',
+          color: azul, fontSize: 17, fontWeight: 400,
+          letterSpacing: '-0.41px',
+          cursor: 'pointer',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
           WebkitTapHighlightColor: 'transparent',
-          minHeight: 40,
+          minHeight: 44,
         } : {
           display: 'inline-flex', alignItems: 'center', gap: 5,
           padding: '4px 10px', borderRadius: 6,
@@ -210,7 +211,7 @@ function MiniBtnMobile({ T, azul, habilitado, motivo, label, direcao, onClick, m
   const titulo = habilitado
     ? (isAvancar ? `Avançar para ${label}` : `Voltar para ${label}`)
     : motivo
-  // M3 Text button — pill 40dp, label-large 14sp, color primary
+  // HIG plain button — texto azul puro, sem fundo, chevron iOS style
   if (m3) {
     return (
       <button
@@ -219,20 +220,20 @@ function MiniBtnMobile({ T, azul, habilitado, motivo, label, direcao, onClick, m
         title={titulo}
         aria-label={titulo}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          padding: '0 12px', borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '0 8px', borderRadius: 0,
           border: 'none', background: 'transparent',
           color: habilitado ? azul : T.textDim,
-          fontSize: 14, fontWeight: 500, letterSpacing: '0.1px',
+          fontSize: 17, fontWeight: 400, letterSpacing: '-0.41px',
           cursor: habilitado ? 'pointer' : 'not-allowed',
-          opacity: habilitado ? 1 : 0.38,
-          fontFamily: 'inherit',
+          opacity: habilitado ? 1 : 0.3,
+          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
           WebkitTapHighlightColor: 'transparent',
-          minHeight: 40,
+          minHeight: 44,
         }}>
-        {!isAvancar && <i className="ti ti-chevron-left" style={{ fontSize: 18 }} aria-hidden="true" />}
+        {!isAvancar && <i className="ti ti-chevron-left" style={{ fontSize: 20 }} aria-hidden="true" />}
         <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
-        {isAvancar && <i className="ti ti-chevron-right" style={{ fontSize: 18 }} aria-hidden="true" />}
+        {isAvancar && <i className="ti ti-chevron-right" style={{ fontSize: 20 }} aria-hidden="true" />}
       </button>
     )
   }

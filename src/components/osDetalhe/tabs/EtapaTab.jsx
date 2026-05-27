@@ -23,13 +23,13 @@ import {
   AcaoConcluido,
   AcaoRecusada,
 } from '../acoes'
-import AcaoAgendamentoM3 from '../acoes/AcaoAgendamentoM3'
+import AcaoAgendamentoHIG from '../acoes/AcaoAgendamentoHIG'
 
 const MAP = {
-  // M3 teste — Agendamento usa Material Design 3 (Google) por enquanto.
+  // TESTE — Agendamento usa Apple HIG (Human Interface Guidelines).
   // Demais etapas seguem V2.
-  ag_agendamento: AcaoAgendamentoM3,
-  agendado: AcaoAgendamentoM3,
+  ag_agendamento: AcaoAgendamentoHIG,
+  agendado: AcaoAgendamentoHIG,
   recebido: AcaoRecebido,
   diagnostico: AcaoDiagnostico,
   orcamento: AcaoOrcamento,
@@ -40,7 +40,7 @@ const MAP = {
   concluido: AcaoConcluido,
   recusado: AcaoRecusada,
   // Aliases / variantes que aparecem em Fabricação e Venda
-  agendamento: AcaoAgendamentoM3,
+  agendamento: AcaoAgendamentoHIG,
   entregue: AcaoEntrega,
 }
 

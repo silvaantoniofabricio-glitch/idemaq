@@ -3,10 +3,10 @@ import { useTheme } from '../../theme';
 import { TI, PALETA } from '../_shared/PrimitivasMobile';
 import { ETAPAS_TODOS } from '../../utils/osData';
 import FormEquipamentoEdit from './FormEquipamentoEdit';
-import { m3Type } from '../../theme-m3';
+import { higType, HIG_FONT, HIG_COLOR } from '../../theme-hig';
 
-// Material 3 — aplicado quando etapa atual eh Agendamento (teste).
-const ETAPAS_M3 = new Set(['ag_agendamento', 'agendado', 'agendamento']);
+// Apple HIG — aplicado quando etapa atual eh Agendamento (teste).
+const ETAPAS_HIG = new Set(['ag_agendamento', 'agendado', 'agendamento']);
 
 // Resolve label friendly da etapa atual a partir do raw id (ex: 'ag_agendamento'
 // → 'Agenda'). Usa o `match` em ETAPAS_TODOS pra encontrar a etapa unificada
@@ -62,7 +62,9 @@ const HeaderMobile = ({
   onUpdateOS,
 }) => {
   const { T, dark } = useTheme();
-  const m3 = ETAPAS_M3.has(os?.etapa);
+  // Renomeei a flag generica `m3` que ja existia pra manter codigo abaixo.
+  // Quando true, aplica visual HIG (substituindo M3 anterior).
+  const m3 = ETAPAS_HIG.has(os?.etapa);
   // Modal de edicao de equipamento — gerenciado aqui dentro porque o
   // OSDetalhe nao passa onAdicionarEquipamento. Mesma logica do Header
   // desktop (que tambem mantem estado proprio).
@@ -128,7 +130,7 @@ const HeaderMobile = ({
           </button>
           <span style={m3 ? {
             fontFamily: MONO_STACK,
-            ...m3Type('labelMedium'),
+            ...higType('labelMedium'),
             color: T.textMuted, flexShrink: 0,
           } : {
             fontFamily: MONO_STACK,
@@ -137,15 +139,14 @@ const HeaderMobile = ({
           }}>
             OS #{os?.numero}
           </span>
-          {/* Status badge — M3 Assist Chip 32dp */}
+          {/* Status badge — HIG: capsule pill subtle, no icon */}
           <span style={m3 ? {
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            minHeight: 32, padding: '0 12px',
-            borderRadius: 8,
-            border: `1px solid ${T.border}`,
+            display: 'inline-flex', alignItems: 'center',
+            minHeight: 22, padding: '0 10px',
+            borderRadius: 999,
             background: toneStyle.bg, color: toneStyle.fg,
-            ...m3Type('labelLarge'),
-            textTransform: 'none', letterSpacing: 0.1,
+            ...higType('caption1'),
+            fontWeight: 600, letterSpacing: 0,
             whiteSpace: 'nowrap', flexShrink: 0,
           } : {
             fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
@@ -154,7 +155,6 @@ const HeaderMobile = ({
             background: toneStyle.bg, color: toneStyle.fg,
             flexShrink: 0,
           }}>
-            {m3 && <TI name="circle-dot" size={14} />}
             {badgeText}
           </span>
         </div>
@@ -216,7 +216,7 @@ const HeaderMobile = ({
         title={nome}
         style={m3 ? {
           padding: '4px 16px 0',
-          ...m3Type('titleLarge'),
+          ...higType('titleLarge'),
           color: T.textPrimary,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         } : {
@@ -238,7 +238,7 @@ const HeaderMobile = ({
           style={m3 ? {
             padding: '4px 16px 12px',
             border: 'none', background: 'transparent',
-            ...m3Type('bodyMedium'),
+            ...higType('bodyMedium'),
             color: T.textMuted,
             display: 'flex', alignItems: 'center', gap: 8,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -274,7 +274,7 @@ const HeaderMobile = ({
               minHeight: 40, padding: '0 12px', borderRadius: 999,
               border: 'none', background: 'transparent',
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              ...m3Type('labelLarge'),
+              ...higType('labelLarge'),
               color: PALETA.blueStrong,
               cursor: 'pointer', fontFamily: 'inherit',
               WebkitTapHighlightColor: 'transparent',
@@ -306,14 +306,15 @@ const HeaderMobile = ({
               <button key={a.id}
                 onClick={() => setAba(a.id)}
                 style={m3 ? {
-                  // M3 Primary tab — 48dp altura, indicator 3px embaixo
-                  flex: 1, minHeight: 48, padding: '0 12px',
+                  // HIG iOS-style tab — 44pt altura, indicator 2px, subtle
+                  flex: 1, minHeight: 44, padding: '0 12px',
                   border: 'none', background: 'transparent',
-                  borderBottom: `3px solid ${ativo ? PALETA.blueStrong : 'transparent'}`,
-                  color: ativo ? PALETA.blueStrong : T.textMuted,
-                  ...m3Type('labelLarge'),
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  borderBottom: `2px solid ${ativo ? HIG_COLOR.tintIdemaq : 'transparent'}`,
+                  color: ativo ? HIG_COLOR.tintIdemaq : T.textMuted,
+                  ...higType('subheadline'),
+                  fontWeight: ativo ? 600 : 500,
+                  cursor: 'pointer', fontFamily: HIG_FONT,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   transition: 'border-color .15s, color .15s',
                   WebkitTapHighlightColor: 'transparent',
                 } : {
