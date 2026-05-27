@@ -10,14 +10,18 @@ import AcaoOrcamento from '../acoes/AcaoOrcamento'
 
 export default function PagamentoTab({ os, onUpdateOS, onMoverOS, setAba }) {
   const { T, dark } = useTheme()
+  // Mesmo wrapper que o EtapaTab usa, pra ficar pixel-perfect identico
+  // ao Orcamento (sem ele as bordas dos blocos colam na tela = "zoom").
   return (
-    <AcaoOrcamento
-      T={T}
-      dark={dark}
-      os={os}
-      onUpdateOS={onUpdateOS}
-      onMoverOS={onMoverOS}
-      onAbrirAba={setAba}
-    />
+    <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <AcaoOrcamento
+        T={T}
+        dark={dark}
+        os={os}
+        onUpdateOS={onUpdateOS}
+        onMoverOS={onMoverOS}
+        onAbrirAba={setAba}
+      />
+    </div>
   )
 }
