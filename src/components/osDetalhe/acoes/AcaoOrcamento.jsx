@@ -1100,7 +1100,7 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
   }
 
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Diagnóstico */}
       <ResumoDiagnostico T={T} dark={dark} os={os} />
 

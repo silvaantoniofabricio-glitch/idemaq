@@ -427,7 +427,7 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
   const temResumo = relatoCliente || causaDiag || manutChecks.length > 0;
 
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Resumo do diagnostico */}
       {temResumo && (
         <SubBloco T={T} dark={dark} icon="stethoscope"
@@ -610,7 +610,7 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
   };
 
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <NowCard
         icon="tool"
         titulo="em oficina"
