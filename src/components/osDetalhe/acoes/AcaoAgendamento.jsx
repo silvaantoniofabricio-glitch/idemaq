@@ -454,8 +454,14 @@ const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
   const [foto2Url, setFoto2Url] = useState(null);
   const [up1, setUp1] = useState(false);
   const [up2, setUp2] = useState(false);
-  const input1 = useRef(null);
-  const input2 = useRef(null);
+  // 2 inputs por slot: um pra camera (capture=environment) + um pra galeria
+  // (sem capture). O ChoiceSheet abaixo mostra menu pra escolher.
+  const inputCam1 = useRef(null);
+  const inputGal1 = useRef(null);
+  const inputCam2 = useRef(null);
+  const inputGal2 = useRef(null);
+  // Popup pra escolher Camera vs Galeria. null = fechado; 1 ou 2 = slot ativo.
+  const [escolhaSlot, setEscolhaSlot] = useState(null);
 
   useEffect(() => {
     let canc = false;
@@ -563,24 +569,47 @@ const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
             T={T} dark={dark}
             label="Etiqueta"
             url={foto1Url} uploading={up1}
-            onPick={() => input1.current?.click()}
+            onPick={() => setEscolhaSlot(1)}
             onRemove={() => removerFotoSlot(1)}
           />
-          <input ref={input1} type="file" accept="image/*" capture="environment"
-            onChange={(e) => escolherFoto(e.target.files?.[0], 1)}
-            style={{ display: 'none' }} />
           <FotoSlot
             T={T} dark={dark}
             label="Estado"
             url={foto2Url} uploading={up2}
-            onPick={() => input2.current?.click()}
+            onPick={() => setEscolhaSlot(2)}
             onRemove={() => removerFotoSlot(2)}
           />
-          <input ref={input2} type="file" accept="image/*" capture="environment"
-            onChange={(e) => escolherFoto(e.target.files?.[0], 2)}
-            style={{ display: 'none' }} />
         </div>
+        {/* Inputs escondidos — 1 com camera, 1 sem (galeria) — por slot */}
+        <input ref={inputCam1} type="file" accept="image/*" capture="environment"
+          onChange={(e) => escolherFoto(e.target.files?.[0], 1)}
+          style={{ display: 'none' }} />
+        <input ref={inputGal1} type="file" accept="image/*"
+          onChange={(e) => escolherFoto(e.target.files?.[0], 1)}
+          style={{ display: 'none' }} />
+        <input ref={inputCam2} type="file" accept="image/*" capture="environment"
+          onChange={(e) => escolherFoto(e.target.files?.[0], 2)}
+          style={{ display: 'none' }} />
+        <input ref={inputGal2} type="file" accept="image/*"
+          onChange={(e) => escolherFoto(e.target.files?.[0], 2)}
+          style={{ display: 'none' }} />
       </SubBloco>
+
+      {/* Sheet de escolha: Tirar foto ou Escolher dos arquivos */}
+      {escolhaSlot && (
+        <EscolhaFotoSheet
+          T={T} dark={dark}
+          onClose={() => setEscolhaSlot(null)}
+          onCamera={() => {
+            (escolhaSlot === 1 ? inputCam1 : inputCam2).current?.click()
+            setEscolhaSlot(null)
+          }}
+          onGaleria={() => {
+            (escolhaSlot === 1 ? inputGal1 : inputGal2).current?.click()
+            setEscolhaSlot(null)
+          }}
+        />
+      )}
 
       {/* CTA: Confirmar recebimento — avança pra Recebido */}
       <button onClick={confirmar} disabled={!temIdent}
@@ -599,6 +628,78 @@ const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
     </>
   );
 };
+
+// Bottom sheet pra escolher entre Camera e Galeria
+function EscolhaFotoSheet({ T, dark, onClose, onCamera, onGaleria }) {
+  return (
+    <div onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 420,
+          background: T.card,
+          borderRadius: '16px 16px 0 0',
+          padding: '12px 14px calc(env(safe-area-inset-bottom, 0px) + 14px)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.4)',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border }} />
+        </div>
+        <div style={{
+          fontSize: 13, fontWeight: 700, color: T.textPrimary,
+          textAlign: 'center', marginBottom: 2,
+        }}>Adicionar foto</div>
+
+        <button onClick={onCamera}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px', borderRadius: 10,
+            background: dark ? 'rgba(255,255,255,0.04)' : T.cardAlt,
+            border: `1px solid ${T.border}`,
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            minHeight: 52,
+          }}>
+          <TI name="camera" size={20} color={PALETA.blueStrong} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>Tirar foto</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>Abre a câmera</div>
+          </div>
+        </button>
+
+        <button onClick={onGaleria}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px', borderRadius: 10,
+            background: dark ? 'rgba(255,255,255,0.04)' : T.cardAlt,
+            border: `1px solid ${T.border}`,
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            minHeight: 52,
+          }}>
+          <TI name="photo" size={20} color={PALETA.blueStrong} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>Escolher dos arquivos</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>Galeria do celular</div>
+          </div>
+        </button>
+
+        <button onClick={onClose}
+          style={{
+            padding: '10px', borderRadius: 8,
+            background: 'transparent', border: `1px solid ${T.border}`,
+            color: T.textMuted, fontWeight: 600, fontSize: 13,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // Slot de foto compacto (114x76) — placeholder com "+" quando vazio
 function FotoSlot({ T, dark, label, url, uploading, onPick, onRemove }) {
