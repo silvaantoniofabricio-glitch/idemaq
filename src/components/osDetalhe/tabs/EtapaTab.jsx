@@ -26,13 +26,14 @@ import {
 import AcaoAgendamentoHIG from '../acoes/AcaoAgendamentoHIG'
 import AcaoColetaHIG from '../acoes/AcaoColetaHIG'
 import AcaoRecebidoHIG from '../acoes/AcaoRecebidoHIG'
+import AcaoDiagnosticoHIG from '../acoes/AcaoDiagnosticoHIG'
 
 const MAP = {
   // HIG aplicado em TODAS as etapas — cada uma com arquivo dedicado.
-  ag_agendamento: AcaoAgendamentoHIG,  // Agenda   (escolher dia/hora)
-  agendado: AcaoColetaHIG,             // Coleta   (ir buscar no cliente)
+  ag_agendamento: AcaoAgendamentoHIG,  // Agenda    (escolher dia/hora)
+  agendado: AcaoColetaHIG,             // Coleta    (ir buscar no cliente)
   recebido: AcaoRecebidoHIG,           // Avaliação (testes de funcionamento)
-  diagnostico: AcaoDiagnostico,
+  diagnostico: AcaoDiagnosticoHIG,    // Diagnóstico (causa + componentes)
   orcamento: AcaoOrcamento,
   oficina: AcaoOficina,
   teste_final: AcaoTeste,
