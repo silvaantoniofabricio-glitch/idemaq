@@ -251,6 +251,94 @@ const ResumoDiagnostico = ({ os }) => {
   );
 };
 
+// ─── Botão de status do orçamento ────────────────────────────────────────────
+// idle → aguardando → (confirmado | recusado)
+// Persiste em os.orcamento_status via onUpdateOS (coluna precisa existir no banco;
+// enquanto não existe, fica em memória durante a sessão).
+
+const STATUS_ORC = {
+  idle:        { label: 'Enviar Orçamento',    icon: 'send',       bg: 'transparent', border: PALETA.blue, color: PALETA.blueStrong },
+  aguardando:  { label: 'Aguardando resposta', icon: 'clock',      bg: PALETA.yellowBg, border: PALETA.yellow, color: PALETA.yellowStrong },
+  confirmado:  { label: 'Confirmado',          icon: 'check',      bg: '#e8f8f0',  border: '#4CAF82', color: '#2e7d5e' },
+  recusado:    { label: 'Recusado',            icon: 'x',          bg: PALETA.redBg, border: PALETA.red, color: PALETA.redStrong },
+};
+
+const BotaoStatusOrcamento = ({ os, onUpdateOS }) => {
+  const { T } = useTheme();
+  const [status, setStatus] = useState(os?.orcamento_status || 'idle');
+  const [confirmando, setConfirmando] = useState(false);
+
+  function avancar() {
+    if (status === 'idle') {
+      setStatus('aguardando');
+      onUpdateOS?.(os.numero, { orcamento_status: 'aguardando' });
+    } else if (status === 'aguardando') {
+      setConfirmando(true);
+    }
+  }
+
+  function resolver(novoStatus) {
+    setStatus(novoStatus);
+    setConfirmando(false);
+    onUpdateOS?.(os.numero, { orcamento_status: novoStatus });
+  }
+
+  const meta = STATUS_ORC[status] || STATUS_ORC.idle;
+  const clicavel = status === 'idle' || status === 'aguardando';
+
+  if (confirmando) {
+    return (
+      <div style={{
+        background: T.card, border: `1px solid ${T.border}`,
+        borderRadius: 12, padding: 12,
+        display: 'flex', flexDirection: 'column', gap: 8,
+      }}>
+        <div style={{
+          fontSize: 12, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.06em', textAlign: 'center',
+        }}>
+          O orçamento foi aprovado?
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button type="button" onClick={() => resolver('recusado')} style={{
+            padding: '12px 0', borderRadius: 10, cursor: 'pointer',
+            border: `1px solid ${PALETA.red}`, fontFamily: 'inherit',
+            background: PALETA.redBg, color: PALETA.redStrong,
+            fontSize: 14, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <TI name="x" size={16} /> Recusado
+          </button>
+          <button type="button" onClick={() => resolver('confirmado')} style={{
+            padding: '12px 0', borderRadius: 10, cursor: 'pointer',
+            border: '1px solid #4CAF82', fontFamily: 'inherit',
+            background: '#e8f8f0', color: '#2e7d5e',
+            fontSize: 14, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <TI name="check" size={16} /> Confirmado
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" onClick={clicavel ? avancar : undefined} style={{
+      width: '100%', padding: '13px 16px', borderRadius: 12,
+      border: `1.5px dashed ${meta.border}`,
+      background: meta.bg, color: meta.color,
+      fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+      cursor: clicavel ? 'pointer' : 'default',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+      transition: 'background .12s, border-color .12s',
+    }}>
+      <TI name={meta.icon} size={16} />
+      {meta.label}
+    </button>
+  );
+};
+
 const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
   const { T, dark } = useTheme();
   const { itens, addItem, removeItem } = useOSItens(os?.id);
@@ -363,6 +451,8 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
           }}>{fmtBRL(total)}</span>
         </div>
       </div>
+
+      <BotaoStatusOrcamento os={os} onUpdateOS={onUpdateOS} />
 
       {/* Forma de pagamento — persiste em os.forma_pagamento (coluna text).
           Combina com o orcamento pra que esteja ja definida quando a OS
