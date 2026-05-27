@@ -143,9 +143,22 @@ export default function NovaOSMobile({
       const { data, error: err } = await supabase
         .from('os')
         .insert(payload)
-        .select('numero')
+        .select('id, numero')
         .single()
       if (err) throw err
+
+      // Itens padrão pra OS de atendimento: 2 serviços (Limpeza/Manutenção,
+      // R$ 165 cada) + Deslocamento (R$ 20). User pode remover/editar depois
+      // na etapa Orçamento. Best-effort: se falhar não bloqueia a criação.
+      if (tipo === 'atendimento') {
+        const itensPadrao = [
+          { os_id: data.id, tipo: 'servico', nome: 'Limpeza',     quantidade: 1, valor_unitario: 165 },
+          { os_id: data.id, tipo: 'servico', nome: 'Manutenção',  quantidade: 1, valor_unitario: 165 },
+          { os_id: data.id, tipo: 'desloc',  nome: 'Deslocamento', quantidade: 1, valor_unitario: 20 },
+        ]
+        const { error: errItens } = await supabase.from('os_item').insert(itensPadrao)
+        if (errItens) console.warn('[NovaOSMobile] itens padrão falharam:', errItens)
+      }
 
       notify?.('ok', `OS #${data.numero} criada`)
       onCriada?.()

@@ -21,6 +21,20 @@ const TIPOS = [
 // Purple não existe em corEtapa, definimos direto
 const COR_PECA = { fg: '#7C5CBF', bg: '#F1ECF8', bgDark: 'rgba(124,92,191,0.12)' }
 
+// Sugestões fixas por tipo (Limpeza/Manutenção R$ 165 cada, Deslocamento R$ 20).
+// Esses 3 já vêm pré-selecionados em OS novas de atendimento; o autocomplete
+// só serve pra re-adicionar se o user removeu por acidente.
+const SUGESTOES = {
+  servico: [
+    { nome: 'Limpeza',    valor: 165 },
+    { nome: 'Manutenção', valor: 165 },
+  ],
+  desloc: [
+    { nome: 'Deslocamento', valor: 20 },
+  ],
+  peca: [],
+}
+
 function corTipo(tipo, dark) {
   if (tipo.id === 'peca') return { fg: COR_PECA.fg, bg: dark ? COR_PECA.bgDark : COR_PECA.bg }
   return { fg: corEtapa(tipo.corKey, dark), bg: bgEtapa(tipo.corKey, dark) }
@@ -137,25 +151,42 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
         Novo {tipo.label.replace(/s$/, '').toLowerCase()}
       </div>
 
-      {/* Descrição (com autocomplete do estoque pra peças) */}
+      {/* Descrição — com autocomplete: peças vêm do estoque; serviço e
+          deslocamento vêm das sugestões fixas (Limpeza/Manutenção/Deslocamento). */}
       <div style={{ position: 'relative' }}>
         <Label T={T}>Descrição</Label>
         <Input T={T}
-          placeholder={tipo.id === 'peca' ? 'Buscar no estoque ou digitar…' : 'Ex: Troca de correia'}
+          placeholder={
+            tipo.id === 'peca' ? 'Buscar no estoque ou digitar…'
+            : tipo.id === 'servico' ? 'Ex: Limpeza, Manutenção…'
+            : tipo.id === 'desloc' ? 'Ex: Deslocamento'
+            : 'Ex: Troca de correia'
+          }
           value={nome}
           onChange={e => {
             setNome(e.target.value)
-            setPecaIdSelecionada(null)        // perdeu o vínculo se edita manualmente
-            if (tipo.id === 'peca') setPickerAberto(true)
+            setPecaIdSelecionada(null)
+            setPickerAberto(true)
           }}
-          onFocus={() => { if (tipo.id === 'peca') setPickerAberto(true) }}
+          onFocus={() => setPickerAberto(true)}
           onBlur={() => setTimeout(() => setPickerAberto(false), 200)}
           autoFocus
         />
-        {tipo.id === 'peca' && pickerAberto && (
+        {pickerAberto && tipo.id === 'peca' && (
           <PecaPicker T={T} dark={dark} fg={fg}
             termo={nome}
             onEscolher={escolherPecaDoEstoque}
+          />
+        )}
+        {pickerAberto && tipo.id !== 'peca' && (
+          <SugestoesPicker T={T} dark={dark} fg={fg}
+            sugestoes={SUGESTOES[tipo.id] || []}
+            termo={nome}
+            onEscolher={(s) => {
+              setNome(s.nome)
+              setValor(String(s.valor))
+              setPickerAberto(false)
+            }}
           />
         )}
         {tipo.id === 'peca' && pecaIdSelecionada && (
@@ -193,6 +224,47 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
           {saving ? 'Salvando…' : 'Salvar'}
         </Btn>
       </div>
+    </div>
+  )
+}
+
+// Picker simples pra Serviço/Deslocamento — sugestões hardcoded SUGESTOES.
+// Filtra pelo termo se houver, senão mostra todas as sugestões do tipo.
+function SugestoesPicker({ T, dark, fg, sugestoes, termo, onEscolher }) {
+  const t = (termo || '').trim().toLowerCase()
+  const matches = t
+    ? sugestoes.filter(s => s.nome.toLowerCase().includes(t))
+    : sugestoes
+  if (matches.length === 0) return null
+  return (
+    <div style={{
+      position: 'absolute', top: '100%', left: 0, right: 0,
+      marginTop: 4, zIndex: 50,
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.2)',
+      maxHeight: 200, overflowY: 'auto',
+    }}>
+      {matches.map((s, i) => (
+        <button key={i} type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onEscolher(s)}
+          style={{
+            width: '100%', textAlign: 'left',
+            padding: '10px 12px',
+            background: 'transparent', border: 'none',
+            borderBottom: i < matches.length - 1 ? `1px solid ${T.border}` : 'none',
+            cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+          <div style={{
+            flex: 1, fontSize: 13, fontWeight: 600, color: T.textPrimary,
+          }}>{s.nome}</div>
+          <div style={{
+            fontSize: 13, fontWeight: 700, color: fg,
+            fontVariantNumeric: 'tabular-nums',
+          }}>{fmtBRL(s.valor)}</div>
+        </button>
+      ))}
     </div>
   )
 }
