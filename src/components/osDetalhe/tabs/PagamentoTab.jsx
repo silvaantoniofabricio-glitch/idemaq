@@ -7,7 +7,6 @@ import {
 } from '../../_shared/PrimitivasMobile';
 import FormRecebimento from '../FormRecebimento';
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro';
-import { fmtBRL } from '../../../utils/fmt';
 
 const TIPOS = [
   { id: 'servico', label: 'serviço', icon: 'tool',    bg: PALETA.blueBg,   fg: PALETA.blueStrong },
