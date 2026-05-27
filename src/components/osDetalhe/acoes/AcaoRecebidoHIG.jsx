@@ -413,12 +413,12 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
           <span style={{
             width: 32, height: 32, borderRadius: 8, flexShrink: 0,
             background: naoLiga
-              ? (dark ? 'rgba(255,59,48,0.18)' : '#FEF0EF')
+              ? (dark ? 'rgba(91,155,213,0.18)' : 'rgba(91,155,213,0.12)')
               : (dark ? 'rgba(255,149,0,0.15)' : '#FFF5E6'),
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <TI name="bolt-off" size={16}
-              color={naoLiga ? HIG_COLOR.red : HIG_COLOR.orange} />
+              color={naoLiga ? HIG_COLOR.tintIdemaq : HIG_COLOR.orange} />
           </span>
           <div style={{ flex: 1 }}>
             <div style={{ ...higType('body'), color: T.textPrimary }}>
@@ -426,7 +426,7 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
             </div>
             <div style={{
               ...higType('caption1'),
-              color: naoLiga ? HIG_COLOR.red : T.textMuted,
+              color: naoLiga ? HIG_COLOR.tintIdemaq : T.textMuted,
               marginTop: 1,
             }}>
               {naoLiga ? 'Ativo · testes desabilitados' : 'Ativar pula os 4 testes'}
@@ -441,7 +441,7 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
             style={{
               width: 51, height: 31, borderRadius: 999,
               border: 'none', padding: 2, flexShrink: 0,
-              background: naoLiga ? HIG_COLOR.red : '#E9E9EB',
+              background: naoLiga ? HIG_COLOR.tintIdemaq : '#E9E9EB',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center',
               justifyContent: naoLiga ? 'flex-end' : 'flex-start',
