@@ -24,23 +24,30 @@ const RESULTADO_THEMES = {
   barulho: { icon: 'volume',          label: 'Barulho', bg: PALETA.yellowBg, fg: PALETA.yellowStrong, bd: '#E5BD3E' },
 };
 
-const SegOption = ({ kind, selected, onClick }) => {
+const SegOption = ({ kind, selected, onClick, compact }) => {
   const { T } = useTheme();
   const th = RESULTADO_THEMES[kind];
   return (
-    <button type="button" onClick={onClick} style={{
-      height: MOBILE.segHeight, borderRadius: 10,
-      border: `1px solid ${selected ? th.bd : T.border}`,
-      background: selected ? th.bg : T.card,
-      color: selected ? th.fg : T.textPrimary,
-      fontSize: 13, fontWeight: 600,
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-      cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-      transition: 'background .12s, border-color .12s',
-      fontFamily: 'inherit',
+    <button type="button" onClick={onClick}
+      title={th.label}
+      style={{
+        minHeight: 38, borderRadius: 8,
+        padding: compact ? '0 4px' : '0 8px',
+        border: `1px solid ${selected ? th.bd : T.border}`,
+        background: selected ? th.bg : T.card,
+        color: selected ? th.fg : T.textPrimary,
+        fontSize: 12, fontWeight: 600,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        transition: 'background .12s, border-color .12s',
+        fontFamily: 'inherit',
+        overflow: 'hidden', minWidth: 0,
     }}>
-      <TI name={th.icon} size={15} color={selected ? th.fg : T.textMuted} />
-      {th.label}
+      <TI name={th.icon} size={14} color={selected ? th.fg : T.textMuted} />
+      {/* Label do botão só aparece quando há espaço (>= 60px) */}
+      {!compact && <span style={{
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{th.label}</span>}
     </button>
   );
 };
@@ -51,20 +58,27 @@ const TesteCard = ({ teste, valor, onChange }) => {
     <div className="idemaq-card" style={{
       background: T.card, border: `1px solid ${T.border}`,
       borderRadius: MOBILE.radiusCard, padding: '10px 12px',
-      display: 'flex', alignItems: 'center', gap: 10,
+      display: 'flex', alignItems: 'center', gap: 8,
     }}>
-      {/* Label à esquerda */}
+      {/* Label à esquerda — flex compartilhado com botões */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        fontSize: 14, fontWeight: 600, color: T.textPrimary,
-        flex: 1, minWidth: 0,
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
+        flex: '1 1 100px', minWidth: 0,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
-        <TI name={teste.icon} size={17} color={PALETA.blueStrong} />
-        {teste.label}
+        <TI name={teste.icon} size={16} color={PALETA.blueStrong} />
+        <span style={{
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{teste.label}</span>
       </div>
-      {/* 3 botões à direita, mesma altura, fixos */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, flexShrink: 0, width: 270 }}>
+      {/* 3 botões: flex 2 — ganha mais espaço que a label, mas ambos
+          compartilham quando estreito. minmax garante que os botões
+          encolhem juntos sem estourar. */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: 4, flex: '2 1 180px', minWidth: 0,
+      }}>
         {(['ok', 'defeito', 'barulho']).map(k => (
           <SegOption key={k} kind={k}
             selected={valor === k}
