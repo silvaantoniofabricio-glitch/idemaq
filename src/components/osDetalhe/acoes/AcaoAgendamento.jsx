@@ -510,7 +510,10 @@ const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
       {/* SUB-BLOCO 1: Dados do equipamento (modelo + serie) */}
       <SubBloco T={T} dark={dark} icon="device-laptop" label="Dados do equipamento" color="blue">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <label style={{
+            display: 'flex', flexDirection: 'column', gap: 3,
+            minWidth: 0,  // Permite encolher no grid
+          }}>
             <span style={{
               fontSize: 10, color: T.textMuted, fontWeight: 700,
               textTransform: 'uppercase', letterSpacing: '.04em',
@@ -519,14 +522,19 @@ const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
               placeholder="Ex: BWK11A" value={modelo}
               onChange={(e) => setModelo(e.target.value)}
               style={{
+                width: '100%', boxSizing: 'border-box',
                 padding: '7px 9px', borderRadius: 6,
                 border: `1px solid ${T.border}`,
                 background: T.bg, color: T.textPrimary,
                 fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                minWidth: 0,
               }}
             />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <label style={{
+            display: 'flex', flexDirection: 'column', gap: 3,
+            minWidth: 0,
+          }}>
             <span style={{
               fontSize: 10, color: T.textMuted, fontWeight: 700,
               textTransform: 'uppercase', letterSpacing: '.04em',
@@ -535,11 +543,13 @@ const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
               placeholder="Ex: BR-2024-887" value={serie}
               onChange={(e) => setSerie(e.target.value)}
               style={{
+                width: '100%', boxSizing: 'border-box',
                 padding: '7px 9px', borderRadius: 6,
                 border: `1px solid ${T.border}`,
                 background: T.bg, color: T.textPrimary,
-                fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                fontSize: 13, outline: 'none',
                 fontFamily: 'ui-monospace, monospace',
+                minWidth: 0,
               }}
             />
           </label>
