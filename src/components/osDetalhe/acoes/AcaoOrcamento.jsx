@@ -88,10 +88,10 @@ function Btn({ children, icon, variant = 'ghost', T, dark, onClick, disabled, fu
       onClick={onClick}
       disabled={disabled}
       style={{
-        height: 36, padding: '0 12px',
-        borderRadius: 8, cursor: disabled ? 'default' : 'pointer',
-        fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        height: 42, padding: '0 14px',
+        borderRadius: 9, cursor: disabled ? 'default' : 'pointer',
+        fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
         width: full ? '100%' : undefined,
         opacity: disabled ? 0.5 : 1,
         WebkitTapHighlightColor: 'transparent',
@@ -99,7 +99,7 @@ function Btn({ children, icon, variant = 'ghost', T, dark, onClick, disabled, fu
         background: s.bg, color: s.color, border: s.border,
       }}
     >
-      {icon && <i className={`ti ${icon}`} style={{ fontSize: 13 }} aria-hidden="true" />}
+      {icon && <i className={`ti ${icon}`} style={{ fontSize: 15 }} aria-hidden="true" />}
       {children}
     </button>
   )
@@ -408,36 +408,34 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
       background: T.card, border: `1px solid ${T.border}`,
       borderRadius: 10, overflow: 'hidden',
     }}>
-      {/* Cabeçalho do grupo — compact V2 (mesmo padrao SubBloco) */}
+      {/* Cabeçalho do grupo */}
       <div style={{
-        padding: '3px 5px 3px 8px',
+        padding: '6px 8px 6px 12px',
         background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
         borderBottom: !isEmpty ? `1px solid ${T.border}` : 'none',
-        display: 'flex', alignItems: 'center', gap: 7,
-        minHeight: 30,
+        display: 'flex', alignItems: 'center', gap: 9,
+        minHeight: 40,
       }}>
         <span style={{
-          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
           background: bg, color: fg,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <i className={`ti ${tipo.icon}`} style={{ fontSize: 11 }} aria-hidden="true" />
+          <i className={`ti ${tipo.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
         </span>
         <span style={{
-          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
-          textTransform: 'uppercase', letterSpacing: '.04em',
+          flex: 1, fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
         }}>
           {tipo.label}
           {itens.length > 0 && (
-            <span style={{ fontWeight: 500, color: T.textMuted, marginLeft: 4,
-              textTransform: 'none', letterSpacing: 0 }}>
+            <span style={{ fontWeight: 500, color: T.textMuted, marginLeft: 5 }}>
               · {itens.length}
             </span>
           )}
         </span>
         {subtotal > 0 && (
           <span style={{
-            fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+            fontSize: 13.5, fontWeight: 700, color: T.textPrimary,
             fontVariantNumeric: 'tabular-nums',
           }}>
             {fmtBRL(subtotal)}
@@ -450,48 +448,48 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
             aria-label={`Adicionar ${tipo.label.replace(/s$/, '').toLowerCase()}`}
             title={`Adicionar ${tipo.label.replace(/s$/, '').toLowerCase()}`}
             style={{
-              width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+              width: 28, height: 28, borderRadius: 7, flexShrink: 0,
               background: bg, border: 'none', color: fg,
               cursor: 'pointer', fontFamily: 'inherit',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
+            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
           </button>
         )}
       </div>
 
-      {/* Lista de itens — compact */}
+      {/* Lista de itens */}
       {itens.map((it, idx) => (
         <div key={it.id || idx} style={{
-          padding: '7px 10px',
+          padding: '9px 12px',
           borderTop: `1px solid ${T.border}`,
-          display: 'flex', alignItems: 'center', gap: 8,
+          display: 'flex', alignItems: 'center', gap: 9,
         }}>
           <span style={{
-            flex: 1, fontSize: 12.5, color: T.textPrimary, fontWeight: 500,
+            flex: 1, fontSize: 13, color: T.textPrimary, fontWeight: 500,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{it.nome || '(sem nome)'}</span>
           <span style={{
-            fontSize: 11, color: T.textMuted,
+            fontSize: 11.5, color: T.textMuted,
             fontVariantNumeric: 'tabular-nums', flexShrink: 0,
           }}>{it.qtd || 1}×</span>
           <span style={{
-            fontSize: 12.5, fontWeight: 600, color: T.textPrimary,
-            fontVariantNumeric: 'tabular-nums', minWidth: 58, textAlign: 'right', flexShrink: 0,
+            fontSize: 13, fontWeight: 600, color: T.textPrimary,
+            fontVariantNumeric: 'tabular-nums', minWidth: 62, textAlign: 'right', flexShrink: 0,
           }}>{fmtBRL((it.qtd || 1) * (it.valor_unitario || 0))}</span>
           <button
             type="button"
             onClick={() => onRemove(it.id)}
             style={{
-              width: 24, height: 24, borderRadius: 5, flexShrink: 0,
+              width: 28, height: 28, borderRadius: 6, flexShrink: 0,
               background: 'transparent', border: `1px solid ${T.border}`,
               color: T.textMuted, cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             }}
             aria-label="Remover item"
           >
-            <i className="ti ti-trash" style={{ fontSize: 11 }} aria-hidden="true" />
+            <i className="ti ti-trash" style={{ fontSize: 12 }} aria-hidden="true" />
           </button>
         </div>
       ))}
@@ -512,16 +510,16 @@ function TotaisCard({ T, dark, subtotais, descontoRS, subtotalBruto, total }) {
       border: `1px solid ${azul}44`,
       borderRadius: 10, overflow: 'hidden',
     }}>
-      {/* Linhas por categoria — compact V2 */}
+      {/* Linhas por categoria */}
       {TIPOS.map((t, i) => (
         <div key={t.id} style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '6px 10px',
+          padding: '8px 12px',
           borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
-          fontSize: 12, color: T.textSecondary,
+          fontSize: 13, color: T.textSecondary,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className={`ti ${t.icon}`} style={{ fontSize: 12, color: T.textMuted }} aria-hidden="true" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <i className={`ti ${t.icon}`} style={{ fontSize: 13, color: T.textMuted }} aria-hidden="true" />
             <span>{t.label}</span>
           </div>
           <span style={{
@@ -537,12 +535,12 @@ function TotaisCard({ T, dark, subtotais, descontoRS, subtotalBruto, total }) {
       {temDesc && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '6px 10px',
+          padding: '8px 12px',
           borderTop: `1px solid ${T.border}`,
-          fontSize: 12, color: T.textSecondary,
+          fontSize: 13, color: T.textSecondary,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className="ti ti-tag" style={{ fontSize: 12, color: corEtapa('red', dark) }} aria-hidden="true" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <i className="ti ti-tag" style={{ fontSize: 13, color: corEtapa('red', dark) }} aria-hidden="true" />
             <span>Desconto</span>
           </div>
           <span style={{
@@ -554,22 +552,22 @@ function TotaisCard({ T, dark, subtotais, descontoRS, subtotalBruto, total }) {
         </div>
       )}
 
-      {/* Linha total — V2 mais compacta */}
+      {/* Linha total — destaque */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 10px',
+        padding: '12px',
         borderTop: `1.5px solid ${azul}44`,
         background: cor('rgba(91,155,213,0.04)', 'rgba(91,155,213,0.05)'),
       }}>
         <span style={{
-          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+          fontSize: 11, fontWeight: 700, color: T.textMuted,
           textTransform: 'uppercase', letterSpacing: '.06em',
         }}>
           Total
         </span>
         <span style={{
-          fontSize: 18, fontWeight: 700, color: T.textPrimary,
-          fontVariantNumeric: 'tabular-nums', letterSpacing: '-.01em',
+          fontSize: 22, fontWeight: 700, color: T.textPrimary,
+          fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em',
         }}>
           {fmtBRL(total)}
         </span>
@@ -598,36 +596,34 @@ function DescontoBlock({
       background: T.card, border: `1px solid ${T.border}`,
       borderRadius: 10, overflow: 'hidden',
     }}>
-      {/* Cabeçalho (mesma visual dos GrupoBlock) — compact V2 */}
+      {/* Cabeçalho (mesma visual dos GrupoBlock) */}
       <div style={{
-        padding: '3px 5px 3px 8px',
+        padding: '6px 8px 6px 12px',
         background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
         borderBottom: editando ? `1px solid ${T.border}` : 'none',
-        display: 'flex', alignItems: 'center', gap: 7,
-        minHeight: 30,
+        display: 'flex', alignItems: 'center', gap: 9,
+        minHeight: 40,
       }}>
         <span style={{
-          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+          width: 26, height: 26, borderRadius: 7, flexShrink: 0,
           background: bgRed, color: vermelho,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <i className="ti ti-tag" style={{ fontSize: 11 }} aria-hidden="true" />
+          <i className="ti ti-tag" style={{ fontSize: 13 }} aria-hidden="true" />
         </span>
         <span style={{
-          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
-          textTransform: 'uppercase', letterSpacing: '.04em',
+          flex: 1, fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
         }}>
           Desconto
           {ativo && (
-            <span style={{ fontWeight: 500, color: T.textMuted, marginLeft: 4,
-              textTransform: 'none', letterSpacing: 0 }}>
+            <span style={{ fontWeight: 500, color: T.textMuted, marginLeft: 5 }}>
               · {pct.toFixed(1).replace('.', ',')}%
             </span>
           )}
         </span>
         {ativo && (
           <span style={{
-            fontSize: 12.5, fontWeight: 700, color: vermelho,
+            fontSize: 13.5, fontWeight: 700, color: vermelho,
             fontVariantNumeric: 'tabular-nums',
           }}>
             − {fmtBRL(descontoRS)}
@@ -641,7 +637,7 @@ function DescontoBlock({
             aria-label="Adicionar um desconto"
             title="Adicionar um desconto"
             style={{
-              width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+              width: 28, height: 28, borderRadius: 7, flexShrink: 0,
               background: bgRed, border: 'none', color: vermelho,
               cursor: podeAplicar ? 'pointer' : 'not-allowed',
               opacity: podeAplicar ? 1 : 0.4,
@@ -649,7 +645,7 @@ function DescontoBlock({
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
+            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
           </button>
         ) : ativo && (
           <button
@@ -658,13 +654,13 @@ function DescontoBlock({
             aria-label="Remover desconto"
             title="Remover desconto"
             style={{
-              width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+              width: 28, height: 28, borderRadius: 7, flexShrink: 0,
               background: 'transparent', border: `1px solid ${T.border}`,
               color: T.textMuted, cursor: 'pointer', fontFamily: 'inherit',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+            <i className="ti ti-x" style={{ fontSize: 13 }} aria-hidden="true" />
           </button>
         )}
       </div>
@@ -904,17 +900,17 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
       type="button"
       onClick={handleClick}
       style={{
-        width: '100%', height: 40, borderRadius: 8,
-        fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
+        width: '100%', height: 46, borderRadius: 9,
+        fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700,
         cursor: 'pointer',
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         WebkitTapHighlightColor: 'transparent',
         background: s.bg, color: s.color, border: s.border,
         transition: 'background .15s',
         position: 'relative',
       }}
     >
-      <i className={`ti ${meta.icon}`} style={{ fontSize: 15 }} aria-hidden="true" />
+      <i className={`ti ${meta.icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
       {meta.label}
       {resolvido && (
         <i className="ti ti-dots-vertical" aria-hidden="true"
@@ -1104,7 +1100,7 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
   }
 
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Diagnóstico */}
       <ResumoDiagnostico T={T} dark={dark} os={os} />
 
