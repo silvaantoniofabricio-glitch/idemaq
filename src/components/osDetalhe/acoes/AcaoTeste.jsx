@@ -1,30 +1,25 @@
 // src/components/osDetalhe/acoes/AcaoTeste.jsx
-// Etapa Teste final — ESPELHO do AcaoRecebido (mesmo checklist, mesma UI)
-// + seção condicional "Acabamento" (Secagem/Polimento/Enceramento) que só
-// aparece em OS com Limpeza no orçamento.
+// Etapa Teste final — padrao V2 SubBloco (mesmo Diagnostico/Orcamento/Conserto).
 //
 // Regras:
-// - Testes (4): Entrada de água · Saída de água · Agitação · Centrifugação
-//   → cada um: OK / Defeito / Barulho (mesmo SegOption do AcaoRecebido)
-// - Acabamento (3): Secagem · Polimento · Enceramento
-//   → só aparece se há item /limpeza/i no orçamento
-//   → cada um: feito (toggle)
+// - 4 testes (Entrada/Saida/Agitacao/Centrifugacao): OK / Defeito / Barulho
+// - Acabamento (3): Secagem · Polimento · Enceramento → só se OS tem Limpeza
 // - Aprovar libera quando TODOS testes preenchidos + (se aplicável) TODOS
 //   acabamento marcados
 // - Voltar pra oficina aparece quando há defeito/barulho — leva as falhas
 //   pro banner do AcaoOficina via useFalhaTeste.
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../theme'
 import {
-  TI, NowCard, Group, TextArea, BtnMobile, MOBILE, PALETA,
+  TI, BtnMobile, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import { useOSItens } from '../../../hooks/useOSItens'
+import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 
-// Mesmos 4 testes do AcaoRecebido (paridade visual exigida pela Idemaq).
 const TESTES = [
   { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
   { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
@@ -32,7 +27,6 @@ const TESTES = [
   { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
 ]
 
-// Acabamento — só aparece em OS com Limpeza no orçamento.
 const ACABAMENTO = [
   { id: 'secagem',     label: 'Secagem',     icon: 'wind' },
   { id: 'polimento',   label: 'Polimento',   icon: 'sparkles' },
@@ -40,31 +34,147 @@ const ACABAMENTO = [
 ]
 
 const RESULTADO_THEMES = {
-  ok:      { icon: 'check',          label: 'OK',      bg: PALETA.greenBg,  fg: PALETA.greenStrong,  bd: '#7DC09F' },
-  defeito: { icon: 'alert-triangle', label: 'Defeito', bg: PALETA.redBg,    fg: PALETA.redStrong,    bd: '#E89B9B' },
-  barulho: { icon: 'volume',         label: 'Barulho', bg: PALETA.yellowBg, fg: PALETA.yellowStrong, bd: '#E5BD3E' },
+  ok:      { icon: 'check',          label: 'OK',      bgLight: PALETA.greenBg,  bgDark: 'rgba(46,125,94,0.22)',   fg: PALETA.greenStrong,  bd: '#7DC09F' },
+  defeito: { icon: 'alert-triangle', label: 'Defeito', bgLight: PALETA.redBg,    bgDark: 'rgba(192,66,66,0.22)',   fg: PALETA.redStrong,    bd: '#E89B9B' },
+  barulho: { icon: 'volume',         label: 'Barulho', bgLight: PALETA.yellowBg, bgDark: 'rgba(255,217,102,0.20)', fg: PALETA.yellowStrong, bd: '#E5BD3E' },
 }
 
-const SegOption = ({ kind, selected, onClick }) => {
-  const { T } = useTheme()
+// ─── SubBloco compacto (mesmo padrao V2 das outras etapas) ────────────────
+function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
+  const colorMap = {
+    blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
+    yellow: { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg },
+    green:  { fg: PALETA.greenStrong,  bg: dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg },
+    red:    { fg: PALETA.redStrong,    bg: dark ? 'rgba(192,66,66,0.18)' : PALETA.redBg },
+  }
+  const c = colorMap[color] || colorMap.blue
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '3px 6px 3px 8px',
+        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 7,
+      }}>
+        <span style={{
+          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+          background: c.bg, color: c.fg,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <TI name={icon} size={11} />
+        </span>
+        <span style={{
+          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>{label}</span>
+        {action}
+      </div>
+      <div style={{ padding: 10 }}>{children}</div>
+    </div>
+  )
+}
+
+// ─── Resumo do diagnostico (mesmo bloco usado em Orcamento/Conserto) ──────
+function ResumoDiagnostico({ T, dark, os }) {
+  const relato = os?.defeito || ''
+  const causa = os?.pre_diagnostico?.causa_diagnostico || ''
+  const marcados = os?.pre_diagnostico?.componentes_marcados || {}
+  const chips = []
+  for (const [, itens] of Object.entries(marcados)) {
+    if (!itens || typeof itens !== 'object') continue
+    const pares = Array.isArray(itens)
+      ? itens.map(id => [id, 'troca'])
+      : Object.entries(itens)
+    for (const [itemId, acao] of pares) {
+      const cat = CATEGORIA_POR_ID[itemId]
+      chips.push({ id: itemId, label: cat?.label || itemId, acao })
+    }
+  }
+  if (!relato && !causa && chips.length === 0) return null
+
+  const SubLabel = ({ children }) => (
+    <div style={{
+      fontSize: 10, fontWeight: 700, color: T.textMuted,
+      textTransform: 'uppercase', letterSpacing: '.05em',
+      marginBottom: 3,
+    }}>{children}</div>
+  )
+  const corBadge = (acao) => acao === 'manutencao'
+    ? { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : '#FFF7DC', label: 'MANUT.' }
+    : { fg: PALETA.redStrong,    bg: dark ? 'rgba(192,66,66,0.18)'   : '#FDECEC', label: 'TROCA' }
+
+  return (
+    <SubBloco T={T} dark={dark} icon="stethoscope" label="Resumo do diagnóstico" color="blue">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {relato && (
+          <div>
+            <SubLabel>Relato do cliente</SubLabel>
+            <div style={{
+              fontSize: 12.5, color: T.textPrimary, lineHeight: 1.4,
+              borderLeft: `3px solid ${PALETA.yellowStrong}`, paddingLeft: 8,
+            }}>{relato}</div>
+          </div>
+        )}
+        {causa && (
+          <div>
+            <SubLabel>Causa identificada</SubLabel>
+            <div style={{
+              fontSize: 12.5, color: T.textPrimary, lineHeight: 1.4,
+              borderLeft: `3px solid ${PALETA.blueStrong}`, paddingLeft: 8,
+            }}>{causa}</div>
+          </div>
+        )}
+        {chips.length > 0 && (
+          <div>
+            <SubLabel>Componentes marcados · {chips.length}</SubLabel>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {chips.map(c => {
+                const b = corBadge(c.acao)
+                return (
+                  <span key={c.id} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    fontSize: 11, padding: '3px 7px', borderRadius: 999,
+                    background: b.bg, color: b.fg,
+                    border: `1px solid ${b.fg}33`, fontWeight: 600,
+                  }}>
+                    <b style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.04em' }}>
+                      {b.label}
+                    </b>
+                    {c.label}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </SubBloco>
+  )
+}
+
+// ─── Botao segmentado OK/Defeito/Barulho ──────────────────────────────────
+const SegOption = ({ T, dark, kind, selected, onClick }) => {
   const th = RESULTADO_THEMES[kind]
   return (
     <button type="button" onClick={onClick}
       title={th.label}
       style={{
-        minHeight: 38, borderRadius: 8,
-        padding: '0 8px',
+        minHeight: 34, borderRadius: 7,
+        padding: '0 6px',
         border: `1px solid ${selected ? th.bd : T.border}`,
-        background: selected ? th.bg : T.card,
+        background: selected ? (dark ? th.bgDark : th.bgLight) : T.bg,
         color: selected ? th.fg : T.textPrimary,
-        fontSize: 12, fontWeight: 600,
+        fontSize: 11.5, fontWeight: 600,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
         cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
         transition: 'background .12s, border-color .12s',
         fontFamily: 'inherit',
         overflow: 'hidden', minWidth: 0,
       }}>
-      <TI name={th.icon} size={14} color={selected ? th.fg : T.textMuted} />
+      <TI name={th.icon} size={12} color={selected ? th.fg : T.textMuted} />
       <span style={{
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{th.label}</span>
@@ -72,79 +182,77 @@ const SegOption = ({ kind, selected, onClick }) => {
   )
 }
 
-const TesteCard = ({ teste, valor, onChange }) => {
-  const { T } = useTheme()
-  return (
-    <div className="idemaq-card" style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: MOBILE.radiusCard, padding: '10px 12px',
-      display: 'flex', alignItems: 'center', gap: 8,
+// ─── Linha de um teste dentro do SubBloco ─────────────────────────────────
+const TesteRow = ({ T, dark, teste, valor, onChange, primeira }) => (
+  <div style={{
+    padding: '7px 0',
+    borderTop: primeira ? 'none' : `1px solid ${T.border}`,
+    display: 'flex', alignItems: 'center', gap: 8,
+  }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      fontSize: 12.5, fontWeight: 600, color: T.textPrimary,
+      flex: '1 1 90px', minWidth: 0,
     }}>
-      {/* Label à esquerda */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
-        flex: '1 1 100px', minWidth: 0,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        <TI name={teste.icon} size={16} color={PALETA.blueStrong} />
-        <span style={{
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{teste.label}</span>
-      </div>
-      {/* 3 botões: flex 2, encolhem juntos */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-        gap: 4, flex: '2 1 180px', minWidth: 0,
-      }}>
-        {(['ok', 'defeito', 'barulho']).map(k => (
-          <SegOption key={k} kind={k}
-            selected={valor === k}
-            onClick={() => onChange(valor === k ? null : k)} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Toggle "feito/não feito" pros itens de acabamento.
-const AcabamentoCard = ({ item, feito, onToggle }) => {
-  const { T } = useTheme()
-  return (
-    <button type="button" onClick={onToggle}
-      className="idemaq-card"
-      style={{
-        background: feito ? PALETA.greenBg : T.card,
-        border: `1px solid ${feito ? '#7DC09F' : T.border}`,
-        borderRadius: MOBILE.radiusCard, padding: '12px 14px',
-        display: 'flex', alignItems: 'center', gap: 10,
-        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-        width: '100%',
-        WebkitTapHighlightColor: 'transparent',
-        transition: 'background .12s, border-color .12s',
-      }}>
-      <TI name={item.icon} size={18}
-        color={feito ? PALETA.greenStrong : PALETA.blueStrong} />
+      <TI name={teste.icon} size={13} color={PALETA.blueStrong} />
       <span style={{
-        flex: 1, fontSize: 14.5, fontWeight: 600,
-        color: T.textPrimary,
-        textDecoration: feito ? 'line-through' : 'none',
-        textDecorationColor: feito ? PALETA.greenStrong : 'transparent',
-      }}>
-        {item.label}
-      </span>
-      <TI
-        name={feito ? 'square-check-filled' : 'square'}
-        size={22}
-        color={feito ? PALETA.greenStrong : T.textDim} />
-    </button>
-  )
-}
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{teste.label}</span>
+    </div>
+    <div style={{
+      display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: 4, flex: '2 1 170px', minWidth: 0,
+    }}>
+      {(['ok', 'defeito', 'barulho']).map(k => (
+        <SegOption key={k} T={T} dark={dark} kind={k}
+          selected={valor === k}
+          onClick={() => onChange(valor === k ? null : k)} />
+      ))}
+    </div>
+  </div>
+)
+
+// ─── Linha de acabamento (toggle feito/nao feito) ─────────────────────────
+const AcabRow = ({ T, dark, item, feito, onToggle, primeira }) => (
+  <button type="button" onClick={onToggle}
+    style={{
+      padding: '8px 0',
+      borderTop: primeira ? 'none' : `1px solid ${T.border}`,
+      display: 'flex', alignItems: 'center', gap: 9,
+      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+      width: '100%', background: 'transparent', border: 'none',
+      WebkitTapHighlightColor: 'transparent',
+    }}>
+    <span style={{
+      width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+      border: `1.5px solid ${feito ? PALETA.greenStrong : '#D1D5DB'}`,
+      background: feito ? PALETA.greenStrong : 'transparent',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff',
+    }}>
+      {feito && <TI name="check" size={12} />}
+    </span>
+    <TI name={item.icon} size={14}
+      color={feito ? PALETA.greenStrong : PALETA.blueStrong} />
+    <span style={{
+      flex: 1, fontSize: 13, fontWeight: 500,
+      color: feito ? T.textMuted : T.textPrimary,
+      textDecoration: feito ? 'line-through' : 'none',
+    }}>
+      {item.label}
+    </span>
+  </button>
+)
 
 export default function AcaoTeste({ os, onMoverOS }) {
+  const { T, dark } = useTheme()
+
   // Detecta se orçamento tem Limpeza pra mostrar/ocultar bloco Acabamento.
   const { itens: itensOrcamento } = useOSItens(os.id)
-  const temLimpeza = itensOrcamento.some(i => /limpeza/i.test(i.nome || ''))
+  const temLimpeza = useMemo(
+    () => itensOrcamento.some(i => /limpeza/i.test(i.nome || '')),
+    [itensOrcamento]
+  )
 
   const { itens: chkItens, observacoes: chkObs, salvar: salvarChk, loading: loadingChk } =
     useChecklistEtapa(os.id, 'teste_final')
@@ -160,7 +268,6 @@ export default function AcaoTeste({ os, onMoverOS }) {
   const [hidratado, setHidratado] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
-  // Hidrata estado a partir do checklist persistido (uma vez só).
   useEffect(() => {
     if (loadingChk || hidratado) return
     const novoTestes = TESTES.reduce((acc, t) => {
@@ -199,16 +306,24 @@ export default function AcaoTeste({ os, onMoverOS }) {
     return [...linhasTestes, ...linhasAcab]
   }
 
-  // Lista de falhas (defeito/barulho) pra rastrear no AcaoOficina.
   const falhas = TESTES
     .filter(t => testes[t.id] === 'defeito' || testes[t.id] === 'barulho')
     .map(t => `${t.label}: ${testes[t.id] === 'defeito' ? 'com defeito' : 'com barulho'}`)
 
   const todosTestesPreenchidos = TESTES.every(t => testes[t.id] != null)
   const todosTestesOk = todosTestesPreenchidos && falhas.length === 0
-  const todoAcabamentoOk = !temLimpeza || ACABAMENTO.every(a => acabamento[a.id])
+  const acabPendentes = ACABAMENTO.filter(a => !acabamento[a.id]).length
+  const todoAcabamentoOk = !temLimpeza || acabPendentes === 0
   const podeAprovar = todosTestesOk && todoAcabamentoOk
   const podeVoltarOficina = falhas.length > 0
+
+  // Resumo dos resultados pra mostrar como Pill no header
+  const okCount = TESTES.filter(t => testes[t.id] === 'ok').length
+  const resumoPill = todosTestesPreenchidos
+    ? (todosTestesOk
+        ? { tone: 'green', icon: 'circle-check', label: 'Tudo OK' }
+        : { tone: 'red', icon: 'alert-triangle', label: `${falhas.length} falha${falhas.length > 1 ? 's' : ''}` })
+    : { tone: 'neutral', icon: 'clock', label: `${okCount}/${TESTES.length}` }
 
   async function aprovar() {
     setSalvando(true)
@@ -229,58 +344,61 @@ export default function AcaoTeste({ os, onMoverOS }) {
   }
 
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <NowCard
-        icon="clipboard-check"
-        titulo="teste final"
-        descricao={temLimpeza
-          ? <>Teste cada função e marque <b>OK</b>, <b>Defeito</b> ou <b>Barulho</b>. Marque também o acabamento concluído.</>
-          : <>Teste cada função e marque <b>OK</b>, <b>Defeito</b> ou <b>Barulho</b>.</>}
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Resumo do diagnostico (mesmo das outras etapas) */}
+      <ResumoDiagnostico T={T} dark={dark} os={os} />
 
-      {/* Mesmo checklist do AcaoRecebido — 4 testes */}
-      {TESTES.map(t => (
-        <TesteCard key={t.id}
-          teste={t}
-          valor={testes[t.id]}
-          onChange={(v) => setResultado(t.id, v)} />
-      ))}
+      {/* Testes — 4 linhas dentro de um SubBloco */}
+      <SubBloco T={T} dark={dark} icon="clipboard-check" label="Testes finais" color="blue"
+        action={<Pill tone={resumoPill.tone} icon={resumoPill.icon}>{resumoPill.label}</Pill>}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {TESTES.map((t, i) => (
+            <TesteRow key={t.id} T={T} dark={dark}
+              teste={t}
+              valor={testes[t.id]}
+              primeira={i === 0}
+              onChange={(v) => setResultado(t.id, v)} />
+          ))}
+        </div>
+      </SubBloco>
 
       {/* Acabamento — só aparece se OS tem Limpeza no orçamento */}
       {temLimpeza && (
-        <>
-          <Group label={(
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <TI name="sparkles" size={13} color={PALETA.blueStrong} />
-              ACABAMENTO
-            </span>
-          )}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {ACABAMENTO.map(a => (
-                <AcabamentoCard key={a.id}
-                  item={a}
-                  feito={!!acabamento[a.id]}
-                  onToggle={() => toggleAcab(a.id)} />
-              ))}
-            </div>
-          </Group>
-        </>
+        <SubBloco T={T} dark={dark} icon="sparkles" label="Acabamento" color="blue"
+          action={acabPendentes === 0
+            ? <Pill tone="green" icon="check">Concluído</Pill>
+            : <Pill tone="neutral" icon="clock">{ACABAMENTO.length - acabPendentes}/{ACABAMENTO.length}</Pill>}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {ACABAMENTO.map((a, i) => (
+              <AcabRow key={a.id} T={T} dark={dark}
+                item={a}
+                feito={!!acabamento[a.id]}
+                primeira={i === 0}
+                onToggle={() => toggleAcab(a.id)} />
+            ))}
+          </div>
+        </SubBloco>
       )}
 
-      <Group label={(
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <TI name="message-2" size={13} color={PALETA.blueStrong} />
-          OBSERVAÇÕES
-        </span>
-      )}>
-        <TextArea
+      {/* Observações */}
+      <SubBloco T={T} dark={dark} icon="message-2" label="Observações" color="blue">
+        <textarea
           placeholder="Ex: ficou tudo OK; cliente vai retirar amanhã…"
           value={obs}
           onChange={(e) => setObs(e.target.value)}
+          rows={3}
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            padding: '8px 10px', borderRadius: 6,
+            border: `1px solid ${T.border}`,
+            background: T.bg, color: T.textPrimary,
+            fontSize: 12.5, fontFamily: 'inherit',
+            outline: 'none', resize: 'vertical',
+          }}
         />
-      </Group>
+      </SubBloco>
 
-      {/* Botão APROVAR — habilita quando tudo OK */}
+      {/* CTA — Aprovar OU Voltar pra Oficina */}
       {!podeVoltarOficina && (
         <BtnMobile variant="blue" icon="circle-check"
           disabled={!podeAprovar || salvando}
@@ -288,13 +406,12 @@ export default function AcaoTeste({ os, onMoverOS }) {
           {salvando ? 'Salvando…'
             : podeAprovar ? 'Aprovar teste · ir pra Entrega'
             : !todosTestesPreenchidos ? `Preencha os ${TESTES.length} testes`
-            : `Marque o acabamento (${ACABAMENTO.filter(a => !acabamento[a.id]).length} pendente${ACABAMENTO.filter(a => !acabamento[a.id]).length !== 1 ? 's' : ''})`}
+            : `Marque o acabamento (${acabPendentes} pendente${acabPendentes !== 1 ? 's' : ''})`}
         </BtnMobile>
       )}
 
-      {/* Botão VOLTAR PRA OFICINA — quando há falhas */}
       {podeVoltarOficina && (
-        <BtnMobile variant="red" icon="arrow-back-up"
+        <BtnMobile variant="danger" icon="arrow-back-up"
           disabled={salvando}
           onClick={voltarOficina}>
           {salvando ? 'Salvando…' : `Voltar pra oficina (${falhas.length} ${falhas.length === 1 ? 'falha' : 'falhas'})`}
