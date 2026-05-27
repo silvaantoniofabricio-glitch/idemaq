@@ -123,14 +123,21 @@ function FormAgendar({ os, user, usuarios, onUpdateOS, onCancelar }) {
   const lista = usuarios || []
   const meuApelido = lista.find(u => u.id === user?.id)?.apelido || 'Você'
 
+  // Le de pre_diagnostico.entrega (jsonb que persiste) com fallback pros
+  // antigos campos top-level (caso ja existam em alguma OS).
+  const entregaSalva = os?.pre_diagnostico?.entrega || {}
+  const dataAgendada = entregaSalva.data || os.entrega_data || null
+  const respSalvo = entregaSalva.responsavel || os.entrega_responsavel || null
+  const obsSalva = entregaSalva.observacoes || os.entrega_observacoes || ''
+
   const dias = useMemo(() => proxNDias(14), [])
-  const dataIso = os.entrega_data ? os.entrega_data.slice(0, 10) : null
-  const dataHora = os.entrega_data ? os.entrega_data.slice(11, 16) : null
+  const dataIso = dataAgendada ? dataAgendada.slice(0, 10) : null
+  const dataHora = dataAgendada ? dataAgendada.slice(11, 16) : null
 
   const [diaSel, setDiaSel] = useState(dataIso || dias[1]?.iso || dias[0]?.iso)
   const [periodoSel, setPeriodoSel] = useState(detectarPeriodo(dataHora))
   const [horaSel, setHoraSel] = useState(dataHora || null)
-  const [obs, setObs] = useState(os.entrega_observacoes || '')
+  const [obs, setObs] = useState(obsSalva)
 
   const horarios = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel])
   const podeAgendar = !!diaSel && !!horaSel
@@ -143,9 +150,15 @@ function FormAgendar({ os, user, usuarios, onUpdateOS, onCancelar }) {
     }
     const iso = `${diaSel}T${horaSel}:00`
     onUpdateOS?.(os.numero, {
-      entrega_data: iso,
-      entrega_responsavel: user?.id || null,
-      entrega_observacoes: obs,
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        entrega: {
+          ...entregaSalva,
+          data: iso,
+          responsavel: user?.id || null,
+          observacoes: obs,
+        },
+      },
     })
     notify('ok', `Entrega agendada para ${fmtDataHora(iso)}`)
   }
@@ -313,12 +326,16 @@ function ResumoAgendada({ os, user, usuarios, admin, onUpdateOS, onMoverOS, onRe
     return () => clearInterval(id)
   }, [])
 
+  const entregaSalva = os?.pre_diagnostico?.entrega || {}
+  const entregaData = entregaSalva.data || os.entrega_data || null
+  const respAgendado = entregaSalva.responsavel || os.entrega_responsavel || null
+  const obsAgendada = entregaSalva.observacoes || os.entrega_observacoes || ''
+
   const alvo = useMemo(() => {
-    const iso = os.entrega_data
-    if (!iso) return null
-    const d = new Date(iso)
+    if (!entregaData) return null
+    const d = new Date(entregaData)
     return isNaN(d) ? null : d
-  }, [os.entrega_data])
+  }, [entregaData])
 
   const { bigLabel, unitLabel, pct } = useMemo(() => {
     if (!alvo) return { bigLabel: '—', unitLabel: '', pct: 0 }
@@ -333,11 +350,9 @@ function ResumoAgendada({ os, user, usuarios, admin, onUpdateOS, onMoverOS, onRe
     return { bigLabel: big, unitLabel: unit, pct: pctVal }
   }, [alvo, agora])
 
-  const entregaLabel = alvo ? fmtDataHora(os.entrega_data) : 'Sem horário definido'
-  const respAgendado = os.entrega_responsavel
+  const entregaLabel = alvo ? fmtDataHora(entregaData) : 'Sem horário definido'
   const respApelido = (lista.find(u => u.id === respAgendado)?.apelido)
     || (lista.find(u => u.id === respAgendado)?.nome) || respAgendado
-  const obsAgendada = os.entrega_observacoes || ''
 
   // Cliente / nome
   const clienteStr = typeof os?.cliente === 'string' ? os.cliente : (os?.cliente?.nome || '')
@@ -440,7 +455,13 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
       : 'Confirmar entrega? A OS vai pra Pagamento.')) return
 
     onUpdateOS?.(os.numero, {
-      entrega_realizada_em: new Date().toISOString(),
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        entrega: {
+          ...entregaSalva,
+          realizada_em: new Date().toISOString(),
+        },
+      },
     })
     const destino = jaPaga ? 'concluido' : 'pagamento'
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === destino)
@@ -665,7 +686,8 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoEntrega({ os, user, usuarios, admin, onUpdateOS, onMoverOS }) {
   const [editando, setEditando] = useState(false)
-  const dataAgendada = os.entrega_data || null
+  // Le de pre_diagnostico.entrega (jsonb) com fallback pros antigos top-level
+  const dataAgendada = os?.pre_diagnostico?.entrega?.data || os.entrega_data || null
   const emFase2 = !!dataAgendada && !editando
 
   if (emFase2) {

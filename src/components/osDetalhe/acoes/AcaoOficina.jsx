@@ -353,38 +353,50 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
     return out;
   }, [os?.pre_diagnostico?.componentes_marcados, dark]);
 
-  // Estado atual da execucao
-  const exec = os?.oficina_execucao || {};
+  // Estado atual da execucao — persistido em pre_diagnostico.oficina (jsonb)
+  // pra evitar criar coluna nova. Estrutura:
+  //   pre_diagnostico.oficina = {
+  //     execucao: { desmontagem, montagem, limpeza_serv, manut_serv },
+  //     limpeza_status, manutencao_status
+  //   }
+  const oficinaJsonb = os?.pre_diagnostico?.oficina || {};
+  const exec = oficinaJsonb.execucao || {};
   const desmVal = exec.desmontagem || {};
   const montVal = exec.montagem || {};
   const limpVal = exec.limpeza_serv || {};
   const manutVal = exec.manut_serv || {};
 
   // Falhas vindas do Teste final (banner vermelho)
-  const falhas = Array.isArray(os?.teste_falhas) ? os.teste_falhas : [];
+  const falhas = Array.isArray(os?.pre_diagnostico?.teste_falhas) ? os.pre_diagnostico.teste_falhas : [];
 
-  // ─── Persistencia ───
+  // ─── Persistencia (tudo dentro de pre_diagnostico.oficina) ───
   function persistExec(novoExec) {
-    // Recalcula status dos lados
     const desmOk = CHECKS_DESMONTAGEM.every(c => novoExec.desmontagem?.[c.id]);
     const montOk = CHECKS_MONTAGEM.every(c => novoExec.montagem?.[c.id]);
     const limpServOk = CHECKS_LIMPEZA.every(c => novoExec.limpeza_serv?.[c.id]);
     const manutServOk = manutChecks.length > 0
       && manutChecks.every(c => novoExec.manut_serv?.[c.id]);
 
-    const statusLado = (ativo, servOk) => {
-      if (!ativo) return os?.[ativo] || 'pendente';
+    const statusLado = (servOk) => {
       const algumCheck = desmOk || servOk || montOk;
       if (desmOk && servOk && montOk) return 'concluido';
       if (algumCheck) return 'andamento';
       return 'pendente';
     };
 
-    const patch = { oficina_execucao: novoExec };
-    if (temLimpeza)    patch.limpeza    = statusLado(true, limpServOk);
-    if (temManutencao) patch.manutencao = statusLado(true, manutServOk);
+    const novaOficina = {
+      ...oficinaJsonb,
+      execucao: novoExec,
+    };
+    if (temLimpeza)    novaOficina.limpeza_status    = statusLado(limpServOk);
+    if (temManutencao) novaOficina.manutencao_status = statusLado(manutServOk);
 
-    onUpdateOS?.(os.numero, patch);
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        oficina: novaOficina,
+      },
+    });
   }
 
   const toggleEm = (secao) => (chaveId) => {
@@ -415,8 +427,9 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
   }
 
   // Gate: orcamento fechado? (apos todos os hooks, pra nao violar regras)
+  const orcStatus = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status;
   const orcamentoFechado =
-    os?.orcamento_status === 'confirmado' || (itens || []).length > 0;
+    orcStatus === 'confirmado' || (itens || []).length > 0;
   if (!orcamentoFechado) {
     return <BloqueioOrcamento T={T} dark={dark} os={os} itens={itens} onAbrirAba={onAbrirAba} />;
   }
@@ -527,7 +540,7 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
           {temLimpeza && (
             <CardLado T={T} dark={dark}
               titulo="Limpeza" icon="droplet" color="blue"
-              status={os?.limpeza || 'pendente'}
+              status={oficinaJsonb.limpeza_status || 'pendente'}
               desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
               servCheck={CHECKS_LIMPEZA} servVal={limpVal}
               montCheck={CHECKS_MONTAGEM} montVal={montVal}
@@ -540,7 +553,7 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
           {temManutencao && (
             <CardLado T={T} dark={dark}
               titulo="Manutenção" icon="tool" color="yellow"
-              status={os?.manutencao || 'pendente'}
+              status={oficinaJsonb.manutencao_status || 'pendente'}
               desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
               servCheck={manutChecks} servVal={manutVal}
               montCheck={CHECKS_MONTAGEM} montVal={montVal}

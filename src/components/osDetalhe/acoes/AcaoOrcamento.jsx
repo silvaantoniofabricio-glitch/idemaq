@@ -748,24 +748,35 @@ const STATUS_META = {
 }
 
 function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
-  const [status, setStatus] = useState(os?.orcamento_status || 'idle')
+  // Persistido em pre_diagnostico.orcamento_status (coluna nova nao existe
+  // no banco — usar jsonb que ja persiste).
+  const statusSalvo = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle'
+  const [status, setStatus] = useState(statusSalvo)
   const [confirmando, setConfirmando] = useState(false)
   const [desfazendo, setDesfazendo] = useState(false)
 
-  // Re-sincroniza se a OS mudar (Realtime / outro device)
   useEffect(() => {
-    setStatus(os?.orcamento_status || 'idle')
-  }, [os?.orcamento_status])
+    setStatus(os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle')
+  }, [os?.pre_diagnostico?.orcamento_status, os?.orcamento_status])
   const azul    = corEtapa('blue', dark)
   const verde   = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
   const amarelo  = dark ? P.yellow : P.yellowDark
   const cor = (d, c) => dark ? d : c
 
+  function persistirStatus(novo) {
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        orcamento_status: novo,
+      },
+    })
+  }
+
   function avancar() {
     if (status === 'idle') {
       setStatus('aguardando')
-      onUpdateOS?.(os.numero, { orcamento_status: 'aguardando' })
+      persistirStatus('aguardando')
     } else if (status === 'aguardando') {
       setConfirmando(true)
     }
@@ -774,20 +785,16 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
   function resolver(novo) {
     setStatus(novo)
     setConfirmando(false)
-    onUpdateOS?.(os.numero, { orcamento_status: novo })
-    // Aprovado pelo cliente → avanca direto pra "Conserto" (etapa oficina).
-    // Recusado mantem na etapa orcamento (operador decide depois).
+    persistirStatus(novo)
     if (novo === 'confirmado') {
       onMoverOS?.(os.numero, 'oficina')
     }
   }
 
-  // Cliente desistiu / mudou de ideia → volta pra 'aguardando' e devolve
-  // a OS pra etapa Orcamento (caso ja tenha avancado pra Conserto).
   function reverterParaAguardando() {
     setStatus('aguardando')
     setDesfazendo(false)
-    onUpdateOS?.(os.numero, { orcamento_status: 'aguardando' })
+    persistirStatus('aguardando')
     if (os?.etapa !== 'orcamento') {
       onMoverOS?.(os.numero, 'orcamento')
     }
