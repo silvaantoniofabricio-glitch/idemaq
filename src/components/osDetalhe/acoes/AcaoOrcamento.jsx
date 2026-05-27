@@ -6,6 +6,7 @@ import { P } from '../../../theme'
 import { corEtapa, bgEtapa } from '../../../utils/colors'
 import { fmtBRL } from '../../../utils/fmt'
 import { useOSItens } from '../../../hooks/useOSItens'
+import { usePecas } from '../../../hooks/usePecas'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento from '../FormRecebimento'
 import BlocoAcao from './BlocoAcao'
@@ -94,9 +95,31 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
   const [nome, setNome]   = useState('')
   const [qtd, setQtd]     = useState('1')
   const [valor, setValor] = useState('')
+  // Autocomplete só pra peças. peca_id é guardado pra rastrear que veio do estoque.
+  const [pecaIdSelecionada, setPecaIdSelecionada] = useState(null)
+  const [pickerAberto, setPickerAberto] = useState(false)
 
   const valido = nome.trim().length > 0 && Number(qtd) > 0
   const { fg, bg } = corTipo(tipo, dark)
+
+  function escolherPecaDoEstoque(p) {
+    setNome(p.nome || '')
+    setValor(p.precoVenda ? String(p.precoVenda) : '')
+    setPecaIdSelecionada(p.id)
+    setPickerAberto(false)
+  }
+
+  function handleSave() {
+    if (!valido) return
+    const payload = {
+      nome: nome.trim(),
+      qtd: Number(qtd) || 1,
+      valor_unitario: Number(valor) || 0,
+      tipo: tipo.id,
+    }
+    if (tipo.id === 'peca' && pecaIdSelecionada) payload.peca_id = pecaIdSelecionada
+    onSave(payload)
+  }
 
   return (
     <div style={{
@@ -114,11 +137,36 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
         Novo {tipo.label.replace(/s$/, '').toLowerCase()}
       </div>
 
-      {/* Descrição */}
-      <div>
+      {/* Descrição (com autocomplete do estoque pra peças) */}
+      <div style={{ position: 'relative' }}>
         <Label T={T}>Descrição</Label>
-        <Input T={T} placeholder="Ex: Troca de correia" value={nome}
-          onChange={e => setNome(e.target.value)} autoFocus />
+        <Input T={T}
+          placeholder={tipo.id === 'peca' ? 'Buscar no estoque ou digitar…' : 'Ex: Troca de correia'}
+          value={nome}
+          onChange={e => {
+            setNome(e.target.value)
+            setPecaIdSelecionada(null)        // perdeu o vínculo se edita manualmente
+            if (tipo.id === 'peca') setPickerAberto(true)
+          }}
+          onFocus={() => { if (tipo.id === 'peca') setPickerAberto(true) }}
+          onBlur={() => setTimeout(() => setPickerAberto(false), 200)}
+          autoFocus
+        />
+        {tipo.id === 'peca' && pickerAberto && (
+          <PecaPicker T={T} dark={dark} fg={fg}
+            termo={nome}
+            onEscolher={escolherPecaDoEstoque}
+          />
+        )}
+        {tipo.id === 'peca' && pecaIdSelecionada && (
+          <div style={{
+            marginTop: 4, fontSize: 10.5, color: fg, fontWeight: 600,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}>
+            <i className="ti ti-link" style={{ fontSize: 11 }} aria-hidden="true" />
+            Vinculado ao estoque (baixa automática)
+          </div>
+        )}
       </div>
 
       {/* Qtd + Valor */}
@@ -141,11 +189,88 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
           Cancelar
         </Btn>
         <Btn T={T} dark={dark} icon="ti-check" variant="blue"
-          onClick={() => { if (valido) onSave({ nome: nome.trim(), qtd: Number(qtd) || 1, valor_unitario: Number(valor) || 0, tipo: tipo.id }) }}
-          disabled={!valido || saving}>
+          onClick={handleSave} disabled={!valido || saving}>
           {saving ? 'Salvando…' : 'Salvar'}
         </Btn>
       </div>
+    </div>
+  )
+}
+
+// Picker de peças do estoque — debounce de 250ms, top 8 matches.
+// Favoritos vêm primeiro (usePecas já ordena `favorito DESC, nome ASC`).
+function PecaPicker({ T, dark, fg, termo, onEscolher }) {
+  const [busca, setBusca] = useState(termo)
+  useEffect(() => {
+    const id = setTimeout(() => setBusca(termo), 250)
+    return () => clearTimeout(id)
+  }, [termo])
+  const { pecas, loading } = usePecas({ busca, pageSize: 8 })
+  const cor = (d, c) => dark ? d : c
+
+  return (
+    <div style={{
+      position: 'absolute', top: '100%', left: 0, right: 0,
+      marginTop: 4, zIndex: 50,
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.2)',
+      maxHeight: 240, overflowY: 'auto',
+    }}>
+      {loading && pecas.length === 0 && (
+        <div style={{
+          padding: '12px', fontSize: 12, color: T.textMuted,
+          textAlign: 'center', fontStyle: 'italic',
+        }}>Buscando no estoque…</div>
+      )}
+      {!loading && pecas.length === 0 && (
+        <div style={{
+          padding: '12px', fontSize: 12, color: T.textMuted,
+          textAlign: 'center', fontStyle: 'italic',
+        }}>
+          {(termo || '').trim().length === 0
+            ? 'Comece a digitar pra buscar peças'
+            : 'Nenhuma peça encontrada — pode digitar livre'}
+        </div>
+      )}
+      {pecas.slice(0, 8).map(p => (
+        <button key={p.id} type="button"
+          onMouseDown={(e) => e.preventDefault()}  // não perder foco antes do click
+          onClick={() => onEscolher(p)}
+          style={{
+            width: '100%', textAlign: 'left',
+            padding: '9px 12px',
+            background: 'transparent', border: 'none',
+            borderBottom: `1px solid ${T.border}`,
+            cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+          {p.favorito && (
+            <i className="ti ti-star-filled"
+               style={{ fontSize: 11, color: cor('#ffcf66', '#d59f00'), flexShrink: 0 }}
+               aria-hidden="true" />
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 600, color: T.textPrimary,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{p.nome}</div>
+            <div style={{
+              fontSize: 10.5, color: T.textMuted, marginTop: 1,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {p.sku && <span>SKU {p.sku}</span>}
+              {p.sku && p.qtdAtual != null && <span> · </span>}
+              {p.qtdAtual != null && <span>{p.qtdAtual} em estoque</span>}
+            </div>
+          </div>
+          <div style={{
+            fontSize: 13, fontWeight: 700, color: fg,
+            fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+          }}>
+            {p.precoVenda > 0 ? fmtBRL(p.precoVenda) : '—'}
+          </div>
+        </button>
+      ))}
     </div>
   )
 }
