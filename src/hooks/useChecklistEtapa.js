@@ -1,18 +1,22 @@
 // src/hooks/useChecklistEtapa.js
 // Lê + persiste o checklist de UMA etapa específica de UMA OS.
-// Tabela: checklist_etapa (sql/05-schema-parte-2-checklist-falha.sql)
-//   UNIQUE(os_id, etapa)  → upsert on conflict garante 1 linha por etapa por OS
 //
-// Contrato:
-//   - `etapaDb` é o valor enum do banco (recebido | em_oficina | teste_final | …),
-//     não o id da UI. As ações já chamam com o valor certo.
-//   - `itens` é o array jsonb da spec: [{ id, label, checked }, …]. Quem
-//     decide a estrutura é o front (Recebido/Oficina/Teste montam diferente).
-//   - `salvar(itens, observacoes?)` faz upsert e devolve { data, error }.
+// IMPORTANTE: A tabela `checklist_etapa` (sql/05) nunca foi aplicada no
+// banco de produção. Pra evitar perda de dados, este hook agora persiste
+// no campo `os.pre_diagnostico` (jsonb) que JÁ EXISTE.
 //
-// Nota: o select da OS no useOS.js NÃO carrega checklist_etapa em batch — cada
-// modal de OSDetalhe que precisa lê on-demand via este hook. Mantém o select
-// principal enxuto e evita N+1 no Kanban (que não usa checklist).
+// Estrutura usada em pre_diagnostico:
+//   {
+//     ...outros campos (foto, causa_diagnostico, etc),
+//     checklist: {
+//       recebido:    { itens: [...], observacoes: "..." },
+//       teste_final: { itens: [...], observacoes: "..." },
+//       ...
+//     }
+//   }
+//
+// Quando a tabela for criada, basta reverter este arquivo. O contrato
+// (osId, etapaDb) → { itens, observacoes, salvar } permanece igual.
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
@@ -25,59 +29,75 @@ export function useChecklistEtapa(osId, etapaDb) {
   const [observacoes, setObservacoes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [exists, setExists] = useState(false)
+  const [preDiagnostico, setPreDiagnostico] = useState(null)
 
   const fetchChecklist = useCallback(async () => {
     if (!isUUID(osId) || !etapaDb) {
-      setItens([]); setObservacoes(''); setExists(false); setLoading(false)
+      setItens([]); setObservacoes(''); setLoading(false)
       return
     }
     setLoading(true); setError(null)
     const { data, error: err } = await supabase
-      .from('checklist_etapa')
-      .select('itens, observacoes')
-      .eq('os_id', osId).eq('etapa', etapaDb)
+      .from('os')
+      .select('pre_diagnostico')
+      .eq('id', osId)
       .is('deleted_at', null)
       .maybeSingle()
     if (err) { setError(err); setLoading(false); return }
-    setItens(Array.isArray(data?.itens) ? data.itens : [])
-    setObservacoes(data?.observacoes || '')
-    setExists(!!data)
+    const preDiag = data?.pre_diagnostico || {}
+    setPreDiagnostico(preDiag)
+    const slot = preDiag.checklist?.[etapaDb] || {}
+    setItens(Array.isArray(slot.itens) ? slot.itens : [])
+    setObservacoes(slot.observacoes || '')
     setLoading(false)
   }, [osId, etapaDb])
 
   useEffect(() => { fetchChecklist() }, [fetchChecklist])
 
-  // Upsert por (os_id, etapa). onConflict precisa do nome da UNIQUE index.
-  // Como o index é parcial (WHERE deleted_at IS NULL), fazemos SELECT + UPDATE/INSERT
-  // manual em vez de .upsert() — Supabase não casa upsert com index parcial.
+  // Salva o checklist da etapa em pre_diagnostico.checklist.<etapa>.
+  // Lê o pre_diagnostico atual (otimisticamente do estado, fallback no DB)
+  // e merge com o novo valor, preservando outros campos.
   const salvar = useCallback(async (novosItens, novasObs) => {
     if (!isUUID(osId) || !etapaDb) return { data: null, error: new Error('osId/etapa inválido') }
-    const payload = {
+    const novoSlot = {
       itens: novosItens ?? [],
       observacoes: novasObs ?? null,
     }
     // optimistic
-    setItens(payload.itens); if (novasObs !== undefined) setObservacoes(novasObs || '')
+    setItens(novoSlot.itens)
+    if (novasObs !== undefined) setObservacoes(novasObs || '')
 
-    if (exists) {
-      const { data, error: err } = await supabase
-        .from('checklist_etapa')
-        .update(payload)
-        .eq('os_id', osId).eq('etapa', etapaDb)
-        .is('deleted_at', null)
-        .select().single()
-      if (err) setError(err)
-      return { data, error: err }
+    // Re-busca o pre_diagnostico atual pra nao sobrescrever campos vizinhos
+    // (foto_coleta_1, causa_diagnostico, etc) que outras telas escrevem.
+    const { data: row, error: errGet } = await supabase
+      .from('os')
+      .select('pre_diagnostico')
+      .eq('id', osId)
+      .maybeSingle()
+    if (errGet) { setError(errGet); return { data: null, error: errGet } }
+
+    const preDiagAtual = row?.pre_diagnostico || {}
+    const novoPreDiag = {
+      ...preDiagAtual,
+      checklist: {
+        ...(preDiagAtual.checklist || {}),
+        [etapaDb]: novoSlot,
+      },
     }
+    setPreDiagnostico(novoPreDiag)
+
     const { data, error: err } = await supabase
-      .from('checklist_etapa')
-      .insert({ os_id: osId, etapa: etapaDb, ...payload })
-      .select().single()
-    if (err) { setError(err); return { data: null, error: err } }
-    setExists(true)
-    return { data, error: null }
-  }, [osId, etapaDb, exists])
+      .from('os')
+      .update({ pre_diagnostico: novoPreDiag })
+      .eq('id', osId)
+      .select()
+      .single()
+    if (err) {
+      setError(err)
+      console.error('[useChecklistEtapa.salvar]', err)
+    }
+    return { data, error: err }
+  }, [osId, etapaDb])
 
   return { itens, observacoes, loading, error, salvar, refetch: fetchChecklist }
 }
