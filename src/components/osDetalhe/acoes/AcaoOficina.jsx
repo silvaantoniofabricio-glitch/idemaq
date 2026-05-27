@@ -25,25 +25,11 @@ import { useOSItens } from '../../../hooks/useOSItens';
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca';
 import { ETAPAS_TODOS } from '../../../utils/osData';
 
-// ─── Checklists fixos (Desmontagem / Montagem / Limpeza serv) ─────────────
-const CHECKS_DESMONTAGEM = [
-  { id: 'energia',    label: 'Desligar da energia' },
-  { id: 'agua',       label: 'Esvaziar água' },
-  { id: 'mangueiras', label: 'Desconectar mangueiras' },
-  { id: 'tampo',      label: 'Remover tampo / gabinete' },
-];
-
-const CHECKS_MONTAGEM = [
-  { id: 'reconectar', label: 'Reconectar mangueiras e fios' },
-  { id: 'vedacao',    label: 'Testar vedação (sem vazamento)' },
-  { id: 'fechar',     label: 'Fechar gabinete' },
-];
-
-const CHECKS_LIMPEZA = [
-  { id: 'lavar',     label: 'Lavar com produto' },
-  { id: 'enxaguar',  label: 'Enxaguar e remover resíduos' },
-  { id: 'polir',     label: 'Polir / secar externo' },
-];
+// ─── Checks de etapa unica (Desmontagem / Limpeza / Montagem) ─────────────
+// Cada etapa eh UM check so. So a Manutencao tem sub-itens (peças do diagnostico).
+const CHECKS_DESMONTAGEM = [{ id: 'feito', label: 'Desmontagem feita' }];
+const CHECKS_LIMPEZA     = [{ id: 'feito', label: 'Limpeza feita' }];
+const CHECKS_MONTAGEM    = [{ id: 'feito', label: 'Montagem feita' }];
 
 // ─── SubBloco compacto (mesmo padrão V2) ──────────────────────────────────
 function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
@@ -129,11 +115,58 @@ function CheckRow({ T, dark, label, checked, disabled, onToggle, prefix, badge }
 }
 
 // ─── Mini-secao dentro do card (Desmontagem / Servico / Montagem) ─────────
+// Se a secao so tem 1 check, o proprio header eh o toggle (mais compacto).
+// Se tem N checks (caso da Manutencao), header + lista de sub-itens.
 function SecaoChecklist({ T, dark, titulo, icon, checks, valores, onToggle, bloqueada, bloqueioMsg, sync }) {
   const total = checks.length;
   const feitos = checks.filter(c => valores[c.id]).length;
-  const pct = total > 0 ? Math.round((feitos / total) * 100) : 0;
   const tudoOk = total > 0 && feitos === total;
+  const isSingle = total === 1;
+
+  const headerBg = tudoOk
+    ? (dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg)
+    : (dark ? 'rgba(255,255,255,0.03)' : T.cardAlt);
+
+  const headerContent = (
+    <>
+      {isSingle ? (
+        <span style={{
+          width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+          border: `1.5px solid ${tudoOk ? PALETA.greenStrong : '#D1D5DB'}`,
+          background: tudoOk ? PALETA.greenStrong : 'transparent',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff',
+        }}>
+          {tudoOk && <TI name="check" size={10} />}
+        </span>
+      ) : (
+        <TI name={icon} size={12} color={tudoOk ? PALETA.greenStrong : T.textMuted} />
+      )}
+      <span style={{
+        flex: 1, fontSize: 11, fontWeight: 700,
+        color: tudoOk ? PALETA.greenStrong : T.textPrimary,
+        textTransform: 'uppercase', letterSpacing: '.04em',
+        textDecoration: (isSingle && tudoOk) ? 'line-through' : 'none',
+      }}>{titulo}</span>
+      {sync && (
+        <span title="Sincronizado entre Limpeza e Manutenção"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            fontSize: 9, color: T.textMuted, fontWeight: 600,
+          }}>
+          <TI name="arrows-left-right" size={10} />
+        </span>
+      )}
+      {!isSingle && (
+        <span style={{
+          fontSize: 10, fontWeight: 700, color: tudoOk ? PALETA.greenStrong : T.textMuted,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {feitos}/{total}
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div style={{
@@ -141,39 +174,44 @@ function SecaoChecklist({ T, dark, titulo, icon, checks, valores, onToggle, bloq
       borderRadius: 8, overflow: 'hidden',
       background: T.bg,
     }}>
-      <div style={{
-        padding: '6px 10px',
-        background: tudoOk
-          ? (dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg)
-          : (dark ? 'rgba(255,255,255,0.03)' : T.cardAlt),
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <TI name={icon} size={12} color={tudoOk ? PALETA.greenStrong : T.textMuted} />
-        <span style={{
-          flex: 1, fontSize: 11, fontWeight: 700,
-          color: tudoOk ? PALETA.greenStrong : T.textPrimary,
-          textTransform: 'uppercase', letterSpacing: '.04em',
-        }}>{titulo}</span>
-        {sync && (
-          <span title="Sincronizado entre Limpeza e Manutenção"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-              fontSize: 9, color: T.textMuted, fontWeight: 600,
-            }}>
-            <TI name="arrows-left-right" size={10} />
-            sync
-          </span>
-        )}
-        <span style={{
-          fontSize: 10, fontWeight: 700, color: tudoOk ? PALETA.greenStrong : T.textMuted,
-          fontVariantNumeric: 'tabular-nums',
+      {isSingle ? (
+        <button type="button"
+          onClick={bloqueada ? undefined : () => onToggle(checks[0].id)}
+          disabled={bloqueada}
+          style={{
+            width: '100%', textAlign: 'left',
+            padding: '7px 9px', fontFamily: 'inherit',
+            background: headerBg, border: 'none',
+            display: 'flex', alignItems: 'center', gap: 6,
+            cursor: bloqueada ? 'not-allowed' : 'pointer',
+            opacity: bloqueada ? 0.55 : 1,
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          {headerContent}
+        </button>
+      ) : (
+        <div style={{
+          padding: '6px 10px', background: headerBg,
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          {feitos}/{total}
-        </span>
-      </div>
+          {headerContent}
+        </div>
+      )}
 
-      {bloqueada && (
+      {bloqueada && isSingle && bloqueioMsg && (
+        <div style={{
+          padding: '6px 9px', fontSize: 10.5, color: PALETA.yellowStrong,
+          background: dark ? 'rgba(255,217,102,0.10)' : PALETA.yellowBg,
+          borderTop: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 5,
+        }}>
+          <TI name="lock" size={11} />
+          {bloqueioMsg}
+        </div>
+      )}
+
+      {!isSingle && bloqueada && (
         <div style={{
           padding: '8px 10px', fontSize: 11.5, color: PALETA.yellowStrong,
           background: dark ? 'rgba(255,217,102,0.10)' : PALETA.yellowBg,
@@ -185,26 +223,28 @@ function SecaoChecklist({ T, dark, titulo, icon, checks, valores, onToggle, bloq
         </div>
       )}
 
-      {checks.length === 0 ? (
-        <div style={{
-          padding: '10px', fontSize: 11.5, color: T.textMuted,
-          textAlign: 'center', fontStyle: 'italic',
-        }}>
-          Sem itens nesse passo
-        </div>
-      ) : (
-        checks.map((c, i) => (
-          <div key={c.id} style={{
-            borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+      {!isSingle && (
+        checks.length === 0 ? (
+          <div style={{
+            padding: '10px', fontSize: 11.5, color: T.textMuted,
+            textAlign: 'center', fontStyle: 'italic',
           }}>
-            <CheckRow T={T} dark={dark}
-              label={c.label}
-              prefix={c.prefix}
-              checked={!!valores[c.id]}
-              disabled={bloqueada}
-              onToggle={() => onToggle(c.id)} />
+            Sem itens nesse passo
           </div>
-        ))
+        ) : (
+          checks.map((c, i) => (
+            <div key={c.id} style={{
+              borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+            }}>
+              <CheckRow T={T} dark={dark}
+                label={c.label}
+                prefix={c.prefix}
+                checked={!!valores[c.id]}
+                disabled={bloqueada}
+                onToggle={() => onToggle(c.id)} />
+            </div>
+          ))
+        )
       )}
     </div>
   );
