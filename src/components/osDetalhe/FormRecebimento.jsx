@@ -341,12 +341,19 @@ export default function FormRecebimento({
           onCancelar={() => setPartialDialog(false)}
         />
       ) : (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+        // Grid 4-col alinhado com os 4 botoes de forma de pagamento:
+        // - Confirmar ocupa cols 1-3 (mesmo width que PIX+Cartao+Dinheiro)
+        // - PIX+Link split col 4 (mesma largura que "A prazo")
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
+          alignItems: 'stretch',
+        }}>
           <button
             onClick={clickConfirmar}
             disabled={!formaOk || !valorOk}
             style={{
-              flex: 1, minWidth: 0,
+              gridColumn: showAtalhos ? '1 / span 3' : '1 / -1',
+              minWidth: 0,
               padding: '12px 14px', borderRadius: 8, border: 'none',
               background: amarelo, color: '#0a0a0d',
               fontSize: 13, fontWeight: 700,
@@ -357,14 +364,19 @@ export default function FormRecebimento({
               lineHeight: 1.25,
             }}>
             <i className="ti ti-check" style={{ fontSize: 16 }} aria-hidden="true" />
-            <span>
+            <span style={{
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               Confirmar {fmtBRL(valor, { fr: true })}
               {!isParcial && saldo > 0 && ' · concluir'}
             </span>
           </button>
 
           {showAtalhos && (
-            <>
+            <div style={{
+              gridColumn: '4 / span 1',
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
+            }}>
               <AtalhoBtn
                 T={T} valorOk={valorOk}
                 icon="ti-qrcode" label="PIX"
@@ -377,7 +389,7 @@ export default function FormRecebimento({
                 title="Gera link InfinitePay pra mandar pelo WhatsApp"
                 onClick={clickEnviarLink}
               />
-            </>
+            </div>
           )}
         </div>
       )}
@@ -564,18 +576,17 @@ function AtalhoBtn({ T, valorOk, icon, label, title, onClick }) {
       disabled={!valorOk}
       title={title}
       style={{
-        padding: '12px 11px', borderRadius: 8,
+        padding: '8px 4px', borderRadius: 8,
         border: `1px solid ${T.border}`, background: 'transparent',
-        color: T.textSecondary, fontSize: 11, fontWeight: 600,
+        color: T.textSecondary, fontSize: 10.5, fontWeight: 600,
         cursor: valorOk ? 'pointer' : 'not-allowed',
         opacity: valorOk ? 1 : 0.5,
-        fontFamily: 'inherit', flexShrink: 0,
+        fontFamily: 'inherit', minWidth: 0,
         display: 'inline-flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 3,
-        minWidth: 56,
+        alignItems: 'center', justifyContent: 'center', gap: 2,
         lineHeight: 1.1,
       }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
+      <i className={`ti ${icon}`} style={{ fontSize: 15 }} aria-hidden="true" />
       {label}
     </button>
   )
