@@ -1,384 +1,55 @@
 // src/components/osDetalhe/tabs/RelatorioTab.jsx
-// Aba Relatório — relatório completo da OS, etapa por etapa.
-// Estrutura:
-//  1. Banners contextuais (garantia, recusada).
-//  2. Mini-cards (aberta em, prazo, dias na OS).
-//  3. Diagnóstico (defeito + causa + itens marcados) — bloco compartilhado.
-//  4. Orçamento (admin-only — itens + totais).
-//  5. Relatório por etapa — o que foi capturado em cada etapa que a OS já
-//     passou (Recebido / Oficina / Teste final, com checklist + falhas).
-//  6. Histórico recente das últimas 3 mudanças de etapa.
-//  7. Observações.
-// Cliente/equipamento já vivem no Header do modal (sempre visíveis).
+// Aba Resumo — visão completa da OS numa coluna.
+// Seções (de cima pra baixo):
+//   1. Foto + dados do cliente e equipamento (compacto, um card)
+//   2. Resumo financeiro — total / pago / saldo (admin)
+//   3. Linha do tempo das etapas (visual, com tempo em cada etapa)
+//   4. O que foi feito em cada etapa (checklist + observações + falhas)
+//   5. Banners contextuais (garantia, recusada)
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { P } from '../../../theme'
 import { corEtapa, bgEtapa } from '../../../utils/colors'
-import { dentroGarantia, calcStatusPrazo, diasPrazo, totalAPagar, estaPagaTotal } from '../../../utils/osHelpers'
-import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
-import { TIPOS_OS } from '../../../utils/osData'
+import {
+  dentroGarantia, calcStatusPrazo, diasPrazo,
+  totalAPagar, estaPagaTotal, estaPagaParcial,
+} from '../../../utils/osHelpers'
+import { fmtBRL, fmtPrazoCurto, fmtDataHora } from '../../../utils/fmt'
+import { TIPOS_OS, ETAPAS_TODOS } from '../../../utils/osData'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
-import RelatorioDiagnostico from '../RelatorioDiagnostico'
+import { resolverFotoUrl, FOTO_STORAGE_MARKER } from '../../../utils/osStorage'
+
+// ─── Mapeamento de etapas pra ícone + cor ────────────────────────────────────
+const ETAPA_META = {
+  ag_agendamento:  { icon: 'ti-calendar-time',      cor: 'neutro', label: 'Ag. agendamento' },
+  agendado:        { icon: 'ti-calendar-event',      cor: 'blue',   label: 'Agendado' },
+  recebido:        { icon: 'ti-clipboard-check',     cor: 'blue',   label: 'Recebido' },
+  diagnostico:     { icon: 'ti-stethoscope',         cor: 'yellow', label: 'Diagnóstico' },
+  orcamento:       { icon: 'ti-receipt',             cor: 'yellow', label: 'Orçamento' },
+  oficina:         { icon: 'ti-tool',                cor: 'yellow', label: 'Em oficina' },
+  teste_final:     { icon: 'ti-flask',               cor: 'blue',   label: 'Teste final' },
+  entrega:         { icon: 'ti-truck-delivery',      cor: 'blue',   label: 'Entrega' },
+  pagamento:       { icon: 'ti-cash-banknote',       cor: 'blue',   label: 'Pagamento' },
+  concluido:       { icon: 'ti-circle-check',        cor: 'green',  label: 'Concluído' },
+  recusado:        { icon: 'ti-circle-x',            cor: 'red',    label: 'Recusada' },
+}
 
 export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {
   const cor = (d, c) => dark ? d : c
-  const azul = corEtapa('blue', dark)
 
-  const osOrigem = os.garantia && osBase ? osBase.find(o => o.numero === os.os_origem_id) : null
-  const isRecusado = os.etapa === 'recusado'
-  const isConcluido = os.etapa === 'concluido'
-  const garantiaAtiva = isConcluido ? dentroGarantia(os) : false
-  const status = calcStatusPrazo(os.prazo, os.etapa)
-  const dias = diasPrazo(os.prazo)
-
-  const diasNaOS = (() => {
-    const inicio = new Date(os.criado_em || os.historico?.[0]?.data || Date.now())
-    return Math.max(0, Math.round((new Date() - inicio) / 86400000))
-  })()
-
-  // Itens reais da OS (Módulo 00c — Lote 1) — substituiu OS_ITENS_MOCK.
-  // Quando os.id não existe (rascunho/novo), retorna [] sem buscar.
-  const { itens, loading: itensLoading } = useOSItens(os?.id)
-  const temItens = itens.length > 0
-
-  return (
-    <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Banners contextuais */}
-      {os.garantia && osOrigem && (
-        <Banner
-          T={T} dark={dark} cor={azul} bg={bgEtapa('blue', dark)}
-          icon="ti-shield-check"
-          titulo="OS em garantia"
-          texto={<>Referente à <strong>OS #{osOrigem.numero}</strong> de {osOrigem.cliente} ({osOrigem.equipamento}). Peças a preço de custo, sem mão de obra.</>}
-          chevron={!!onAbrirOS}
-          onClick={() => onAbrirOS?.(osOrigem.numero)}
-        />
-      )}
-
-      {garantiaAtiva && !os.garantia && (
-        <Banner
-          T={T} dark={dark} cor={azul} bg={bgEtapa('blue', dark)}
-          icon="ti-shield-check"
-          titulo="Garantia ativa"
-          texto="Se o cliente retornar com o mesmo defeito dentro do prazo, abra uma OS de garantia pela ficha do cliente."
-        />
-      )}
-
-      {isRecusado && (
-        <Banner
-          T={T} dark={dark}
-          cor={cor(P.red, P.redDark)} bg={cor('#2a1515', '#fde8e8')}
-          icon="ti-circle-x"
-          titulo="OS recusada pelo cliente"
-          texto="Defina o destino da máquina na aba Etapa: converter em fabricação, cobrar taxa de diagnóstico ou devolver."
-        />
-      )}
-
-      {/* Mini-cards: aberta em, prazo, dias na OS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-        <MiniCard T={T} label="Aberta em" valor={fmtPrazoCurto(os.criado_em) || '—'} icon="ti-calendar-plus" />
-        <MiniCard
-          T={T} label="Prazo" icon="ti-clock"
-          valor={fmtPrazoCurto(os.prazo) || '—'}
-          tom={status === 'vencido' ? 'vermelho' : status === 'hoje' ? 'amarelo' : status === 'amanha' ? 'amarelo' : 'neutro'}
-          extra={status === 'vencido' ? `${Math.abs(dias)}d atraso` : null}
-          dark={dark}
-        />
-        <MiniCard T={T} label="Dias na OS" valor={`${diasNaOS}d`} icon="ti-hourglass" />
-      </div>
-
-      {/* Diagnóstico — componente compartilhado com AcaoOrcamento e AcaoOficina.
-          Mostra defeito do cliente + causa do técnico + chips dos itens marcados
-          (troca/manutenção) + badge "Diag por XX". Esconde se OS ainda nem
-          chegou no Diagnóstico. */}
-      {(os.defeito || os.diagnostico?.causa || os.diagnostico?.checklist) && (
-        <RelatorioDiagnostico T={T} dark={dark} os={os} usuarios={usuarios} />
-      )}
-
-      {/* Orçamento — só admin (regra: funcionário não vê valores financeiros) */}
-      {admin && itensLoading && (
-        <div className="idemaq-card" style={{
-          background: T.cardAlt, border: `1px solid ${T.border}`,
-          borderRadius: 9, padding: '14px',
-          fontSize: 12, color: T.textMuted, textAlign: 'center',
-        }}>
-          <i className="ti ti-loader" style={{ fontSize: 14, marginRight: 6, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
-          Carregando itens…
-        </div>
-      )}
-      {admin && !itensLoading && temItens && (
-        <OrcamentoBloco T={T} dark={dark} os={os} itens={itens} />
-      )}
-      {admin && !itensLoading && !temItens && (
-        <div className="idemaq-card" style={{
-          background: T.cardAlt, border: `1px dashed ${T.border}`,
-          borderRadius: 9, padding: '12px 14px',
-          fontSize: 12, color: T.textMuted, fontStyle: 'italic',
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <i className="ti ti-receipt-off" style={{ fontSize: 14 }} aria-hidden="true" />
-          Nenhum item lançado nesta OS.
-        </div>
-      )}
-
-      {/* Relatório por etapa — o que foi capturado em cada etapa que a OS
-          já passou (lê do histórico real; renderiza checklist/falhas/pagamento). */}
-      <RelatorioPorEtapaBloco T={T} dark={dark} os={os} usuarios={usuarios} admin={admin} />
-
-      {/* Histórico recente — últimas 3 mudanças */}
-      <HistoricoRecenteBloco T={T} dark={dark} os={os} usuarios={usuarios} />
-
-      {/* Observações */}
-      {os.observacoes && (
-        <div className="idemaq-card" style={{
-          background: T.cardAlt, border: `1px solid ${T.border}`,
-          borderRadius: 9, padding: '12px 14px',
-        }}>
-          <SectionLabel T={T} icon="ti-notes" label="Observações" />
-          <div style={{
-            fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
-            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-            marginTop: 8,
-          }}>{os.observacoes}</div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Orçamento (admin-only) — itens + Total/Pago/Saldo ──────────────────────
-function OrcamentoBloco({ T, dark, os, itens }) {
-  const cor = (d, c) => dark ? d : c
-  const azul = corEtapa('blue', dark)
-  const verde = corEtapa('green', dark)
-  const amarelo = corEtapa('yellow', dark)
-
-  // Aceita ambos os formatos: tabela `os_item` real (valor_unitario + valor_total)
-  // e mock legado (valor). Prefere valor_total quando vier do banco.
-  function unit(i)  { return i.valor_unitario ?? i.valor ?? 0 }
-  function total(i) { return i.valor_total ?? unit(i) * (i.qtd ?? 1) }
-  const subtotal = itens.reduce((s, i) => s + total(i), 0)
-  const desconto = os.desconto || 0
-  const totalLiq = Math.max(0, subtotal - desconto)
-  const pago = os.valor_pago || 0
-  const saldo = Math.max(0, totalLiq - pago)
-  const pct = totalLiq > 0 ? Math.round((pago / totalLiq) * 100) : 0
-  const pagaTotal = estaPagaTotal(os)
-  const pagaParcial = !pagaTotal && pago > 0
-
-  const statusPag = pagaTotal
-    ? { label: 'Pago', cor: verde, icon: 'ti-circle-check', bg: bgEtapa('green', dark) }
-    : pagaParcial
-      ? { label: 'Pago parcial', cor: amarelo, icon: 'ti-clock-hour-3', bg: bgEtapa('yellow', dark) }
-      : { label: 'Não pago', cor: T.textMuted, icon: 'ti-circle-dashed', bg: T.cardAlt }
-
-  return (
-    <div className="idemaq-card" style={{
-      background: T.cardAlt, border: `1px solid ${T.border}`,
-      borderRadius: 9, padding: '12px 14px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-        <SectionLabel T={T} icon="ti-receipt" label={`Orçamento · ${itens.length} ${itens.length === 1 ? 'item' : 'itens'}`} />
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          fontSize: 10.5, fontWeight: 700,
-          padding: '2px 8px', borderRadius: 12,
-          background: statusPag.bg, color: statusPag.cor,
-          border: `1px solid ${statusPag.cor}33`,
-        }}>
-          <i className={`ti ${statusPag.icon}`} aria-hidden="true" />
-          {statusPag.label}
-        </span>
-      </div>
-
-      {/* Lista compacta de itens */}
-      <div style={{
-        background: T.card, border: `1px solid ${T.border}`,
-        borderRadius: 7, overflow: 'hidden',
-      }}>
-        {itens.map((it, i) => (
-          <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '1fr auto auto',
-            gap: 10, alignItems: 'center',
-            padding: '7px 10px',
-            borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
-            fontSize: 12,
-          }}>
-            <div style={{
-              color: T.textPrimary,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              <i className={`ti ${tipoIcone(it.tipo)}`} style={{
-                fontSize: 12, color: T.textMuted, marginRight: 5,
-              }} aria-hidden="true" />
-              {it.nome || '(sem nome)'}
-            </div>
-            <span style={{
-              fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
-              whiteSpace: 'nowrap',
-            }}>
-              {it.qtd}× {fmtBRL(unit(it))}
-            </span>
-            <span style={{
-              fontSize: 12, fontWeight: 600, color: T.textPrimary,
-              fontVariantNumeric: 'tabular-nums',
-              minWidth: 70, textAlign: 'right',
-            }}>
-              {fmtBRL(total(it))}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Totais em 3 colunas */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
-        marginTop: 10,
-      }}>
-        <TotalCard T={T} label="Total" valor={fmtBRL(totalLiq)} cor={T.textPrimary}
-          sub={desconto > 0 ? `subtotal ${fmtBRL(subtotal)} · desc ${fmtBRL(desconto)}` : null} />
-        <TotalCard T={T} label="Pago" valor={fmtBRL(pago)} cor={pago > 0 ? verde : T.textMuted}
-          sub={totalLiq > 0 ? `${pct}% do total` : null} />
-        <TotalCard T={T} label="Saldo" valor={fmtBRL(saldo)}
-          cor={saldo > 0 ? amarelo : verde}
-          sub={saldo === 0 ? 'quitado' : os.forma_pagamento ? `via ${os.forma_pagamento}` : null} />
-      </div>
-    </div>
-  )
-}
-
-function TotalCard({ T, label, valor, cor, sub }) {
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 7, padding: '8px 10px',
-    }}>
-      <div style={{
-        fontSize: 10, color: T.textMuted, fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 3,
-      }}>{label}</div>
-      <div style={{
-        fontSize: 14, fontWeight: 700, color: cor,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{valor}</div>
-      {sub && (
-        <div style={{
-          fontSize: 10, color: T.textMuted, marginTop: 2,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{sub}</div>
-      )}
-    </div>
-  )
-}
-
-function tipoIcone(tipo) {
-  if (tipo === 'servico') return 'ti-tool'
-  if (tipo === 'peca') return 'ti-puzzle'
-  if (tipo === 'maquina') return 'ti-device-washing-machine'
-  return 'ti-circle'
-}
-
-// ─── Histórico recente — últimas 3 mudanças de etapa ────────────────────────
-function HistoricoRecenteBloco({ T, dark, os, usuarios }) {
-  const historico = os.historico || []
-  if (historico.length === 0) return null
-  // Resolve responsável pelo id real do usuário (vindo do banco). Mantém um
-  // shape mínimo (apelido/nome) pra renderização — sem cair pra mock.
-  const funcPorId = (id) => {
-    const u = (usuarios || []).find(x => x.id === id)
-    if (!u) return null
-    return { nome: u.apelido || u.nome || 'desconhecido' }
-  }
-
-  const azul = corEtapa('blue', dark)
-
-  // Pega as últimas 3 entradas (já vem cronológico, então slice no final)
-  const ultimas = historico.slice(-3).reverse()
-  const cfgTipo = TIPOS_OS[os.tipo]
-  const todasEtapas = [...(cfgTipo?.etapas || []), cfgTipo?.lateral].filter(Boolean)
-
-  function labelEtapa(id) {
-    const e = todasEtapas.find(x => x.id === id)
-    return e?.curto || e?.label || id
-  }
-
-  return (
-    <div className="idemaq-card" style={{
-      background: T.cardAlt, border: `1px solid ${T.border}`,
-      borderRadius: 9, padding: '12px 14px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-        <SectionLabel T={T} icon="ti-history" label="Histórico recente" />
-        <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-          {historico.length} {historico.length === 1 ? 'evento' : 'eventos'} · ver tudo no ícone do header
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {ultimas.map((h, i) => {
-          const f = funcPorId(h.funcionario)
-          const etapaLabel = labelEtapa(h.etapa)
-          return (
-            <div key={i} style={{
-              display: 'grid', gridTemplateColumns: 'auto 1fr auto',
-              gap: 10, alignItems: 'center',
-              padding: '7px 10px',
-              background: T.card, border: `1px solid ${T.border}`,
-              borderRadius: 7,
-            }}>
-              <div style={{
-                width: 24, height: 24, borderRadius: 6,
-                background: bgEtapa('blue', dark),
-                color: azul,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13,
-              }} aria-hidden="true">
-                <i className="ti ti-arrow-right" />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{
-                  fontSize: 12.5, fontWeight: 600, color: T.textPrimary,
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  → {etapaLabel}
-                </div>
-                {f && (
-                  <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 1 }}>
-                    por {f.nome}
-                  </div>
-                )}
-              </div>
-              <span style={{
-                fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap',
-              }}>
-                {fmtPrazoCurto(h.data)}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Relatório por etapa ─────────────────────────────────────────────────────
-// Para cada etapa que tem dados (checklist preenchido, falhas registradas,
-// pagamento confirmado, datas de entrega), mostra um card resumindo o que
-// foi capturado. Render só pra etapas que a OS realmente passou (ou tem
-// dado registrado mesmo sem aparecer no histórico — ex: OS importada).
-//
-// Carrega 3 checklists (recebido, em_oficina, teste_final) + falhas via
-// hooks. Cada hook só faz query se o osId for UUID válido; em rascunhos
-// retornam vazio silenciosamente.
-function RelatorioPorEtapaBloco({ T, dark, os, usuarios, admin }) {
-  const azul = corEtapa('blue', dark)
-  const verde = corEtapa('green', dark)
+  const azul    = corEtapa('blue', dark)
+  const verde   = corEtapa('green', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
 
+  const isRecusado = os.etapa === 'recusado'
+  const isConcluido = os.etapa === 'concluido'
+  const garantiaAtiva = isConcluido ? dentroGarantia(os) : false
+  const osOrigem = os.garantia && osBase ? osBase.find(o => o.numero === os.os_origem_id) : null
+
+  const { itens, loading: itensLoading } = useOSItens(os?.id)
   const checkRecebido = useChecklistEtapa(os?.id, 'recebido')
   const checkOficina  = useChecklistEtapa(os?.id, 'em_oficina')
   const checkTeste    = useChecklistEtapa(os?.id, 'teste_final')
@@ -386,337 +57,279 @@ function RelatorioPorEtapaBloco({ T, dark, os, usuarios, admin }) {
 
   const funcPorId = (id) => {
     const u = (usuarios || []).find(x => x.id === id)
-    return u ? (u.apelido || u.nome || 'desconhecido') : null
+    return u ? (u.apelido || u.nome || null) : null
   }
 
-  // Data + responsável de cada etapa (último evento que ENTROU naquela etapa).
-  function dadosEtapa(etapaDb) {
-    const hist = (os.historico || []).filter(h => {
-      // os.historico já está com etapas em formato UI — converter pra comparar
-      if (etapaDb === 'em_oficina') return h.etapa === 'oficina'
-      if (etapaDb === 'agendamento') return h.etapa === 'agendado' || h.etapa === 'agendamento'
-      if (etapaDb === 'entrega') return h.etapa === 'entrega' || h.etapa === 'entregue'
-      return h.etapa === etapaDb
-    })
-    if (hist.length === 0) return null
-    const ultimo = hist[hist.length - 1]
-    return {
-      data: ultimo.data,
-      responsavel: funcPorId(ultimo.funcionario),
-    }
-  }
-
-  // Resumo de checklist genérico: conta marcados / total + lista os com defeito/barulho.
-  function resumirChecklist(itens) {
-    if (!itens || itens.length === 0) return null
-    const total = itens.length
-    const ok = itens.filter(i => i.valor === 'ok' || i.checked === true || i.estado === 'ok').length
-    const problemas = itens
-      .filter(i => i.valor === 'defeito' || i.valor === 'barulho' || i.estado === 'defeito')
-      .map(i => ({ label: i.label || i.id, tipo: i.valor || i.estado }))
-    return { total, ok, problemas }
-  }
-
-  const blocos = []
-
-  // === Recebido ===
-  const dadosRecebido = dadosEtapa('recebido')
-  const temRecebido = checkRecebido.itens.length > 0 || checkRecebido.observacoes || !!dadosRecebido
-  if (temRecebido && !checkRecebido.loading) {
-    const res = resumirChecklist(checkRecebido.itens)
-    blocos.push(
-      <EtapaCard
-        key="recebido" T={T} dark={dark} corBase={azul}
-        icon="ti-clipboard-check" titulo="Recebido (pré-diagnóstico)"
-        meta={dadosRecebido}
-      >
-        {res && (
-          <ChecklistResumo T={T} dark={dark} resumo={res}
-            verde={verde} vermelho={vermelho} />
-        )}
-        {checkRecebido.observacoes && (
-          <Obs T={T} label="Observações da coleta" texto={checkRecebido.observacoes} />
-        )}
-        {!res && !checkRecebido.observacoes && (
-          <Vazio T={T} texto="Sem checklist ou observações registrados." />
-        )}
-      </EtapaCard>
-    )
-  }
-
-  // === Diagnóstico ===
-  const dadosDiag = dadosEtapa('diagnostico')
-  const causa = os.diagnostico?.causa
-  if (dadosDiag || causa) {
-    blocos.push(
-      <EtapaCard
-        key="diagnostico" T={T} dark={dark} corBase={azul}
-        icon="ti-stethoscope" titulo="Diagnóstico"
-        meta={dadosDiag}
-      >
-        {causa
-          ? <Obs T={T} label="Causa apontada pelo técnico" texto={causa} />
-          : <Vazio T={T} texto="Sem causa apontada (ver chips do bloco Diagnóstico acima)." />
-        }
-      </EtapaCard>
-    )
-  }
-
-  // === Orçamento — só admin, e só se já passou pela etapa ===
-  const dadosOrcamento = dadosEtapa('orcamento')
-  if (admin && dadosOrcamento) {
-    blocos.push(
-      <EtapaCard
-        key="orcamento" T={T} dark={dark} corBase={azul}
-        icon="ti-receipt" titulo="Orçamento"
-        meta={dadosOrcamento}
-      >
-        <div style={{ fontSize: 11.5, color: T.textMuted }}>
-          Detalhes dos itens estão no bloco Orçamento acima.
-        </div>
-      </EtapaCard>
-    )
-  }
-
-  // === Em oficina ===
-  const dadosOficina = dadosEtapa('em_oficina')
-  if ((checkOficina.itens.length > 0 || dadosOficina) && !checkOficina.loading) {
-    const res = resumirChecklist(checkOficina.itens)
-    blocos.push(
-      <EtapaCard
-        key="oficina" T={T} dark={dark} corBase={azul}
-        icon="ti-tool" titulo="Em oficina"
-        meta={dadosOficina}
-      >
-        {res && (
-          <ChecklistResumo T={T} dark={dark} resumo={res}
-            verde={verde} vermelho={vermelho} />
-        )}
-        {checkOficina.observacoes && (
-          <Obs T={T} label="Observações da oficina" texto={checkOficina.observacoes} />
-        )}
-        {!res && !checkOficina.observacoes && (
-          <Vazio T={T} texto="Sem itens executados registrados." />
-        )}
-      </EtapaCard>
-    )
-  }
-
-  // === Teste final ===
-  const dadosTeste = dadosEtapa('teste_final')
-  if ((checkTeste.itens.length > 0 || dadosTeste || falhas.length > 0) && !checkTeste.loading) {
-    const res = resumirChecklist(checkTeste.itens)
-    blocos.push(
-      <EtapaCard
-        key="teste" T={T} dark={dark} corBase={azul}
-        icon="ti-flask" titulo="Teste final"
-        meta={dadosTeste}
-      >
-        {res && (
-          <ChecklistResumo T={T} dark={dark} resumo={res}
-            verde={verde} vermelho={vermelho} />
-        )}
-        {checkTeste.observacoes && (
-          <Obs T={T} label="Observações do teste" texto={checkTeste.observacoes} />
-        )}
-        {falhas.length > 0 && (
-          <FalhasBloco T={T} dark={dark} falhas={falhas} vermelho={vermelho} verde={verde} />
-        )}
-        {!res && !checkTeste.observacoes && falhas.length === 0 && (
-          <Vazio T={T} texto="Sem testes ou falhas registrados." />
-        )}
-      </EtapaCard>
-    )
-  }
-
-  // === Entrega ===
-  const dadosEntrega = dadosEtapa('entrega')
-  if (dadosEntrega) {
-    blocos.push(
-      <EtapaCard
-        key="entrega" T={T} dark={dark} corBase={azul}
-        icon="ti-truck-delivery" titulo="Entrega"
-        meta={dadosEntrega}
-      >
-        <Vazio T={T} texto="Detalhes da entrega (data/foto) ainda não persistem em colunas dedicadas." />
-      </EtapaCard>
-    )
-  }
-
-  // === Pagamento — só admin ===
-  const dadosPagamento = dadosEtapa('pagamento')
-  if (admin && (dadosPagamento || os.valor_pago > 0)) {
-    const pagaTotal = estaPagaTotal(os)
-    blocos.push(
-      <EtapaCard
-        key="pagamento" T={T} dark={dark} corBase={azul}
-        icon="ti-cash-banknote" titulo="Pagamento"
-        meta={dadosPagamento}
-      >
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8,
-          fontSize: 12, color: T.textSecondary,
-        }}>
-          <KV T={T} label="Valor pago" valor={fmtBRL(os.valor_pago || 0)}
-            cor={(os.valor_pago || 0) > 0 ? verde : T.textMuted} />
-          <KV T={T} label="Forma" valor={os.forma_pagamento || '—'} />
-          <KV T={T} label="Status" valor={pagaTotal ? 'Pago total' : (os.valor_pago > 0 ? 'Parcial' : 'Não pago')}
-            cor={pagaTotal ? verde : (os.valor_pago > 0 ? amarelo : T.textMuted)} />
-          <KV T={T} label="Saldo" valor={fmtBRL(Math.max(0, totalAPagar(os) - (os.valor_pago || 0)))}
-            cor={pagaTotal ? verde : amarelo} />
-        </div>
-      </EtapaCard>
-    )
-  }
-
-  // === Concluído ===
-  const dadosConcluido = dadosEtapa('concluido')
-  if (dadosConcluido) {
-    blocos.push(
-      <EtapaCard
-        key="concluido" T={T} dark={dark} corBase={verde}
-        icon="ti-circle-check" titulo="Concluído"
-        meta={dadosConcluido}
-      >
-        <Vazio T={T} texto={os.garantia
-          ? `OS de garantia (${os.garantia_dias || 90} dias).`
-          : `Garantia padrão de ${os.garantia_dias || 90} dias a partir desta data.`} />
-      </EtapaCard>
-    )
-  }
-
-  // === Recusado ===
-  const dadosRecusado = dadosEtapa('recusado')
-  if (dadosRecusado) {
-    blocos.push(
-      <EtapaCard
-        key="recusado" T={T} dark={dark} corBase={vermelho}
-        icon="ti-circle-x" titulo="Recusada"
-        meta={dadosRecusado}
-      >
-        <Vazio T={T} texto="OS recusada pelo cliente — ver decisão na aba Etapa." />
-      </EtapaCard>
-    )
-  }
-
-  // Estado de carregamento global (3 hooks)
-  const carregando = checkRecebido.loading || checkOficina.loading || checkTeste.loading
+  // Dias em cada etapa, baseado no historico
+  const historico = os.historico || []
 
   return (
-    <div className="idemaq-card" style={{
-      background: T.cardAlt, border: `1px solid ${T.border}`,
-      borderRadius: 9, padding: '12px 14px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-        <SectionLabel T={T} icon="ti-report" label="Relatório por etapa" />
-        <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-          {blocos.length} {blocos.length === 1 ? 'etapa registrada' : 'etapas registradas'}
-        </span>
-      </div>
+    <div style={{ padding: '14px 16px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {carregando && (
-        <div style={{
-          fontSize: 12, color: T.textMuted, textAlign: 'center', padding: '14px',
-        }}>
-          <i className="ti ti-loader" style={{ fontSize: 14, marginRight: 6, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
-          Carregando dados das etapas…
-        </div>
+      {/* ── 1. CLIENTE + EQUIPAMENTO ── */}
+      <CardCliente T={T} dark={dark} os={os} azul={azul} cor={cor} />
+
+      {/* ── 2. FINANCEIRO (admin only) ── */}
+      {admin && (
+        <CardFinanceiro
+          T={T} dark={dark} os={os} itens={itens} loading={itensLoading}
+          verde={verde} amarelo={amarelo} azul={azul} cor={cor}
+        />
       )}
 
-      {!carregando && blocos.length === 0 && (
-        <div style={{
-          fontSize: 12, color: T.textMuted, fontStyle: 'italic',
-          padding: '14px', textAlign: 'center',
-        }}>
-          Nenhuma etapa registrou dados ainda — preencha as ações da OS pra alimentar o relatório.
-        </div>
-      )}
+      {/* ── 3. LINHA DO TEMPO ── */}
+      <CardTimeline T={T} dark={dark} os={os} historico={historico} funcPorId={funcPorId} />
 
-      {!carregando && blocos.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {blocos}
-        </div>
+      {/* ── 4. O QUE FOI FEITO ── */}
+      <CardEtapas
+        T={T} dark={dark} os={os} admin={admin} usuarios={usuarios}
+        checkRecebido={checkRecebido} checkOficina={checkOficina} checkTeste={checkTeste}
+        falhas={falhas} itens={itens}
+        azul={azul} verde={verde} amarelo={amarelo} vermelho={vermelho} cor={cor}
+        funcPorId={funcPorId}
+      />
+
+      {/* ── 5. BANNERS CONTEXTUAIS ── */}
+      {os.garantia && osOrigem && (
+        <Banner T={T} cor={azul} bg={bgEtapa('blue', dark)}
+          icon="ti-shield-check" titulo="OS em garantia"
+          texto={<>Referente à <strong>OS #{osOrigem.numero}</strong> de {osOrigem.cliente}.</>}
+          onClick={() => onAbrirOS?.(osOrigem.numero)} chevron={!!onAbrirOS}
+        />
+      )}
+      {garantiaAtiva && !os.garantia && (
+        <Banner T={T} cor={azul} bg={bgEtapa('blue', dark)}
+          icon="ti-shield-check" titulo="Garantia ativa"
+          texto="Se o cliente retornar com o mesmo defeito dentro do prazo, abra uma OS de garantia."
+        />
+      )}
+      {isRecusado && (
+        <Banner T={T} cor={vermelho} bg={cor('#2a1515', '#fde8e8')}
+          icon="ti-circle-x" titulo="OS recusada pelo cliente"
+          texto="Defina o destino da máquina na aba Etapa."
+        />
       )}
     </div>
   )
 }
 
-function EtapaCard({ T, dark, corBase, icon, titulo, meta, children }) {
+// ─── 1. CLIENTE + EQUIPAMENTO ────────────────────────────────────────────────
+function CardCliente({ T, dark, os, azul, cor }) {
+  const [fotoUrl, setFotoUrl] = useState(null)
+
+  useEffect(() => {
+    const raw = os?.pre_diagnostico?.foto
+    if (!raw) { setFotoUrl(null); return }
+    if (raw === FOTO_STORAGE_MARKER || raw?.startsWith?.(FOTO_STORAGE_MARKER)) {
+      resolverFotoUrl(os.id).then(url => setFotoUrl(url || null))
+    } else {
+      setFotoUrl(raw)
+    }
+  }, [os?.id, os?.pre_diagnostico?.foto])
+
+  const temCliente = os.cliente || os.fone || os.endereco
+  const temEquipamento = os.marca || os.modelo || os.serie || os.defeito
+
   return (
     <div style={{
       background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 8, padding: '10px 12px',
-      borderLeft: `3px solid ${corBase}`,
+      borderRadius: 10, overflow: 'hidden',
     }}>
+      {/* Cabeçalho do card */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-        marginBottom: 8,
+        padding: '10px 14px 8px',
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <i className={`ti ${icon}`} style={{ fontSize: 15, color: corBase }} aria-hidden="true" />
-          <span style={{
-            fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
-          }}>{titulo}</span>
-        </div>
-        {meta && (
+        <i className="ti ti-id-badge-2" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.05em',
+        }}>
+          Cliente &amp; Equipamento
+        </span>
+        {/* OS número + tipo */}
+        <span style={{
+          marginLeft: 'auto',
+          fontSize: 11, fontWeight: 700, color: azul,
+          background: bgEtapa('blue', dark),
+          padding: '2px 8px', borderRadius: 10,
+          border: `1px solid ${azul}33`,
+        }}>
+          OS #{os.numero} · {TIPOS_OS[os.tipo]?.label || os.tipo}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 0 }}>
+        {/* Foto da máquina */}
+        {fotoUrl && (
           <div style={{
-            fontSize: 10.5, color: T.textMuted,
-            display: 'flex', alignItems: 'center', gap: 5,
-            fontVariantNumeric: 'tabular-nums',
+            width: 80, flexShrink: 0,
+            borderRight: `1px solid ${T.border}`,
+            display: 'flex', alignItems: 'stretch',
           }}>
-            <i className="ti ti-clock" style={{ fontSize: 11 }} aria-hidden="true" />
-            {fmtPrazoCurto(meta.data) || '—'}
-            {meta.responsavel && <span>· por {meta.responsavel}</span>}
+            <img
+              src={fotoUrl} alt="Foto da máquina"
+              style={{
+                width: '100%', objectFit: 'cover',
+                display: 'block',
+              }}
+            />
           </div>
         )}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {children}
+
+        <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Dados do cliente */}
+          {temCliente && (
+            <div>
+              <RowLabel T={T} dark={dark} icon="ti-user" label="Cliente" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+                {os.cliente && <DadoLinha T={T} valor={os.cliente} destaque />}
+                {os.fone && (
+                  <DadoLinha T={T} icon="ti-phone" valor={os.fone} />
+                )}
+                {os.endereco && (
+                  <DadoLinha T={T} icon="ti-map-pin" valor={os.endereco} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Divisor */}
+          {temCliente && temEquipamento && (
+            <div style={{ height: 1, background: T.border }} />
+          )}
+
+          {/* Dados do equipamento */}
+          {temEquipamento && (
+            <div>
+              <RowLabel T={T} dark={dark} icon="ti-device-washing-machine" label="Equipamento" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+                {(os.marca || os.modelo) && (
+                  <DadoLinha T={T}
+                    valor={[os.marca, os.modelo].filter(Boolean).join(' ')}
+                    destaque
+                  />
+                )}
+                {os.serie && (
+                  <DadoLinha T={T} icon="ti-barcode" valor={`Série: ${os.serie}`} />
+                )}
+                {os.defeito && (
+                  <DadoLinha T={T} icon="ti-alert-triangle" valor={os.defeito} muted />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Datas rápidas */}
+          <div style={{
+            display: 'flex', gap: 16, flexWrap: 'wrap',
+            paddingTop: 6, borderTop: `1px solid ${T.border}`,
+          }}>
+            <DataKV T={T} label="Abertura" valor={fmtPrazoCurto(os.abertura || os.criado_em)} />
+            {os.prazo && (
+              <DataKV T={T} label="Prazo" valor={fmtPrazoCurto(os.prazo)}
+                alerta={calcStatusPrazo(os.prazo, os.etapa) === 'vencido'}
+              />
+            )}
+            {os.data_conclusao && (
+              <DataKV T={T} label="Concluída" valor={fmtPrazoCurto(os.data_conclusao)} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-function ChecklistResumo({ T, dark, resumo, verde, vermelho }) {
-  const { total, ok, problemas } = resumo
+// ─── 2. FINANCEIRO ───────────────────────────────────────────────────────────
+function CardFinanceiro({ T, dark, os, itens, loading, verde, amarelo, azul, cor }) {
+  if (loading) return null
+
+  function unit(i) { return i.valor_unitario ?? i.valor ?? 0 }
+  function total(i) { return i.valor_total ?? unit(i) * (i.qtd ?? 1) }
+
+  const subtotal = itens.reduce((s, i) => s + total(i), 0)
+  const desconto = os.desconto || 0
+  const totalLiq = Math.max(0, subtotal - desconto)
+  const pago = os.valor_pago || 0
+  const saldo = Math.max(0, totalLiq - pago)
+  const pagaTotal = estaPagaTotal(os)
+  const pagaParcial = estaPagaParcial(os)
+
+  const statusCor = pagaTotal ? verde : pagaParcial ? amarelo : T.textMuted
+  const statusLabel = pagaTotal ? 'Pago' : pagaParcial ? 'Parcial' : 'Não pago'
+  const statusIcon = pagaTotal ? 'ti-circle-check' : pagaParcial ? 'ti-clock-hour-3' : 'ti-circle-dashed'
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '10px 14px 8px',
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-cash-banknote" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
         <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          fontSize: 11, fontWeight: 600,
-          padding: '2px 7px', borderRadius: 10,
-          background: bgEtapa('green', false), color: verde,
-          border: `1px solid ${verde}33`,
+          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.05em',
         }}>
-          <i className="ti ti-check" style={{ fontSize: 11 }} aria-hidden="true" />
-          {ok}/{total} OK
+          Financeiro
         </span>
-        {problemas.length > 0 && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 11, fontWeight: 600,
-            padding: '2px 7px', borderRadius: 10,
-            background: bgEtapa('red', false), color: vermelho,
-            border: `1px solid ${vermelho}33`,
-          }}>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 11 }} aria-hidden="true" />
-            {problemas.length} {problemas.length === 1 ? 'problema' : 'problemas'}
-          </span>
-        )}
+        <span style={{
+          marginLeft: 'auto',
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          fontSize: 10.5, fontWeight: 700, color: statusCor,
+          background: statusCor + '18', padding: '2px 8px', borderRadius: 10,
+          border: `1px solid ${statusCor}33`,
+        }}>
+          <i className={`ti ${statusIcon}`} style={{ fontSize: 11 }} aria-hidden="true" />
+          {statusLabel}
+        </span>
       </div>
-      {problemas.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {problemas.map((p, i) => (
+
+      {/* 3 KPIs horizontais */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+        borderBottom: itens.length > 0 ? `1px solid ${T.border}` : 'none',
+      }}>
+        <KPI T={T} label="Total orçado" valor={fmtBRL(totalLiq)}
+          sub={desconto > 0 ? `desc. ${fmtBRL(desconto)}` : `${itens.length} iten${itens.length !== 1 ? 's' : ''}`}
+          border={false}
+        />
+        <KPI T={T} label="Pago" valor={fmtBRL(pago)} cor={pago > 0 ? verde : T.textMuted}
+          sub={os.forma_pagamento || '—'} border
+        />
+        <KPI T={T} label="Saldo" valor={fmtBRL(saldo)}
+          cor={saldo === 0 ? verde : amarelo}
+          sub={saldo === 0 ? 'Quitado' : 'Em aberto'} border
+        />
+      </div>
+
+      {/* Lista compacta de itens */}
+      {itens.length > 0 && (
+        <div style={{ padding: '8px 14px 10px' }}>
+          {itens.map((it, i) => (
             <div key={i} style={{
-              fontSize: 11.5, color: T.textSecondary,
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '5px 0',
+              borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
             }}>
+              <i className={`ti ${tipoIcone(it.tipo)}`}
+                style={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
               <span style={{
-                width: 5, height: 5, borderRadius: '50%',
-                background: vermelho, flexShrink: 0,
-              }} aria-hidden="true" />
-              <span>{p.label}{p.tipo ? ` — ${p.tipo}` : ''}</span>
+                flex: 1, fontSize: 12.5, color: T.textPrimary,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{it.nome || '(sem nome)'}</span>
+              <span style={{
+                fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+              }}>{it.qtd}×</span>
+              <span style={{
+                fontSize: 12.5, fontWeight: 600, color: T.textPrimary,
+                fontVariantNumeric: 'tabular-nums', minWidth: 64, textAlign: 'right',
+              }}>{fmtBRL(total(it))}</span>
             </div>
           ))}
         </div>
@@ -725,49 +338,485 @@ function ChecklistResumo({ T, dark, resumo, verde, vermelho }) {
   )
 }
 
-function FalhasBloco({ T, dark, falhas, vermelho, verde }) {
-  const abertas = falhas.filter(f => !f.resolvida)
-  const resolvidas = falhas.filter(f => f.resolvida)
+// ─── 3. LINHA DO TEMPO ───────────────────────────────────────────────────────
+function CardTimeline({ T, dark, os, historico, funcPorId }) {
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+  const vermelho = corEtapa('red', dark)
+
+  if (historico.length === 0) return null
+
+  // Calcula tempo gasto em cada etapa
+  const eventos = historico.map((h, i) => {
+    const inicio = new Date(h.data)
+    const proximo = historico[i + 1]
+    const fim = proximo ? new Date(proximo.data) : new Date()
+    const minutos = Math.round((fim - inicio) / 60000)
+    return { ...h, minutos, fim }
+  })
+
+  function fmtTempo(min) {
+    if (min < 60) return `${min}min`
+    const h = Math.floor(min / 60)
+    if (h < 24) return `${h}h`
+    const d = Math.floor(h / 24)
+    return `${d}d`
+  }
+
+  function corPonto(etapa) {
+    const meta = ETAPA_META[etapa]
+    if (!meta) return azul
+    return corEtapa(meta.cor, dark)
+  }
+
+  const ultimo = eventos[eventos.length - 1]
+  const isFinal = os.etapa === 'concluido' || os.etapa === 'recusado'
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
       <div style={{
-        fontSize: 11, fontWeight: 600, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 2,
+        padding: '10px 14px 8px',
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        Falhas registradas ({falhas.length})
+        <i className="ti ti-timeline" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.05em',
+        }}>
+          Linha do tempo
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+          {historico.length} moviment{historico.length === 1 ? 'ação' : 'ações'}
+        </span>
       </div>
-      {abertas.map(f => (
-        <div key={f.id} style={{
-          fontSize: 11.5, color: vermelho,
-          display: 'flex', alignItems: 'center', gap: 6,
+
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {eventos.map((ev, i) => {
+          const meta = ETAPA_META[ev.etapa] || { icon: 'ti-circle', cor: 'neutro', label: ev.etapa }
+          const cponto = corPonto(ev.etapa)
+          const isLast = i === eventos.length - 1
+          const resp = funcPorId(ev.funcionario)
+
+          return (
+            <div key={i} style={{ display: 'flex', gap: 12 }}>
+              {/* Ponto + linha */}
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                flexShrink: 0, width: 20,
+              }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: cponto + '22', border: `2px solid ${cponto}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, zIndex: 1,
+                }}>
+                  <i className={`ti ${meta.icon}`}
+                    style={{ fontSize: 10, color: cponto }} aria-hidden="true" />
+                </div>
+                {!isLast && (
+                  <div style={{
+                    width: 2, flex: 1, minHeight: 18,
+                    background: T.border, margin: '3px 0',
+                  }} />
+                )}
+              </div>
+
+              {/* Conteúdo */}
+              <div style={{
+                flex: 1, paddingBottom: isLast ? 0 : 14,
+                paddingTop: 1,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
+                    {meta.label}
+                  </span>
+                  {/* Tempo gasto */}
+                  {(!isLast || !isFinal) && (
+                    <span style={{
+                      fontSize: 10.5, color: T.textMuted,
+                      background: T.cardAlt, border: `1px solid ${T.border}`,
+                      padding: '1px 6px', borderRadius: 8,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      {fmtTempo(ev.minutos)}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtPrazoCurto(ev.data)}
+                  </span>
+                  {resp && (
+                    <span style={{ fontSize: 11, color: T.textMuted }}>
+                      · {resp}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Ponto final — etapa atual (se não concluída/recusada, mostra "em andamento") */}
+        {!isFinal && (
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ width: 20, display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                width: 12, height: 12, borderRadius: '50%', marginTop: 4,
+                background: T.border, border: `2px dashed ${T.textDim}`,
+              }} />
+            </div>
+            <div style={{ paddingTop: 2 }}>
+              <span style={{ fontSize: 12, color: T.textMuted, fontStyle: 'italic' }}>
+                Em andamento…
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── 4. O QUE FOI FEITO ──────────────────────────────────────────────────────
+function CardEtapas({
+  T, dark, os, admin, checkRecebido, checkOficina, checkTeste, falhas,
+  itens, azul, verde, amarelo, vermelho, cor, funcPorId,
+}) {
+  const historico = os.historico || []
+
+  function dadosEtapa(etapaDb) {
+    const hist = historico.filter(h => {
+      if (etapaDb === 'em_oficina') return h.etapa === 'oficina'
+      if (etapaDb === 'entrega') return h.etapa === 'entrega' || h.etapa === 'entregue'
+      return h.etapa === etapaDb
+    })
+    if (hist.length === 0) return null
+    const u = hist[hist.length - 1]
+    return { data: u.data, responsavel: funcPorId(u.funcionario) }
+  }
+
+  function resumirChecklist(itens) {
+    if (!itens?.length) return null
+    const total = itens.length
+    const ok = itens.filter(i => i.valor === 'ok' || i.checked === true).length
+    const problemas = itens
+      .filter(i => i.valor === 'defeito' || i.valor === 'barulho')
+      .map(i => ({ label: i.label || i.id, tipo: i.valor }))
+    return { total, ok, problemas }
+  }
+
+  const blocos = []
+
+  // Recebido
+  const dadosRecebido = dadosEtapa('recebido')
+  if ((checkRecebido.itens.length > 0 || dadosRecebido) && !checkRecebido.loading) {
+    const res = resumirChecklist(checkRecebido.itens)
+    blocos.push({ key: 'recebido', meta: ETAPA_META.recebido, dados: dadosRecebido, conteudo: (
+      <>
+        {res && <ChkResumo res={res} T={T} verde={verde} vermelho={vermelho} />}
+        {checkRecebido.observacoes && <ObsTexto T={T} texto={checkRecebido.observacoes} />}
+        {!res && !checkRecebido.observacoes && <Vazio T={T} />}
+      </>
+    )})
+  }
+
+  // Diagnóstico
+  const dadosDiag = dadosEtapa('diagnostico')
+  const causa = os.diagnostico?.causa
+  if (dadosDiag || causa) {
+    blocos.push({ key: 'diagnostico', meta: ETAPA_META.diagnostico, dados: dadosDiag, conteudo: (
+      causa
+        ? <ObsTexto T={T} label="Causa apontada" texto={causa} />
+        : <Vazio T={T} />
+    )})
+  }
+
+  // Orçamento (admin)
+  const dadosOrc = dadosEtapa('orcamento')
+  if (admin && dadosOrc) {
+    const subtotal = itens.reduce((s, i) => s + (i.valor_total ?? (i.valor_unitario ?? i.valor ?? 0) * (i.qtd ?? 1)), 0)
+    blocos.push({ key: 'orcamento', meta: ETAPA_META.orcamento, dados: dadosOrc, conteudo: (
+      <span style={{ fontSize: 12, color: T.textMuted }}>
+        {itens.length} iten{itens.length !== 1 ? 's' : ''} · {fmtBRL(subtotal)}
+        {os.desconto > 0 ? ` · desc. ${fmtBRL(os.desconto)}` : ''}
+      </span>
+    )})
+  }
+
+  // Em oficina
+  const dadosOficina = dadosEtapa('em_oficina')
+  if ((checkOficina.itens.length > 0 || dadosOficina) && !checkOficina.loading) {
+    const res = resumirChecklist(checkOficina.itens)
+    blocos.push({ key: 'oficina', meta: ETAPA_META.oficina, dados: dadosOficina, conteudo: (
+      <>
+        {res && <ChkResumo res={res} T={T} verde={verde} vermelho={vermelho} />}
+        {checkOficina.observacoes && <ObsTexto T={T} texto={checkOficina.observacoes} />}
+        {!res && !checkOficina.observacoes && <Vazio T={T} />}
+      </>
+    )})
+  }
+
+  // Teste final
+  const dadosTeste = dadosEtapa('teste_final')
+  if ((checkTeste.itens.length > 0 || dadosTeste || falhas.length > 0) && !checkTeste.loading) {
+    const res = resumirChecklist(checkTeste.itens)
+    blocos.push({ key: 'teste', meta: ETAPA_META.teste_final, dados: dadosTeste, conteudo: (
+      <>
+        {res && <ChkResumo res={res} T={T} verde={verde} vermelho={vermelho} />}
+        {checkTeste.observacoes && <ObsTexto T={T} texto={checkTeste.observacoes} />}
+        {falhas.length > 0 && <FalhasLista T={T} falhas={falhas} vermelho={vermelho} verde={verde} />}
+        {!res && !checkTeste.observacoes && falhas.length === 0 && <Vazio T={T} />}
+      </>
+    )})
+  }
+
+  // Entrega
+  const dadosEntrega = dadosEtapa('entrega')
+  if (dadosEntrega) {
+    blocos.push({ key: 'entrega', meta: ETAPA_META.entrega, dados: dadosEntrega, conteudo: (
+      <Vazio T={T} texto="Máquina entregue ao cliente." />
+    )})
+  }
+
+  // Pagamento (admin)
+  const dadosPag = dadosEtapa('pagamento')
+  if (admin && (dadosPag || os.valor_pago > 0)) {
+    const pagaTotal = estaPagaTotal(os)
+    const saldo = Math.max(0, totalAPagar(os) - (os.valor_pago || 0))
+    blocos.push({ key: 'pagamento', meta: ETAPA_META.pagamento, dados: dadosPag, conteudo: (
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <KVinline T={T} label="Pago" valor={fmtBRL(os.valor_pago || 0)} cor={os.valor_pago > 0 ? verde : T.textMuted} />
+        <KVinline T={T} label="Forma" valor={os.forma_pagamento || '—'} />
+        <KVinline T={T} label="Saldo" valor={fmtBRL(saldo)} cor={saldo === 0 ? verde : amarelo} />
+      </div>
+    )})
+  }
+
+  // Concluído
+  const dadosConcluido = dadosEtapa('concluido')
+  if (dadosConcluido) {
+    blocos.push({ key: 'concluido', meta: ETAPA_META.concluido, dados: dadosConcluido, conteudo: (
+      <Vazio T={T} texto={`Garantia de ${os.garantia_dias || 90} dias.`} />
+    )})
+  }
+
+  // Recusado
+  const dadosRecusado = dadosEtapa('recusado')
+  if (dadosRecusado) {
+    blocos.push({ key: 'recusado', meta: ETAPA_META.recusado, dados: dadosRecusado, conteudo: (
+      <Vazio T={T} texto="OS recusada pelo cliente." />
+    )})
+  }
+
+  const carregando = checkRecebido.loading || checkOficina.loading || checkTeste.loading
+  if (carregando) return null
+  if (blocos.length === 0) return null
+
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '10px 14px 8px',
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-list-check" style={{ fontSize: 14, color: corEtapa('blue', false) }} aria-hidden="true" />
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.05em',
         }}>
-          <i className="ti ti-circle-dot" style={{ fontSize: 11 }} aria-hidden="true" />
-          <span>{f.descricao}</span>
-        </div>
-      ))}
-      {resolvidas.map(f => (
-        <div key={f.id} style={{
-          fontSize: 11.5, color: T.textMuted,
-          display: 'flex', alignItems: 'center', gap: 6,
-          textDecoration: 'line-through',
+          O que foi feito
+        </span>
+      </div>
+
+      <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {blocos.map(({ key, meta, dados, conteudo }) => {
+          const c = corEtapa(meta.cor, false)
+          return (
+            <div key={key} style={{
+              borderLeft: `3px solid ${c}`,
+              paddingLeft: 10,
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                marginBottom: 4,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className={`ti ${meta.icon}`} style={{ fontSize: 13, color: c }} aria-hidden="true" />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: T.textPrimary }}>
+                    {meta.label}
+                  </span>
+                </div>
+                {dados && (
+                  <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtPrazoCurto(dados.data)}
+                    {dados.responsavel ? ` · ${dados.responsavel}` : ''}
+                  </span>
+                )}
+              </div>
+              <div>{conteudo}</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Primitivos internos ──────────────────────────────────────────────────────
+
+function RowLabel({ T, dark, icon, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+      <i className={`ti ${icon}`} style={{ fontSize: 11, color: T.textMuted }} aria-hidden="true" />
+      <span style={{
+        fontSize: 10, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.05em',
+      }}>{label}</span>
+    </div>
+  )
+}
+
+function DadoLinha({ T, icon, valor, destaque, muted }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+      {icon && (
+        <i className={`ti ${icon}`}
+          style={{ fontSize: 11, color: T.textMuted, marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
+      )}
+      <span style={{
+        fontSize: destaque ? 13.5 : 12.5,
+        fontWeight: destaque ? 700 : 400,
+        color: muted ? T.textMuted : T.textPrimary,
+        lineHeight: 1.3,
+        wordBreak: 'break-word',
+      }}>{valor}</span>
+    </div>
+  )
+}
+
+function DataKV({ T, label, valor, alerta }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 9.5, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.05em',
+      }}>{label}</div>
+      <div style={{
+        fontSize: 12, fontWeight: 600,
+        color: alerta ? '#E53935' : T.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{valor || '—'}</div>
+    </div>
+  )
+}
+
+function KPI({ T, label, valor, cor, sub, border }) {
+  return (
+    <div style={{
+      padding: '10px 14px',
+      borderLeft: border ? `1px solid ${T.border}` : 'none',
+    }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4,
+      }}>{label}</div>
+      <div style={{
+        fontSize: 16, fontWeight: 700,
+        color: cor || T.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{valor}</div>
+      {sub && (
+        <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2 }}>{sub}</div>
+      )}
+    </div>
+  )
+}
+
+function KVinline({ T, label, valor, cor }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 9.5, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.04em',
+      }}>{label}</div>
+      <div style={{
+        fontSize: 12.5, fontWeight: 600,
+        color: cor || T.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{valor}</div>
+    </div>
+  )
+}
+
+function ChkResumo({ res, T, verde, vermelho }) {
+  const { total, ok, problemas } = res
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <Chip cor={verde} icon="ti-check" label={`${ok}/${total} OK`} />
+        {problemas.length > 0 && (
+          <Chip cor={vermelho} icon="ti-alert-triangle" label={`${problemas.length} prob.`} />
+        )}
+      </div>
+      {problemas.map((p, i) => (
+        <div key={i} style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 11.5, color: T.textSecondary,
         }}>
-          <i className="ti ti-circle-check" style={{ fontSize: 11, color: verde }} aria-hidden="true" />
-          <span>{f.descricao}</span>
+          <span style={{
+            width: 5, height: 5, borderRadius: '50%', background: vermelho, flexShrink: 0,
+          }} />
+          {p.label}{p.tipo ? ` — ${p.tipo}` : ''}
         </div>
       ))}
     </div>
   )
 }
 
-function Obs({ T, label, texto }) {
+function FalhasLista({ T, falhas, vermelho, verde }) {
+  const abertas = falhas.filter(f => !f.resolvida)
+  const resolvidas = falhas.filter(f => f.resolvida)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+      <span style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+        Falhas ({falhas.length})
+      </span>
+      {abertas.map(f => (
+        <div key={f.id} style={{ fontSize: 11.5, color: vermelho, display: 'flex', gap: 5, alignItems: 'center' }}>
+          <i className="ti ti-circle-dot" style={{ fontSize: 11 }} aria-hidden="true" />
+          {f.descricao}
+        </div>
+      ))}
+      {resolvidas.map(f => (
+        <div key={f.id} style={{
+          fontSize: 11.5, color: T.textMuted,
+          display: 'flex', gap: 5, alignItems: 'center', textDecoration: 'line-through',
+        }}>
+          <i className="ti ti-circle-check" style={{ fontSize: 11, color: verde }} aria-hidden="true" />
+          {f.descricao}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ObsTexto({ T, label, texto }) {
   return (
     <div>
-      <div style={{
-        fontSize: 10.5, fontWeight: 600, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 3,
-      }}>
-        {label}
-      </div>
+      {label && (
+        <div style={{
+          fontSize: 10, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2,
+        }}>{label}</div>
+      )}
       <div style={{
         fontSize: 12, color: T.textSecondary, lineHeight: 1.45,
         whiteSpace: 'pre-wrap', wordBreak: 'break-word',
@@ -776,53 +825,34 @@ function Obs({ T, label, texto }) {
   )
 }
 
-function Vazio({ T, texto }) {
+function Vazio({ T, texto = 'Sem dados registrados.' }) {
   return (
-    <div style={{
-      fontSize: 11.5, color: T.textMuted, fontStyle: 'italic',
-    }}>{texto}</div>
+    <span style={{ fontSize: 11.5, color: T.textMuted, fontStyle: 'italic' }}>{texto}</span>
   )
 }
 
-function KV({ T, label, valor, cor }) {
+function Chip({ cor, icon, label }) {
   return (
-    <div>
-      <div style={{
-        fontSize: 10, color: T.textMuted, fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 2,
-      }}>{label}</div>
-      <div style={{
-        fontSize: 12.5, fontWeight: 600, color: cor || T.textPrimary,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{valor}</div>
-    </div>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+      background: cor + '18', color: cor, border: `1px solid ${cor}33`,
+    }}>
+      <i className={`ti ${icon}`} style={{ fontSize: 11 }} aria-hidden="true" />
+      {label}
+    </span>
   )
 }
 
-// ─── Helpers visuais compartilhados ──────────────────────────────────────────
-function SectionLabel({ T, icon, label }) {
+function Banner({ T, cor, bg, icon, titulo, texto, chevron, onClick }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
-      <span style={{
-        fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '.3px',
-      }}>{label}</span>
-    </div>
-  )
-}
-
-function Banner({ T, dark, cor, bg, icon, titulo, texto, chevron, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: '10px 14px', borderRadius: 9,
-        background: bg, border: `1px solid ${cor}55`,
-        fontSize: 12, color: T.textSecondary,
-        display: 'flex', alignItems: 'center', gap: 10,
-        cursor: onClick ? 'pointer' : 'default',
-      }}>
+    <div onClick={onClick} style={{
+      padding: '10px 14px', borderRadius: 9,
+      background: bg, border: `1px solid ${cor}55`,
+      fontSize: 12, color: T.textSecondary,
+      display: 'flex', alignItems: 'center', gap: 10,
+      cursor: onClick ? 'pointer' : 'default',
+    }}>
       <i className={`ti ${icon}`} style={{ fontSize: 20, color: cor, flexShrink: 0 }} aria-hidden="true" />
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 700, color: T.textPrimary, marginBottom: 2 }}>{titulo}</div>
@@ -833,31 +863,9 @@ function Banner({ T, dark, cor, bg, icon, titulo, texto, chevron, onClick }) {
   )
 }
 
-function MiniCard({ T, dark, label, valor, icon, tom = 'neutro', extra }) {
-  const cor = (d, c) => dark ? d : c
-  const cores = {
-    neutro: { c: T.textPrimary, bg: T.cardAlt, border: T.border },
-    amarelo: { c: cor(P.yellow, P.yellowDark), bg: cor('#2a2000', '#fdf6dc'), border: cor(P.yellow, P.yellowDark) + '55' },
-    vermelho: { c: cor(P.red, P.redDark), bg: cor('#2a1515', '#fde8e8'), border: cor(P.red, P.redDark) + '55' },
-  }
-  const sc = cores[tom] || cores.neutro
-  return (
-    <div className="idemaq-card" style={{
-      background: sc.bg, border: `1px solid ${sc.border}`,
-      borderRadius: 9, padding: '10px 12px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 13, color: T.textMuted }} aria-hidden="true" />
-        <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.3px' }}>
-          {label}
-        </span>
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: sc.c, fontVariantNumeric: 'tabular-nums' }}>
-        {valor}
-      </div>
-      {extra && (
-        <div style={{ fontSize: 10, color: sc.c, marginTop: 1, fontWeight: 600 }}>{extra}</div>
-      )}
-    </div>
-  )
+function tipoIcone(tipo) {
+  if (tipo === 'servico') return 'ti-tool'
+  if (tipo === 'peca') return 'ti-puzzle'
+  if (tipo === 'maquina') return 'ti-device-washing-machine'
+  return 'ti-circle'
 }
