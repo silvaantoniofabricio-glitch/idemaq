@@ -160,11 +160,12 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
       background: T.card, border: `1px solid ${T.border}`,
       borderRadius: 10, overflow: 'hidden',
     }}>
-      {/* Cabeçalho do grupo */}
+      {/* Cabeçalho do grupo — botão "+" no final pra economizar a linha
+          inteira do antigo "+ Adicionar X" embaixo. */}
       <div style={{
-        padding: '10px 14px',
+        padding: '8px 6px 8px 14px',
         background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
-        borderBottom: `1px solid ${T.border}`,
+        borderBottom: !isEmpty ? `1px solid ${T.border}` : 'none',
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
         <span style={{
@@ -191,6 +192,22 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
           }}>
             {fmtBRL(subtotal)}
           </span>
+        )}
+        {adicionandoTipo !== tipo.id && (
+          <button
+            type="button"
+            onClick={() => onAdd(tipo.id)}
+            aria-label={`Adicionar ${tipo.label.replace(/s$/, '').toLowerCase()}`}
+            title={`Adicionar ${tipo.label.replace(/s$/, '').toLowerCase()}`}
+            style={{
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              background: bg, border: 'none', color: fg,
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+          </button>
         )}
       </div>
 
@@ -229,25 +246,6 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
         </div>
       ))}
 
-      {/* Botão adicionar */}
-      {adicionandoTipo !== tipo.id && (
-        <button
-          type="button"
-          onClick={() => onAdd(tipo.id)}
-          style={{
-            width: '100%', height: 44, padding: '0 14px',
-            background: 'transparent', border: 'none',
-            borderTop: isEmpty ? 'none' : `1px dashed ${T.border}`,
-            color: fg, fontWeight: 600, fontSize: 13.5,
-            cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: 7,
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-          Adicionar {tipo.label.replace(/s$/, '').toLowerCase()}
-        </button>
-      )}
     </div>
   )
 }
@@ -350,9 +348,9 @@ function DescontoBlock({
       background: T.card, border: `1px solid ${T.border}`,
       borderRadius: 10, overflow: 'hidden',
     }}>
-      {/* Cabeçalho (mesma visual dos GrupoBlock) */}
+      {/* Cabeçalho (mesma visual dos GrupoBlock) — botão "+" ou "🗑" na linha */}
       <div style={{
-        padding: '10px 14px',
+        padding: '8px 6px 8px 14px',
         background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
         borderBottom: editando ? `1px solid ${T.border}` : 'none',
         display: 'flex', alignItems: 'center', gap: 10,
@@ -382,6 +380,40 @@ function DescontoBlock({
             − {fmtBRL(descontoRS)}
           </span>
         )}
+        {!editando ? (
+          <button
+            type="button"
+            onClick={() => podeAplicar && setEditando(true)}
+            disabled={!podeAplicar}
+            aria-label="Adicionar um desconto"
+            title="Adicionar um desconto"
+            style={{
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              background: bgRed, border: 'none', color: vermelho,
+              cursor: podeAplicar ? 'pointer' : 'not-allowed',
+              opacity: podeAplicar ? 1 : 0.4,
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+          </button>
+        ) : ativo && (
+          <button
+            type="button"
+            onClick={() => { onRemove(); setEditando(false) }}
+            aria-label="Remover desconto"
+            title="Remover desconto"
+            style={{
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              background: 'transparent', border: `1px solid ${T.border}`,
+              color: T.textMuted, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       {/* Campos R$ ↔ % (quando editando) */}
@@ -409,43 +441,6 @@ function DescontoBlock({
             accent={vermelho}
           />
         </div>
-      )}
-
-      {/* Botão (adicionar OU remover quando ativo) */}
-      {!editando ? (
-        <button
-          type="button"
-          onClick={() => podeAplicar && setEditando(true)}
-          disabled={!podeAplicar}
-          style={{
-            width: '100%', height: 44, padding: '0 14px',
-            background: 'transparent', border: 'none',
-            color: vermelho, fontWeight: 600, fontSize: 13.5,
-            cursor: podeAplicar ? 'pointer' : 'not-allowed',
-            opacity: podeAplicar ? 1 : 0.5,
-            fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: 7,
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-          Adicionar um desconto
-        </button>
-      ) : ativo && (
-        <button
-          type="button"
-          onClick={() => { onRemove(); setEditando(false) }}
-          style={{
-            width: '100%', height: 38, padding: '0 14px',
-            background: 'transparent', border: 'none',
-            borderTop: `1px dashed ${T.border}`,
-            color: T.textMuted, fontWeight: 500, fontSize: 12,
-            cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" />
-          Remover desconto
-        </button>
       )}
     </div>
   )
