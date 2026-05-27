@@ -3,6 +3,10 @@ import { useTheme } from '../../theme';
 import { TI, PALETA } from '../_shared/PrimitivasMobile';
 import { ETAPAS_TODOS } from '../../utils/osData';
 import FormEquipamentoEdit from './FormEquipamentoEdit';
+import { m3Type } from '../../theme-m3';
+
+// Material 3 — aplicado quando etapa atual eh Agendamento (teste).
+const ETAPAS_M3 = new Set(['ag_agendamento', 'agendado', 'agendamento']);
 
 // Resolve label friendly da etapa atual a partir do raw id (ex: 'ag_agendamento'
 // → 'Agenda'). Usa o `match` em ETAPAS_TODOS pra encontrar a etapa unificada
@@ -58,6 +62,7 @@ const HeaderMobile = ({
   onUpdateOS,
 }) => {
   const { T, dark } = useTheme();
+  const m3 = ETAPAS_M3.has(os?.etapa);
   // Modal de edicao de equipamento — gerenciado aqui dentro porque o
   // OSDetalhe nao passa onAdicionarEquipamento. Mesma logica do Header
   // desktop (que tambem mantem estado proprio).
@@ -92,54 +97,89 @@ const HeaderMobile = ({
       {/* Linha 1 (combinada) · OS# + badge à esquerda · ações à direita.
           Antes eram 2 linhas: topbar (X/histórico/dots) + OS#/badge.
           X removido — modal fecha por swipe/back nativo do mobile. */}
+      {/* Linha 1: M3 top app bar (64dp) com icon buttons 40x40 +
+          assist chip pro status. V1 mantida mais compacta. */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px 4px', gap: 8,
+        padding: m3 ? '8px 4px' : '8px 12px 4px', gap: 8,
+        minHeight: m3 ? 56 : undefined,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1 }}>
-          {/* X discreto pra fechar — mesmo tamanho do "dots" da direita */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: m3 ? 8 : 7, minWidth: 0, flex: 1 }}>
+          {/* X discreto pra fechar */}
           <button
             onClick={onClose}
             aria-label="Fechar"
             title="Fechar"
-            style={{
+            style={m3 ? {
+              border: 'none', background: 'transparent',
+              color: T.textPrimary,
+              width: 40, height: 40, borderRadius: 999,
+              cursor: 'pointer', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            } : {
               border: 'none', background: 'transparent',
               color: T.textMuted, padding: 4, lineHeight: 0,
               cursor: 'pointer', flexShrink: 0,
               marginLeft: -4,
             }}
           >
-            <TI name="x" size={16} />
+            <TI name="x" size={m3 ? 22 : 16} />
           </button>
-          <span style={{
+          <span style={m3 ? {
+            fontFamily: MONO_STACK,
+            ...m3Type('labelMedium'),
+            color: T.textMuted, flexShrink: 0,
+          } : {
             fontFamily: MONO_STACK,
             fontSize: 11, color: T.textMuted, fontWeight: 600,
             letterSpacing: '.04em', flexShrink: 0,
           }}>
             OS #{os?.numero}
           </span>
-          <span style={{
+          {/* Status badge — M3 Assist Chip 32dp */}
+          <span style={m3 ? {
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            minHeight: 32, padding: '0 12px',
+            borderRadius: 8,
+            border: `1px solid ${T.border}`,
+            background: toneStyle.bg, color: toneStyle.fg,
+            ...m3Type('labelLarge'),
+            textTransform: 'none', letterSpacing: 0.1,
+            whiteSpace: 'nowrap', flexShrink: 0,
+          } : {
             fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
             padding: '3px 8px', borderRadius: 999,
             textTransform: 'uppercase', whiteSpace: 'nowrap',
             background: toneStyle.bg, color: toneStyle.fg,
             flexShrink: 0,
           }}>
+            {m3 && <TI name="circle-dot" size={14} />}
             {badgeText}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: m3 ? 0 : 4, flexShrink: 0 }}>
+          {/* M3 Icon button 40x40 com fundo tint */}
           <button
             onClick={historicoHandler}
             aria-label="Histórico"
-            style={{
+            style={m3 ? {
+              position: 'relative',
+              background: dark ? 'rgba(91,155,213,0.18)' : '#E3F2FD',
+              color: PALETA.blueStrong,
+              border: 'none', borderRadius: 999,
+              width: 40, height: 40,
+              cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            } : {
               position: 'relative',
               background: PALETA.blueBg, color: PALETA.blueStrong,
               border: 'none', borderRadius: 999,
               padding: 5, cursor: 'pointer', display: 'inline-flex',
             }}
           >
-            <TI name="history" size={16} />
+            <TI name="history" size={m3 ? 20 : 16} />
             {historyCount > 0 && (
               <span style={{
                 position: 'absolute', top: -3, right: -3,
@@ -153,21 +193,33 @@ const HeaderMobile = ({
           <button
             onClick={onMore}
             aria-label="Mais opções"
-            style={{
+            style={m3 ? {
+              border: 'none', background: 'transparent',
+              color: T.textPrimary,
+              width: 40, height: 40, borderRadius: 999,
+              cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            } : {
               border: 'none', background: 'transparent',
               color: T.textMuted, padding: 4,
               cursor: 'pointer', lineHeight: 0,
             }}
           >
-            <TI name="dots-vertical" size={16} />
+            <TI name="dots-vertical" size={m3 ? 22 : 16} />
           </button>
         </div>
       </div>
 
-      {/* Linha 2 · nome do cliente — fonte reduzida 22→17 */}
+      {/* Linha 2 · nome do cliente — M3 title-large 22sp */}
       <div
         title={nome}
-        style={{
+        style={m3 ? {
+          padding: '4px 16px 0',
+          ...m3Type('titleLarge'),
+          color: T.textPrimary,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        } : {
           padding: '0 12px 1px',
           fontSize: 17, fontWeight: 700,
           color: T.textPrimary, letterSpacing: '-.01em',
@@ -178,12 +230,22 @@ const HeaderMobile = ({
         {nome}
       </div>
 
-      {/* Linha 3 · equipamento (clicavel pra editar) ou ação de adicionar */}
+      {/* Linha 3 · equipamento (M3 text button pill quando vazio) */}
       {hasEquipamento ? (
         <button
           onClick={abrirEquipamento}
           title="Editar equipamento"
-          style={{
+          style={m3 ? {
+            padding: '4px 16px 12px',
+            border: 'none', background: 'transparent',
+            ...m3Type('bodyMedium'),
+            color: T.textMuted,
+            display: 'flex', alignItems: 'center', gap: 8,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            width: '100%',
+            WebkitTapHighlightColor: 'transparent',
+          } : {
             padding: '0 12px 8px',
             border: 'none', background: 'transparent',
             fontSize: 12.5, color: T.textMuted, fontWeight: 500,
@@ -194,29 +256,40 @@ const HeaderMobile = ({
             width: '100%',
             WebkitTapHighlightColor: 'transparent',
           }}>
-          <TI name="device-laptop" size={13} color={T.textMuted} />
+          <TI name="device-laptop" size={m3 ? 16 : 13} color={T.textMuted} />
           {marca && <span>{marca}</span>}
           {marca && modelo && <span style={{ color: '#D1D5DB' }}>·</span>}
           {modelo && <span>{modelo}</span>}
           {serie && <span style={{ color: '#D1D5DB' }}>·</span>}
           {serie && (
-            <span style={{ fontFamily: MONO_STACK, fontSize: 11.5 }}>S/N {serie}</span>
+            <span style={{ fontFamily: MONO_STACK, fontSize: m3 ? 13 : 11.5 }}>S/N {serie}</span>
           )}
         </button>
       ) : (
-        <button
-          onClick={abrirEquipamento}
-          style={{
-            padding: '0 12px 8px',
-            border: 'none', background: 'transparent',
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 12.5, color: PALETA.blueStrong, fontWeight: 600,
-            cursor: 'pointer', lineHeight: 1.3, textAlign: 'left',
-          }}
-        >
-          <TI name="plus" size={13} color={PALETA.blueStrong} />
-          adicionar equipamento
-        </button>
+        <div style={{ padding: m3 ? '0 8px 8px' : 0 }}>
+          <button
+            onClick={abrirEquipamento}
+            style={m3 ? {
+              // M3 Text button pill 40dp
+              minHeight: 40, padding: '0 12px', borderRadius: 999,
+              border: 'none', background: 'transparent',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              ...m3Type('labelLarge'),
+              color: PALETA.blueStrong,
+              cursor: 'pointer', fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
+            } : {
+              padding: '0 12px 8px',
+              border: 'none', background: 'transparent',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 12.5, color: PALETA.blueStrong, fontWeight: 600,
+              cursor: 'pointer', lineHeight: 1.3, textAlign: 'left',
+            }}
+          >
+            <TI name="plus" size={m3 ? 18 : 13} color={PALETA.blueStrong} />
+            adicionar equipamento
+          </button>
+        </div>
       )}
 
       {/* Linha 4 · abas (Etapa / Relatório / Pagamento) — restauradas em
@@ -232,7 +305,18 @@ const HeaderMobile = ({
             return (
               <button key={a.id}
                 onClick={() => setAba(a.id)}
-                style={{
+                style={m3 ? {
+                  // M3 Primary tab — 48dp altura, indicator 3px embaixo
+                  flex: 1, minHeight: 48, padding: '0 12px',
+                  border: 'none', background: 'transparent',
+                  borderBottom: `3px solid ${ativo ? PALETA.blueStrong : 'transparent'}`,
+                  color: ativo ? PALETA.blueStrong : T.textMuted,
+                  ...m3Type('labelLarge'),
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'border-color .15s, color .15s',
+                  WebkitTapHighlightColor: 'transparent',
+                } : {
                   flex: 1, minHeight: 42, padding: '0 6px',
                   border: 'none', background: ativo
                     ? (dark ? 'rgba(91,155,213,0.08)' : 'rgba(91,155,213,0.06)')
@@ -245,7 +329,7 @@ const HeaderMobile = ({
                   transition: 'all .12s',
                   WebkitTapHighlightColor: 'transparent',
                 }}>
-                <TI name={a.icon} size={14} />
+                <TI name={a.icon} size={m3 ? 18 : 14} />
                 {a.label}
               </button>
             );
