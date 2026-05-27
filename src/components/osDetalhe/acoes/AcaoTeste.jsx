@@ -239,7 +239,7 @@ const AcabBtn = ({ T, dark, item, feito, onClick }) => (
   </button>
 )
 
-export default function AcaoTeste({ os, onMoverOS }) {
+export default function AcaoTeste({ os, onMoverOS, onUpdateOS }) {
   const { T, dark } = useTheme()
 
   // Detecta se orçamento tem Limpeza pra mostrar/ocultar bloco Acabamento.
@@ -259,7 +259,8 @@ export default function AcaoTeste({ os, onMoverOS }) {
   const [acabamento, setAcabamento] = useState(
     () => ACABAMENTO.reduce((acc, a) => ({ ...acc, [a.id]: false }), {})
   )
-  const [obs, setObs] = useState('')
+  // Obs UNIFICADAS no campo global os.observacoes
+  const [obs, setObs] = useState(os?.observacoes || '')
   const [hidratado, setHidratado] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
@@ -275,9 +276,26 @@ export default function AcaoTeste({ os, onMoverOS }) {
     }, {})
     setTestes(novoTestes)
     setAcabamento(novoAcab)
-    setObs(chkObs || '')
+    setObs(os?.observacoes || '')
     setHidratado(true)
-  }, [loadingChk, chkItens, chkObs, hidratado])
+  }, [loadingChk, chkItens, hidratado, os?.observacoes])
+
+  // Re-sincroniza obs se outra etapa alterar os.observacoes
+  useEffect(() => {
+    if (hidratado) setObs(os?.observacoes || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [os?.observacoes])
+
+  // Auto-save de obs no campo global (debounce 500ms)
+  useEffect(() => {
+    if (!hidratado) return
+    if (obs === (os?.observacoes || '')) return
+    const t = setTimeout(() => {
+      onUpdateOS?.(os.numero, { observacoes: obs })
+    }, 500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obs, hidratado])
 
   function setResultado(testeId, valor) {
     setTestes(prev => ({ ...prev, [testeId]: valor }))
@@ -322,7 +340,10 @@ export default function AcaoTeste({ os, onMoverOS }) {
 
   async function aprovar() {
     setSalvando(true)
-    await salvarChk(serializarChecklist(), obs || null)
+    await salvarChk(serializarChecklist(), null)
+    if (obs !== (os?.observacoes || '')) {
+      onUpdateOS?.(os.numero, { observacoes: obs })
+    }
     await sincronizarAbertas([])
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'entrega')
     setSalvando(false)
@@ -331,7 +352,10 @@ export default function AcaoTeste({ os, onMoverOS }) {
 
   async function voltarOficina() {
     setSalvando(true)
-    await salvarChk(serializarChecklist(), obs || null)
+    await salvarChk(serializarChecklist(), null)
+    if (obs !== (os?.observacoes || '')) {
+      onUpdateOS?.(os.numero, { observacoes: obs })
+    }
     await sincronizarAbertas(falhas)
     const oficina = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')
     setSalvando(false)

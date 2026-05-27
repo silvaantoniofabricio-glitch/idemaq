@@ -131,7 +131,10 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
   const [testes, setTestes] = useState(
     () => TESTES.reduce((acc, t) => ({ ...acc, [t.id]: null }), {})
   );
-  const [obs, setObs] = useState('');
+  // Observacoes — UNIFICADAS: usam o campo global os.observacoes em vez de
+  // por-etapa, pra qualquer observacao escrita aqui aparecer tambem na
+  // Entrega/Teste/etc. Ex: 'chegou sem capa' aparece no momento de entregar.
+  const [obs, setObs] = useState(os?.observacoes || '');
   const [naoLiga, setNaoLiga] = useState(false);
   const [motivoNaoLiga, setMotivoNaoLiga] = useState('');
   const [vazamentos, setVazamentos] = useState({ entrada: false, saida: false, agitacao: false });
@@ -156,9 +159,16 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
       return { ...acc, [t.id]: found?.valor ?? null };
     }, {});
     setTestes(novoTestes);
-    setObs(chkObs || '');
+    // Observacoes vem de os.observacoes (global) — nao mais do checklist
+    setObs(os?.observacoes || '');
     setHidratado(true);
-  }, [loadingChk, chkItens, chkObs, hidratado]);
+  }, [loadingChk, chkItens, hidratado, os?.observacoes]);
+
+  // Re-sincroniza obs se outra etapa atualizar os.observacoes (auto-add da Capa, etc)
+  useEffect(() => {
+    if (hidratado) setObs(os?.observacoes || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [os?.observacoes]);
 
   function setResultado(testeId, valor) {
     setTestes(prev => ({ ...prev, [testeId]: valor }));
@@ -173,15 +183,27 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
     }));
   }
 
-  // Auto-save dos testes (debounce 500ms)
+  // Auto-save dos testes (debounce 500ms) — obs NAO vai mais pro checklist,
+  // vai pro os.observacoes via useEffect separado abaixo.
   useEffect(() => {
     if (!hidratado) return;
     const t = setTimeout(() => {
-      salvarChk(serializarChecklist(), obs || null);
+      salvarChk(serializarChecklist(), null);
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testes, obs, naoLiga, hidratado]);
+  }, [testes, naoLiga, hidratado]);
+
+  // Auto-save de obs no campo global os.observacoes (debounce 500ms)
+  useEffect(() => {
+    if (!hidratado) return;
+    if (obs === (os?.observacoes || '')) return;
+    const t = setTimeout(() => {
+      onUpdateOS?.(os.numero, { observacoes: obs });
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obs, hidratado]);
 
   // Persiste flags em pre_diagnostico (naoLiga + motivo + vazamentos) — debounce 500ms
   useEffect(() => {
@@ -202,7 +224,11 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
 
   async function avancar() {
     setSalvando(true);
-    await salvarChk(serializarChecklist(), obs || null);
+    await salvarChk(serializarChecklist(), null);
+    // Garante que obs persista antes de avancar
+    if (obs !== (os?.observacoes || '')) {
+      onUpdateOS?.(os.numero, { observacoes: obs });
+    }
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'diagnostico');
     setSalvando(false);
     if (proxima) onMoverOS(os.numero, proxima.id);

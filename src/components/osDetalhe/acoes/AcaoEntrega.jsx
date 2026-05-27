@@ -123,12 +123,10 @@ function FormAgendar({ os, user, usuarios, onUpdateOS, onCancelar }) {
   const lista = usuarios || []
   const meuApelido = lista.find(u => u.id === user?.id)?.apelido || 'Você'
 
-  // Le de pre_diagnostico.entrega (jsonb que persiste) com fallback pros
-  // antigos campos top-level (caso ja existam em alguma OS).
+  // Le de pre_diagnostico.entrega (jsonb que persiste). Observacoes UNIFICADAS
+  // no campo global os.observacoes (compartilhado entre todas as etapas).
   const entregaSalva = os?.pre_diagnostico?.entrega || {}
   const dataAgendada = entregaSalva.data || os.entrega_data || null
-  const respSalvo = entregaSalva.responsavel || os.entrega_responsavel || null
-  const obsSalva = entregaSalva.observacoes || os.entrega_observacoes || ''
 
   const dias = useMemo(() => proxNDias(14), [])
   const dataIso = dataAgendada ? dataAgendada.slice(0, 10) : null
@@ -137,7 +135,10 @@ function FormAgendar({ os, user, usuarios, onUpdateOS, onCancelar }) {
   const [diaSel, setDiaSel] = useState(dataIso || dias[1]?.iso || dias[0]?.iso)
   const [periodoSel, setPeriodoSel] = useState(detectarPeriodo(dataHora))
   const [horaSel, setHoraSel] = useState(dataHora || null)
-  const [obs, setObs] = useState(obsSalva)
+  const [obs, setObs] = useState(os?.observacoes || '')
+
+  // Re-sincroniza obs quando outras etapas alterarem (ex: auto-add da Capa)
+  useEffect(() => { setObs(os?.observacoes || '') }, [os?.observacoes])
 
   const horarios = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel])
   const podeAgendar = !!diaSel && !!horaSel
@@ -150,13 +151,13 @@ function FormAgendar({ os, user, usuarios, onUpdateOS, onCancelar }) {
     }
     const iso = `${diaSel}T${horaSel}:00`
     onUpdateOS?.(os.numero, {
+      observacoes: obs,
       pre_diagnostico: {
         ...(os.pre_diagnostico || {}),
         entrega: {
           ...entregaSalva,
           data: iso,
           responsavel: user?.id || null,
-          observacoes: obs,
         },
       },
     })
@@ -329,7 +330,8 @@ function ResumoAgendada({ os, user, usuarios, admin, onUpdateOS, onMoverOS, onRe
   const entregaSalva = os?.pre_diagnostico?.entrega || {}
   const entregaData = entregaSalva.data || os.entrega_data || null
   const respAgendado = entregaSalva.responsavel || os.entrega_responsavel || null
-  const obsAgendada = entregaSalva.observacoes || os.entrega_observacoes || ''
+  // Observacoes vem do campo global os.observacoes (unificado).
+  const obsAgendada = os?.observacoes || ''
 
   const alvo = useMemo(() => {
     if (!entregaData) return null
@@ -505,14 +507,24 @@ ${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reage
             borderRadius: 99, transition: 'width .3s',
           }}/>
         </div>
-        {obsAgendada && (
-          <div style={{
-            marginTop: 7, fontSize: 11.5, color: T.textPrimary,
-            borderLeft: `3px solid ${PALETA.yellowStrong}`,
-            paddingLeft: 8, lineHeight: 1.4,
-          }}>{obsAgendada}</div>
-        )}
       </SubBloco>
+
+      {/* Observacoes — destaque amarelo quando houver, pra tecnico nao esquecer
+          do que precisa levar (capa, mangueira, etc) */}
+      {obsAgendada && (
+        <SubBloco T={T} dark={dark} icon="alert-circle"
+          label="Atenção · observações da OS" color="yellow"
+          action={<span style={{
+            fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+            background: PALETA.yellowStrong, color: '#fff',
+            textTransform: 'uppercase', letterSpacing: '.05em',
+          }}>NÃO ESQUECER</span>}>
+          <div style={{
+            fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
+            whiteSpace: 'pre-wrap',
+          }}>{obsAgendada}</div>
+        </SubBloco>
+      )}
 
       {/* 2 atalhos: WhatsApp + Rota */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>

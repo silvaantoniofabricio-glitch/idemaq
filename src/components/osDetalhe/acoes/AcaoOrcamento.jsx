@@ -1099,11 +1099,37 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
     onUpdateOS?.(os.numero, { desconto: descontoRS })
   }
 
+  // Auto-append em os.observacoes: itens que precisam ser LEVADOS na entrega
+  // (capa, mangueira de entrada/saida, etc). Tecnico nao esquece.
+  // Padrao: { regex match → frase pra anexar nas obs }
+  const LEMBRETES_ENTREGA = [
+    { rx: /\bcapa\b/i,         frase: 'Levar a capa na entrega' },
+    { rx: /mangueira.*entrada/i, frase: 'Levar mangueira de entrada na entrega' },
+    { rx: /mangueira.*saida/i,   frase: 'Levar mangueira de saída na entrega' },
+  ]
+
+  function lembreteParaItem(nome) {
+    const n = (nome || '').toLowerCase()
+    for (const { rx, frase } of LEMBRETES_ENTREGA) {
+      if (rx.test(n)) return frase
+    }
+    return null
+  }
+
   async function handleSaveItem(dados) {
     setSaving(true)
     await addItem(dados)
     setSaving(false)
     setAdicionandoTipo(null)
+    // Auto-anexar lembrete em os.observacoes se aplicar
+    const lembrete = lembreteParaItem(dados?.nome)
+    if (lembrete) {
+      const atuais = os?.observacoes || ''
+      if (!atuais.toLowerCase().includes(lembrete.toLowerCase())) {
+        const nova = atuais.trim() ? `${atuais.trim()}\n${lembrete}` : lembrete
+        onUpdateOS?.(os.numero, { observacoes: nova })
+      }
+    }
   }
 
   return (
