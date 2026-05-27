@@ -4,6 +4,8 @@ import {
   TI, NowCard, BtnMobile, MOBILE, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile';
 import { useOSItens } from '../../../hooks/useOSItens';
+import FormRecebimento from '../FormRecebimento';
+import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro';
 
 const TIPOS = [
   { id: 'servico', label: 'Serviços',     icon: 'tool',    bg: PALETA.blueBg,   fg: PALETA.blueStrong },
@@ -192,75 +194,13 @@ const GrupoBlock = ({ tipo, itens, subtotal, T, onAdd, onRemoveItem, adicionando
   );
 };
 
-const ResumoDiagnostico = ({ os }) => {
-  const { T, dark } = useTheme();
-  const causa = os?.diagnostico?.causa;
-  const itensMarcados = os?.diagnostico?.componentesMarcados || [];
-  if (!causa && !itensMarcados.length) return null;
-
-  return (
-    <div className="idemaq-card" style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 12, padding: 12,
-      display: 'flex', flexDirection: 'column', gap: 8,
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        fontSize: 11, color: T.textMuted, fontWeight: 700,
-        letterSpacing: '.06em', textTransform: 'uppercase',
-      }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <TI name="stethoscope" size={13} color={PALETA.blueStrong} />
-          DO DIAGNÓSTICO
-        </span>
-        {os?.diagnostico?.por && (
-          <span style={{
-            color: T.textMuted, fontWeight: 500,
-            textTransform: 'none', letterSpacing: 0,
-          }}>por {os.diagnostico.por}</span>
-        )}
-      </div>
-
-      {causa && (
-        <div style={{
-          fontSize: 13, color: T.textPrimary,
-          borderLeft: `3px solid ${PALETA.yellow}`,
-          paddingLeft: 10, lineHeight: 1.4,
-        }}>{causa}</div>
-      )}
-
-      {itensMarcados.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{
-            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-            letterSpacing: '.04em', textTransform: 'uppercase',
-          }}>Componentes marcados · {itensMarcados.length}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {itensMarcados.map((c, i) => (
-              <Pill key={i} tone="neutral" icon="package" style={{
-                background: dark ? 'rgba(140,100,200,0.18)' : '#F1ECF8',
-                color: dark ? '#c4a8f0' : '#5A3FA0',
-                borderColor: dark ? 'rgba(140,100,200,0.40)' : '#E0D4F0',
-                fontSize: 11.5,
-              }}>{c.label || c}</Pill>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // ─── Botão de status do orçamento ────────────────────────────────────────────
 // idle → aguardando → (confirmado | recusado)
-// Persiste em os.orcamento_status via onUpdateOS (coluna precisa existir no banco;
-// enquanto não existe, fica em memória durante a sessão).
-
 const STATUS_ORC = {
-  idle:        { label: 'Enviar Orçamento',    icon: 'send',       bg: 'transparent', border: PALETA.blue, color: PALETA.blueStrong },
-  aguardando:  { label: 'Aguardando resposta', icon: 'clock',      bg: PALETA.yellowBg, border: PALETA.yellow, color: PALETA.yellowStrong },
-  confirmado:  { label: 'Confirmado',          icon: 'check',      bg: '#e8f8f0',  border: '#4CAF82', color: '#2e7d5e' },
-  recusado:    { label: 'Recusado',            icon: 'x',          bg: PALETA.redBg, border: PALETA.red, color: PALETA.redStrong },
+  idle:       { label: 'Enviar Orçamento',    icon: 'send',  bg: 'transparent', border: PALETA.blue,   color: PALETA.blueStrong },
+  aguardando: { label: 'Aguardando resposta', icon: 'clock', bg: PALETA.yellowBg, border: PALETA.yellow, color: PALETA.yellowStrong },
+  confirmado: { label: 'Confirmado',          icon: 'check', bg: '#e8f8f0',     border: '#4CAF82',     color: '#2e7d5e' },
+  recusado:   { label: 'Recusado',            icon: 'x',     bg: PALETA.redBg,  border: PALETA.red,    color: PALETA.redStrong },
 };
 
 const BotaoStatusOrcamento = ({ os, onUpdateOS }) => {
@@ -336,6 +276,65 @@ const BotaoStatusOrcamento = ({ os, onUpdateOS }) => {
       <TI name={meta.icon} size={16} />
       {meta.label}
     </button>
+  );
+};
+
+const ResumoDiagnostico = ({ os }) => {
+  const { T, dark } = useTheme();
+  const causa = os?.diagnostico?.causa;
+  const itensMarcados = os?.diagnostico?.componentesMarcados || [];
+  if (!causa && !itensMarcados.length) return null;
+
+  return (
+    <div className="idemaq-card" style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 12, padding: 12,
+      display: 'flex', flexDirection: 'column', gap: 8,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        fontSize: 11, color: T.textMuted, fontWeight: 700,
+        letterSpacing: '.06em', textTransform: 'uppercase',
+      }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <TI name="stethoscope" size={13} color={PALETA.blueStrong} />
+          DO DIAGNÓSTICO
+        </span>
+        {os?.diagnostico?.por && (
+          <span style={{
+            color: T.textMuted, fontWeight: 500,
+            textTransform: 'none', letterSpacing: 0,
+          }}>por {os.diagnostico.por}</span>
+        )}
+      </div>
+
+      {causa && (
+        <div style={{
+          fontSize: 13, color: T.textPrimary,
+          borderLeft: `3px solid ${PALETA.yellow}`,
+          paddingLeft: 10, lineHeight: 1.4,
+        }}>{causa}</div>
+      )}
+
+      {itensMarcados.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{
+            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+            letterSpacing: '.04em', textTransform: 'uppercase',
+          }}>Componentes marcados · {itensMarcados.length}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {itensMarcados.map((c, i) => (
+              <Pill key={i} tone="neutral" icon="package" style={{
+                background: dark ? 'rgba(140,100,200,0.18)' : '#F1ECF8',
+                color: dark ? '#c4a8f0' : '#5A3FA0',
+                borderColor: dark ? 'rgba(140,100,200,0.40)' : '#E0D4F0',
+                fontSize: 11.5,
+              }}>{c.label || c}</Pill>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -454,46 +453,46 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
 
       <BotaoStatusOrcamento os={os} onUpdateOS={onUpdateOS} />
 
-      {/* Forma de pagamento — persiste em os.forma_pagamento (coluna text).
-          Combina com o orcamento pra que esteja ja definida quando a OS
-          chegar na etapa de Pagamento. */}
-      <div>
-        <div style={{
-          fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase',
-          color: T.textMuted, fontWeight: 700,
-          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-        }}>
-          <TI name="credit-card" size={13} color={PALETA.blueStrong} />
-          Forma de pagamento
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {[
-            { id: 'pix',      label: 'PIX',      icon: 'brand-pix' },
-            { id: 'dinheiro', label: 'Dinheiro', icon: 'cash' },
-            { id: 'cartao',   label: 'Cartão',   icon: 'credit-card' },
-            { id: 'boleto',   label: 'Boleto',   icon: 'file-invoice' },
-          ].map(m => {
-            const ativo = os?.forma_pagamento === m.id
-            return (
-              <button key={m.id} type="button"
-                onClick={() => onUpdateOS?.(os.numero, { forma_pagamento: ativo ? null : m.id })}
-                style={{
-                  minHeight: 48, padding: '10px 12px', borderRadius: 10,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, cursor: 'pointer', fontFamily: 'inherit',
-                  fontSize: 13.5, fontWeight: ativo ? 700 : 600,
-                  background: ativo ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.card,
-                  border: `1px solid ${ativo ? PALETA.blueStrong : T.border}`,
-                  color: ativo ? (dark ? PALETA.blue : PALETA.blueStrong) : T.textPrimary,
-                  transition: 'all .12s',
-                }}>
-                <TI name={m.icon} size={16} />
-                {m.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      {/* FormRecebimento completo — mesma logica da aba Pagamento.
+          Permite escolher forma (PIX/Cartao/Dinheiro/A prazo) com sub-leque
+          do Cartao (Debito/Credito 1x-12x/Link 1x-12x) e taxas calculadas. */}
+      <FormRecebimento
+        T={T} dark={dark}
+        saldo={Math.max(0, total - (os?.valor_pago || 0))}
+        onConfirmar={({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) => {
+          const valorPagoAtual = Number(os?.valor_pago || 0);
+          const novoValorPago = valorPagoAtual + valor;
+          let novoPago = 'total';
+          let novoDesconto = Number(os?.desconto || 0);
+          if (modo === 'parcial') novoPago = 'parcial';
+          else if (modo === 'desconto') {
+            const aPagar = Math.max(0, total - valorPagoAtual);
+            novoDesconto = novoDesconto + (aPagar - valor);
+          }
+          let novasObs = os?.observacoes;
+          if (parcelasAPrazo && parcelasAPrazo.length > 0) {
+            const txt = parcelasAPrazo
+              .map((p, i) => `${i + 1}ª · ${p.data} · ${fmtBRL(p.valor)}`)
+              .join('\n');
+            novasObs = [
+              os?.observacoes,
+              `— A prazo (${parcelasAPrazo.length} ${parcelasAPrazo.length === 1 ? 'parcela' : 'parcelas'}) —\n${txt}`,
+            ].filter(Boolean).join('\n\n');
+          }
+          onUpdateOS?.(os.numero, {
+            valor: total,
+            desconto: novoDesconto,
+            valor_pago: novoValorPago,
+            pago: novoPago,
+            forma_pagamento: forma,
+            ...(novasObs !== os?.observacoes ? { observacoes: novasObs } : {}),
+          });
+          persistirLancamentosDoPagamento(os, {
+            valor, forma, taxa_pct,
+            parcelasAPrazo: parcelasAPrazo || [],
+          });
+        }}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <BtnMobile variant="ghost" icon="file-text"
