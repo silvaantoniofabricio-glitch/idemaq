@@ -4,6 +4,8 @@ import {
   TI, NowCard, BtnMobile, MOBILE, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile';
 import { useOSItens } from '../../../hooks/useOSItens';
+import FormRecebimento from '../FormRecebimento';
+import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro';
 
 const TIPOS = [
   { id: 'servico', label: 'Serviços',     icon: 'tool',    bg: PALETA.blueBg,   fg: PALETA.blueStrong },
@@ -364,46 +366,46 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
         </div>
       </div>
 
-      {/* Forma de pagamento — persiste em os.forma_pagamento (coluna text).
-          Combina com o orcamento pra que esteja ja definida quando a OS
-          chegar na etapa de Pagamento. */}
-      <div>
-        <div style={{
-          fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase',
-          color: T.textMuted, fontWeight: 700,
-          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-        }}>
-          <TI name="credit-card" size={13} color={PALETA.blueStrong} />
-          Forma de pagamento
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {[
-            { id: 'pix',      label: 'PIX',      icon: 'brand-pix' },
-            { id: 'dinheiro', label: 'Dinheiro', icon: 'cash' },
-            { id: 'cartao',   label: 'Cartão',   icon: 'credit-card' },
-            { id: 'boleto',   label: 'Boleto',   icon: 'file-invoice' },
-          ].map(m => {
-            const ativo = os?.forma_pagamento === m.id
-            return (
-              <button key={m.id} type="button"
-                onClick={() => onUpdateOS?.(os.numero, { forma_pagamento: ativo ? null : m.id })}
-                style={{
-                  minHeight: 48, padding: '10px 12px', borderRadius: 10,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, cursor: 'pointer', fontFamily: 'inherit',
-                  fontSize: 13.5, fontWeight: ativo ? 700 : 600,
-                  background: ativo ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.card,
-                  border: `1px solid ${ativo ? PALETA.blueStrong : T.border}`,
-                  color: ativo ? (dark ? PALETA.blue : PALETA.blueStrong) : T.textPrimary,
-                  transition: 'all .12s',
-                }}>
-                <TI name={m.icon} size={16} />
-                {m.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      {/* FormRecebimento completo — mesma logica da aba Pagamento.
+          Permite escolher forma (PIX/Cartao/Dinheiro/A prazo) com sub-leque
+          do Cartao (Debito/Credito 1x-12x/Link 1x-12x) e taxas calculadas. */}
+      <FormRecebimento
+        T={T} dark={dark}
+        saldo={Math.max(0, total - (os?.valor_pago || 0))}
+        onConfirmar={({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) => {
+          const valorPagoAtual = Number(os?.valor_pago || 0);
+          const novoValorPago = valorPagoAtual + valor;
+          let novoPago = 'total';
+          let novoDesconto = Number(os?.desconto || 0);
+          if (modo === 'parcial') novoPago = 'parcial';
+          else if (modo === 'desconto') {
+            const aPagar = Math.max(0, total - valorPagoAtual);
+            novoDesconto = novoDesconto + (aPagar - valor);
+          }
+          let novasObs = os?.observacoes;
+          if (parcelasAPrazo && parcelasAPrazo.length > 0) {
+            const txt = parcelasAPrazo
+              .map((p, i) => `${i + 1}ª · ${p.data} · ${fmtBRL(p.valor)}`)
+              .join('\n');
+            novasObs = [
+              os?.observacoes,
+              `— A prazo (${parcelasAPrazo.length} ${parcelasAPrazo.length === 1 ? 'parcela' : 'parcelas'}) —\n${txt}`,
+            ].filter(Boolean).join('\n\n');
+          }
+          onUpdateOS?.(os.numero, {
+            valor: total,
+            desconto: novoDesconto,
+            valor_pago: novoValorPago,
+            pago: novoPago,
+            forma_pagamento: forma,
+            ...(novasObs !== os?.observacoes ? { observacoes: novasObs } : {}),
+          });
+          persistirLancamentosDoPagamento(os, {
+            valor, forma, taxa_pct,
+            parcelasAPrazo: parcelasAPrazo || [],
+          });
+        }}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <BtnMobile variant="ghost" icon="file-text"
