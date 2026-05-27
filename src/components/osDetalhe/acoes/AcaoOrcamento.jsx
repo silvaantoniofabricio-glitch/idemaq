@@ -10,6 +10,7 @@ import { usePecas } from '../../../hooks/usePecas'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento from '../FormRecebimento'
 import BlocoAcao from './BlocoAcao'
+import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const TIPOS = [
@@ -921,60 +922,110 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
 }
 
 // ─── Bloco diagnóstico (resumo) ───────────────────────────────────────────────
+// Le do shape real: os.defeito (relato), os.pre_diagnostico.causa_diagnostico,
+// os.pre_diagnostico.componentes_marcados ({ grupoId: { itemId: 'troca'|'manutencao' } }).
+// Mesma visual usada na etapa Conserto pra ficar consistente.
 function ResumoDiagnostico({ T, dark, os }) {
-  const causa = os?.diagnostico?.causa
-  const itensMarcados = os?.diagnostico?.componentesMarcados || []
-  if (!causa && !itensMarcados.length) return null
+  const relato = os?.defeito || ''
+  const causa = os?.pre_diagnostico?.causa_diagnostico || ''
+  const marcados = os?.pre_diagnostico?.componentes_marcados || {}
 
-  const azul   = corEtapa('blue', dark)
-  const amarelo = dark ? P.yellow : P.yellowDark
+  // Achata { grupo: { itemId: acao } } -> [{ id, label, acao }]
+  const chips = []
+  for (const [, itens] of Object.entries(marcados)) {
+    if (!itens || typeof itens !== 'object') continue
+    const pares = Array.isArray(itens)
+      ? itens.map(id => [id, 'troca'])
+      : Object.entries(itens)
+    for (const [itemId, acao] of pares) {
+      const cat = CATEGORIA_POR_ID[itemId]
+      chips.push({ id: itemId, label: cat?.label || itemId, acao })
+    }
+  }
+
+  if (!relato && !causa && chips.length === 0) return null
+
+  const azul = corEtapa('blue', dark)
+  const amareloFg = dark ? P.yellow : P.yellowDark
+  const vermFg = dark ? '#FF8888' : '#c04242'
+  const corBadge = (acao) => acao === 'manutencao'
+    ? { fg: amareloFg, bg: dark ? 'rgba(255,217,102,0.18)' : '#FFF7DC', label: 'MANUT.' }
+    : { fg: vermFg,    bg: dark ? 'rgba(192,66,66,0.18)'   : '#FDECEC', label: 'TROCA' }
+
+  const SubLabel = ({ children }) => (
+    <div style={{
+      fontSize: 10, fontWeight: 700, color: T.textMuted,
+      textTransform: 'uppercase', letterSpacing: '.05em',
+      marginBottom: 3,
+    }}>{children}</div>
+  )
 
   return (
     <div style={{
       background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, padding: '12px 14px',
-      display: 'flex', flexDirection: 'column', gap: 8,
+      borderRadius: 10, overflow: 'hidden',
     }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.05em',
+        padding: '3px 6px 3px 8px',
+        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 7,
       }}>
-        <i className="ti ti-stethoscope" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
-        Diagnóstico
-        {os?.diagnostico?.por && (
-          <span style={{
-            marginLeft: 'auto', fontWeight: 500,
-            textTransform: 'none', letterSpacing: 0, fontSize: 11,
-          }}>
-            por {os.diagnostico.por}
-          </span>
+        <span style={{
+          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+          background: dark ? 'rgba(91,155,213,0.18)' : '#EAF2FA', color: azul,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <i className="ti ti-stethoscope" style={{ fontSize: 11 }} aria-hidden="true" />
+        </span>
+        <span style={{
+          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>Resumo do diagnóstico</span>
+      </div>
+      <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {relato && (
+          <div>
+            <SubLabel>Relato do cliente</SubLabel>
+            <div style={{
+              fontSize: 12.5, color: T.textPrimary, lineHeight: 1.4,
+              borderLeft: `3px solid ${amareloFg}`, paddingLeft: 8,
+            }}>{relato}</div>
+          </div>
+        )}
+        {causa && (
+          <div>
+            <SubLabel>Causa identificada</SubLabel>
+            <div style={{
+              fontSize: 12.5, color: T.textPrimary, lineHeight: 1.4,
+              borderLeft: `3px solid ${azul}`, paddingLeft: 8,
+            }}>{causa}</div>
+          </div>
+        )}
+        {chips.length > 0 && (
+          <div>
+            <SubLabel>Componentes marcados · {chips.length}</SubLabel>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {chips.map(c => {
+                const b = corBadge(c.acao)
+                return (
+                  <span key={c.id} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    fontSize: 11, padding: '3px 7px', borderRadius: 999,
+                    background: b.bg, color: b.fg,
+                    border: `1px solid ${b.fg}33`, fontWeight: 600,
+                  }}>
+                    <b style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.04em' }}>
+                      {b.label}
+                    </b>
+                    {c.label}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
         )}
       </div>
-
-      {causa && (
-        <div style={{
-          fontSize: 13.5, color: T.textPrimary, lineHeight: 1.4,
-          borderLeft: `3px solid ${amarelo}`,
-          paddingLeft: 10,
-        }}>
-          {causa}
-        </div>
-      )}
-
-      {itensMarcados.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {itensMarcados.map((c, i) => (
-            <span key={i} style={{
-              fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 12,
-              background: COR_PECA.bg, color: COR_PECA.fg,
-              border: `1px solid ${COR_PECA.fg}33`,
-            }}>
-              {c.label || c}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
