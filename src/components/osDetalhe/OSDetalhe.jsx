@@ -140,6 +140,8 @@ export default function OSDetalhe({
           onClick={(e) => e.stopPropagation()}
           className={mobile ? '' : 'idemaq-card'}
           style={{
+            // HIG: SF font system aplicado em toda a OS — inherited por children
+            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif',
             background: T.card,
             color: T.textPrimary,
             borderRadius: mobile ? 0 : 14,
