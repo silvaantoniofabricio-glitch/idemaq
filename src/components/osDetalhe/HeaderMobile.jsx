@@ -1,6 +1,16 @@
 import React from 'react';
 import { useTheme } from '../../theme';
 import { TI, PALETA } from '../_shared/PrimitivasMobile';
+import { ETAPAS_TODOS } from '../../utils/osData';
+
+// Resolve label friendly da etapa atual a partir do raw id (ex: 'ag_agendamento'
+// → 'Agenda'). Usa o `match` em ETAPAS_TODOS pra encontrar a etapa unificada
+// que mapeia pro id real do tipo da OS.
+function resolverEtapaLabel(os) {
+  if (!os?.etapa) return 'Etapa';
+  const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa);
+  return uni?.curto || uni?.label || os.etapaLabel || os.etapa;
+}
 
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'checkup-list' },
@@ -52,13 +62,18 @@ const HeaderMobile = ({
   const tone = isLate ? 'red' : (BADGE_TONE[os?.etapa] || 'blue');
   const toneStyle = TONE_STYLES[tone];
 
-  const etapaLabel = os?.etapaLabel || os?.etapa || 'Etapa';
+  // Schema real do useOS: os.cliente eh string (nome direto), os.marca/modelo
+  // sao flat. Antes esse componente assumia objetos aninhados (cliente.nome,
+  // equipamento.modelo) — por isso vinha "Sem cliente" sempre.
+  const etapaLabel = resolverEtapaLabel(os);
   const badgeText = isLate ? `${etapaLabel} · ${atrasoLabel}` : etapaLabel;
 
-  const modelo = os?.equipamento?.modelo;
-  const serie  = os?.equipamento?.serie;
-  const hasEquipamento = !!(modelo || serie);
-  const nome = os?.cliente?.nome || 'Sem cliente';
+  const modelo = os?.modelo || os?.equipamento?.modelo;
+  const serie  = os?.serie  || os?.equipamento?.serie;
+  const marca  = os?.marca;
+  const hasEquipamento = !!(marca || modelo || serie);
+  const nome = (typeof os?.cliente === 'string' ? os.cliente : os?.cliente?.nome)
+    || (os?.tipo === 'fabricacao' ? 'Fabricação interna' : 'Sem cliente');
 
   return (
     <div style={{
@@ -164,10 +179,12 @@ const HeaderMobile = ({
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           <TI name="device-laptop" size={13} color={T.textMuted} />
+          {marca && <span>{marca}</span>}
+          {marca && modelo && <span style={{ color: '#D1D5DB' }}>·</span>}
           {modelo && <span>{modelo}</span>}
-          {modelo && serie && <span style={{ color: '#D1D5DB' }}>·</span>}
+          {serie && <span style={{ color: '#D1D5DB' }}>·</span>}
           {serie && (
-            <span style={{ fontFamily: MONO_STACK, fontSize: 11.5 }}>{serie}</span>
+            <span style={{ fontFamily: MONO_STACK, fontSize: 11.5 }}>S/N {serie}</span>
           )}
         </div>
       ) : (
