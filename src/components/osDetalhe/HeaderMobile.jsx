@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../../theme';
 import { TI, PALETA } from '../_shared/PrimitivasMobile';
 import { ETAPAS_TODOS } from '../../utils/osData';
+import FormEquipamentoEdit from './FormEquipamentoEdit';
 
 // Resolve label friendly da etapa atual a partir do raw id (ex: 'ag_agendamento'
 // → 'Agenda'). Usa o `match` em ETAPAS_TODOS pra encontrar a etapa unificada
@@ -49,12 +50,20 @@ const HeaderMobile = ({
   onClose,
   onMore,
   onHistory,
+  onShowHistorico,
   onAdicionarEquipamento,
   historyCount = 0,
   aba,
   setAba,
+  onUpdateOS,
 }) => {
   const { T, dark } = useTheme();
+  // Modal de edicao de equipamento — gerenciado aqui dentro porque o
+  // OSDetalhe nao passa onAdicionarEquipamento. Mesma logica do Header
+  // desktop (que tambem mantem estado proprio).
+  const [modalEquipamento, setModalEquipamento] = useState(false);
+  const historicoHandler = onShowHistorico || onHistory;
+  const abrirEquipamento = onAdicionarEquipamento || (() => setModalEquipamento(true));
 
   const atrasoLabel = formatAtraso(os?.diasAtraso);
   const isLate = !!atrasoLabel;
@@ -121,7 +130,7 @@ const HeaderMobile = ({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <button
-            onClick={onHistory}
+            onClick={historicoHandler}
             aria-label="Histórico"
             style={{
               position: 'relative',
@@ -169,15 +178,22 @@ const HeaderMobile = ({
         {nome}
       </div>
 
-      {/* Linha 3 · equipamento ou ação de adicionar — padding reduzido */}
+      {/* Linha 3 · equipamento (clicavel pra editar) ou ação de adicionar */}
       {hasEquipamento ? (
-        <div style={{
-          padding: '0 12px 8px',
-          fontSize: 12.5, color: T.textMuted, fontWeight: 500,
-          display: 'flex', alignItems: 'center', gap: 6,
-          lineHeight: 1.3,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
+        <button
+          onClick={abrirEquipamento}
+          title="Editar equipamento"
+          style={{
+            padding: '0 12px 8px',
+            border: 'none', background: 'transparent',
+            fontSize: 12.5, color: T.textMuted, fontWeight: 500,
+            display: 'flex', alignItems: 'center', gap: 6,
+            lineHeight: 1.3,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            width: '100%',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
           <TI name="device-laptop" size={13} color={T.textMuted} />
           {marca && <span>{marca}</span>}
           {marca && modelo && <span style={{ color: '#D1D5DB' }}>·</span>}
@@ -186,10 +202,10 @@ const HeaderMobile = ({
           {serie && (
             <span style={{ fontFamily: MONO_STACK, fontSize: 11.5 }}>S/N {serie}</span>
           )}
-        </div>
+        </button>
       ) : (
         <button
-          onClick={onAdicionarEquipamento}
+          onClick={abrirEquipamento}
           style={{
             padding: '0 12px 8px',
             border: 'none', background: 'transparent',
@@ -235,6 +251,16 @@ const HeaderMobile = ({
             );
           })}
         </div>
+      )}
+
+      {/* Modal de edicao do equipamento da OS */}
+      {modalEquipamento && (
+        <FormEquipamentoEdit
+          T={T} dark={dark} mobile={true}
+          os={os}
+          onClose={() => setModalEquipamento(false)}
+          onUpdateOS={onUpdateOS}
+        />
       )}
     </div>
   );
