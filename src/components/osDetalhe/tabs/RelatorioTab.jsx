@@ -3,9 +3,8 @@
 // Seções (de cima pra baixo):
 //   1. Foto + dados do cliente e equipamento (compacto, um card)
 //   2. Resumo financeiro — total / pago / saldo (admin)
-//   3. Linha do tempo das etapas (visual, com tempo em cada etapa)
-//   4. O que foi feito em cada etapa (checklist + observações + falhas)
-//   5. Banners contextuais (garantia, recusada)
+//   3. Resumo das etapas (uma linha por etapa: ícone + data/responsável + texto)
+//   4. Banners contextuais (garantia, recusada)
 
 import React, { useState, useEffect } from 'react'
 import { P } from '../../../theme'
@@ -77,15 +76,11 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
         />
       )}
 
-      {/* ── 3. LINHA DO TEMPO ── */}
-      <CardTimeline T={T} dark={dark} os={os} historico={historico} funcPorId={funcPorId} />
-
-      {/* ── 4. O QUE FOI FEITO ── */}
-      <CardEtapas
-        T={T} dark={dark} os={os} admin={admin} usuarios={usuarios}
+      {/* ── 3. RESUMO DAS ETAPAS ── */}
+      <CardResumoEtapas
+        T={T} dark={dark} os={os} admin={admin}
         checkRecebido={checkRecebido} checkOficina={checkOficina} checkTeste={checkTeste}
         falhas={falhas} itens={itens}
-        azul={azul} verde={verde} amarelo={amarelo} vermelho={vermelho} cor={cor}
         funcPorId={funcPorId}
       />
 
@@ -338,8 +333,160 @@ function CardFinanceiro({ T, dark, os, itens, loading, verde, amarelo, azul, cor
   )
 }
 
-// ─── 3. LINHA DO TEMPO ───────────────────────────────────────────────────────
-function CardTimeline({ T, dark, os, historico, funcPorId }) {
+// ─── 3. RESUMO DAS ETAPAS ────────────────────────────────────────────────────
+function CardResumoEtapas({ T, dark, os, admin, checkRecebido, checkOficina, checkTeste, falhas, itens, funcPorId }) {
+  const historico = os.historico || []
+  const azul = corEtapa('blue', dark)
+
+  function dadosEtapa(etapaDb) {
+    const hist = historico.filter(h => {
+      if (etapaDb === 'em_oficina') return h.etapa === 'oficina'
+      if (etapaDb === 'entrega') return h.etapa === 'entrega' || h.etapa === 'entregue'
+      return h.etapa === etapaDb
+    })
+    if (hist.length === 0) return null
+    const u = hist[hist.length - 1]
+    return { data: u.data, responsavel: funcPorId(u.funcionario) }
+  }
+
+  function resumoChecklist(chk) {
+    if (!chk?.itens?.length) return null
+    const total = chk.itens.length
+    const ok = chk.itens.filter(i => i.valor === 'ok' || i.checked === true).length
+    const problemas = chk.itens.filter(i => i.valor === 'defeito' || i.valor === 'barulho').length
+    if (problemas > 0) return `${ok}/${total} OK · ${problemas} problema${problemas > 1 ? 's' : ''}`
+    return `${ok}/${total} OK`
+  }
+
+  const linhas = []
+
+  const dRec = dadosEtapa('recebido')
+  if (dRec && !checkRecebido.loading) {
+    linhas.push({ key: 'recebido', meta: ETAPA_META.recebido, dados: dRec, texto: resumoChecklist(checkRecebido) || '—' })
+  }
+
+  const dDiag = dadosEtapa('diagnostico')
+  if (dDiag) {
+    const causa = os.diagnostico?.causa
+    linhas.push({ key: 'diagnostico', meta: ETAPA_META.diagnostico, dados: dDiag, texto: causa || '—' })
+  }
+
+  const dOrc = dadosEtapa('orcamento')
+  if (admin && dOrc) {
+    const subtotal = itens.reduce((s, i) => s + (i.valor_total ?? (i.valor_unitario ?? i.valor ?? 0) * (i.qtd ?? 1)), 0)
+    linhas.push({
+      key: 'orcamento', meta: ETAPA_META.orcamento, dados: dOrc,
+      texto: `${itens.length} iten${itens.length !== 1 ? 's' : ''} · ${fmtBRL(subtotal)}${os.desconto > 0 ? ` · desc. ${fmtBRL(os.desconto)}` : ''}`,
+    })
+  }
+
+  const dOf = dadosEtapa('em_oficina')
+  if (dOf && !checkOficina.loading) {
+    linhas.push({ key: 'oficina', meta: ETAPA_META.oficina, dados: dOf, texto: resumoChecklist(checkOficina) || '—' })
+  }
+
+  const dTeste = dadosEtapa('teste_final')
+  if (dTeste && !checkTeste.loading) {
+    const base = resumoChecklist(checkTeste)
+    const abertas = falhas.filter(f => !f.resolvida).length
+    const txt = [base, abertas > 0 ? `${abertas} falha${abertas > 1 ? 's' : ''} aberta${abertas > 1 ? 's' : ''}` : null]
+      .filter(Boolean).join(' · ') || '—'
+    linhas.push({ key: 'teste', meta: ETAPA_META.teste_final, dados: dTeste, texto: txt })
+  }
+
+  const dEnt = dadosEtapa('entrega')
+  if (dEnt) {
+    linhas.push({ key: 'entrega', meta: ETAPA_META.entrega, dados: dEnt, texto: 'Máquina entregue ao cliente.' })
+  }
+
+  const dPag = dadosEtapa('pagamento')
+  if (admin && (dPag || os.valor_pago > 0)) {
+    const saldo = Math.max(0, totalAPagar(os) - (os.valor_pago || 0))
+    linhas.push({
+      key: 'pagamento', meta: ETAPA_META.pagamento, dados: dPag,
+      texto: `Pago ${fmtBRL(os.valor_pago || 0)} · saldo ${fmtBRL(saldo)}${os.forma_pagamento ? ` · ${os.forma_pagamento}` : ''}`,
+    })
+  }
+
+  const dConc = dadosEtapa('concluido')
+  if (dConc) {
+    linhas.push({ key: 'concluido', meta: ETAPA_META.concluido, dados: dConc, texto: `Garantia de ${os.garantia_dias || 90} dias.` })
+  }
+
+  const dRecus = dadosEtapa('recusado')
+  if (dRecus) {
+    linhas.push({ key: 'recusado', meta: ETAPA_META.recusado, dados: dRecus, texto: 'OS recusada pelo cliente.' })
+  }
+
+  const carregando = checkRecebido.loading || checkOficina.loading || checkTeste.loading
+  if (carregando) return null
+  if (linhas.length === 0) return null
+
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '10px 14px 8px',
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-list-check" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.05em',
+        }}>
+          Resumo das etapas
+        </span>
+      </div>
+
+      <div>
+        {linhas.map(({ key, meta, dados, texto }, i) => {
+          const c = corEtapa(meta.cor, dark)
+          return (
+            <div key={key} style={{
+              padding: '10px 14px',
+              borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+            }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%',
+                background: c + '22', border: `1.5px solid ${c}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <i className={`ti ${meta.icon}`} style={{ fontSize: 12, color: c }} aria-hidden="true" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+                  marginBottom: 2,
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
+                    {meta.label}
+                  </span>
+                  {dados && (
+                    <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtPrazoCurto(dados.data)}
+                      {dados.responsavel ? ` · ${dados.responsavel}` : ''}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                  {texto}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── (legado, não usado) ─────────────────────────────────────────────────────
+function _CardTimelineLegacy({ T, dark, os, historico, funcPorId }) {
   const azul = corEtapa('blue', dark)
   const verde = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
@@ -482,8 +629,8 @@ function CardTimeline({ T, dark, os, historico, funcPorId }) {
   )
 }
 
-// ─── 4. O QUE FOI FEITO ──────────────────────────────────────────────────────
-function CardEtapas({
+// ─── (legado, não usado) ─────────────────────────────────────────────────────
+function _CardEtapasLegacy({
   T, dark, os, admin, checkRecebido, checkOficina, checkTeste, falhas,
   itens, azul, verde, amarelo, vermelho, cor, funcPorId,
 }) {
