@@ -482,6 +482,7 @@ function Label({ T, children }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onAbrirAba }) {
+  const [escolherTipo, setEscolherTipo] = useState({ acao: null, open: false })
   const { itens, addItem, removeItem } = useOSItens(os?.id)
   const [adicionandoTipo, setAdicionandoTipo] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -581,22 +582,111 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onAbrirAba }) {
         }}
       />
 
-      {/* Ações secundárias */}
+      {/* Ações secundárias — Gerar PDF e Enviar WhatsApp abrem modal pra
+          escolher entre Orçamento ou Recibo. Botão "Enviar por WhatsApp"
+          standalone foi removido (substituído pelo botão WhatsApp acima). */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Btn T={T} dark={dark} icon="ti-file-text"
-          onClick={() => onUpdateOS?.(os.numero, { action: 'gerar_pdf' })}>
+          onClick={() => setEscolherTipo({ acao: 'pdf', open: true })}>
           Gerar PDF
         </Btn>
-        <Btn T={T} dark={dark} icon="ti-cash-banknote"
-          onClick={() => onAbrirAba?.('pagamento')}>
-          Pagamento
+        <Btn T={T} dark={dark} icon="ti-brand-whatsapp"
+          onClick={() => setEscolherTipo({ acao: 'whats', open: true })}>
+          Enviar WhatsApp
         </Btn>
       </div>
 
-      <Btn T={T} dark={dark} icon="ti-brand-whatsapp" variant="dashed" full
-        onClick={() => onUpdateOS?.(os.numero, { action: 'enviar_orcamento_whatsapp' })}>
-        Enviar por WhatsApp
-      </Btn>
+      {escolherTipo.open && (
+        <EscolherDocModal
+          T={T} dark={dark}
+          acao={escolherTipo.acao}
+          onClose={() => setEscolherTipo({ acao: null, open: false })}
+          onEscolher={(tipo) => {
+            const action = escolherTipo.acao === 'pdf'
+              ? (tipo === 'orcamento' ? 'gerar_pdf_orcamento' : 'gerar_pdf_recibo')
+              : (tipo === 'orcamento' ? 'enviar_orcamento_whatsapp' : 'enviar_recibo_whatsapp')
+            onUpdateOS?.(os.numero, { action })
+            setEscolherTipo({ acao: null, open: false })
+          }}
+        />
+      )}
     </BlocoAcao>
   )
+}
+
+// Sheet inline pra escolher entre "Orçamento" e "Recibo".
+// Usado tanto pelo "Gerar PDF" quanto pelo "Enviar WhatsApp".
+function EscolherDocModal({ T, dark, acao, onClose, onEscolher }) {
+  const titulo = acao === 'pdf' ? 'Gerar PDF de…' : 'Enviar pelo WhatsApp…'
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+  return (
+    <div onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 420,
+          background: T.card,
+          borderRadius: '16px 16px 0 0',
+          padding: '14px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.4)',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border }} />
+        </div>
+        <div style={{
+          fontSize: 15, fontWeight: 700, color: T.textPrimary,
+          textAlign: 'center', marginBottom: 4,
+        }}>{titulo}</div>
+
+        <button onClick={() => onEscolher('orcamento')}
+          style={escolhaBtnStyle(T, dark, azul)}>
+          <i className="ti ti-file-description" style={{ fontSize: 22, color: azul }} aria-hidden="true" />
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: T.textPrimary }}>Orçamento</div>
+            <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>
+              Antes de receber o pagamento — pra cliente aprovar
+            </div>
+          </div>
+        </button>
+
+        <button onClick={() => onEscolher('recibo')}
+          style={escolhaBtnStyle(T, dark, verde)}>
+          <i className="ti ti-receipt" style={{ fontSize: 22, color: verde }} aria-hidden="true" />
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: T.textPrimary }}>Recibo</div>
+            <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>
+              Após o pagamento — comprovante pro cliente
+            </div>
+          </div>
+        </button>
+
+        <button onClick={onClose}
+          style={{
+            padding: '10px', borderRadius: 8,
+            background: 'transparent', border: `1px solid ${T.border}`,
+            color: T.textMuted, fontWeight: 600, fontSize: 13,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function escolhaBtnStyle(T, dark, accent) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '14px 16px', borderRadius: 10,
+    background: dark ? 'rgba(255,255,255,0.04)' : T.cardAlt,
+    border: `1px solid ${T.border}`,
+    fontFamily: 'inherit', cursor: 'pointer',
+    textAlign: 'left', minHeight: 60,
+  }
 }
