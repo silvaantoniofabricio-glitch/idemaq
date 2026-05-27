@@ -14,6 +14,8 @@ import HistoricoPanel from './HistoricoPanel'
 import RelatorioTab from './tabs/RelatorioTab'
 import PagamentoTab from './tabs/PagamentoTab'
 import EtapaTab from './tabs/EtapaTab'
+import { usePullToRefresh } from '../../hooks/usePullToRefresh'
+import PullIndicator from '../ui/PullIndicator'
 
 function abaInicial(etapa) {
   if (etapa === 'pagamento') return 'pagamento'
@@ -36,6 +38,13 @@ export default function OSDetalhe({
   const admin = isAdmin(user)
   const [aba, setAba] = useState(() => abaInicial(os.etapa))
   const [showHistorico, setShowHistorico] = useState(false)
+
+  // Pull-to-refresh dentro da OS aberta (mobile so) — puxa pra baixo no
+  // scroll do conteudo e chama onRefetchOS pra recarregar dados do banco.
+  const { ref: scrollRef, pullDistance, refreshing, progress } = usePullToRefresh({
+    onRefresh: onRefetchOS,
+    enabled: mobile,
+  })
 
   // Quando a OS avança de etapa (footer Avançar →), troca a aba automaticamente
   // pra que a UI já mostre a ação da nova etapa em vez de deixar o user perdido
@@ -187,12 +196,20 @@ export default function OSDetalhe({
             mobile={mobile}
           />
 
-          <div style={{
+          <div ref={scrollRef} style={{
             flex: 1, overflowY: 'auto',
             WebkitOverflowScrolling: 'touch',
             background: T.bg,
             overscrollBehavior: 'contain',
+            touchAction: 'pan-y',
           }}>
+            {mobile && (
+              <PullIndicator
+                distance={pullDistance}
+                refreshing={refreshing}
+                progress={progress}
+              />
+            )}
             {aba === 'etapa'     && <EtapaTab {...tabProps} />}
             {aba === 'relatorio' && <RelatorioTab {...tabProps} />}
             {aba === 'pagamento' && <PagamentoTab {...tabProps} />}
