@@ -343,6 +343,7 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
   const { itens, addItem, removeItem } = useOSItens(os?.id);
   const [adicionandoTipo, setAdicionandoTipo] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [escolherTipo, setEscolherTipo] = useState({ acao: null, open: false });
 
   const porTipo = useMemo(() => {
     const map = { servico: [], peca: [], desloc: [] };
@@ -496,20 +497,109 @@ const AcaoOrcamento = ({ os, onUpdateOS, onAbrirAba }) => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <BtnMobile variant="ghost" icon="file-text"
-          onClick={() => onUpdateOS?.(os.numero, { action: 'gerar_pdf' })}>
+          onClick={() => setEscolherTipo({ acao: 'pdf', open: true })}>
           Gerar PDF
         </BtnMobile>
-        <BtnMobile variant="ghost" icon="receipt"
-          onClick={() => onAbrirAba?.('pagamento')}>
-          Aba Pagamento
+        <BtnMobile variant="ghost" icon="brand-whatsapp"
+          onClick={() => setEscolherTipo({ acao: 'whats', open: true })}>
+          Enviar WhatsApp
         </BtnMobile>
       </div>
-      <BtnMobile variant="dashed" icon="brand-whatsapp"
-        onClick={() => onUpdateOS?.(os.numero, { action: 'enviar_orcamento_whatsapp' })}>
-        Enviar orçamento por WhatsApp
-      </BtnMobile>
+
+      {/* Dialog inline: Orçamento ou Recibo? */}
+      {escolherTipo.open && (
+        <EscolherDocModal
+          T={T} dark={dark}
+          acao={escolherTipo.acao}
+          onClose={() => setEscolherTipo({ acao: null, open: false })}
+          onEscolher={(tipo) => {
+            const action = escolherTipo.acao === 'pdf'
+              ? (tipo === 'orcamento' ? 'gerar_pdf_orcamento' : 'gerar_pdf_recibo')
+              : (tipo === 'orcamento' ? 'enviar_orcamento_whatsapp' : 'enviar_recibo_whatsapp');
+            onUpdateOS?.(os.numero, { action });
+            setEscolherTipo({ acao: null, open: false });
+          }}
+        />
+      )}
     </div>
   );
 };
+
+// Sheet inline pra escolher entre "Orcamento" e "Recibo".
+// Usado tanto pelo "Gerar PDF" quanto pelo "Enviar WhatsApp".
+function EscolherDocModal({ T, dark, acao, onClose, onEscolher }) {
+  const titulo = acao === 'pdf' ? 'Gerar PDF de…' : 'Enviar pelo WhatsApp…';
+  return (
+    <div onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        animation: 'fadeIn .15s ease-out',
+      }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 420,
+          background: T.card,
+          borderRadius: '16px 16px 0 0',
+          padding: '14px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.4)',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border }} />
+        </div>
+        <div style={{
+          fontSize: 15, fontWeight: 700, color: T.textPrimary,
+          textAlign: 'center', marginBottom: 4,
+        }}>{titulo}</div>
+
+        <button onClick={() => onEscolher('orcamento')}
+          style={escolhaBtn(T, dark, PALETA.blue, PALETA.blueStrong)}>
+          <TI name="file-description" size={20} />
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Orçamento</div>
+            <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>
+              Antes de receber o pagamento — pra cliente aprovar
+            </div>
+          </div>
+        </button>
+
+        <button onClick={() => onEscolher('recibo')}
+          style={escolhaBtn(T, dark, PALETA.greenStrong, PALETA.greenStrong)}>
+          <TI name="receipt" size={20} />
+          <div style={{ flex: 1, textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Recibo</div>
+            <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>
+              Após o pagamento — comprovante pro cliente
+            </div>
+          </div>
+        </button>
+
+        <button onClick={onClose}
+          style={{
+            padding: '10px', borderRadius: 8,
+            background: 'transparent', border: `1px solid ${T.border}`,
+            color: T.textMuted, fontWeight: 600, fontSize: 13,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function escolhaBtn(T, dark, accent, accentDark) {
+  return {
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '14px 16px', borderRadius: 10,
+    background: dark ? 'rgba(255,255,255,0.04)' : T.cardAlt,
+    border: `1px solid ${T.border}`,
+    color: dark ? accent : accentDark,
+    fontFamily: 'inherit', cursor: 'pointer',
+    textAlign: 'left', minHeight: 60,
+  };
+}
 
 export default AcaoOrcamento;
