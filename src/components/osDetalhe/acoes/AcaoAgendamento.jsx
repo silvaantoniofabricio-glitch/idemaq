@@ -795,17 +795,12 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
 };
 
 const AcaoAgendamento = ({ os, onUpdateOS }) => {
-  // DEV-only: usa V2 (padrão Orçamento) no localhost; mantém V1 no Vercel
-  // pra comparação lado a lado.
-  const isDev = import.meta.env.DEV;
+  // V2 agora ativada em producao (Vercel) tambem. V1 mantida no arquivo
+  // pra rollback rapido caso precise voltar.
   if (os?.etapa === 'agendado') {
-    return isDev
-      ? <SubAgendadoV2 os={os} onUpdateOS={onUpdateOS} />
-      : <SubAgendado os={os} onUpdateOS={onUpdateOS} />;
+    return <SubAgendadoV2 os={os} onUpdateOS={onUpdateOS} />;
   }
-  return isDev
-    ? <SubAgAgendaV2 os={os} onUpdateOS={onUpdateOS} />
-    : <SubAgAgenda os={os} onUpdateOS={onUpdateOS} />;
+  return <SubAgAgendaV2 os={os} onUpdateOS={onUpdateOS} />;
 };
 
 export default AcaoAgendamento;
