@@ -37,17 +37,19 @@ export default function BlocoAcao({ T, dark, icon, etapa, descricao, children, t
   }
   const c = tons[tom] || tons.amarelo
 
-  // DEV ONLY: zera o fundo tonalizado quando rodando local (npm run dev)
-  // pra facilitar comparação visual com a versão do Vercel. Build de
-  // produção (import.meta.env.DEV === false) mantém o tom original.
-  const bgFinal = import.meta.env.DEV ? 'transparent' : c.bg
+  // DEV ONLY: zera fundo tonal + borda colorida quando rodando local
+  // (npm run dev) pra facilitar comparação visual com a versão do Vercel.
+  // Build de produção (import.meta.env.DEV === false) mantém o original.
+  const isDev = import.meta.env.DEV
+  const bgFinal = isDev ? 'transparent' : c.bg
+  const borderFinal = isDev ? 'none' : `1.5px solid ${c.border}`
 
   return (
     <div style={{
       background: bgFinal,
-      border: `1.5px solid ${c.border}`,
+      border: borderFinal,
       borderRadius: 10,
-      padding: '14px 16px',
+      padding: isDev ? '4px 0' : '14px 16px',
       display: 'flex', flexDirection: 'column', gap: 12,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
