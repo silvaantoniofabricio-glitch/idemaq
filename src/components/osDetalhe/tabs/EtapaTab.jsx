@@ -24,15 +24,14 @@ import {
   AcaoRecusada,
 } from '../acoes'
 import AcaoAgendamentoHIG from '../acoes/AcaoAgendamentoHIG'
+import AcaoColetaHIG from '../acoes/AcaoColetaHIG'
 import AcaoRecebidoHIG from '../acoes/AcaoRecebidoHIG'
 
 const MAP = {
-  // HIG aplicado em TODAS as etapas.
-  // Agendamento ainda usa o componente dedicado AcaoAgendamentoHIG porque
-  // tem layout especial (segmented control iOS, day chips, etc).
-  ag_agendamento: AcaoAgendamentoHIG,
-  agendado: AcaoAgendamentoHIG,
-  recebido: AcaoRecebidoHIG,
+  // HIG aplicado em TODAS as etapas — cada uma com arquivo dedicado.
+  ag_agendamento: AcaoAgendamentoHIG,  // Agenda   (escolher dia/hora)
+  agendado: AcaoColetaHIG,             // Coleta   (ir buscar no cliente)
+  recebido: AcaoRecebidoHIG,           // Avaliação (testes de funcionamento)
   diagnostico: AcaoDiagnostico,
   orcamento: AcaoOrcamento,
   oficina: AcaoOficina,
