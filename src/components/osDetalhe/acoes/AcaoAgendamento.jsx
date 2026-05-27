@@ -874,11 +874,21 @@ const SubAgendadoV2 = ({ os, onUpdateOS, onMoverOS }) => {
     const num = fone.startsWith('55') ? fone : '55' + fone
     window.location.href = `whatsapp://send?phone=${num}`
   }
-  // Abre Maps com o endereço
+  // Abre Maps direto no app (sem nova aba do browser).
+  // Android: scheme `geo:` aciona o app de mapas default.
+  // iOS: scheme `maps://` aciona Apple Maps; fallback pro https tb funciona.
+  // Web fallback: https://maps.google.com/ (apenas se nao for mobile).
   const abrirRota = () => {
     if (!os?.endereco) return
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(os.endereco)}`,
-      '_blank', 'noopener,noreferrer')
+    const q = encodeURIComponent(os.endereco)
+    const ua = navigator.userAgent || ''
+    if (/Android/i.test(ua)) {
+      window.location.href = `geo:0,0?q=${q}`
+    } else if (/iPhone|iPad|iPod/i.test(ua)) {
+      window.location.href = `maps://?q=${q}`
+    } else {
+      window.location.href = `https://www.google.com/maps/search/?api=1&query=${q}`
+    }
   }
   // Confirma recebimento — avança pra Recebido
   const confirmarRecebimento = () => {
