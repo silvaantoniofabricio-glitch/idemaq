@@ -633,7 +633,7 @@ const SubAgAgendaV2 = ({ os, onUpdateOS, onMoverOS }) => {
   );
 };
 
-const SubAgendadoV2 = ({ os, onUpdateOS }) => {
+const SubAgendadoV2 = ({ os, onUpdateOS, onMoverOS }) => {
   const { T, dark } = useTheme();
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
@@ -641,11 +641,16 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
     return () => clearInterval(id);
   }, []);
 
+  // Schema real: os.data_agendamento (ISO timestamp). O os.coleta.* era mock.
   const alvo = useMemo(() => {
-    const data = os?.coleta?.data, hora = os?.coleta?.hora;
-    if (!data || !hora) return null;
-    return new Date(`${data}T${hora}:00`);
-  }, [os?.coleta?.data, os?.coleta?.hora]);
+    const iso = os?.data_agendamento;
+    if (!iso) return null;
+    const d = new Date(iso);
+    return isNaN(d) ? null : d;
+  }, [os?.data_agendamento]);
+
+  const dataISO = alvo ? alvo.toISOString().slice(0, 10) : null;
+  const horaStr = alvo ? `${String(alvo.getHours()).padStart(2,'0')}:${String(alvo.getMinutes()).padStart(2,'0')}` : null;
 
   const { bigLabel, unitLabel, pct, prox } = useMemo(() => {
     if (!alvo) return { bigLabel: '—', unitLabel: '', pct: 0, prox: false };
@@ -660,35 +665,56 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
     return { bigLabel: big, unitLabel: unit, pct: pctVal, prox: h < 1 };
   }, [alvo, agora]);
 
-  const coletaLabel = alvo ? `${fmtBR(os?.coleta?.data)} · ${os?.coleta?.hora}` : 'Sem horário definido';
-  const distancia = os?.cliente?.distanciaKm ? `${os.cliente.distanciaKm} km` : '—';
+  const coletaLabel = alvo ? `${fmtBR(dataISO)} · ${horaStr}` : 'Sem horário definido';
+
+  // Nome curto do cliente (1o nome) — os.cliente eh string no schema real.
+  const clienteStr = typeof os?.cliente === 'string' ? os.cliente : (os?.cliente?.nome || '')
+  const primeiroNome = clienteStr.split(' ')[0] || 'Cliente'
 
   const [showIdent, setShowIdent] = useState(prox);
   useEffect(() => { if (prox) setShowIdent(true); }, [prox]);
+
+  // Abre WhatsApp do cliente
+  const abrirWhatsApp = () => {
+    const fone = (os?.fone || '').replace(/\D/g, '')
+    if (!fone) return
+    const num = fone.startsWith('55') ? fone : '55' + fone
+    window.location.href = `whatsapp://send?phone=${num}`
+  }
+  // Abre Maps com o endereço
+  const abrirRota = () => {
+    if (!os?.endereco) return
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(os.endereco)}`,
+      '_blank', 'noopener,noreferrer')
+  }
+  // Confirma recebimento — avança pra Recebido
+  const confirmarRecebimento = () => {
+    onMoverOS?.(os.numero, 'recebido')
+  }
 
   return (
     <HeaderFlat T={T} dark={dark} icon="truck-loading"
       etapa="Agendado · coleta agendada">
 
-      {/* Card grande do countdown */}
+      {/* Card countdown compacto */}
       <SubBloco T={T} dark={dark} icon="clock" label="Coleta em" color="blue">
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{
-            fontSize: 36, fontWeight: 700, color: T.textPrimary,
+            fontSize: 26, fontWeight: 700, color: T.textPrimary,
             letterSpacing: '-.02em', lineHeight: 1,
             fontFamily: 'ui-monospace,monospace',
           }}>{bigLabel}</span>
-          {unitLabel && <span style={{ fontSize: 13, color: T.textMuted, fontWeight: 500 }}>{unitLabel}</span>}
+          {unitLabel && <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 500 }}>{unitLabel}</span>}
         </div>
         <div style={{
-          fontSize: 13, color: T.textMuted, marginTop: 8,
-          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 12, color: T.textMuted, marginTop: 5,
+          display: 'flex', alignItems: 'center', gap: 5,
         }}>
-          <TI name="calendar-event" size={14} />
+          <TI name="calendar-event" size={12} />
           <b style={{ color: T.textPrimary, fontWeight: 600 }}>{coletaLabel}</b>
         </div>
         <div style={{
-          height: 6, marginTop: 10,
+          height: 4, marginTop: 6,
           background: dark ? 'rgba(255,255,255,0.10)' : '#E5E7EB',
           borderRadius: 99, overflow: 'hidden',
         }}>
@@ -698,90 +724,104 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
             borderRadius: 99, transition: 'width .3s',
           }}/>
         </div>
-        <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-          textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4,
-        }}>
-          <span>agendado</span><span>coleta</span>
-        </div>
       </SubBloco>
 
-      {/* 2 atalhos: Confirmar + Distância */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <button onClick={() => onUpdateOS?.({ action: 'contatar_cliente' })}
+      {/* 2 atalhos compactos: WhatsApp + Rota */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        <button onClick={abrirWhatsApp}
+          disabled={!os?.fone}
           style={{
             background: T.card, border: `1px solid ${T.border}`,
-            borderRadius: 10, padding: 12,
-            display: 'flex', alignItems: 'center', gap: 10,
-            cursor: 'pointer', textAlign: 'left',
+            borderRadius: 8, padding: '6px 10px', minHeight: 40,
+            display: 'flex', alignItems: 'center', gap: 8,
+            cursor: os?.fone ? 'pointer' : 'not-allowed',
+            opacity: os?.fone ? 1 : 0.5,
+            textAlign: 'left', fontFamily: 'inherit',
           }}>
           <span style={{
-            width: 36, height: 36, borderRadius: 8,
+            width: 28, height: 28, borderRadius: 6, flexShrink: 0,
             background: dark ? 'rgba(46,125,94,0.20)' : '#E8F8EC',
-            color: dark ? '#7FCEA8' : '#25804E',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          }}><TI name="brand-whatsapp" size={16} color="#25D366" /></span>
-          <span>
+          }}><TI name="brand-whatsapp" size={14} color="#25D366" /></span>
+          <span style={{ minWidth: 0, flex: 1 }}>
             <span style={{
-              display: 'block', fontSize: 11, color: T.textMuted,
+              display: 'block', fontSize: 9.5, color: T.textMuted,
               fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
+              lineHeight: 1,
             }}>Confirmar com</span>
             <span style={{
-              display: 'block', fontSize: 13, color: T.textPrimary,
-              fontWeight: 600, marginTop: 2,
-            }}>{os?.cliente?.primeiroNome || 'Cliente'}</span>
+              display: 'block', fontSize: 12, color: T.textPrimary,
+              fontWeight: 600, marginTop: 2, lineHeight: 1.1,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{primeiroNome}</span>
           </span>
         </button>
 
-        <button onClick={() => onUpdateOS?.({ action: 'abrir_rota' })}
+        <button onClick={abrirRota}
+          disabled={!os?.endereco}
           style={{
             background: T.card, border: `1px solid ${T.border}`,
-            borderRadius: 10, padding: 12,
-            display: 'flex', alignItems: 'center', gap: 10,
-            cursor: 'pointer', textAlign: 'left',
+            borderRadius: 8, padding: '6px 10px', minHeight: 40,
+            display: 'flex', alignItems: 'center', gap: 8,
+            cursor: os?.endereco ? 'pointer' : 'not-allowed',
+            opacity: os?.endereco ? 1 : 0.5,
+            textAlign: 'left', fontFamily: 'inherit',
           }}>
           <span style={{
-            width: 36, height: 36, borderRadius: 8,
+            width: 28, height: 28, borderRadius: 6, flexShrink: 0,
             background: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg,
             color: dark ? PALETA.blue : PALETA.blueStrong,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          }}><TI name="map-pin" size={16} /></span>
-          <span>
+          }}><TI name="map-pin" size={14} /></span>
+          <span style={{ minWidth: 0, flex: 1 }}>
             <span style={{
-              display: 'block', fontSize: 11, color: T.textMuted,
+              display: 'block', fontSize: 9.5, color: T.textMuted,
               fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
-            }}>Distância</span>
+              lineHeight: 1,
+            }}>Abrir</span>
             <span style={{
-              display: 'block', fontSize: 13, color: T.textPrimary,
-              fontWeight: 600, marginTop: 2,
-            }}>{distancia}</span>
+              display: 'block', fontSize: 12, color: T.textPrimary,
+              fontWeight: 600, marginTop: 2, lineHeight: 1.1,
+            }}>Rota</span>
           </span>
         </button>
       </div>
 
-      {/* Bloco identificação */}
+      {/* Bloco identificação na coleta */}
       <SubBloco T={T} dark={dark} icon="package-import" label="Na hora da coleta" color="yellow">
         {showIdent ? (
-          <IdentificacaoMaquina os={os} onUpdateOS={onUpdateOS} />
+          <IdentificacaoMaquina os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
         ) : (
           <button onClick={() => setShowIdent(true)}
             style={{
               width: '100%', border: 'none', background: 'transparent',
               padding: 0, cursor: 'pointer', fontFamily: 'inherit',
-              textAlign: 'left', color: T.textMuted, fontSize: 13, lineHeight: 1.4,
+              textAlign: 'left', color: T.textMuted, fontSize: 12, lineHeight: 1.3,
             }}>
             Quando a máquina chegar, abra aqui pra <b style={{ color: T.textPrimary }}>identificar e confirmar</b>.
             <span style={{
-              display: 'block', marginTop: 6,
-              fontSize: 12, color: PALETA.blueStrong, fontWeight: 600,
+              display: 'block', marginTop: 4,
+              fontSize: 11, color: PALETA.blueStrong, fontWeight: 600,
             }}>
-              <TI name="chevron-down" size={14} style={{ marginRight: 4 }} />
+              <TI name="chevron-down" size={12} style={{ marginRight: 4 }} />
               tirar foto agora (opcional)
             </span>
           </button>
         )}
       </SubBloco>
+
+      {/* CTA confirmar coleta — avança pra Recebido */}
+      <button onClick={confirmarRecebimento}
+        style={{
+          minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
+          background: PALETA.yellow, color: '#0a0a0d',
+          fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+          cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+        <TI name="package-import" size={14} />
+        Confirmar recebimento
+      </button>
     </HeaderFlat>
   );
 };
