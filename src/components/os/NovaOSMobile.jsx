@@ -151,10 +151,12 @@ export default function NovaOSMobile({
       // R$ 165 cada) + Deslocamento (R$ 20). User pode remover/editar depois
       // na etapa Orçamento. Best-effort: se falhar não bloqueia a criação.
       if (tipo === 'atendimento') {
+        // Schema real: coluna `categoria` (não `tipo`). Limpeza/Manutenção
+        // viram serviço (R$ 165 cada), Deslocamento R$ 20.
         const itensPadrao = [
-          { os_id: data.id, tipo: 'servico', nome: 'Limpeza',     quantidade: 1, valor_unitario: 165 },
-          { os_id: data.id, tipo: 'servico', nome: 'Manutenção',  quantidade: 1, valor_unitario: 165 },
-          { os_id: data.id, tipo: 'desloc',  nome: 'Deslocamento', quantidade: 1, valor_unitario: 20 },
+          { os_id: data.id, categoria: 'servico', nome: 'Limpeza',      quantidade: 1, valor_unitario: 165 },
+          { os_id: data.id, categoria: 'servico', nome: 'Manutenção',   quantidade: 1, valor_unitario: 165 },
+          { os_id: data.id, categoria: 'desloc',  nome: 'Deslocamento', quantidade: 1, valor_unitario: 20 },
         ]
         const { error: errItens } = await supabase.from('os_item').insert(itensPadrao)
         if (errItens) console.warn('[NovaOSMobile] itens padrão falharam:', errItens)

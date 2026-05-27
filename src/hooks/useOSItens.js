@@ -14,6 +14,25 @@ function isUUID(value) {
   return typeof value === 'string' && UUID_REGEX.test(value)
 }
 
+// Schema real do DB usa `quantidade` e `categoria`. UI usa `qtd` e `tipo`
+// (mais curtos, herdados do mock). Esses helpers fazem a ponte nos 2 sentidos.
+function dbToUi(row) {
+  if (!row) return row
+  return {
+    ...row,
+    qtd: row.quantidade,
+    tipo: row.categoria,
+  }
+}
+function uiToDb(ui) {
+  if (!ui) return ui
+  const { qtd, tipo, ...rest } = ui
+  const out = { ...rest }
+  if (qtd != null) out.quantidade = Number(qtd) || 1
+  if (tipo != null) out.categoria = tipo
+  return out
+}
+
 /**
  * Lê os itens de uma OS específica.
  * @param {string|null} osId — UUID da OS. Se null ou não-UUID, retorna [] sem buscar.
@@ -37,31 +56,33 @@ export function useOSItens(osId) {
       .is('deleted_at', null)
       .order('criado_em', { ascending: true })
     if (err) { setError(err); setLoading(false); return }
-    setItens(data || [])
+    setItens((data || []).map(dbToUi))
     setLoading(false)
   }
 
   useEffect(() => { fetchItens() }, [osId])
 
-  // Adicionar item novo
-  async function addItem(novoItem) {
-    // novoItem: { nome, qtd, valor_unitario, tipo, peca_id? }
-    // peca_id NULL = item avulso/serviço; preenchido = peça do catálogo.
+  // Adicionar item novo. uiItem usa nomes da UI (qtd, tipo) — mapeados pra
+  // colunas reais (quantidade, categoria) antes do insert.
+  async function addItem(uiItem) {
+    const payload = { ...uiToDb(uiItem), os_id: osId }
     const { data, error } = await supabase
       .from('os_item')
-      .insert({ ...novoItem, os_id: osId })
+      .insert(payload)
       .select()
       .single()
+    if (error) console.error('[useOSItens.addItem]', error)
     if (!error) await fetchItens()
-    return { data, error }
+    return { data: dbToUi(data), error }
   }
 
-  // Atualizar item existente
-  async function updateItem(id, patch) {
+  // Atualizar item existente. uiPatch tambem usa nomes da UI.
+  async function updateItem(id, uiPatch) {
     const { error } = await supabase
       .from('os_item')
-      .update(patch)
+      .update(uiToDb(uiPatch))
       .eq('id', id)
+    if (error) console.error('[useOSItens.updateItem]', error)
     if (!error) await fetchItens()
     return { error }
   }
