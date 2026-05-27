@@ -73,6 +73,20 @@ const HeaderMobile = ({
         padding: '8px 12px 4px', gap: 8,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1 }}>
+          {/* X discreto pra fechar — mesmo tamanho do "dots" da direita */}
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            title="Fechar"
+            style={{
+              border: 'none', background: 'transparent',
+              color: T.textMuted, padding: 4, lineHeight: 0,
+              cursor: 'pointer', flexShrink: 0,
+              marginLeft: -4,
+            }}
+          >
+            <TI name="x" size={16} />
+          </button>
           <span style={{
             fontFamily: MONO_STACK,
             fontSize: 11, color: T.textMuted, fontWeight: 600,
