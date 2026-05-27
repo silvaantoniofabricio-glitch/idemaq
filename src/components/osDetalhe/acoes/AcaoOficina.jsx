@@ -21,6 +21,7 @@ import { useTheme } from '../../../theme';
 import {
   TI, NowCard, BtnMobile, MOBILE, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile';
+import { HIGSubBloco as _HIGSubBloco } from '../../_shared/HIGPrimitives'
 import { useOSItens } from '../../../hooks/useOSItens';
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca';
 import { ETAPAS_TODOS } from '../../../utils/osData';
@@ -32,44 +33,9 @@ const CHECKS_LIMPEZA     = [{ id: 'feito', label: 'Limpeza feita' }];
 const CHECKS_MONTAGEM    = [{ id: 'feito', label: 'Montagem feita' }];
 
 // ─── SubBloco compacto (mesmo padrão V2) ──────────────────────────────────
-function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
-  const colorMap = {
-    blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
-    yellow: { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg },
-    green:  { fg: PALETA.greenStrong,  bg: dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg },
-    red:    { fg: PALETA.redStrong,    bg: dark ? 'rgba(192,66,66,0.18)' : PALETA.redBg },
-  };
-  const c = colorMap[color] || colorMap.blue;
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-      display: 'flex', flexDirection: 'column', height: '100%',
-    }}>
-      <div style={{
-        padding: '3px 6px 3px 8px',
-        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 7,
-      }}>
-        <span style={{
-          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-          background: c.bg, color: c.fg,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <TI name={icon} size={11} />
-        </span>
-        <span style={{
-          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
-          textTransform: 'uppercase', letterSpacing: '.04em',
-        }}>{label}</span>
-        {action}
-      </div>
-      <div style={{ padding: '8px', flex: 1, display: 'flex', flexDirection: 'column' }}>{children}</div>
-    </div>
-  );
+function SubBloco(props) {
+  return <_HIGSubBloco {...props} />;
 }
-
 // ─── Linha de check ───────────────────────────────────────────────────────
 function CheckRow({ T, dark, label, checked, disabled, onToggle, prefix, badge }) {
   return (

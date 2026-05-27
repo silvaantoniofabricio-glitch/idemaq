@@ -26,8 +26,9 @@ import {
 import AcaoAgendamentoHIG from '../acoes/AcaoAgendamentoHIG'
 
 const MAP = {
-  // TESTE — Agendamento usa Apple HIG (Human Interface Guidelines).
-  // Demais etapas seguem V2.
+  // HIG aplicado em TODAS as etapas.
+  // Agendamento ainda usa o componente dedicado AcaoAgendamentoHIG porque
+  // tem layout especial (segmented control iOS, day chips, etc).
   ag_agendamento: AcaoAgendamentoHIG,
   agendado: AcaoAgendamentoHIG,
   recebido: AcaoRecebido,

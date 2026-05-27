@@ -5,8 +5,7 @@ import { ETAPAS_TODOS } from '../../utils/osData';
 import FormEquipamentoEdit from './FormEquipamentoEdit';
 import { higType, HIG_FONT, HIG_COLOR } from '../../theme-hig';
 
-// Apple HIG — aplicado quando etapa atual eh Agendamento (teste).
-const ETAPAS_HIG = new Set(['ag_agendamento', 'agendado', 'agendamento']);
+// Apple HIG — aplicado em TODAS as etapas (decisao 2026-05-27).
 
 // Resolve label friendly da etapa atual a partir do raw id (ex: 'ag_agendamento'
 // → 'Agenda'). Usa o `match` em ETAPAS_TODOS pra encontrar a etapa unificada
@@ -62,9 +61,8 @@ const HeaderMobile = ({
   onUpdateOS,
 }) => {
   const { T, dark } = useTheme();
-  // Renomeei a flag generica `m3` que ja existia pra manter codigo abaixo.
-  // Quando true, aplica visual HIG (substituindo M3 anterior).
-  const m3 = ETAPAS_HIG.has(os?.etapa);
+  // Flag `m3` mantida no codigo mas sempre true — HIG aplicado em tudo.
+  const m3 = true;
   // Modal de edicao de equipamento — gerenciado aqui dentro porque o
   // OSDetalhe nao passa onAdicionarEquipamento. Mesma logica do Header
   // desktop (que tambem mantem estado proprio).

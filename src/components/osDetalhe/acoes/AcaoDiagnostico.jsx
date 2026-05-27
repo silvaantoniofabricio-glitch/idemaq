@@ -8,6 +8,7 @@ import { useTheme } from '../../../theme';
 import {
   TI, Input, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile';
+import { HIGSubBloco as _HIGSubBloco } from '../../_shared/HIGPrimitives'
 import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca';
 import { ETAPAS_TODOS } from '../../../utils/osData';
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa';
@@ -52,42 +53,9 @@ function chunkPairs(arr) {
 }
 
 // ─── SubBloco compacto (mesmo padrão V2 das outras etapas) ────────────────
-function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
-  const colorMap = {
-    blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
-    yellow: { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg },
-    green:  { fg: PALETA.greenStrong,  bg: dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg },
-  };
-  const c = colorMap[color] || colorMap.blue;
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '3px 6px 3px 8px',
-        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 7,
-      }}>
-        <span style={{
-          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-          background: c.bg, color: c.fg,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <TI name={icon} size={11} />
-        </span>
-        <span style={{
-          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
-          textTransform: 'uppercase', letterSpacing: '.04em',
-        }}>{label}</span>
-        {action}
-      </div>
-      <div style={{ padding: '10px 12px' }}>{children}</div>
-    </div>
-  );
+function SubBloco(props) {
+  return <_HIGSubBloco {...props} />;
 }
-
 // ─── Pill compacta de grupo (Motor, Água, Elétrico...) ────────────────────
 const GrupoChip = ({ T, dark, grupo, marcados, aberto, onClick }) => {
   // Fundo escuro com tint azul quando aberto (em vez do PALETA.blueBg claro)

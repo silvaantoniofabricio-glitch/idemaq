@@ -8,44 +8,14 @@ import { useTheme } from '../../../theme';
 import {
   TI, NowCard, Group, TextArea, BtnMobile, MOBILE, PALETA,
 } from '../../_shared/PrimitivasMobile';
+import { HIGSubBloco as _HIGSubBloco } from '../../_shared/HIGPrimitives'
 import { ETAPAS_TODOS } from '../../../utils/osData';
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa';
 
 // ─── Sub-card compacto (igual ao da Agenda/Coleta V2) ─────────────────────
-function SubBloco({ T, dark, icon, label, color = 'blue', children }) {
-  const colorMap = {
-    blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
-    yellow: { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg },
-  };
-  const c = colorMap[color] || colorMap.blue;
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '3px 6px 3px 8px',
-        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 7,
-      }}>
-        <span style={{
-          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-          background: c.bg, color: c.fg,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <TI name={icon} size={11} />
-        </span>
-        <span style={{
-          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
-          textTransform: 'uppercase', letterSpacing: '.04em',
-        }}>{label}</span>
-      </div>
-      <div style={{ padding: '10px 12px' }}>{children}</div>
-    </div>
-  );
+function SubBloco(props) {
+  return <_HIGSubBloco {...props} />;
 }
-
 const TESTES = [
   { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
   { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },

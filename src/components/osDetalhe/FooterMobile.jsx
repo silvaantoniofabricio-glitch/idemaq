@@ -14,12 +14,10 @@ import { P } from '../../theme'
 import { TIPOS_OS, ETAPAS_TODOS } from '../../utils/osData'
 import { podeMoverOS } from '../../utils/osHelpers'
 
-// HIG / M3 generic style flag — aplicado quando etapa atual eh Agendamento
-const ETAPAS_CUSTOM = new Set(['ag_agendamento', 'agendado', 'agendamento'])
-
+// HIG aplicado em TODAS as etapas.
 export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
-  const m3 = ETAPAS_CUSTOM.has(os.etapa) // mantem nome 'm3' mas comporta HIG
+  const m3 = true // flag mantida no codigo, sempre true — visual HIG
   const config = TIPOS_OS[os.tipo]
   const etapas = (config?.etapas || []).filter(e => admin || !e.adminOnly)
   const etapaIdx = etapas.findIndex(e => e.id === os.etapa)
