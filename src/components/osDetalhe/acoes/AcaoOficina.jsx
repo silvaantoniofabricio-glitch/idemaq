@@ -117,11 +117,13 @@ function CheckRow({ T, dark, label, checked, disabled, onToggle, prefix, badge }
 // ─── Mini-secao dentro do card (Desmontagem / Servico / Montagem) ─────────
 // Se a secao so tem 1 check, o proprio header eh o toggle (mais compacto).
 // Se tem N checks (caso da Manutencao), header + lista de sub-itens.
-function SecaoChecklist({ T, dark, titulo, icon, checks, valores, onToggle, bloqueada, bloqueioMsg, sync }) {
+function SecaoChecklist({ T, dark, titulo, icon, checks, valores, onToggle, bloqueada, bloqueioMsg, sync, sempreLista }) {
   const total = checks.length;
   const feitos = checks.filter(c => valores[c.id]).length;
   const tudoOk = total > 0 && feitos === total;
-  const isSingle = total === 1;
+  // single-mode: 1 check unico onde o header EH o toggle. Pra Manutencao
+  // forcamos lista mesmo com 1 item, pra mostrar o label da peca.
+  const isSingle = total === 1 && !sempreLista;
 
   const headerBg = tudoOk
     ? (dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg)
@@ -297,7 +299,8 @@ function CardLado({
         <SecaoChecklist T={T} dark={dark}
           titulo={titulo === 'Limpeza' ? 'Limpeza' : 'Manutenção'}
           icon={titulo === 'Limpeza' ? 'droplet' : 'tool'}
-          checks={servCheck} valores={servVal} onToggle={onToggleServ} />
+          checks={servCheck} valores={servVal} onToggle={onToggleServ}
+          sempreLista={titulo === 'Manutenção'} />
         <SecaoChecklist T={T} dark={dark}
           titulo="Montagem" icon="tools"
           checks={montCheck} valores={montVal} onToggle={onToggleMont}
