@@ -212,35 +212,30 @@ const TesteRow = ({ T, dark, teste, valor, onChange, primeira }) => (
   </div>
 )
 
-// ─── Linha de acabamento (toggle feito/nao feito) ─────────────────────────
-const AcabRow = ({ T, dark, item, feito, onToggle, primeira }) => (
-  <button type="button" onClick={onToggle}
+// ─── Botao de acabamento (Secagem/Polimento/Enceramento) ──────────────────
+// Mesmo visual do SegOption dos testes, mas verde quando ativo.
+const AcabBtn = ({ T, dark, item, feito, onClick }) => (
+  <button type="button" onClick={onClick}
+    title={item.label}
     style={{
-      padding: '8px 0',
-      borderTop: primeira ? 'none' : `1px solid ${T.border}`,
-      display: 'flex', alignItems: 'center', gap: 9,
-      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-      width: '100%', background: 'transparent', border: 'none',
-      WebkitTapHighlightColor: 'transparent',
+      minHeight: 34, borderRadius: 7,
+      padding: '0 6px',
+      border: `1px solid ${feito ? '#7DC09F' : T.border}`,
+      background: feito
+        ? (dark ? 'rgba(46,125,94,0.22)' : PALETA.greenBg)
+        : T.bg,
+      color: feito ? PALETA.greenStrong : T.textPrimary,
+      fontSize: 11.5, fontWeight: 600,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+      cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      transition: 'background .12s, border-color .12s',
+      fontFamily: 'inherit',
+      overflow: 'hidden', minWidth: 0,
     }}>
+    <TI name={item.icon} size={12} color={feito ? PALETA.greenStrong : T.textMuted} />
     <span style={{
-      width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-      border: `1.5px solid ${feito ? PALETA.greenStrong : '#D1D5DB'}`,
-      background: feito ? PALETA.greenStrong : 'transparent',
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      color: '#fff',
-    }}>
-      {feito && <TI name="check" size={12} />}
-    </span>
-    <TI name={item.icon} size={14}
-      color={feito ? PALETA.greenStrong : PALETA.blueStrong} />
-    <span style={{
-      flex: 1, fontSize: 13, fontWeight: 500,
-      color: feito ? T.textMuted : T.textPrimary,
-      textDecoration: feito ? 'line-through' : 'none',
-    }}>
-      {item.label}
-    </span>
+      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    }}>{item.label}</span>
   </button>
 )
 
@@ -362,20 +357,38 @@ export default function AcaoTeste({ os, onMoverOS }) {
         </div>
       </SubBloco>
 
-      {/* Acabamento — só aparece se OS tem Limpeza no orçamento */}
+      {/* Acabamento — só aparece se OS tem Limpeza no orçamento.
+          Mesmo padrao das linhas de teste: rotulo + 3 botoes (multi-select). */}
       {temLimpeza && (
         <SubBloco T={T} dark={dark} icon="sparkles" label="Acabamento" color="blue"
           action={acabPendentes === 0
             ? <Pill tone="green" icon="check">Concluído</Pill>
             : <Pill tone="neutral" icon="clock">{ACABAMENTO.length - acabPendentes}/{ACABAMENTO.length}</Pill>}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {ACABAMENTO.map((a, i) => (
-              <AcabRow key={a.id} T={T} dark={dark}
-                item={a}
-                feito={!!acabamento[a.id]}
-                primeira={i === 0}
-                onToggle={() => toggleAcab(a.id)} />
-            ))}
+          <div style={{
+            padding: '7px 0',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 12.5, fontWeight: 600, color: T.textPrimary,
+              flex: '1 1 90px', minWidth: 0,
+            }}>
+              <TI name="sparkles" size={13} color={PALETA.blueStrong} />
+              <span style={{
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>Acabamento</span>
+            </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: 4, flex: '2 1 170px', minWidth: 0,
+            }}>
+              {ACABAMENTO.map(a => (
+                <AcabBtn key={a.id} T={T} dark={dark}
+                  item={a}
+                  feito={!!acabamento[a.id]}
+                  onClick={() => toggleAcab(a.id)} />
+              ))}
+            </div>
           </div>
         </SubBloco>
       )}
