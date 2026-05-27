@@ -50,17 +50,21 @@ const TesteCard = ({ teste, valor, onChange }) => {
   return (
     <div className="idemaq-card" style={{
       background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: MOBILE.radiusCard, padding: 12,
-      display: 'flex', flexDirection: 'column', gap: 10,
+      borderRadius: MOBILE.radiusCard, padding: '10px 12px',
+      display: 'flex', alignItems: 'center', gap: 10,
     }}>
+      {/* Label à esquerda */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        fontSize: 14.5, fontWeight: 600, color: T.textPrimary,
+        fontSize: 14, fontWeight: 600, color: T.textPrimary,
+        flex: 1, minWidth: 0,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
-        <TI name={teste.icon} size={18} color={PALETA.blueStrong} />
+        <TI name={teste.icon} size={17} color={PALETA.blueStrong} />
         {teste.label}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+      {/* 3 botões à direita, mesma altura, fixos */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, flexShrink: 0, width: 270 }}>
         {(['ok', 'defeito', 'barulho']).map(k => (
           <SegOption key={k} kind={k}
             selected={valor === k}
