@@ -124,7 +124,7 @@ const TesteCard = ({ teste, valor, onChange }) => {
   );
 };
 
-export default function AcaoRecebido({ os, onMoverOS }) {
+export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
   const { itens: chkItens, observacoes: chkObs, salvar: salvarChk, loading: loadingChk } =
     useChecklistEtapa(os.id, 'recebido');
 
@@ -132,8 +132,16 @@ export default function AcaoRecebido({ os, onMoverOS }) {
     () => TESTES.reduce((acc, t) => ({ ...acc, [t.id]: null }), {})
   );
   const [obs, setObs] = useState('');
+  const [naoLiga, setNaoLiga] = useState(false);
+  const [motivoNaoLiga, setMotivoNaoLiga] = useState('');
   const [hidratado, setHidratado] = useState(false);
   const [salvando, setSalvando] = useState(false);
+
+  // Hidrata flags do pre_diagnostico jsonb (equipamento_nao_liga + motivo)
+  useEffect(() => {
+    setNaoLiga(!!os?.pre_diagnostico?.equipamento_nao_liga);
+    setMotivoNaoLiga(os?.pre_diagnostico?.motivo_nao_liga || '');
+  }, [os?.id, os?.pre_diagnostico?.equipamento_nao_liga, os?.pre_diagnostico?.motivo_nao_liga]);
 
   useEffect(() => {
     if (loadingChk || hidratado) return;
@@ -151,24 +159,40 @@ export default function AcaoRecebido({ os, onMoverOS }) {
   }
 
   function serializarChecklist() {
+    // Se equipamento nao liga, todos viram 'na' (nao foi possivel testar)
     return TESTES.map(t => ({
       id: t.id, label: t.label,
-      checked: testes[t.id] === 'ok',
-      valor: testes[t.id] || null,
+      checked: naoLiga ? false : testes[t.id] === 'ok',
+      valor: naoLiga ? 'na' : (testes[t.id] || null),
     }));
   }
 
-  // Auto-save: salva o checklist sempre que `testes` ou `obs` mudam,
-  // com debounce de 500ms. Garante que dados nao sao perdidos se o
-  // user fechar a OS antes de clicar "Avancar".
+  // Auto-save dos testes (debounce 500ms)
   useEffect(() => {
-    if (!hidratado) return;  // Espera hidratar antes de salvar
+    if (!hidratado) return;
     const t = setTimeout(() => {
       salvarChk(serializarChecklist(), obs || null);
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testes, obs, hidratado]);
+  }, [testes, obs, naoLiga, hidratado]);
+
+  // Persiste flag "equipamento nao liga" + motivo em pre_diagnostico
+  // (debounce 500ms pra naoLiga e motivo combinados)
+  useEffect(() => {
+    if (!hidratado) return;
+    const t = setTimeout(() => {
+      onUpdateOS?.(os.numero, {
+        pre_diagnostico: {
+          ...(os.pre_diagnostico || {}),
+          equipamento_nao_liga: naoLiga,
+          motivo_nao_liga: naoLiga ? motivoNaoLiga : null,
+        },
+      });
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [naoLiga, motivoNaoLiga, hidratado]);
 
   async function avancar() {
     setSalvando(true);
@@ -179,6 +203,8 @@ export default function AcaoRecebido({ os, onMoverOS }) {
   }
 
   const todosPreenchidos = TESTES.every(t => testes[t.id] != null);
+  // Pode avançar se: equipamento nao liga (qualquer estado) OU todos testes preenchidos
+  const podeAvancar = naoLiga || todosPreenchidos;
 
   const { T, dark } = useTheme();
   const relatoCliente = os?.defeito || '';
@@ -202,13 +228,79 @@ export default function AcaoRecebido({ os, onMoverOS }) {
         )}
       </SubBloco>
 
-      {/* SUB-BLOCO 2: Checklist de testes (4 funções com OK/Defeito/Barulho) */}
+      {/* SUB-BLOCO 2: Checklist de testes — com toggle "nao liga" no topo */}
       <SubBloco T={T} dark={dark} icon="clipboard-check" label="Testes de funcionamento" color="blue">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Toggle "Equipamento não liga" */}
+        <button type="button" onClick={() => setNaoLiga(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 10px', borderRadius: 7, marginBottom: 8,
+            background: naoLiga
+              ? (dark ? 'rgba(192,66,66,0.18)' : '#FDECEC')
+              : (dark ? 'rgba(255,255,255,0.03)' : T.cardAlt),
+            border: `1px solid ${naoLiga ? (dark ? 'rgba(192,66,66,0.40)' : '#E89B9B') : T.border}`,
+            cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+            textAlign: 'left', WebkitTapHighlightColor: 'transparent',
+          }}>
+          <span style={{
+            width: 36, height: 20, borderRadius: 999, flexShrink: 0,
+            background: naoLiga ? (dark ? '#FF8888' : PALETA.redStrong) : T.border,
+            position: 'relative',
+            transition: 'background .15s',
+          }}>
+            <span style={{
+              position: 'absolute',
+              top: 2, left: naoLiga ? 18 : 2,
+              width: 16, height: 16, borderRadius: '50%',
+              background: '#fff',
+              transition: 'left .15s',
+              boxShadow: '0 1px 3px rgba(0,0,0,.3)',
+            }} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 600,
+              color: naoLiga ? (dark ? '#FF8888' : PALETA.redStrong) : T.textPrimary,
+            }}>
+              ⚡ Equipamento não liga
+            </div>
+            {!naoLiga && (
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
+                Ative se a máquina não tem energia / pula os 4 testes
+              </div>
+            )}
+          </div>
+        </button>
+
+        {/* Textarea "O que aconteceu?" — só aparece quando naoLiga */}
+        {naoLiga && (
+          <textarea
+            placeholder="O que aconteceu? Ex: cabo de força arrancado, fonte queimada, painel sem reação…"
+            value={motivoNaoLiga}
+            onChange={(e) => setMotivoNaoLiga(e.target.value)}
+            rows={2}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '8px 10px', borderRadius: 6,
+              border: `1px solid ${T.border}`,
+              background: T.bg, color: T.textPrimary,
+              fontSize: 12.5, fontFamily: 'inherit',
+              outline: 'none', resize: 'vertical',
+              marginBottom: 8,
+            }}
+          />
+        )}
+
+        {/* Testes — disabled quando naoLiga */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 6,
+          opacity: naoLiga ? 0.4 : 1,
+          pointerEvents: naoLiga ? 'none' : 'auto',
+        }}>
           {TESTES.map(t => (
             <TesteCard key={t.id}
               teste={t}
-              valor={testes[t.id]}
+              valor={naoLiga ? null : testes[t.id]}
               onChange={(v) => setResultado(t.id, v)} />
           ))}
         </div>
@@ -234,19 +326,20 @@ export default function AcaoRecebido({ os, onMoverOS }) {
 
       {/* CTA compacto amarelo — avança pro Diagnóstico */}
       <button onClick={avancar}
-        disabled={!todosPreenchidos || salvando}
+        disabled={!podeAvancar || salvando}
         style={{
           minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
-          background: todosPreenchidos ? PALETA.yellow : T.cardAlt,
-          color: todosPreenchidos ? '#0a0a0d' : T.textDim,
+          background: podeAvancar ? PALETA.yellow : T.cardAlt,
+          color: podeAvancar ? '#0a0a0d' : T.textDim,
           fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
-          cursor: (todosPreenchidos && !salvando) ? 'pointer' : 'not-allowed',
-          opacity: (todosPreenchidos && !salvando) ? 1 : 0.55,
+          cursor: (podeAvancar && !salvando) ? 'pointer' : 'not-allowed',
+          opacity: (podeAvancar && !salvando) ? 1 : 0.55,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}>
         <TI name="arrow-right" size={14} />
         {salvando ? 'Salvando…'
-          : todosPreenchidos ? 'Avançar pro Diagnóstico'
+          : naoLiga ? 'Avançar pro Diagnóstico'
+          : podeAvancar ? 'Avançar pro Diagnóstico'
           : `Preencha os ${TESTES.length} testes`}
       </button>
     </div>

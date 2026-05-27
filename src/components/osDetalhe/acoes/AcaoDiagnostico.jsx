@@ -37,9 +37,10 @@ const ITENS_PADRAO = Object.fromEntries(
 );
 
 const PRE_TONES = {
-  ok:      { tone: 'green',  icon: 'check' },
-  defeito: { tone: 'red',    icon: 'alert-triangle' },
-  barulho: { tone: 'yellow', icon: 'volume' },
+  ok:      { tone: 'green',   icon: 'check' },
+  defeito: { tone: 'red',     icon: 'alert-triangle' },
+  barulho: { tone: 'yellow',  icon: 'volume' },
+  na:      { tone: 'neutral', icon: 'minus' },
 };
 
 // Divide array em pares (2 colunas). Pra expandir lista embaixo da LINHA
@@ -258,8 +259,24 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
       </SubBloco>
 
       {/* SUB-BLOCO 2: Resumo da avaliação — sempre visível.
-          Se vazio, mostra placeholder pedindo pra voltar e preencher. */}
+          Se equipamento não liga, mostra pill especial + motivo. */}
       <SubBloco T={T} dark={dark} icon="clipboard-check" label="Resumo da avaliação" color="blue">
+        {os?.pre_diagnostico?.equipamento_nao_liga && (
+          <div style={{ marginBottom: 8 }}>
+            <Pill tone="red" icon="bolt-off">
+              ⚡ Equipamento não liga
+            </Pill>
+            {os?.pre_diagnostico?.motivo_nao_liga && (
+              <div style={{
+                marginTop: 6, fontSize: 12, color: T.textPrimary,
+                lineHeight: 1.4, borderLeft: `3px solid ${PALETA.redStrong}`,
+                paddingLeft: 10,
+              }}>
+                {os.pre_diagnostico.motivo_nao_liga}
+              </div>
+            )}
+          </div>
+        )}
         {testesComResultado.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {testesComResultado.map(t => {
@@ -271,13 +288,13 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
               );
             })}
           </div>
-        ) : (
+        ) : !os?.pre_diagnostico?.equipamento_nao_liga ? (
           <div style={{
             fontSize: 12, color: T.textMuted, fontStyle: 'italic',
           }}>
             Nenhum teste registrado na etapa de Avaliação.
           </div>
-        )}
+        ) : null}
       </SubBloco>
 
       {/* SUB-BLOCO 2: Causa identificada */}
