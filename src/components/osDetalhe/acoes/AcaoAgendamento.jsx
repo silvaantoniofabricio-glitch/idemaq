@@ -6,26 +6,26 @@ import {
 import BlocoAcao from './BlocoAcao';
 
 // ─── Header flat "FAZER AGORA · etapa" — sem fundo/borda amarela ────────────
-// Substitui o BlocoAcao na V2 pra ficar limpo (so titulo + descricao + filhos).
-function HeaderFlat({ T, dark, icon, etapa, descricao, children, gap = 12 }) {
+// V2: compacto + gap 8 entre filhos pra tudo caber sem scroll.
+function HeaderFlat({ T, dark, icon, etapa, descricao, children, gap = 8 }) {
   const cor = (d, c) => dark ? d : c
   const amarelo = cor(PALETA.yellow, PALETA.yellowStrong)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-        <TI name={icon} size={18} color={amarelo} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+        <TI name={icon} size={15} color={amarelo} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{
-            fontSize: 10.5, fontWeight: 700, color: amarelo,
-            textTransform: 'uppercase', letterSpacing: '.6px',
-            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 10, fontWeight: 700, color: amarelo,
+            textTransform: 'uppercase', letterSpacing: '.5px',
+            display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2,
           }}>
             FAZER AGORA
             <span style={{ opacity: 0.5 }}>·</span>
             <span>{etapa}</span>
           </div>
           {descricao && (
-            <div style={{ fontSize: 12, color: T.textSecondary, marginTop: 3 }}>
+            <div style={{ fontSize: 11.5, color: T.textSecondary, marginTop: 2, lineHeight: 1.3 }}>
               {descricao}
             </div>
           )}
@@ -52,25 +52,25 @@ function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
       borderRadius: 10, overflow: 'hidden',
     }}>
       <div style={{
-        padding: '4px 6px 4px 10px',
+        padding: '3px 6px 3px 8px',
         background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
         borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
+        display: 'flex', alignItems: 'center', gap: 7,
       }}>
         <span style={{
-          width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
           background: c.bg, color: c.fg,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <TI name={icon} size={12} />
+          <TI name={icon} size={11} />
         </span>
         <span style={{
-          flex: 1, fontSize: 11.5, fontWeight: 700, color: T.textPrimary,
+          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
           textTransform: 'uppercase', letterSpacing: '.04em',
         }}>{label}</span>
         {action}
       </div>
-      <div style={{ padding: '12px 14px' }}>
+      <div style={{ padding: '10px 12px' }}>
         {children}
       </div>
     </div>
@@ -521,11 +521,11 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
       etapa="Aguardando agendamento"
       descricao="Escolha o dia, depois o horário.">
 
-      {/* Bloco DIA */}
+      {/* Bloco DIA — chips compactos 44x44 */}
       <SubBloco T={T} dark={dark} icon="calendar" label="Dia · próximos 14 dias" color="blue">
         <div style={{
-          display: 'flex', gap: 6, overflowX: 'auto',
-          margin: '0 -14px', padding: '0 14px', scrollbarWidth: 'none',
+          display: 'flex', gap: 4, overflowX: 'auto',
+          margin: '0 -12px', padding: '0 12px', scrollbarWidth: 'none',
         }} className="idemaq-no-scrollbar">
           {dias.map(d => {
             const sel = d.iso === diaSel;
@@ -533,30 +533,31 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
             return (
               <button key={d.iso} onClick={() => setDiaSel(d.iso)}
                 style={{
-                  flex: '0 0 auto', width: 54,
+                  flex: '0 0 auto', width: 44, height: 44,
                   display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  padding: '8px 0', borderRadius: 10,
+                  padding: '4px 0', borderRadius: 8,
                   background: sel ? PALETA.blue : T.bg,
                   border: `1px solid ${sel ? PALETA.blueStrong : T.border}`,
                   cursor: 'pointer', position: 'relative',
                   WebkitTapHighlightColor: 'transparent',
                 }}>
                 <span style={{
-                  fontSize: 9.5, fontWeight: 700,
+                  fontSize: 9, fontWeight: 700,
                   color: sel ? 'rgba(255,255,255,.85)' : T.textMuted,
-                  textTransform: 'uppercase', letterSpacing: '.08em',
+                  textTransform: 'uppercase', letterSpacing: '.06em',
+                  lineHeight: 1,
                 }}>{d.dow}</span>
                 <span style={{
-                  fontSize: 18, fontWeight: 700,
+                  fontSize: 15, fontWeight: 700,
                   color: sel ? '#fff' : T.textPrimary,
-                  marginTop: 2, lineHeight: 1.1,
+                  marginTop: 1, lineHeight: 1,
                 }}>{d.dia}</span>
                 {busy && (
                   <span style={{
-                    position: 'absolute', bottom: 5, left: '50%',
+                    position: 'absolute', bottom: 3, left: '50%',
                     transform: 'translateX(-50%)',
-                    width: 4, height: 4, borderRadius: 99,
+                    width: 3, height: 3, borderRadius: 99,
                     background: sel ? PALETA.yellow : PALETA.yellowStrong,
                   }}/>
                 )}
@@ -566,27 +567,27 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
         </div>
       </SubBloco>
 
-      {/* Bloco PERÍODO — botoes inline horizontais (icone + label + range) */}
+      {/* Bloco PERÍODO — pílulas 32px */}
       <SubBloco T={T} dark={dark} icon="clock" label="Período" color="blue">
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 4 }}>
           {PERIODOS.map(p => {
             const sel = p.id === periodoSel;
             return (
               <button key={p.id} onClick={() => setPeriodoSel(p.id)}
                 style={{
-                  flex: 1, minHeight: 36, padding: '0 8px', borderRadius: 8,
+                  flex: 1, minHeight: 32, padding: '0 6px', borderRadius: 7,
                   background: sel ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.bg,
                   border: `1px solid ${sel ? PALETA.blueLight : T.border}`,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  fontSize: 11.5, fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  fontSize: 11, fontWeight: 600,
                   color: sel ? PALETA.blueStrong : T.textMuted,
                   cursor: 'pointer',
                   WebkitTapHighlightColor: 'transparent',
                 }}>
-                <TI name={p.icon} size={14} color={sel ? PALETA.blueStrong : '#9CA3AF'} />
+                <TI name={p.icon} size={12} color={sel ? PALETA.blueStrong : '#9CA3AF'} />
                 <span>{p.label}</span>
                 <span style={{
-                  fontSize: 10, color: '#9CA3AF',
+                  fontSize: 9.5, color: '#9CA3AF',
                   fontFamily: 'ui-monospace,monospace',
                 }}>{p.ini}–{p.fim}</span>
               </button>
@@ -595,9 +596,9 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
         </div>
       </SubBloco>
 
-      {/* Bloco HORÁRIO — 4 colunas + slots compactos */}
+      {/* Bloco HORÁRIO — 4 cols × 26px de altura */}
       <SubBloco T={T} dark={dark} icon="clock-hour-4" label="Horário · 15 em 15 min" color="blue">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
           {horarios.map(h => {
             const sel = h === horaSel;
             const gone = horariosOcupados.has(h);
@@ -605,11 +606,11 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
               <button key={h} disabled={gone}
                 onClick={() => !gone && setHoraSel(h)}
                 style={{
-                  minHeight: 32, borderRadius: 6,
+                  minHeight: 26, borderRadius: 5,
                   background: sel ? PALETA.blue : (gone ? (dark ? 'rgba(255,255,255,0.04)' : '#F8F9FB') : T.bg),
                   border: `1px solid ${sel ? PALETA.blueStrong : T.border}`,
                   color: sel ? '#fff' : (gone ? '#D1D5DB' : T.textPrimary),
-                  fontSize: 12, fontWeight: 600,
+                  fontSize: 11.5, fontWeight: 600,
                   fontFamily: 'ui-monospace,monospace',
                   cursor: gone ? 'not-allowed' : 'pointer',
                   textDecoration: gone ? 'line-through' : 'none',
@@ -621,11 +622,20 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
         </div>
       </SubBloco>
 
-      {/* CTA confirmar */}
-      <BtnMobile variant="yellow" icon="calendar-check"
-        disabled={!podeConfirmar} onClick={confirmar}>
+      {/* CTA confirmar — flat amarelo, altura 36 */}
+      <button onClick={confirmar} disabled={!podeConfirmar}
+        style={{
+          minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
+          background: podeConfirmar ? PALETA.yellow : T.cardAlt,
+          color: podeConfirmar ? '#0a0a0d' : T.textDim,
+          fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+          cursor: podeConfirmar ? 'pointer' : 'not-allowed',
+          opacity: podeConfirmar ? 1 : 0.55,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+        <TI name="calendar-check" size={14} />
         {ctaLabel}
-      </BtnMobile>
+      </button>
     </HeaderFlat>
   );
 };
