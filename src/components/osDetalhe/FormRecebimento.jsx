@@ -234,7 +234,7 @@ export default function FormRecebimento({
             onClick={() => setForma('cartao')}
             icon="ti-credit-card"
             label="Cartão"
-            sublabel="débito·crédito·link"
+            sublabel="déb·créd·link"
           />
           <FormaTopBtn
             T={T} dark={dark}
@@ -561,6 +561,8 @@ function AtalhoBtn({ T, valorOk, icon, label, title, onClick }) {
   )
 }
 
+// Layout VERTICAL compacto (icon + label/sublabel centralizados) — cabe nas
+// 4 colunas de qualquer largura mobile, evita overflow. Radio dot no canto.
 function FormaTopBtn({ T, dark, ativo, onClick, icon, label, sublabel }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
@@ -568,28 +570,37 @@ function FormaTopBtn({ T, dark, ativo, onClick, icon, label, sublabel }) {
     <button
       onClick={onClick}
       style={{
-        padding: '10px 12px', borderRadius: 8,
+        position: 'relative',
+        padding: '8px 4px 6px', borderRadius: 8,
         border: `1.5px solid ${ativo ? azul : T.border}`,
         background: ativo ? cor('#0d2035', '#e6f1fb') : 'transparent',
         cursor: 'pointer', fontFamily: 'inherit',
-        display: 'flex', alignItems: 'center', gap: 10,
-        textAlign: 'left',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 3,
+        textAlign: 'center', minWidth: 0,
+        minHeight: 64,
       }}>
+      {/* Radio no canto sup-esquerdo */}
       <div style={{
-        width: 14, height: 14, borderRadius: '50%',
+        position: 'absolute', top: 5, left: 5,
+        width: 10, height: 10, borderRadius: '50%',
         border: `2px solid ${ativo ? azul : T.textDim}`,
         background: ativo ? azul : 'transparent',
-        flexShrink: 0,
       }} />
       <i className={`ti ${icon}`}
-         style={{ fontSize: 17, color: ativo ? azul : T.textMuted }} aria-hidden="true" />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>{label}</div>
-        <div style={{
-          fontSize: 10, color: T.textMuted, marginTop: 1,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{sublabel}</div>
-      </div>
+         style={{ fontSize: 18, color: ativo ? azul : T.textMuted }} aria-hidden="true" />
+      <div style={{
+        fontSize: 12, fontWeight: 700, color: T.textPrimary,
+        lineHeight: 1.1,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        maxWidth: '100%',
+      }}>{label}</div>
+      <div style={{
+        fontSize: 9.5, color: T.textMuted,
+        lineHeight: 1.1,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        maxWidth: '100%',
+      }}>{sublabel}</div>
     </button>
   )
 }
