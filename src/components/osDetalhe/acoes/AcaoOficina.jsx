@@ -371,14 +371,6 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
 
   return (
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <NowCard
-        icon="tool"
-        titulo="em oficina"
-        descricao={tudoDone
-          ? 'Tudo pronto. Avance pro Teste final.'
-          : 'Desmontagem e montagem são compartilhadas — marcar num lado marca no outro.'}
-      />
-
       {/* Banner de falhas vindas do Teste final */}
       {falhas.length > 0 && (
         <SubBloco T={T} dark={dark} icon="alert-triangle"
