@@ -30,6 +30,8 @@ import { isAdmin, getRole } from './utils/osHelpers'
 
 import AppLayout from './components/layout/AppLayout'
 import { ToastProvider } from './components/ui/Toast'
+import { useAutoReload } from './hooks/useAutoReload'
+import AtualizacaoBanner from './components/ui/AtualizacaoBanner'
 import { RefreshProvider } from './contexts/RefreshContext'
 
 import Login        from './pages/Login'
@@ -56,6 +58,9 @@ import VendasMobile from './pages/mobile/VendasMobile'
 export default function App() {
   const { T, dark, toggleTheme, isMobile } = useTheme()
   const [authUser, setAuthUser] = useState(null)
+  // Polling de versão — avisa quando o Vercel publica uma versão nova
+  // e auto-reload em 5s sem o user precisar atualizar manualmente.
+  const { hasUpdate, reload } = useAutoReload()
   // Registro do auth user na tabela `usuarios` (papel, apelido, uuid).
   // Antes o papel era inferido por email hardcoded — quando o Toni trocou os
   // emails dos funcionários no Auth, eles caíam no fallback "dono" e ganhavam
@@ -115,6 +120,7 @@ export default function App() {
 
   return (
     <ToastProvider T={T} dark={dark}>
+      {hasUpdate && <AtualizacaoBanner onReload={reload} />}
       <RefreshProvider>
         <BrowserRouter>
           <AppLayout T={T} dark={dark} toggleTheme={toggleTheme} user={user} sair={sair} isMobile={isMobile}>
