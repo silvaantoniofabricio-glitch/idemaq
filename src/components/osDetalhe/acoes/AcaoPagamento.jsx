@@ -1,32 +1,68 @@
 // src/components/osDetalhe/acoes/AcaoPagamento.jsx
-// Etapa Pagamento — ação "FAZER AGORA" com form de recebimento inline.
+// Etapa Pagamento (a receber) — padrao V2 SubBloco.
 // Reusa FormRecebimento (mesma UI da aba Pagamento).
 //
 // Contexto: OS na etapa Pagamento = entregue mas ainda não recebida (ou parcial).
-// Aqui SEMPRE move pra Concluído quando o pagamento for total (estamos na etapa
-// Pagamento, então quitar fecha o fluxo).
+// Aqui SEMPRE move pra Concluído quando o pagamento for total.
 
 import React from 'react'
-import { P } from '../../../theme'
+import { useTheme } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
-import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { fmtBRL } from '../../../utils/fmt'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
-import BlocoAcao from './BlocoAcao'
+import { TI, PALETA } from '../../_shared/PrimitivasMobile'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 
-export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
-  const cor = (d, c) => dark ? d : c
-  const verde = corEtapa('green', dark)
+// ─── SubBloco compacto (mesmo padrao V2 das outras etapas) ────────────────
+function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
+  const colorMap = {
+    blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
+    yellow: { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg },
+    green:  { fg: PALETA.greenStrong,  bg: dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg },
+    red:    { fg: PALETA.redStrong,    bg: dark ? 'rgba(192,66,66,0.18)' : PALETA.redBg },
+  }
+  const c = colorMap[color] || colorMap.blue
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '3px 6px 3px 8px',
+        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 7,
+      }}>
+        <span style={{
+          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+          background: c.bg, color: c.fg,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <TI name={icon} size={11} />
+        </span>
+        <span style={{
+          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>{label}</span>
+        {action}
+      </div>
+      <div style={{ padding: 10 }}>{children}</div>
+    </div>
+  )
+}
+
+export default function AcaoPagamento({ os, onUpdateOS, onMoverOS }) {
+  const { T, dark } = useTheme()
 
   // Cálculos
-  const { itens, loading: loadingItens } = useOSItens(os.id)
-  const subtotal = itens.reduce((s, i) => s + i.valor * i.qtd, 0)
+  const { itens } = useOSItens(os.id)
+  const subtotal = itens.reduce((s, i) => s + (i.valor || 0) * (i.qtd || 0), 0)
   const descontoAtual = os.desconto || 0
   const total = Math.max(0, subtotal - descontoAtual)
   const valorPago = os.valor_pago || 0
   const aPagar = Math.max(0, total - valorPago)
+  const quitado = aPagar <= 0
 
   function handleConfirmar({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) {
     const novoValorPago = valorPago + valor
@@ -37,7 +73,6 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
     } else if (modo === 'desconto') {
       novoDesconto = descontoAtual + (aPagar - valor)
     }
-    // Anexa parcelas a prazo nas observações
     let novasObs = os.observacoes
     if (parcelasAPrazo && parcelasAPrazo.length > 0) {
       const txt = parcelasAPrazo
@@ -56,88 +91,69 @@ export default function AcaoPagamento({ T, dark, os, onUpdateOS, onMoverOS }) {
       forma_pagamento: forma,
       ...(novasObs !== os.observacoes ? { observacoes: novasObs } : {}),
     })
-    // Cria lançamentos no Financeiro (fire-and-forget, best-effort).
-    // - Pagamento à vista (PIX/Cartão/etc): cria receita pago + despesa de taxa em D+1 útil
-    // - A prazo: cria N receitas em aberto (1 por parcela)
     persistirLancamentosDoPagamento(os, {
       valor, forma, taxa_pct,
       parcelasAPrazo: parcelasAPrazo || [],
     })
-    // Estamos na etapa Pagamento, então quitar fecha pra Concluído
     if (novoPago === 'total') {
       const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
       if (concluido) onMoverOS(os.numero, concluido.id)
     }
   }
 
-  // ─── Caso 1: OS já quitada — atalho pra Concluído
-  if (aPagar <= 0) {
-    return (
-      <BlocoAcao
-        T={T} dark={dark}
-        icon="ti-circle-check"
-        etapa="Pagamento quitado"
-        descricao="Recebimento completo. Avance pra Concluído pelo footer ou pelo botão abaixo."
-        tom="verde"
-      >
-        <ResumoFinanceiro
-          T={T} dark={dark}
-          total={total} valorPago={valorPago} aPagar={0}
-          formaAnterior={os.forma_pagamento}
-        />
-        <button
-          onClick={() => {
-            const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
-            if (concluido) onMoverOS(os.numero, concluido.id)
-          }}
-          style={{
-            padding: '11px 16px', borderRadius: 8, border: 'none',
-            background: verde, color: '#fff',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-          <i className="ti ti-arrow-right" style={{ fontSize: 16 }} aria-hidden="true" />
-          Marcar OS como Concluída
-        </button>
-      </BlocoAcao>
-    )
+  function irParaConcluido() {
+    const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
+    if (concluido) onMoverOS(os.numero, concluido.id)
   }
 
-  // ─── Caso 2: tem saldo — resumo + FormRecebimento
   return (
-    <BlocoAcao
-      T={T} dark={dark}
-      icon="ti-cash-banknote"
-      etapa="Pagamento"
-      descricao={valorPago > 0
-        ? 'Receba o saldo restante ou envie o link de cobrança pro cliente.'
-        : 'Receba o pagamento ou envie o link InfinitePay D+1 pro cliente.'}
-    >
-      <ResumoFinanceiro
-        T={T} dark={dark}
-        total={total} valorPago={valorPago} aPagar={aPagar}
-        formaAnterior={os.forma_pagamento}
-      />
-      <FormRecebimento
-        T={T} dark={dark}
-        saldo={aPagar}
-        onConfirmar={handleConfirmar}
-        onEnviarLink={() => {/* Módulo 03: API InfinitePay */}}
-        onGerarPix={() => {/* Módulo 03: QR PIX dinâmico */}}
-      />
-    </BlocoAcao>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Resumo financeiro — sempre visivel */}
+      <SubBloco T={T} dark={dark}
+        icon={quitado ? 'circle-check' : 'cash-banknote'}
+        label={quitado ? 'Pagamento quitado' : 'A receber'}
+        color={quitado ? 'green' : 'blue'}>
+        <ResumoFinanceiro
+          T={T} dark={dark}
+          total={total} valorPago={valorPago} aPagar={aPagar}
+          formaAnterior={os.forma_pagamento}
+        />
+      </SubBloco>
+
+      {/* Form de recebimento OU botao concluir */}
+      {quitado ? (
+        <button onClick={irParaConcluido}
+          style={{
+            minHeight: 42, padding: '0 14px', borderRadius: 9, border: 'none',
+            background: PALETA.greenStrong, color: '#fff',
+            fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+            cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <TI name="arrow-right" size={15} />
+          Marcar OS como Concluída
+        </button>
+      ) : (
+        <SubBloco T={T} dark={dark} icon="wallet" label="Receber pagamento" color="blue">
+          <FormRecebimento
+            T={T} dark={dark}
+            saldo={aPagar}
+            onConfirmar={handleConfirmar}
+            onEnviarLink={() => {/* Módulo 03: API InfinitePay */}}
+            onGerarPix={() => {/* Módulo 03: QR PIX dinâmico */}}
+          />
+        </SubBloco>
+      )}
+    </div>
   )
 }
 
-// ─── Sub-componente: resumo financeiro (total / pago / a receber) ──────────
+// ─── Resumo financeiro compacto ───────────────────────────────────────────
 function ResumoFinanceiro({ T, dark, total, valorPago, aPagar, formaAnterior }) {
-  const verde = corEtapa('green', dark)
+  const verde = PALETA.greenStrong
   return (
-    <div style={{
-      background: T.cardAlt, border: `1px solid ${T.border}`,
-      borderRadius: 8, padding: '12px 14px',
-      display: 'flex', flexDirection: 'column', gap: 6,
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <LinhaRes T={T} label="Total da OS" valor={fmtBRL(total, { fr: true })} />
       {valorPago > 0 && (
         <LinhaRes
@@ -147,18 +163,18 @@ function ResumoFinanceiro({ T, dark, total, valorPago, aPagar, formaAnterior }) 
           cor={verde}
         />
       )}
-      <div style={{ height: 1, background: T.border, margin: '4px 0' }} />
+      <div style={{ height: 1, background: T.border, margin: '3px 0' }} />
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
       }}>
         <span style={{
-          fontSize: 11, color: T.textMuted, fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: '.3px',
+          fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '.06em',
         }}>{aPagar > 0 ? 'A receber' : 'Saldo'}</span>
         <span style={{
           fontSize: 20, fontWeight: 700,
           color: aPagar > 0 ? T.textPrimary : verde,
-          fontVariantNumeric: 'tabular-nums',
+          fontVariantNumeric: 'tabular-nums', letterSpacing: '-.01em',
         }}>
           {aPagar > 0 ? fmtBRL(aPagar, { fr: true }) : '✓ quitado'}
         </span>
@@ -174,7 +190,7 @@ function LinhaRes({ T, label, valor, cor: c }) {
       fontSize: 12, color: T.textMuted,
     }}>
       <span>{label}</span>
-      <span style={{ fontWeight: 600, color: c || T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ fontWeight: 600, color: c || T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
         {valor}
       </span>
     </div>
