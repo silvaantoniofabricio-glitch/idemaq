@@ -253,15 +253,10 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
 }
 
 // ─── Card de totais ───────────────────────────────────────────────────────────
-function TotaisCard({
-  T, dark, subtotais, subtotalBruto, total,
-  descontoRS, onChangeRS, onChangePct, onCommit,
-}) {
+function TotaisCard({ T, dark, subtotais, descontoRS, subtotalBruto, total }) {
   const azul = corEtapa('blue', dark)
-  const vermelho = corEtapa('red', dark)
   const cor = (d, c) => dark ? d : c
-  const podeAplicarDesc = subtotalBruto > 0
-  const descontoPctCalc = podeAplicarDesc ? (descontoRS / subtotalBruto * 100) : 0
+  const temDesc = descontoRS > 0
 
   return (
     <div style={{
@@ -290,6 +285,27 @@ function TotaisCard({
         </div>
       ))}
 
+      {/* Linha desconto (se houver) */}
+      {temDesc && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px',
+          borderTop: `1px solid ${T.border}`,
+          fontSize: 13.5, color: T.textSecondary,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <i className="ti ti-tag" style={{ fontSize: 14, color: corEtapa('red', dark) }} aria-hidden="true" />
+            <span>Desconto</span>
+          </div>
+          <span style={{
+            fontWeight: 600, color: corEtapa('red', dark),
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            − {fmtBRL(descontoRS)}
+          </span>
+        </div>
+      )}
+
       {/* Linha total */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -301,52 +317,136 @@ function TotaisCard({
           fontSize: 11, fontWeight: 700, color: T.textMuted,
           textTransform: 'uppercase', letterSpacing: '.06em',
         }}>
-          {descontoRS > 0 ? 'Total c/ desconto' : 'Total'}
+          Total
         </span>
-        <div style={{ textAlign: 'right' }}>
-          {descontoRS > 0 && (
-            <div style={{
-              fontSize: 11, color: T.textMuted,
-              textDecoration: 'line-through',
-              fontVariantNumeric: 'tabular-nums',
-            }}>{fmtBRL(subtotalBruto)}</div>
+        <span style={{
+          fontSize: 26, fontWeight: 700, color: T.textPrimary,
+          fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em',
+        }}>
+          {fmtBRL(total)}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Bloco Desconto — mesma visual do GrupoBlock ──────────────────────────────
+// Quando vazio: header + botão "+ Adicionar um desconto".
+// Ao adicionar: expande 2 campos R$ ↔ % interligados.
+function DescontoBlock({
+  T, dark,
+  subtotalBruto, descontoRS,
+  onChangeRS, onChangePct, onCommit, onRemove,
+}) {
+  const vermelho = corEtapa('red', dark)
+  const bgRed = dark ? 'rgba(192,66,66,0.16)' : '#FDECEC'
+  const podeAplicar = subtotalBruto > 0
+  const ativo = descontoRS > 0
+  const [editando, setEditando] = useState(ativo)
+  const pct = podeAplicar ? (descontoRS / subtotalBruto * 100) : 0
+
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      {/* Cabeçalho (mesma visual dos GrupoBlock) */}
+      <div style={{
+        padding: '10px 14px',
+        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
+        borderBottom: editando ? `1px solid ${T.border}` : 'none',
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <span style={{
+          width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+          background: bgRed, color: vermelho,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <i className="ti ti-tag" style={{ fontSize: 14 }} aria-hidden="true" />
+        </span>
+        <span style={{
+          flex: 1, fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+        }}>
+          Desconto
+          {ativo && (
+            <span style={{ fontWeight: 400, color: T.textMuted, marginLeft: 5 }}>
+              · {pct.toFixed(1).replace('.', ',')}%
+            </span>
           )}
-          <div style={{
-            fontSize: 26, fontWeight: 700, color: T.textPrimary,
-            fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em',
-            lineHeight: 1,
+        </span>
+        {ativo && (
+          <span style={{
+            fontSize: 14, fontWeight: 700, color: vermelho,
+            fontVariantNumeric: 'tabular-nums',
           }}>
-            {fmtBRL(total)}
-          </div>
-        </div>
+            − {fmtBRL(descontoRS)}
+          </span>
+        )}
       </div>
 
-      {/* Desconto interligado R$ ↔ % */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
-        padding: '12px 14px',
-        borderTop: `1px dashed ${azul}44`,
-        background: cor('rgba(0,0,0,0.12)', 'rgba(255,255,255,0.4)'),
-      }}>
-        <DescontoCampo
-          T={T} dark={dark}
-          label="Desconto R$" prefix="R$"
-          value={descontoRS > 0 ? Number(descontoRS).toFixed(2).replace('.', ',') : ''}
-          onChange={(v) => onChangeRS(String(v).replace(',', '.'))}
-          onCommit={onCommit}
-          disabled={!podeAplicarDesc}
-          accent={vermelho}
-        />
-        <DescontoCampo
-          T={T} dark={dark}
-          label="Desconto %" suffix="%"
-          value={descontoPctCalc > 0 ? descontoPctCalc.toFixed(1).replace('.', ',') : ''}
-          onChange={(v) => onChangePct(String(v).replace(',', '.'))}
-          onCommit={onCommit}
-          disabled={!podeAplicarDesc}
-          accent={vermelho}
-        />
-      </div>
+      {/* Campos R$ ↔ % (quando editando) */}
+      {editando && (
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+          padding: '12px 14px',
+        }}>
+          <DescontoCampo
+            T={T} dark={dark}
+            label="Valor" prefix="R$"
+            value={descontoRS > 0 ? Number(descontoRS).toFixed(2).replace('.', ',') : ''}
+            onChange={(v) => onChangeRS(String(v).replace(',', '.'))}
+            onCommit={onCommit}
+            disabled={!podeAplicar}
+            accent={vermelho}
+          />
+          <DescontoCampo
+            T={T} dark={dark}
+            label="Percentual" suffix="%"
+            value={pct > 0 ? pct.toFixed(1).replace('.', ',') : ''}
+            onChange={(v) => onChangePct(String(v).replace(',', '.'))}
+            onCommit={onCommit}
+            disabled={!podeAplicar}
+            accent={vermelho}
+          />
+        </div>
+      )}
+
+      {/* Botão (adicionar OU remover quando ativo) */}
+      {!editando ? (
+        <button
+          type="button"
+          onClick={() => podeAplicar && setEditando(true)}
+          disabled={!podeAplicar}
+          style={{
+            width: '100%', height: 44, padding: '0 14px',
+            background: 'transparent', border: 'none',
+            color: vermelho, fontWeight: 600, fontSize: 13.5,
+            cursor: podeAplicar ? 'pointer' : 'not-allowed',
+            opacity: podeAplicar ? 1 : 0.5,
+            fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 7,
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
+          Adicionar um desconto
+        </button>
+      ) : ativo && (
+        <button
+          type="button"
+          onClick={() => { onRemove(); setEditando(false) }}
+          style={{
+            width: '100%', height: 38, padding: '0 14px',
+            background: 'transparent', border: 'none',
+            borderTop: `1px dashed ${T.border}`,
+            color: T.textMuted, fontWeight: 500, fontSize: 12,
+            cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <i className="ti ti-trash" style={{ fontSize: 13 }} aria-hidden="true" />
+          Remover desconto
+        </button>
+      )}
     </div>
   )
 }
@@ -363,12 +463,12 @@ function DescontoCampo({ T, dark, label, prefix, suffix, value, onChange, onComm
       }}>{label}</span>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 4,
-        padding: '6px 9px', borderRadius: 7,
+        padding: '8px 10px', borderRadius: 7,
         border: `1px solid ${T.border}`,
         background: T.bg,
       }}>
         {prefix && (
-          <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>{prefix}</span>
+          <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 600, flexShrink: 0 }}>{prefix}</span>
         )}
         <input
           type="text" inputMode="decimal"
@@ -388,7 +488,7 @@ function DescontoCampo({ T, dark, label, prefix, suffix, value, onChange, onComm
           }}
         />
         {suffix && (
-          <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>{suffix}</span>
+          <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 600, flexShrink: 0 }}>{suffix}</span>
         )}
       </div>
     </label>
@@ -653,16 +753,25 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onAbrirAba }) {
         </React.Fragment>
       ))}
 
-      {/* Totais + Desconto */}
-      <TotaisCard
+      {/* Bloco Desconto — mesma visual dos GrupoBlock acima.
+          Vazio: só mostra "+ Adicionar um desconto". Ativo: 2 campos R$↔%. */}
+      <DescontoBlock
         T={T} dark={dark}
-        subtotais={subtotais}
         subtotalBruto={subtotalBruto}
-        total={total}
         descontoRS={descontoRS}
         onChangeRS={aplicarDescontoRS}
         onChangePct={aplicarDescontoPct}
         onCommit={persistDesconto}
+        onRemove={() => { setDescontoRS(0); onUpdateOS?.(os.numero, { desconto: 0 }) }}
+      />
+
+      {/* Totais */}
+      <TotaisCard
+        T={T} dark={dark}
+        subtotais={subtotais}
+        descontoRS={descontoRS}
+        subtotalBruto={subtotalBruto}
+        total={total}
       />
 
       {/* Status do orçamento */}
