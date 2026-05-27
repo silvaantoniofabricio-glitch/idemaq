@@ -30,7 +30,7 @@ import FormEquipamentoEdit from './FormEquipamentoEdit'
 
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
-  { id: 'relatorio', label: 'Relatório', icon: 'ti-report' },
+  { id: 'relatorio', label: 'Resumo', icon: 'ti-report' },
   { id: 'pagamento', label: 'Pagamento', icon: 'ti-cash-banknote' },
 ]
 
