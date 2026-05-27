@@ -60,7 +60,7 @@ export function useOS(buscando = false) {
           valor_total, desconto, pago, valor_pago, forma_pagamento,
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
-          prazo, data_conclusao, criado_em, atualizado_em,
+          prazo, data_agendamento, data_conclusao, criado_em, atualizado_em,
           cliente_id,
           marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado,
           pre_diagnostico, observacoes,
@@ -129,6 +129,7 @@ export function useOS(buscando = false) {
           pre_diagnostico: os.pre_diagnostico || null,
           // Datas convertidas para Cuiabá
           prazo: os.prazo ? toCuiaba(os.prazo) : null,
+          data_agendamento: os.data_agendamento || null,
           data_conclusao: os.data_conclusao || null,
           abertura: toCuiaba(os.criado_em),
           // Histórico legado em memória (campo os.historico) pra Header/Timeline.
