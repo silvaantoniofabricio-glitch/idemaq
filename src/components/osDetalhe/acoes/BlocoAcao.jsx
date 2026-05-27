@@ -37,9 +37,14 @@ export default function BlocoAcao({ T, dark, icon, etapa, descricao, children, t
   }
   const c = tons[tom] || tons.amarelo
 
+  // DEV ONLY: zera o fundo tonalizado quando rodando local (npm run dev)
+  // pra facilitar comparação visual com a versão do Vercel. Build de
+  // produção (import.meta.env.DEV === false) mantém o tom original.
+  const bgFinal = import.meta.env.DEV ? 'transparent' : c.bg
+
   return (
     <div style={{
-      background: c.bg,
+      background: bgFinal,
       border: `1.5px solid ${c.border}`,
       borderRadius: 10,
       padding: '14px 16px',
