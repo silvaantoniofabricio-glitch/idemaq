@@ -42,6 +42,14 @@ const PRE_TONES = {
   barulho: { tone: 'yellow', icon: 'volume' },
 };
 
+// Divide array em pares (2 colunas). Pra expandir lista embaixo da LINHA
+// que tem o grupo ativo, em vez de embaixo de toda a grid.
+function chunkPairs(arr) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += 2) out.push(arr.slice(i, i + 2));
+  return out;
+}
+
 // ─── SubBloco compacto (mesmo padrão V2 das outras etapas) ────────────────
 function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
   const colorMap = {
@@ -80,33 +88,38 @@ function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
 }
 
 // ─── Pill compacta de grupo (Motor, Água, Elétrico...) ────────────────────
-const GrupoChip = ({ T, grupo, marcados, aberto, onClick }) => (
-  <button type="button" onClick={onClick}
-    style={{
-      background: aberto ? PALETA.blueBg : T.bg,
-      border: `1px solid ${aberto ? PALETA.blueStrong : T.border}`,
-      borderRadius: 8, padding: '7px 9px', minHeight: 48,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'flex-start', justifyContent: 'center', gap: 2,
-      cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-      WebkitTapHighlightColor: 'transparent',
-    }}>
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      fontSize: 12, fontWeight: 600, color: aberto ? PALETA.blueStrong : T.textPrimary,
-    }}>
-      <TI name={grupo.icon} size={13} color={aberto ? PALETA.blueStrong : T.textMuted} />
-      {grupo.label}
-    </span>
-    <span style={{
-      fontSize: 10, color: marcados > 0 ? PALETA.blueStrong : T.textMuted,
-      fontWeight: marcados > 0 ? 700 : 500,
-      fontVariantNumeric: 'tabular-nums',
-    }}>
-      {marcados}/{grupo.total}{marcados > 0 ? ' marcados' : ''}
-    </span>
-  </button>
-);
+const GrupoChip = ({ T, dark, grupo, marcados, aberto, onClick }) => {
+  // Fundo escuro com tint azul quando aberto (em vez do PALETA.blueBg claro)
+  const bgAberto = dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg;
+  const fgAtivo = dark ? PALETA.blue : PALETA.blueStrong;
+  return (
+    <button type="button" onClick={onClick}
+      style={{
+        background: aberto ? bgAberto : T.bg,
+        border: `1px solid ${aberto ? PALETA.blueStrong : T.border}`,
+        borderRadius: 8, padding: '7px 9px', minHeight: 48,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'flex-start', justifyContent: 'center', gap: 2,
+        cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        fontSize: 12, fontWeight: 600, color: aberto ? fgAtivo : T.textPrimary,
+      }}>
+        <TI name={grupo.icon} size={13} color={aberto ? fgAtivo : T.textMuted} />
+        {grupo.label}
+      </span>
+      <span style={{
+        fontSize: 10, color: marcados > 0 ? fgAtivo : T.textMuted,
+        fontWeight: marcados > 0 ? 700 : 500,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {marcados}/{grupo.total}{marcados > 0 ? ' marcados' : ''}
+      </span>
+    </button>
+  );
+};
 
 // ─── Lista de itens do grupo aberto ───────────────────────────────────────
 const ItensDoGrupo = ({ T, itens, marcados, onToggle }) => (
@@ -303,34 +316,41 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
           }}
         />
 
-        {/* Grid de grupos */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
-        }}>
-          {grupos.map(g => (
-            <GrupoChip key={g.id} T={T} grupo={g}
-              marcados={(marcadosPorGrupo[g.id] || []).length}
-              aberto={grupoAberto === g.id}
-              onClick={() => setGrupoAberto(grupoAberto === g.id ? null : g.id)} />
-          ))}
-        </div>
-
-        {/* Lista de itens do grupo aberto */}
-        {grupoAberto && itensAtuais.length > 0 && (
-          <div style={{ marginTop: 8 }}>
-            <ItensDoGrupo T={T} itens={itensAtuais}
-              marcados={marcadosPorGrupo[grupoAberto] || []}
-              onToggle={toggleItem} />
-          </div>
-        )}
-        {grupoAberto && itensAtuais.length === 0 && (
-          <div style={{
-            marginTop: 8,
-            background: T.bg, border: `1px dashed ${T.border}`,
-            borderRadius: 8, padding: 12, textAlign: 'center',
-            fontSize: 12, color: T.textMuted,
-          }}>Nenhum item encontrado nesse grupo.</div>
-        )}
+        {/* Grupos agrupados em linhas de 2. A lista do grupo aberto
+            aparece logo abaixo da LINHA dele (não no fim). */}
+        {chunkPairs(grupos).map((par, rowIdx) => {
+          const rowContemAberto = par.some(g => g.id === grupoAberto);
+          return (
+            <React.Fragment key={rowIdx}>
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
+                marginTop: rowIdx === 0 ? 0 : 6,
+              }}>
+                {par.map(g => (
+                  <GrupoChip key={g.id} T={T} dark={dark} grupo={g}
+                    marcados={(marcadosPorGrupo[g.id] || []).length}
+                    aberto={grupoAberto === g.id}
+                    onClick={() => setGrupoAberto(grupoAberto === g.id ? null : g.id)} />
+                ))}
+              </div>
+              {rowContemAberto && itensAtuais.length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <ItensDoGrupo T={T} itens={itensAtuais}
+                    marcados={marcadosPorGrupo[grupoAberto] || []}
+                    onToggle={toggleItem} />
+                </div>
+              )}
+              {rowContemAberto && itensAtuais.length === 0 && (
+                <div style={{
+                  marginTop: 6,
+                  background: T.bg, border: `1px dashed ${T.border}`,
+                  borderRadius: 8, padding: 12, textAlign: 'center',
+                  fontSize: 12, color: T.textMuted,
+                }}>Nenhum item encontrado nesse grupo.</div>
+              )}
+            </React.Fragment>
+          );
+        })}
       </SubBloco>
 
       {/* CTA amarelo — concluir diagnóstico → Orçamento */}
