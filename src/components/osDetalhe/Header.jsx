@@ -31,7 +31,7 @@ import FormEquipamentoEdit from './FormEquipamentoEdit'
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
   { id: 'relatorio', label: 'Resumo', icon: 'ti-report' },
-  { id: 'pagamento', label: 'Pagamento', icon: 'ti-cash-banknote' },
+  { id: 'pagamento', label: 'A receber', icon: 'ti-cash-banknote' },
 ]
 
 export default function Header({

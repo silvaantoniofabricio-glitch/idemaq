@@ -5,7 +5,7 @@ import { TI, PALETA } from '../_shared/PrimitivasMobile';
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'checkup-list' },
   { id: 'relatorio', label: 'Resumo', icon: 'report' },
-  { id: 'pagamento', label: 'Pagamento', icon: 'cash-banknote' },
+  { id: 'pagamento', label: 'A receber', icon: 'cash-banknote' },
 ];
 
 const BADGE_TONE = {

@@ -142,15 +142,15 @@ function fmtHorasMin(min) {
 
 // Label amigável das etapas (DB → UI)
 const LABEL_ETAPA = {
-  aguardando_agendamento: 'Aguardando agendamento',
-  agendamento:            'Agendamento',
-  recebido:               'Recebido',
+  aguardando_agendamento: 'Agenda',
+  agendamento:            'Coleta',
+  recebido:               'Avaliação',
   diagnostico:            'Diagnóstico',
   orcamento:              'Orçamento',
-  em_oficina:             'Em oficina',
-  teste_final:            'Teste final',
+  em_oficina:             'Conserto',
+  teste_final:            'Teste',
   entrega:                'Entrega',
-  pagamento:              'Pagamento',
+  pagamento:              'A receber',
   concluido:              'Concluído',
   recusado:               'Recusado',
 }

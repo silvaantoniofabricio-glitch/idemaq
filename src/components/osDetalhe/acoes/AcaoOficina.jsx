@@ -8,7 +8,7 @@ const ETAPAS_SEQ = [
   { id: 'recebido',    label: 'Pré-diagnóstico' },
   { id: 'diagnostico', label: 'Diagnóstico' },
   { id: 'orcamento',   label: 'Orçamento' },
-  { id: 'oficina',     label: 'Em oficina' },
+  { id: 'oficina',     label: 'Conserto' },
 ];
 
 const StepTrail = ({ os, onAbrirAba }) => {

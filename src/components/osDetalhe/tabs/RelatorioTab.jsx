@@ -22,17 +22,17 @@ import { resolverFotoUrl, FOTO_STORAGE_MARKER } from '../../../utils/osStorage'
 
 // ─── Mapeamento de etapas pra ícone + cor ────────────────────────────────────
 const ETAPA_META = {
-  ag_agendamento:  { icon: 'ti-calendar-time',      cor: 'neutro', label: 'Ag. agendamento' },
-  agendado:        { icon: 'ti-calendar-event',      cor: 'blue',   label: 'Agendado' },
-  recebido:        { icon: 'ti-clipboard-check',     cor: 'blue',   label: 'Recebido' },
+  ag_agendamento:  { icon: 'ti-calendar-time',      cor: 'neutro', label: 'Agenda' },
+  agendado:        { icon: 'ti-calendar-event',      cor: 'blue',   label: 'Coleta' },
+  recebido:        { icon: 'ti-clipboard-check',     cor: 'blue',   label: 'Avaliação' },
   diagnostico:     { icon: 'ti-stethoscope',         cor: 'yellow', label: 'Diagnóstico' },
   orcamento:       { icon: 'ti-receipt',             cor: 'yellow', label: 'Orçamento' },
-  oficina:         { icon: 'ti-tool',                cor: 'yellow', label: 'Em oficina' },
-  teste_final:     { icon: 'ti-flask',               cor: 'blue',   label: 'Teste final' },
+  oficina:         { icon: 'ti-tool',                cor: 'yellow', label: 'Conserto' },
+  teste_final:     { icon: 'ti-flask',               cor: 'blue',   label: 'Teste' },
   entrega:         { icon: 'ti-truck-delivery',      cor: 'blue',   label: 'Entrega' },
-  pagamento:       { icon: 'ti-cash-banknote',       cor: 'blue',   label: 'Pagamento' },
+  pagamento:       { icon: 'ti-cash-banknote',       cor: 'blue',   label: 'A receber' },
   concluido:       { icon: 'ti-circle-check',        cor: 'green',  label: 'Concluído' },
-  recusado:        { icon: 'ti-circle-x',            cor: 'red',    label: 'Recusada' },
+  recusado:        { icon: 'ti-circle-x',            cor: 'red',    label: 'Recusado' },
 }
 
 export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {

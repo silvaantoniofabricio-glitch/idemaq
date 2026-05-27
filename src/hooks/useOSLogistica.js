@@ -42,11 +42,11 @@ export function tipoParadaPorEtapa(etapaDb) {
 // Label amigável pra UI
 export function labelEtapa(etapaDb) {
   switch (etapaDb) {
-    case 'aguardando_agendamento': return 'Aguardando agendamento'
-    case 'agendamento': return 'Agendado'
-    case 'teste_final': return 'Teste final'
+    case 'aguardando_agendamento': return 'Agenda'
+    case 'agendamento': return 'Coleta'
+    case 'teste_final': return 'Teste'
     case 'entrega': return 'Entrega'
-    case 'pagamento': return 'Pagamento'
+    case 'pagamento': return 'A receber'
     default: return etapaDb
   }
 }
@@ -123,9 +123,9 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
 
 // Constantes exportadas pra UI de filtros
 export const FILTROS_ETAPA_LOGISTICA = [
-  { id: 'aguardando_agendamento', label: 'Aguardando agendamento', cor: 'amarelo', icon: 'ti-calendar-question' },
-  { id: 'agendamento',            label: 'Agendado',               cor: 'blue',    icon: 'ti-calendar-check' },
-  { id: 'teste_final',            label: 'Teste final',            cor: 'yellow',  icon: 'ti-flask' },
+  { id: 'aguardando_agendamento', label: 'Agenda',                 cor: 'amarelo', icon: 'ti-calendar-question' },
+  { id: 'agendamento',            label: 'Coleta',                 cor: 'blue',    icon: 'ti-calendar-check' },
+  { id: 'teste_final',            label: 'Teste',                  cor: 'yellow',  icon: 'ti-flask' },
   { id: 'entrega',                label: 'Entrega',                cor: 'green',   icon: 'ti-truck-delivery' },
-  { id: 'pagamento',              label: 'Pagamento',              cor: 'orange',  icon: 'ti-cash' },
+  { id: 'pagamento',              label: 'A receber',              cor: 'orange',  icon: 'ti-cash' },
 ]
