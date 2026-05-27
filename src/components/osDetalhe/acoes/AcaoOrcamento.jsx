@@ -1103,9 +1103,8 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
   // (capa, mangueira de entrada/saida, etc). Tecnico nao esquece.
   // Padrao: { regex match → frase pra anexar nas obs }
   const LEMBRETES_ENTREGA = [
-    { rx: /\bcapa\b/i,         frase: 'Levar a capa na entrega' },
+    { rx: /\bcapa\b/i,           frase: 'Levar a capa na entrega' },
     { rx: /mangueira.*entrada/i, frase: 'Levar mangueira de entrada na entrega' },
-    { rx: /mangueira.*saida/i,   frase: 'Levar mangueira de saída na entrega' },
   ]
 
   function lembreteParaItem(nome) {
