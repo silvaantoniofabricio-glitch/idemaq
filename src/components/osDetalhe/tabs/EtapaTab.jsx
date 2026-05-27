@@ -89,14 +89,26 @@ function AlertaObservacoes({ os }) {
 }
 
 export default function EtapaTab(props) {
+  const { T, dark } = useTheme()
   const Componente = MAP[props.os.etapa]
+
+  // Moldura amarela em volta da area de execucao da etapa (sem o titulo
+  // "FAZER AGORA" — so o fundo + borda) pra deixar visual igual ao antigo.
+  const molduraAmarela = {
+    background: dark ? 'rgba(255,217,102,0.06)' : 'rgba(255,217,102,0.12)',
+    border: `1.5px solid ${PALETA.yellowStrong}66`,
+    borderRadius: 10,
+    padding: 10,
+  }
 
   return (
     <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <AlertaObservacoes os={props.os} />
-      {Componente
-        ? <Componente {...props} />
-        : <SemAcao {...props} />}
+      <div style={molduraAmarela}>
+        {Componente
+          ? <Componente {...props} />
+          : <SemAcao {...props} />}
+      </div>
     </div>
   )
 }
