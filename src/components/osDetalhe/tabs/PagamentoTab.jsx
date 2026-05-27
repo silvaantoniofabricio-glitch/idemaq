@@ -5,6 +5,9 @@ import { useToast } from '../../ui';
 import {
   TI, BtnMobile, MOBILE, PALETA, Group, Input,
 } from '../../_shared/PrimitivasMobile';
+import FormRecebimento from '../FormRecebimento';
+import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro';
+import { fmtBRL } from '../../../utils/fmt';
 
 const TIPOS = [
   { id: 'servico', label: 'serviço', icon: 'tool',    bg: PALETA.blueBg,   fg: PALETA.blueStrong },
@@ -203,7 +206,7 @@ const TotaisCard = ({ subtotal, descontoRS, total }) => {
   );
 };
 
-const PagamentoTab = ({ os, onUpdateOS }) => {
+const PagamentoTab = ({ os, onUpdateOS, onMoverOS }) => {
   const { T, dark } = useTheme();
   const notify = useToast();
   // Itens vem do hook real (tabela os_item) — antes lia de os.orcamento.itens
@@ -308,30 +311,47 @@ const PagamentoTab = ({ os, onUpdateOS }) => {
 
       <TotaisCard subtotal={subtotal} descontoRS={descontoTotal} total={total} />
 
-      <Group label="Forma de pagamento">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {[
-            { id: 'pix',      label: 'PIX',      icon: 'brand-pix' },
-            { id: 'dinheiro', label: 'Dinheiro', icon: 'cash' },
-            { id: 'cartao',   label: 'Cartão',   icon: 'credit-card' },
-            { id: 'boleto',   label: 'Boleto',   icon: 'file-invoice' },
-          ].map(m => (
-            <BtnMobile
-              key={m.id}
-              variant="ghost"
-              icon={m.icon}
-              onClick={() => onUpdateOS?.({ action: 'set_metodo_pagamento', metodo: m.id })}
-              style={{
-                minHeight: 48,
-                background: os?.pagamento?.metodo === m.id ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.card,
-                borderColor: os?.pagamento?.metodo === m.id ? PALETA.blueLight : T.border,
-                color: os?.pagamento?.metodo === m.id ? PALETA.blueStrong : T.textPrimary,
-              }}
-              fullWidth
-            >{m.label}</BtnMobile>
-          ))}
-        </div>
-      </Group>
+      {/* FormRecebimento completo — substituiu os 4 botoes simples (PIX/
+          Dinheiro/Cartao/Boleto) que nao expandiam. Agora "Cartao" abre
+          sub-leque com Debito/Credito 1x-12x/Link 1x-12x e mostra a taxa
+          de cada opcao, com calculo de liquido apos taxa. */}
+      <FormRecebimento
+        T={T} dark={dark}
+        saldo={Math.max(0, total - (os?.valor_pago || 0))}
+        onConfirmar={({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) => {
+          const valorPagoAtual = os?.valor_pago || 0;
+          const novoValorPago = valorPagoAtual + valor;
+          let novoPago = 'total';
+          let novoDesconto = Number(os?.desconto || 0);
+          if (modo === 'parcial') novoPago = 'parcial';
+          else if (modo === 'desconto') {
+            const aPagar = Math.max(0, total - valorPagoAtual);
+            novoDesconto = novoDesconto + (aPagar - valor);
+          }
+          let novasObs = os?.observacoes;
+          if (parcelasAPrazo && parcelasAPrazo.length > 0) {
+            const txt = parcelasAPrazo
+              .map((p, i) => `${i + 1}ª · ${p.data} · ${fmtBRL(p.valor, { fr: true })}`)
+              .join('\n');
+            novasObs = [
+              os?.observacoes,
+              `— A prazo (${parcelasAPrazo.length} ${parcelasAPrazo.length === 1 ? 'parcela' : 'parcelas'}) —\n${txt}`,
+            ].filter(Boolean).join('\n\n');
+          }
+          onUpdateOS?.(os.numero, {
+            valor: subtotal,
+            desconto: novoDesconto,
+            valor_pago: novoValorPago,
+            pago: novoPago,
+            forma_pagamento: forma,
+            ...(novasObs !== os?.observacoes ? { observacoes: novasObs } : {}),
+          });
+          persistirLancamentosDoPagamento(os, {
+            valor, forma, taxa_pct,
+            parcelasAPrazo: parcelasAPrazo || [],
+          });
+        }}
+      />
     </div>
   );
 };
