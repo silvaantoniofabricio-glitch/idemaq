@@ -122,44 +122,84 @@ const GrupoChip = ({ T, dark, grupo, marcados, aberto, onClick }) => {
   );
 };
 
-// ─── Lista de itens do grupo aberto ───────────────────────────────────────
-const ItensDoGrupo = ({ T, itens, marcados, onToggle }) => (
+// ─── Botão de ação (Troca / Manutenção) ───────────────────────────────────
+const AcaoBtn = ({ T, dark, ativo, tone, icon, label, onClick }) => {
+  // tone: 'red' (Troca) | 'yellow' (Manutenção)
+  const palette = tone === 'red'
+    ? { fg: PALETA.redStrong,    bgOn: dark ? 'rgba(192,66,66,0.22)'   : PALETA.redBg,    bdOn: PALETA.redStrong }
+    : { fg: PALETA.yellowStrong, bgOn: dark ? 'rgba(255,217,102,0.22)' : PALETA.yellowBg, bdOn: '#E5BD3E' };
+  return (
+    <button type="button" onClick={onClick}
+      style={{
+        flex: 1, minWidth: 0, padding: '5px 6px',
+        borderRadius: 6,
+        border: `1px solid ${ativo ? palette.bdOn : T.border}`,
+        background: ativo ? palette.bgOn : 'transparent',
+        color: ativo ? palette.fg : T.textMuted,
+        fontSize: 11, fontWeight: ativo ? 700 : 500, fontFamily: 'inherit',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      }}>
+      <TI name={icon} size={11} />
+      {label}
+    </button>
+  );
+};
+
+// ─── Lista de itens do grupo aberto (com Troca/Manutenção por item) ──────
+const ItensDoGrupo = ({ T, dark, itens, marcados, onSetAcao }) => (
   <div style={{
     background: T.bg, border: `1px solid ${T.border}`,
     borderRadius: 8, overflow: 'hidden',
     display: 'flex', flexDirection: 'column',
   }}>
     {itens.map((it, idx) => {
-      const ativo = marcados.includes(it.id);
+      const acao = marcados[it.id]; // 'troca' | 'manutencao' | undefined
+      const ativo = !!acao;
       return (
-        <button key={it.id} type="button" onClick={() => onToggle(it.id)}
+        <div key={it.id}
           style={{
-            display: 'flex', alignItems: 'center', gap: 9,
-            padding: '8px 10px', fontSize: 13, border: 'none',
-            background: ativo ? (PALETA.blueBg + '88') : 'transparent',
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '6px 8px',
+            background: ativo
+              ? (dark ? 'rgba(91,155,213,0.10)' : (PALETA.blueBg + '55'))
+              : 'transparent',
             borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
-            cursor: 'pointer', width: '100%', textAlign: 'left',
-            fontFamily: 'inherit',
-            WebkitTapHighlightColor: 'transparent',
           }}>
           <span style={{
-            width: 18, height: 18, borderRadius: 4,
-            border: `1.5px solid ${ativo ? PALETA.blueStrong : '#D1D5DB'}`,
-            background: ativo ? PALETA.blue : 'transparent',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', flexShrink: 0,
-          }}>
-            {ativo && <TI name="check" size={12} />}
-          </span>
-          <span style={{
-            flex: 1, color: ativo ? PALETA.blueStrong : T.textPrimary,
+            flex: 1, minWidth: 0, fontSize: 12.5,
+            color: ativo ? T.textPrimary : T.textPrimary,
             fontWeight: ativo ? 600 : 500,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{it.label}</span>
-        </button>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            <AcaoBtn T={T} dark={dark} tone="red" icon="replace"
+              ativo={acao === 'troca'} label="Troca"
+              onClick={() => onSetAcao(it.id, acao === 'troca' ? null : 'troca')} />
+            <AcaoBtn T={T} dark={dark} tone="yellow" icon="tool"
+              ativo={acao === 'manutencao'} label="Manut."
+              onClick={() => onSetAcao(it.id, acao === 'manutencao' ? null : 'manutencao')} />
+          </div>
+        </div>
       );
     })}
   </div>
 );
+
+// Migra estado antigo (array de ids) pro novo (objeto { id: 'troca' })
+function normalizeMarcados(raw) {
+  const out = {};
+  for (const [grupoId, val] of Object.entries(raw || {})) {
+    if (Array.isArray(val)) {
+      out[grupoId] = Object.fromEntries(val.map(id => [id, 'troca']));
+    } else if (val && typeof val === 'object') {
+      out[grupoId] = val;
+    } else {
+      out[grupoId] = {};
+    }
+  }
+  return out;
+}
 
 const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
   const { T, dark } = useTheme();
@@ -168,7 +208,7 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
   const preDiagSalvo = os?.pre_diagnostico || {};
   const [causa, setCausa] = useState(preDiagSalvo.causa_diagnostico || '');
   const [marcadosPorGrupo, setMarcadosPorGrupo] = useState(
-    preDiagSalvo.componentes_marcados || {}
+    normalizeMarcados(preDiagSalvo.componentes_marcados)
   );
   const [busca, setBusca] = useState('');
   const [grupoAberto, setGrupoAberto] = useState(null);
@@ -177,7 +217,7 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
   // Re-sincroniza se a OS mudar (Realtime)
   useEffect(() => {
     setCausa(os?.pre_diagnostico?.causa_diagnostico || '');
-    setMarcadosPorGrupo(os?.pre_diagnostico?.componentes_marcados || {});
+    setMarcadosPorGrupo(normalizeMarcados(os?.pre_diagnostico?.componentes_marcados));
   }, [os?.id]);
 
   // Resumo dos testes do Pré-diagnóstico (vem do checklist_etapa='recebido')
@@ -196,18 +236,20 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
     return base.filter(i => i.label.toLowerCase().includes(q));
   }, [grupoAberto, busca]);
 
-  const toggleItem = (itemId) => {
+  const setAcaoItem = (itemId, acao) => {
     setMarcadosPorGrupo(prev => {
-      const atual = prev[grupoAberto] || [];
-      const novo = atual.includes(itemId)
-        ? atual.filter(x => x !== itemId)
-        : [...atual, itemId];
-      return { ...prev, [grupoAberto]: novo };
+      const atual = { ...(prev[grupoAberto] || {}) };
+      if (acao === null || acao === undefined) {
+        delete atual[itemId];
+      } else {
+        atual[itemId] = acao;
+      }
+      return { ...prev, [grupoAberto]: atual };
     });
   };
 
   const totalMarcados = Object.values(marcadosPorGrupo).reduce(
-    (s, arr) => s + (arr?.length || 0), 0
+    (s, obj) => s + Object.keys(obj || {}).length, 0
   );
   const podeConcluir = causa.trim().length > 0 && totalMarcados > 0;
 
@@ -362,16 +404,16 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
               }}>
                 {par.map(g => (
                   <GrupoChip key={g.id} T={T} dark={dark} grupo={g}
-                    marcados={(marcadosPorGrupo[g.id] || []).length}
+                    marcados={Object.keys(marcadosPorGrupo[g.id] || {}).length}
                     aberto={grupoAberto === g.id}
                     onClick={() => setGrupoAberto(grupoAberto === g.id ? null : g.id)} />
                 ))}
               </div>
               {rowContemAberto && itensAtuais.length > 0 && (
                 <div style={{ marginTop: 6 }}>
-                  <ItensDoGrupo T={T} itens={itensAtuais}
-                    marcados={marcadosPorGrupo[grupoAberto] || []}
-                    onToggle={toggleItem} />
+                  <ItensDoGrupo T={T} dark={dark} itens={itensAtuais}
+                    marcados={marcadosPorGrupo[grupoAberto] || {}}
+                    onSetAcao={setAcaoItem} />
                 </div>
               )}
               {rowContemAberto && itensAtuais.length === 0 && (
