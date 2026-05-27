@@ -1,34 +1,78 @@
 // src/components/osDetalhe/acoes/AcaoEntrega.jsx
-// Etapa Entrega — 2 fases (igual lógica de Aguardando agendamento ↔ Agendado da coleta):
+// Etapa Entrega — padrao V2 SubBloco (espelho do AcaoAgendamento).
 //
 //   Fase 1 — AGUARDANDO AGENDAR
-//     Card fica esperando o agendamento da entrega com o cliente.
-//     Form: data + hora + responsável + observações.
-//     Salva em os.entrega_data / os.entrega_responsavel / os.entrega_observacoes.
+//     Form Dia/Periodo/Horario + Observacoes + CTA agendar.
+//     Salva em os.entrega_data + os.entrega_responsavel + os.entrega_observacoes.
 //
 //   Fase 2 — ENTREGA AGENDADA
-//     Mostra a data marcada + botão "Confirmar entrega".
-//     Botão "Reagendar" pra mudar.
-//     Ao confirmar: vai pra Pagamento — ou DIRETO pra Concluído se OS já estiver
-//     paga (estaPagaTotal) — mesma regra do CLAUDE.md.
+//     Countdown ate a entrega + 2 atalhos (WhatsApp + Rota) + Foto obrigatoria
+//     + CTAs confirmar/reagendar.
+//     Ao confirmar: vai pra Pagamento (ou direto Concluido se ja paga).
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { P } from '../../../theme'
+import { useTheme } from '../../../theme'
+import { TI, PALETA } from '../../_shared/PrimitivasMobile'
 import { ETAPAS_TODOS } from '../../../utils/osData'
-import { corEtapa, bgEtapa, corHero } from '../../../utils/colors'
 import { estaPagaTotal } from '../../../utils/osHelpers'
 import {
   uploadFotoEntrega, removerFotoEntrega, resolverFotoUrl, FOTO_STORAGE_MARKER,
 } from '../../../utils/osStorage'
 import { useToast } from '../../ui'
-import BlocoAcao from './BlocoAcao'
 
-// ─── Seletor de data/hora estilo Ag. agendamento ─────────────────────────────
+// ─── Wrapper flat (mesmo do AcaoAgendamento V2) ───────────────────────────
+function HeaderFlat({ children, gap = 8 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+      {children}
+    </div>
+  )
+}
+
+// ─── SubBloco compacto (mesmo padrao V2 do AcaoAgendamento) ───────────────
+function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
+  const colorMap = {
+    blue:   { fg: PALETA.blueStrong,   bg: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg },
+    yellow: { fg: PALETA.yellowStrong, bg: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg },
+    green:  { fg: PALETA.greenStrong,  bg: dark ? 'rgba(46,125,94,0.18)' : PALETA.greenBg },
+    red:    { fg: PALETA.redStrong,    bg: dark ? 'rgba(192,66,66,0.18)' : PALETA.redBg },
+  }
+  const c = colorMap[color] || colorMap.blue
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '3px 6px 3px 8px',
+        background: dark ? 'rgba(255,255,255,0.03)' : T.cardAlt,
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 7,
+      }}>
+        <span style={{
+          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+          background: c.bg, color: c.fg,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <TI name={icon} size={11} />
+        </span>
+        <span style={{
+          flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>{label}</span>
+        {action}
+      </div>
+      <div style={{ padding: '10px 12px' }}>{children}</div>
+    </div>
+  )
+}
+
+// ─── Helpers (mesmos do AcaoAgendamento) ──────────────────────────────────
 const DOW = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
 const PERIODOS = [
-  { id: 'manha', label: 'Manhã', icon: 'ti-sunrise', ini: 6,  fim: 12 },
-  { id: 'tarde', label: 'Tarde', icon: 'ti-sun',     ini: 12, fim: 18 },
-  { id: 'noite', label: 'Noite', icon: 'ti-moon',    ini: 18, fim: 22 },
+  { id: 'manha', label: 'Manhã', icon: 'sunrise', ini: 6,  fim: 12 },
+  { id: 'tarde', label: 'Tarde', icon: 'sun',     ini: 12, fim: 18 },
+  { id: 'noite', label: 'Noite', icon: 'moon',    ini: 18, fim: 22 },
 ]
 const proxNDias = (n = 14) => {
   const out = []
@@ -55,48 +99,257 @@ const detectarPeriodo = (hora) => {
   if (h < 18) return 'tarde'
   return 'noite'
 }
+const fmtBR = (iso) => {
+  if (!iso) return ''
+  const [, m, d] = iso.split('-')
+  return `${d}/${m}`
+}
+const fmtDataHora = (iso) => {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d)) return iso
+  return d.toLocaleString('pt-BR', {
+    weekday: 'short', day: '2-digit', month: 'short',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
 
-export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpdateOS, onMoverOS }) {
-  const cor = (d, c) => dark ? d : c
-  const azul = corEtapa('blue', dark)
-  const amarelo = cor(P.yellow, P.yellowDark)
-  const verde = corEtapa('green', dark)
+// ═══════════════════════════════════════════════════════════════════════════
+// FASE 1 — Aguardando agendar entrega (form)
+// ═══════════════════════════════════════════════════════════════════════════
+function FormAgendar({ os, user, usuarios, onUpdateOS, onCancelar }) {
+  const { T, dark } = useTheme()
   const notify = useToast()
-
-  const jaPaga = estaPagaTotal(os)
   const lista = usuarios || []
-
-  // Fase 1 = sem data agendada · Fase 2 = data já marcada
-  const [editando, setEditando] = useState(false)
-  const dataAgendada = os.entrega_data || null
-  const respAgendado = os.entrega_responsavel || null
-  const obsAgendada = os.entrega_observacoes || ''
-
-  const emFase2 = !!dataAgendada && !editando
-
-  // Estado do form de agendamento (fase 1 ou reagendar) — UI estilo
-  // Ag. agendamento: chip de dia + período + slot 15-em-15min.
-  // Combina diaSel + horaSel em ISO datetime ao salvar.
-  const dias = useMemo(() => proxNDias(14), [])
-  const dataAgendadaIso = dataAgendada ? dataAgendada.slice(0, 10) : null
-  const dataAgendadaHora = dataAgendada ? dataAgendada.slice(11, 16) : null
-  const [diaSel, setDiaSel] = useState(dataAgendadaIso || dias[1]?.iso || dias[0]?.iso)
-  const [periodoSel, setPeriodoSel] = useState(detectarPeriodo(dataAgendadaHora))
-  const [horaSel, setHoraSel] = useState(dataAgendadaHora || null)
-  const horariosSlots = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel])
-  const [obs, setObs] = useState(obsAgendada)
   const meuApelido = lista.find(u => u.id === user?.id)?.apelido || 'Você'
 
-  // ─── Foto da entrega (obrigatória pra confirmar) ──────────────────────────
-  // Marker no banco vai em pre_diagnostico.foto_entrega = 'storage' (reusa
-  // jsonb existente — não precisa schema novo). Path: os/{id}/entrega.jpg
+  const dias = useMemo(() => proxNDias(14), [])
+  const dataIso = os.entrega_data ? os.entrega_data.slice(0, 10) : null
+  const dataHora = os.entrega_data ? os.entrega_data.slice(11, 16) : null
+
+  const [diaSel, setDiaSel] = useState(dataIso || dias[1]?.iso || dias[0]?.iso)
+  const [periodoSel, setPeriodoSel] = useState(detectarPeriodo(dataHora))
+  const [horaSel, setHoraSel] = useState(dataHora || null)
+  const [obs, setObs] = useState(os.entrega_observacoes || '')
+
+  const horarios = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel])
+  const podeAgendar = !!diaSel && !!horaSel
+  const reagendando = !!dataIso
+
+  function agendar() {
+    if (!podeAgendar) {
+      notify('erro', 'Escolha o dia e o horário da entrega')
+      return
+    }
+    const iso = `${diaSel}T${horaSel}:00`
+    onUpdateOS?.(os.numero, {
+      entrega_data: iso,
+      entrega_responsavel: user?.id || null,
+      entrega_observacoes: obs,
+    })
+    notify('ok', `Entrega agendada para ${fmtDataHora(iso)}`)
+  }
+
+  const ctaLabel = podeAgendar
+    ? (reagendando ? `Salvar ${fmtBR(diaSel)} · ${horaSel}` : `Agendar ${fmtBR(diaSel)} · ${horaSel}`)
+    : 'Escolha dia e hora'
+
+  return (
+    <HeaderFlat>
+      {/* DIA */}
+      <SubBloco T={T} dark={dark} icon="calendar" label="Dia · próximos 14 dias" color="blue">
+        <div style={{
+          display: 'flex', gap: 4, overflowX: 'auto',
+          margin: '0 -12px', padding: '0 12px', scrollbarWidth: 'none',
+        }} className="idemaq-no-scrollbar">
+          {dias.map(d => {
+            const sel = d.iso === diaSel
+            return (
+              <button key={d.iso} onClick={() => setDiaSel(d.iso)}
+                style={{
+                  flex: '0 0 auto', width: 44, height: 44,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  padding: '4px 0', borderRadius: 8,
+                  background: sel ? PALETA.blue : T.bg,
+                  border: `1px solid ${sel ? PALETA.blueStrong : T.border}`,
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 700,
+                  color: sel ? 'rgba(255,255,255,.85)' : T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.06em',
+                  lineHeight: 1,
+                }}>{d.dow}</span>
+                <span style={{
+                  fontSize: 15, fontWeight: 700,
+                  color: sel ? '#fff' : T.textPrimary,
+                  marginTop: 1, lineHeight: 1,
+                }}>{d.dia}</span>
+              </button>
+            )
+          })}
+        </div>
+      </SubBloco>
+
+      {/* PERÍODO */}
+      <SubBloco T={T} dark={dark} icon="clock" label="Período" color="blue">
+        <div style={{ display: 'flex', gap: 4 }}>
+          {PERIODOS.map(p => {
+            const sel = p.id === periodoSel
+            return (
+              <button key={p.id} onClick={() => setPeriodoSel(p.id)}
+                style={{
+                  flex: 1, minHeight: 32, padding: '0 6px', borderRadius: 7,
+                  background: sel ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.bg,
+                  border: `1px solid ${sel ? PALETA.blueLight : T.border}`,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  fontSize: 11, fontWeight: 600,
+                  color: sel ? PALETA.blueStrong : T.textMuted,
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <TI name={p.icon} size={12} color={sel ? PALETA.blueStrong : '#9CA3AF'} />
+                <span>{p.label}</span>
+                <span style={{
+                  fontSize: 9.5, color: '#9CA3AF',
+                  fontFamily: 'ui-monospace,monospace',
+                }}>{p.ini}–{p.fim}</span>
+              </button>
+            )
+          })}
+        </div>
+      </SubBloco>
+
+      {/* HORÁRIO */}
+      <SubBloco T={T} dark={dark} icon="clock-hour-4" label="Horário · 15 em 15 min" color="blue">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
+          {horarios.map(h => {
+            const sel = h === horaSel
+            return (
+              <button key={h} onClick={() => setHoraSel(h)}
+                style={{
+                  minHeight: 26, borderRadius: 5,
+                  background: sel ? PALETA.blue : T.bg,
+                  border: `1px solid ${sel ? PALETA.blueStrong : T.border}`,
+                  color: sel ? '#fff' : T.textPrimary,
+                  fontSize: 11.5, fontWeight: 600,
+                  fontFamily: 'ui-monospace,monospace',
+                  cursor: 'pointer', padding: 0,
+                  WebkitTapHighlightColor: 'transparent',
+                }}>{h}</button>
+            )
+          })}
+        </div>
+      </SubBloco>
+
+      {/* OBSERVAÇÕES */}
+      <SubBloco T={T} dark={dark} icon="message-2" label="Observações · opcional" color="blue"
+        action={<span style={{
+          fontSize: 10, color: T.textMuted, fontWeight: 600,
+        }}>resp. <b style={{ color: T.textPrimary }}>{meuApelido}</b></span>}>
+        <textarea
+          value={obs}
+          onChange={(e) => setObs(e.target.value)}
+          placeholder="Ex: entregar pela manhã, prédio 2º andar…"
+          rows={2}
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            padding: '7px 9px', borderRadius: 6,
+            border: `1px solid ${T.border}`,
+            background: T.bg, color: T.textPrimary,
+            fontSize: 12.5, fontFamily: 'inherit',
+            outline: 'none', resize: 'vertical', minHeight: 50,
+          }}
+        />
+      </SubBloco>
+
+      {/* CTAs */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {reagendando && onCancelar && (
+          <button onClick={onCancelar}
+            style={{
+              minHeight: 36, padding: '0 14px', borderRadius: 8,
+              background: T.cardAlt, color: T.textMuted,
+              border: `1px solid ${T.border}`,
+              fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+              cursor: 'pointer',
+            }}>
+            Cancelar
+          </button>
+        )}
+        <button onClick={agendar} disabled={!podeAgendar}
+          style={{
+            flex: 1, minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
+            background: podeAgendar ? PALETA.yellow : T.cardAlt,
+            color: podeAgendar ? '#0a0a0d' : T.textDim,
+            fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+            cursor: podeAgendar ? 'pointer' : 'not-allowed',
+            opacity: podeAgendar ? 1 : 0.55,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+          <TI name="calendar-check" size={14} />
+          {ctaLabel}
+        </button>
+      </div>
+    </HeaderFlat>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FASE 2 — Entrega agendada (countdown + atalhos + foto + CTAs)
+// ═══════════════════════════════════════════════════════════════════════════
+function ResumoAgendada({ os, user, usuarios, admin, onUpdateOS, onMoverOS, onReagendar }) {
+  const { T, dark } = useTheme()
+  const notify = useToast()
+  const lista = usuarios || []
+  const jaPaga = estaPagaTotal(os)
+
+  // Countdown
+  const [agora, setAgora] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const alvo = useMemo(() => {
+    const iso = os.entrega_data
+    if (!iso) return null
+    const d = new Date(iso)
+    return isNaN(d) ? null : d
+  }, [os.entrega_data])
+
+  const { bigLabel, unitLabel, pct } = useMemo(() => {
+    if (!alvo) return { bigLabel: '—', unitLabel: '', pct: 0 }
+    const deltaMs = alvo.getTime() - agora.getTime()
+    if (deltaMs <= 0) return { bigLabel: 'agora', unitLabel: '', pct: 100 }
+    const min = Math.floor(deltaMs / 60_000)
+    const h = Math.floor(min / 60), m = min % 60
+    const big = h >= 1 ? `${h}h` : `${m}min`
+    const unit = h >= 1 ? `${m}min` : ''
+    const totalMs = Math.max(deltaMs, 48 * 60 * 60_000)
+    const pctVal = Math.max(5, Math.min(95, 100 - (deltaMs / totalMs) * 100))
+    return { bigLabel: big, unitLabel: unit, pct: pctVal }
+  }, [alvo, agora])
+
+  const entregaLabel = alvo ? fmtDataHora(os.entrega_data) : 'Sem horário definido'
+  const respAgendado = os.entrega_responsavel
+  const respApelido = (lista.find(u => u.id === respAgendado)?.apelido)
+    || (lista.find(u => u.id === respAgendado)?.nome) || respAgendado
+  const obsAgendada = os.entrega_observacoes || ''
+
+  // Cliente / nome
+  const clienteStr = typeof os?.cliente === 'string' ? os.cliente : (os?.cliente?.nome || '')
+  const primeiroNome = clienteStr.split(' ')[0] || 'Cliente'
+
+  // ─── Foto da entrega ──────────────────────────────────────────────────────
   const salvoEntrega = os.pre_diagnostico?.foto_entrega || null
   const [fotoEntregaUrl, setFotoEntregaUrl] = useState(null)
   const [fotoEntregaNoStorage, setFotoEntregaNoStorage] = useState(salvoEntrega === FOTO_STORAGE_MARKER)
   const [uploadingFoto, setUploadingFoto] = useState(false)
   const inputFotoRef = useRef(null)
 
-  // Carrega URL exibível se já houver foto salva
   useEffect(() => {
     let cancelado = false
     async function carregar() {
@@ -123,7 +376,6 @@ export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpda
     }
     setFotoEntregaUrl(res.url)
     setFotoEntregaNoStorage(true)
-    // Persiste marker no banco (estende o jsonb pre_diagnostico)
     onUpdateOS?.(os.numero, {
       pre_diagnostico: {
         ...(os.pre_diagnostico || {}),
@@ -144,43 +396,42 @@ export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpda
     notify('ok', 'Foto da entrega removida')
   }
 
-  function agendar() {
-    if (!diaSel || !horaSel) {
-      notify('erro', 'Escolha o dia e o horário da entrega')
-      return
+  // Acoes
+  const abrirWhatsApp = () => {
+    const fone = (os?.fone || '').replace(/\D/g, '')
+    if (!fone) { notify('erro', 'Cliente sem telefone cadastrado'); return }
+    const num = fone.startsWith('55') ? fone : '55' + fone
+    const texto = `Olá ${clienteStr || ''}! 👋
+
+A entrega da sua OS #${os.numero} (${[os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento || ''}) está agendada pra:
+
+📅 ${entregaLabel}
+
+${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reagendar. Até lá!`
+    const url = `send?phone=${num}&text=${encodeURIComponent(texto)}`
+    if (/Android/i.test(navigator.userAgent)) {
+      window.location.href = `intent://${url}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.whatsapp.w4b;end`
+    } else {
+      window.location.href = `whatsapp://${url}`
     }
-    const dataHoraIso = `${diaSel}T${horaSel}`
-    onUpdateOS?.(os.numero, {
-      entrega_data: dataHoraIso,
-      // responsável = quem agendou (usuário logado). Sem dropdown.
-      entrega_responsavel: user?.id || null,
-      entrega_observacoes: obs,
-    })
-    setEditando(false)
-    notify('ok', `Entrega agendada para ${fmtDataHora(dataHoraIso)}`)
   }
 
-  function reagendar() {
-    setEditando(true)
+  const abrirRota = () => {
+    if (!os?.endereco) return
+    const q = encodeURIComponent(os.endereco)
+    const ua = navigator.userAgent || ''
+    if (/Android/i.test(ua)) {
+      window.location.href = `geo:0,0?q=${q}`
+    } else if (/iPhone|iPad|iPod/i.test(ua)) {
+      window.location.href = `maps://?q=${q}`
+    } else {
+      window.location.href = `https://www.google.com/maps/search/?api=1&query=${q}`
+    }
   }
-
-  function cancelarReagendar() {
-    setDiaSel(dataAgendadaIso || dias[1]?.iso || dias[0]?.iso)
-    setHoraSel(dataAgendadaHora || null)
-    setPeriodoSel(detectarPeriodo(dataAgendadaHora))
-    setObs(obsAgendada)
-    setEditando(false)
-  }
-
-  const podeAgendar = !!diaSel && !!horaSel
 
   function confirmarEntrega() {
-    // Foto da entrega é obrigatória pra funcionário (prova de devolução em
-    // bom estado). Admin (dono) pode pular — útil quando entregou em mãos
-    // sem chance de tirar foto, ou pra retroativa.
     if (!admin && !fotoEntregaNoStorage && !fotoEntregaUrl) {
       notify('erro', 'Tire a foto da entrega antes de confirmar — comprova devolução em bom estado.')
-      // Scroll automático até o bloco de foto (ajuda no mobile)
       inputFotoRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
       return
     }
@@ -196,431 +447,242 @@ export default function AcaoEntrega({ T, dark, os, user, usuarios, admin, onUpda
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
 
-  function enviarWhatsapp() {
-    const num = (os.fone || '').replace(/\D/g, '')
-    if (!num) { notify('erro', 'Cliente sem telefone cadastrado'); return }
-    const texto = `Olá ${os.cliente || ''}! 👋
+  const podeConfirmar = admin || fotoEntregaNoStorage || !!fotoEntregaUrl
 
-A entrega da sua OS #${os.numero} (${[os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento}) está agendada pra:
-
-📅 ${fmtDataHora(dataAgendada)}
-
-${obsAgendada ? `Obs: ${obsAgendada}\n\n` : ''}Qualquer coisa me avisa pra reagendar. Até lá!`
-    const url = `send?phone=55${num}&text=${encodeURIComponent(texto)}`
-    if (/Android/i.test(navigator.userAgent)) {
-      window.location.href = `intent://${url}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.whatsapp.w4b;end`
-    } else {
-      window.location.href = `whatsapp://${url}`
-    }
-  }
-
-  // ============================================================================
-  // FASE 2 — Entrega agendada (mostra resumo + ações)
-  // ============================================================================
-  if (emFase2) {
-    return (
-      <BlocoAcao
-        T={T} dark={dark} icon="ti-truck-delivery"
-        etapa="Entrega"
-        descricao={jaPaga
-          ? 'Entrega agendada. Ao confirmar, OS vai direto pra Concluído (já paga).'
-          : 'Entrega agendada com o cliente. Ao confirmar, vai pra Pagamento.'}
-        tom={jaPaga ? 'verde' : 'amarelo'}
-      >
-        {/* Card de resumo do agendamento */}
-        <div style={{
-          background: bgEtapa('blue', dark),
-          border: `1px solid ${azul}55`,
-          borderRadius: 9, padding: '14px 16px',
-          display: 'flex', flexDirection: 'column', gap: 8,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-            <i className="ti ti-calendar-check" style={{ fontSize: 18, color: azul }} aria-hidden="true" />
-            <div style={{ flex: 1 }}>
-              <div style={{
-                fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '.3px',
-              }}>
-                Entrega agendada
-              </div>
-              <div style={{
-                fontSize: 16, fontWeight: 700, color: corHero(dark),
-                marginTop: 2, fontVariantNumeric: 'tabular-nums',
-              }}>
-                {fmtDataHora(dataAgendada)}
-              </div>
-            </div>
-          </div>
-
-          {respAgendado && (
-            <Linha T={T} icon="ti-user-check" label="Responsável"
-              valor={(lista.find(u => u.id === respAgendado)?.apelido) || (lista.find(u => u.id === respAgendado)?.nome) || respAgendado} />
-          )}
-          {obsAgendada && (
-            <Linha T={T} icon="ti-notes" label="Observações" valor={obsAgendada} multi />
-          )}
+  return (
+    <HeaderFlat>
+      {/* Countdown */}
+      <SubBloco T={T} dark={dark} icon="truck-delivery" label="Entrega em" color="blue"
+        action={respApelido && (
+          <span style={{
+            fontSize: 10, color: T.textMuted, fontWeight: 600,
+          }}>por <b style={{ color: T.textPrimary }}>{respApelido}</b></span>
+        )}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{
+            fontSize: 26, fontWeight: 700, color: T.textPrimary,
+            letterSpacing: '-.02em', lineHeight: 1,
+            fontFamily: 'ui-monospace,monospace',
+          }}>{bigLabel}</span>
+          {unitLabel && <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 500 }}>{unitLabel}</span>}
         </div>
+        <div style={{
+          fontSize: 12, color: T.textMuted, marginTop: 5,
+          display: 'flex', alignItems: 'center', gap: 5,
+        }}>
+          <TI name="calendar-event" size={12} />
+          <b style={{ color: T.textPrimary, fontWeight: 600 }}>{entregaLabel}</b>
+        </div>
+        <div style={{
+          height: 4, marginTop: 6,
+          background: dark ? 'rgba(255,255,255,0.10)' : '#E5E7EB',
+          borderRadius: 99, overflow: 'hidden',
+        }}>
+          <span style={{
+            display: 'block', height: '100%', width: `${pct}%`,
+            background: 'linear-gradient(90deg,#5B9BD5,#4A86C0)',
+            borderRadius: 99, transition: 'width .3s',
+          }}/>
+        </div>
+        {obsAgendada && (
+          <div style={{
+            marginTop: 7, fontSize: 11.5, color: T.textPrimary,
+            borderLeft: `3px solid ${PALETA.yellowStrong}`,
+            paddingLeft: 8, lineHeight: 1.4,
+          }}>{obsAgendada}</div>
+        )}
+      </SubBloco>
 
-        {/* Avisar cliente */}
-        <button onClick={enviarWhatsapp} style={btnSec(T)}>
-          <i className="ti ti-brand-whatsapp" style={{ fontSize: 15 }} aria-hidden="true" />
-          Avisar cliente no WhatsApp
+      {/* 2 atalhos: WhatsApp + Rota */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        <button onClick={abrirWhatsApp}
+          disabled={!os?.fone}
+          style={{
+            background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 8, padding: '6px 10px', minHeight: 40,
+            display: 'flex', alignItems: 'center', gap: 8,
+            cursor: os?.fone ? 'pointer' : 'not-allowed',
+            opacity: os?.fone ? 1 : 0.5,
+            textAlign: 'left', fontFamily: 'inherit',
+          }}>
+          <span style={{
+            width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+            background: dark ? 'rgba(46,125,94,0.20)' : '#E8F8EC',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}><TI name="brand-whatsapp" size={14} color="#25D366" /></span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{
+              display: 'block', fontSize: 9.5, color: T.textMuted,
+              fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
+              lineHeight: 1,
+            }}>Avisar</span>
+            <span style={{
+              display: 'block', fontSize: 12, color: T.textPrimary,
+              fontWeight: 600, marginTop: 2, lineHeight: 1.1,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{primeiroNome}</span>
+          </span>
         </button>
 
-        {/* Foto da entrega — obrigatória pra confirmar */}
-        <div style={{
-          padding: '12px 14px', borderRadius: 9,
-          border: `1px dashed ${fotoEntregaUrl ? verde : amarelo}`,
-          background: `${fotoEntregaUrl ? verde : amarelo}10`,
-          display: 'flex', flexDirection: 'column', gap: 10,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <i className={`ti ${fotoEntregaUrl ? 'ti-camera-check' : 'ti-camera'}`}
-               style={{ fontSize: 18, color: fotoEntregaUrl ? verde : amarelo }} aria-hidden="true" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: corHero(dark) }}>
-                Foto da entrega · {admin ? 'opcional' : 'obrigatória'}
-              </div>
-              <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
-                {fotoEntregaUrl
-                  ? 'Foto anexada — você pode confirmar a entrega.'
-                  : admin
-                    ? 'Tire foto se possível (recomendado). Como admin, você pode confirmar sem foto.'
-                    : 'Tire foto da máquina no local de entrega (estado em que foi devolvida).'}
-              </div>
+        <button onClick={abrirRota}
+          disabled={!os?.endereco}
+          style={{
+            background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 8, padding: '6px 10px', minHeight: 40,
+            display: 'flex', alignItems: 'center', gap: 8,
+            cursor: os?.endereco ? 'pointer' : 'not-allowed',
+            opacity: os?.endereco ? 1 : 0.5,
+            textAlign: 'left', fontFamily: 'inherit',
+          }}>
+          <span style={{
+            width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+            background: dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg,
+            color: dark ? PALETA.blue : PALETA.blueStrong,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}><TI name="map-pin" size={14} /></span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={{
+              display: 'block', fontSize: 9.5, color: T.textMuted,
+              fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
+              lineHeight: 1,
+            }}>Abrir</span>
+            <span style={{
+              display: 'block', fontSize: 12, color: T.textPrimary,
+              fontWeight: 600, marginTop: 2, lineHeight: 1.1,
+            }}>Rota</span>
+          </span>
+        </button>
+      </div>
+
+      {/* Foto da entrega — obrigatoria pra funcionario, opcional pra admin */}
+      <SubBloco T={T} dark={dark} icon={fotoEntregaUrl ? 'camera-check' : 'camera'}
+        label={`Foto da entrega · ${admin ? 'opcional' : 'obrigatória'}`}
+        color={fotoEntregaUrl ? 'green' : 'yellow'}>
+        <input
+          ref={inputFotoRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => escolherFotoEntrega(e.target.files?.[0])}
+          style={{ display: 'none' }}
+        />
+        {fotoEntregaUrl ? (
+          <div style={{
+            position: 'relative',
+            border: `1px solid ${T.border}`,
+            borderRadius: 8, overflow: 'hidden',
+            maxWidth: 280,
+          }}>
+            <img src={fotoEntregaUrl} alt="Foto da entrega"
+              style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 200, objectFit: 'cover' }} />
+            <div style={{
+              position: 'absolute', top: 6, right: 6,
+              display: 'flex', gap: 4,
+            }}>
+              <button
+                type="button"
+                onClick={() => inputFotoRef.current?.click()}
+                disabled={uploadingFoto}
+                title={uploadingFoto ? 'Enviando...' : 'Trocar foto'}
+                style={{
+                  width: 26, height: 26, borderRadius: 5,
+                  background: 'rgba(0,0,0,0.6)', color: '#fff',
+                  border: 'none', cursor: uploadingFoto ? 'wait' : 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                <TI name={uploadingFoto ? 'loader-2' : 'camera'} size={12} />
+              </button>
+              <button
+                type="button"
+                onClick={removerFoto}
+                title="Remover foto"
+                style={{
+                  width: 26, height: 26, borderRadius: 5,
+                  background: 'rgba(192,66,66,0.85)', color: '#fff',
+                  border: 'none', cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                <TI name="x" size={12} />
+              </button>
             </div>
           </div>
-
-          <input
-            ref={inputFotoRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => escolherFotoEntrega(e.target.files?.[0])}
-            style={{ display: 'none' }}
-          />
-
-          {fotoEntregaUrl ? (
-            <div style={{
-              position: 'relative',
-              border: `1px solid ${T.border}`,
-              borderRadius: 8, overflow: 'hidden',
-              maxWidth: 280,
+        ) : (
+          <button
+            type="button"
+            onClick={() => inputFotoRef.current?.click()}
+            disabled={uploadingFoto}
+            style={{
+              width: '100%', minHeight: 60, padding: 10, borderRadius: 8,
+              border: `1.5px dashed ${PALETA.yellowStrong}`,
+              background: dark ? 'rgba(255,217,102,0.08)' : '#FFFAEB',
+              color: PALETA.yellowStrong,
+              fontSize: 12.5, fontWeight: 700,
+              cursor: uploadingFoto ? 'wait' : 'pointer',
+              opacity: uploadingFoto ? 0.6 : 1,
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             }}>
-              <img src={fotoEntregaUrl} alt="Foto da entrega"
-                style={{ display: 'block', width: '100%', height: 'auto', maxHeight: 220, objectFit: 'cover' }} />
-              <div style={{
-                position: 'absolute', top: 6, right: 6,
-                display: 'flex', gap: 4,
-              }}>
-                <button
-                  type="button"
-                  onClick={() => inputFotoRef.current?.click()}
-                  disabled={uploadingFoto}
-                  title={uploadingFoto ? 'Enviando...' : 'Trocar foto'}
-                  style={{
-                    width: 28, height: 28, borderRadius: 6,
-                    background: 'rgba(0,0,0,0.6)', color: '#fff',
-                    border: 'none', cursor: uploadingFoto ? 'wait' : 'pointer',
-                    opacity: uploadingFoto ? 0.6 : 1,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                  <i className={`ti ${uploadingFoto ? 'ti-loader-2' : 'ti-camera'}`} style={{ fontSize: 14 }} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={removerFoto}
-                  title="Remover foto"
-                  style={{
-                    width: 28, height: 28, borderRadius: 6,
-                    background: 'rgba(0,0,0,0.6)', color: '#fff',
-                    border: 'none', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                  <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => inputFotoRef.current?.click()}
-              disabled={uploadingFoto}
-              style={{
-                padding: '12px 14px', borderRadius: 8,
-                border: `1.5px solid ${amarelo}`,
-                background: T.card, color: corHero(dark),
-                fontSize: 13, fontWeight: 700,
-                cursor: uploadingFoto ? 'wait' : 'pointer',
-                opacity: uploadingFoto ? 0.6 : 1,
-                fontFamily: 'inherit',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}>
-              <i className={`ti ${uploadingFoto ? 'ti-loader-2' : 'ti-camera-plus'}`} style={{ fontSize: 18 }} aria-hidden="true" />
-              {uploadingFoto ? 'Enviando foto...' : 'Tirar foto da entrega'}
-            </button>
-          )}
-        </div>
+            <TI name={uploadingFoto ? 'loader-2' : 'camera-plus'} size={16} />
+            {uploadingFoto ? 'Enviando foto...' : 'Tirar foto da entrega'}
+          </button>
+        )}
+      </SubBloco>
 
-        {/* Ações principais */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
-          <button onClick={confirmarEntrega} style={{
-            padding: '12px 16px', borderRadius: 8, border: 'none',
-            background: jaPaga ? verde : amarelo,
-            color: jaPaga ? '#fff' : '#0a0a0d',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            fontFamily: 'inherit',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            opacity: (admin || fotoEntregaUrl) ? 1 : 0.5,
+      {/* CTAs principais */}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={onReagendar}
+          style={{
+            minHeight: 36, padding: '0 12px', borderRadius: 8,
+            background: T.cardAlt, color: T.textPrimary,
+            border: `1px solid ${T.border}`,
+            fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+            cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
           }}>
-            <i className="ti ti-check" style={{ fontSize: 17 }} aria-hidden="true" />
-            {jaPaga ? 'Confirmar entrega · concluir OS' : 'Confirmar entrega · ir pra Pagamento'}
-          </button>
-          <button onClick={reagendar} style={btnSec(T)}>
-            <i className="ti ti-calendar-event" style={{ fontSize: 14 }} aria-hidden="true" />
-            Reagendar
-          </button>
-        </div>
-      </BlocoAcao>
+          <TI name="calendar-event" size={13} />
+          Reagendar
+        </button>
+        <button onClick={confirmarEntrega}
+          style={{
+            flex: 1, minHeight: 36, padding: '0 14px', borderRadius: 8, border: 'none',
+            background: jaPaga ? PALETA.greenStrong : PALETA.yellow,
+            color: jaPaga ? '#fff' : '#0a0a0d',
+            fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+            cursor: 'pointer',
+            opacity: podeConfirmar ? 1 : 0.5,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+          <TI name="check" size={14} />
+          {jaPaga ? 'Confirmar · concluir OS' : 'Confirmar · ir pra Pagamento'}
+        </button>
+      </div>
+    </HeaderFlat>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Componente principal — decide qual fase mostrar
+// ═══════════════════════════════════════════════════════════════════════════
+export default function AcaoEntrega({ os, user, usuarios, admin, onUpdateOS, onMoverOS }) {
+  const [editando, setEditando] = useState(false)
+  const dataAgendada = os.entrega_data || null
+  const emFase2 = !!dataAgendada && !editando
+
+  if (emFase2) {
+    return (
+      <ResumoAgendada
+        os={os} user={user} usuarios={usuarios} admin={admin}
+        onUpdateOS={onUpdateOS} onMoverOS={onMoverOS}
+        onReagendar={() => setEditando(true)}
+      />
     )
   }
 
-  // ============================================================================
-  // FASE 1 — Aguardando agendar entrega (form)
-  // ============================================================================
   return (
-    <BlocoAcao
-      T={T} dark={dark} icon="ti-calendar-time"
-      etapa={dataAgendada ? 'Reagendar entrega' : 'Entrega — aguardando agendar'}
-      descricao={dataAgendada
-        ? 'Mude a data/hora se o cliente pediu reagendamento.'
-        : 'Combine a entrega com o cliente e registre data e hora. Quem agendar fica registrado como responsável.'}
-    >
-      {!dataAgendada && (
-        <div style={{
-          padding: '10px 12px', borderRadius: 7,
-          background: T.cardAlt, border: `1px solid ${T.border}`,
-          fontSize: 12, color: T.textSecondary,
-          display: 'flex', alignItems: 'center', gap: 7,
-        }}>
-          <i className="ti ti-info-circle" style={{ fontSize: 14, color: azul, flexShrink: 0 }} aria-hidden="true" />
-          O card fica nesta etapa até a entrega ser agendada. Após agendar, mostra o resumo + botão de confirmar entrega.
-        </div>
-      )}
-
-      {/* DIA — chips horizontais (próximos 14 dias) */}
-      <div>
-        <div style={secaoHdr(T, azul)}>
-          <i className="ti ti-calendar" style={{ fontSize: 13 }} aria-hidden="true" />
-          DIA · próximos 14 dias
-        </div>
-        <div style={{
-          display: 'flex', gap: 6, overflowX: 'auto',
-          margin: '0 -14px', padding: '0 14px', scrollbarWidth: 'none',
-        }} className="idemaq-no-scrollbar">
-          {dias.map(d => {
-            const sel = d.iso === diaSel
-            return (
-              <button key={d.iso} type="button" onClick={() => setDiaSel(d.iso)}
-                style={{
-                  flex: '0 0 auto', width: 54, padding: '8px 0', borderRadius: 12,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  background: sel ? azul : T.card,
-                  border: `1px solid ${sel ? azul : T.border}`,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  WebkitTapHighlightColor: 'transparent',
-                }}>
-                <span style={{
-                  fontSize: 9.5, fontWeight: 700,
-                  color: sel ? 'rgba(255,255,255,.85)' : T.textMuted,
-                  textTransform: 'uppercase', letterSpacing: '.08em',
-                }}>{d.dow}</span>
-                <span style={{
-                  fontSize: 18, fontWeight: 700,
-                  color: sel ? '#fff' : T.textPrimary,
-                  marginTop: 2, lineHeight: 1.1,
-                }}>{d.dia}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* PERÍODO — Manhã / Tarde / Noite */}
-      <div>
-        <div style={secaoHdr(T, azul)}>
-          <i className="ti ti-clock" style={{ fontSize: 13 }} aria-hidden="true" />
-          PERÍODO
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {PERIODOS.map(p => {
-            const sel = p.id === periodoSel
-            return (
-              <button key={p.id} type="button" onClick={() => setPeriodoSel(p.id)}
-                style={{
-                  flex: 1, padding: '8px 4px', borderRadius: 10,
-                  background: sel ? (dark ? 'rgba(91,155,213,0.18)' : '#EAF2FA') : T.card,
-                  border: `1px solid ${sel ? azul : T.border}`,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: 2,
-                  fontSize: 11, fontWeight: 600,
-                  color: sel ? azul : T.textMuted,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>
-                <i className={`ti ${p.icon}`} style={{ fontSize: 18, color: sel ? azul : T.textDim }} aria-hidden="true" />
-                <span>{p.label}</span>
-                <span style={{
-                  fontSize: 10, color: T.textDim,
-                  fontFamily: 'ui-monospace,monospace',
-                }}>{p.ini}–{p.fim}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* HORÁRIO — grid 3 colunas, 15-em-15min */}
-      <div>
-        <div style={secaoHdr(T, azul)}>
-          <i className="ti ti-clock-hour-4" style={{ fontSize: 13 }} aria-hidden="true" />
-          HORÁRIO · 15 em 15 min
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-          {horariosSlots.map(h => {
-            const sel = h === horaSel
-            return (
-              <button key={h} type="button" onClick={() => setHoraSel(h)}
-                style={{
-                  minHeight: 44, borderRadius: 10,
-                  background: sel ? azul : T.card,
-                  border: `1px solid ${sel ? azul : T.border}`,
-                  color: sel ? '#fff' : T.textPrimary,
-                  fontSize: 14.5, fontWeight: 600,
-                  fontFamily: 'ui-monospace,monospace',
-                  cursor: 'pointer',
-                  WebkitTapHighlightColor: 'transparent',
-                }}>{h}</button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div style={{
-        padding: '8px 11px', borderRadius: 7,
-        background: T.cardAlt, border: `1px solid ${T.border}`,
-        fontSize: 11.5, color: T.textSecondary,
-        display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start',
-      }}>
-        <i className="ti ti-user-check" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
-        Responsável: <strong style={{ color: corHero(dark), fontWeight: 600 }}>{meuApelido}</strong>
-      </div>
-
-      <Campo T={T} label="Observações" opcional>
-        <textarea
-          value={obs}
-          onChange={(e) => setObs(e.target.value)}
-          placeholder="Ex: entregar pela manhã, prédio 2º andar…"
-          style={{ ...inputStyle(T), minHeight: 56, resize: 'vertical' }}
-        />
-      </Campo>
-
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        {dataAgendada && (
-          <button onClick={cancelarReagendar} style={btnSec(T)}>
-            Cancelar
-          </button>
-        )}
-        <button onClick={agendar} disabled={!podeAgendar} style={{
-          padding: '11px 16px', borderRadius: 7, border: 'none',
-          background: podeAgendar ? azul : T.cardAlt,
-          color: podeAgendar ? '#fff' : T.textDim,
-          fontSize: 13, fontWeight: 700,
-          cursor: podeAgendar ? 'pointer' : 'not-allowed',
-          opacity: podeAgendar ? 1 : 0.6,
-          fontFamily: 'inherit',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        }}>
-          <i className="ti ti-calendar-check" style={{ fontSize: 16 }} aria-hidden="true" />
-          {dataAgendada ? 'Salvar novo horário' : 'Agendar entrega'}
-        </button>
-      </div>
-    </BlocoAcao>
+    <FormAgendar
+      os={os} user={user} usuarios={usuarios}
+      onUpdateOS={onUpdateOS}
+      onCancelar={dataAgendada ? () => setEditando(false) : null}
+    />
   )
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function fmtDataHora(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (isNaN(d)) return iso
-  return d.toLocaleString('pt-BR', {
-    weekday: 'short', day: '2-digit', month: 'short',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
-function Campo({ T, label, opcional, children }) {
-  return (
-    <div>
-      <label style={{
-        display: 'flex', alignItems: 'center', gap: 5,
-        fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-        marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.3px',
-      }}>
-        {label}
-        {opcional && <span style={{ fontSize: 10, color: T.textDim, fontWeight: 400, textTransform: 'none', letterSpacing: 'normal' }}>· opcional</span>}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-function Linha({ T, icon, label, valor, multi }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: multi ? 'column' : 'row',
-      gap: multi ? 3 : 8, alignItems: multi ? 'flex-start' : 'center',
-      fontSize: 12, color: T.textSecondary,
-    }}>
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5,
-        fontSize: 11, color: T.textMuted, fontWeight: 600,
-        flexShrink: 0,
-      }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-        {label}
-      </span>
-      <span style={{ color: T.textPrimary, fontWeight: 500, lineHeight: 1.4 }}>
-        {valor}
-      </span>
-    </div>
-  )
-}
-
-function inputStyle(T) {
-  return {
-    width: '100%', padding: '9px 12px', borderRadius: 7,
-    border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
-    fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
-  }
-}
-
-function secaoHdr(T, cor) {
-  return {
-    fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase',
-    color: T.textMuted, fontWeight: 700,
-    display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6,
-  }
-}
-
-function btnSec(T) {
-  return {
-    padding: '11px 14px', borderRadius: 7,
-    background: T.cardAlt, color: T.textPrimary,
-    border: `1px solid ${T.border}`,
-    fontSize: 12, fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'inherit',
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-  }
 }
