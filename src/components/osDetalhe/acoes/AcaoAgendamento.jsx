@@ -5,6 +5,37 @@ import {
 } from '../../_shared/PrimitivasMobile';
 import BlocoAcao from './BlocoAcao';
 
+// ─── Header flat "FAZER AGORA · etapa" — sem fundo/borda amarela ────────────
+// Substitui o BlocoAcao na V2 pra ficar limpo (so titulo + descricao + filhos).
+function HeaderFlat({ T, dark, icon, etapa, descricao, children, gap = 12 }) {
+  const cor = (d, c) => dark ? d : c
+  const amarelo = cor(PALETA.yellow, PALETA.yellowStrong)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+        <TI name={icon} size={18} color={amarelo} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 700, color: amarelo,
+            textTransform: 'uppercase', letterSpacing: '.6px',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            FAZER AGORA
+            <span style={{ opacity: 0.5 }}>·</span>
+            <span>{etapa}</span>
+          </div>
+          {descricao && (
+            <div style={{ fontSize: 12, color: T.textSecondary, marginTop: 3 }}>
+              {descricao}
+            </div>
+          )}
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
 // ─── Sub-card estilo Orçamento (GrupoBlock) — reutilizado pela V2 ────────────
 function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
   const colorMap = {
@@ -485,10 +516,9 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
   const ctaLabel = podeConfirmar ? `Confirmar ${fmtBR(diaSel)} · ${horaSel}` : 'Escolha dia e hora';
 
   return (
-    <BlocoAcao T={T} dark={dark} icon="ti-calendar-event"
+    <HeaderFlat T={T} dark={dark} icon="calendar-event"
       etapa="Aguardando agendamento"
-      descricao="Escolha o dia, depois o horário."
-      tom="amarelo">
+      descricao="Escolha o dia, depois o horário.">
 
       {/* Bloco DIA */}
       <SubBloco T={T} dark={dark} icon="calendar" label="Dia · próximos 14 dias" color="blue">
@@ -595,7 +625,7 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
         disabled={!podeConfirmar} onClick={confirmar}>
         {ctaLabel}
       </BtnMobile>
-    </BlocoAcao>
+    </HeaderFlat>
   );
 };
 
@@ -633,10 +663,9 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
   useEffect(() => { if (prox) setShowIdent(true); }, [prox]);
 
   return (
-    <BlocoAcao T={T} dark={dark} icon="ti-truck-loading"
+    <HeaderFlat T={T} dark={dark} icon="truck-loading"
       etapa="Agendado · coleta agendada"
-      descricao="Acompanhe a coleta e confirme com o cliente quando chegar a hora."
-      tom="amarelo">
+      descricao="Acompanhe a coleta e confirme com o cliente quando chegar a hora.">
 
       {/* Card grande do countdown */}
       <SubBloco T={T} dark={dark} icon="clock" label="Coleta em" color="blue">
@@ -750,7 +779,7 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
           </button>
         )}
       </SubBloco>
-    </BlocoAcao>
+    </HeaderFlat>
   );
 };
 
