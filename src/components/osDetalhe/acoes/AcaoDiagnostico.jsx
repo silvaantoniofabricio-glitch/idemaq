@@ -277,6 +277,23 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
             )}
           </div>
         )}
+
+        {/* Vazamentos detectados */}
+        {(() => {
+          const vaz = os?.pre_diagnostico?.vazamentos || {};
+          const locais = []
+          if (vaz.entrada)  locais.push('Entrada')
+          if (vaz.saida)    locais.push('Saída')
+          if (vaz.agitacao) locais.push('Agitação')
+          if (locais.length === 0) return null
+          return (
+            <div style={{ marginBottom: 8 }}>
+              <Pill tone="yellow" icon="droplet">
+                💧 Vazamento · {locais.join(', ')}
+              </Pill>
+            </div>
+          )
+        })()}
         {testesComResultado.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {testesComResultado.map(t => {

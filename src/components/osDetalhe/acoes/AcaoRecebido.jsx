@@ -134,14 +134,20 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
   const [obs, setObs] = useState('');
   const [naoLiga, setNaoLiga] = useState(false);
   const [motivoNaoLiga, setMotivoNaoLiga] = useState('');
+  const [vazamentos, setVazamentos] = useState({ entrada: false, saida: false, agitacao: false });
   const [hidratado, setHidratado] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  // Hidrata flags do pre_diagnostico jsonb (equipamento_nao_liga + motivo)
+  // Hidrata flags do pre_diagnostico jsonb (equipamento_nao_liga + motivo + vazamentos)
   useEffect(() => {
     setNaoLiga(!!os?.pre_diagnostico?.equipamento_nao_liga);
     setMotivoNaoLiga(os?.pre_diagnostico?.motivo_nao_liga || '');
-  }, [os?.id, os?.pre_diagnostico?.equipamento_nao_liga, os?.pre_diagnostico?.motivo_nao_liga]);
+    setVazamentos({
+      entrada:  !!os?.pre_diagnostico?.vazamentos?.entrada,
+      saida:    !!os?.pre_diagnostico?.vazamentos?.saida,
+      agitacao: !!os?.pre_diagnostico?.vazamentos?.agitacao,
+    });
+  }, [os?.id, os?.pre_diagnostico?.equipamento_nao_liga, os?.pre_diagnostico?.motivo_nao_liga, os?.pre_diagnostico?.vazamentos]);
 
   useEffect(() => {
     if (loadingChk || hidratado) return;
@@ -177,8 +183,7 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testes, obs, naoLiga, hidratado]);
 
-  // Persiste flag "equipamento nao liga" + motivo em pre_diagnostico
-  // (debounce 500ms pra naoLiga e motivo combinados)
+  // Persiste flags em pre_diagnostico (naoLiga + motivo + vazamentos) — debounce 500ms
   useEffect(() => {
     if (!hidratado) return;
     const t = setTimeout(() => {
@@ -187,12 +192,13 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
           ...(os.pre_diagnostico || {}),
           equipamento_nao_liga: naoLiga,
           motivo_nao_liga: naoLiga ? motivoNaoLiga : null,
+          vazamentos: vazamentos,
         },
       });
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [naoLiga, motivoNaoLiga, hidratado]);
+  }, [naoLiga, motivoNaoLiga, vazamentos, hidratado]);
 
   async function avancar() {
     setSalvando(true);
@@ -303,6 +309,55 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
               valor={naoLiga ? null : testes[t.id]}
               onChange={(v) => setResultado(t.id, v)} />
           ))}
+        </div>
+
+        {/* Vazamentos — sub-secao dentro do bloco. Marque onde vazou.
+            Nenhum marcado = sem vazamento (OK). */}
+        <div style={{
+          marginTop: 10, paddingTop: 10,
+          borderTop: `1px dashed ${T.border}`,
+          opacity: naoLiga ? 0.4 : 1,
+          pointerEvents: naoLiga ? 'none' : 'auto',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '.04em',
+            marginBottom: 6,
+          }}>
+            <TI name="droplet" size={11} color={PALETA.blueStrong} />
+            Vazamentos · marque onde estiver vazando
+          </div>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
+          }}>
+            {[
+              { id: 'entrada',  label: 'Entrada',  icon: 'droplet' },
+              { id: 'saida',    label: 'Saída',    icon: 'droplet-off' },
+              { id: 'agitacao', label: 'Agitação', icon: 'refresh' },
+            ].map(v => {
+              const ativo = vazamentos[v.id];
+              return (
+                <button key={v.id} type="button"
+                  onClick={() => setVazamentos(prev => ({ ...prev, [v.id]: !prev[v.id] }))}
+                  style={{
+                    minHeight: 32, padding: '0 8px', borderRadius: 7,
+                    background: ativo
+                      ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg)
+                      : T.bg,
+                    border: `1px solid ${ativo ? PALETA.blueStrong : T.border}`,
+                    color: ativo ? (dark ? PALETA.blue : PALETA.blueStrong) : T.textPrimary,
+                    fontSize: 11.5, fontWeight: ativo ? 700 : 500,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}>
+                  <TI name={v.icon} size={12} />
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </SubBloco>
 
