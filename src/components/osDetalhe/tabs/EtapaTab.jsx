@@ -103,7 +103,6 @@ export default function EtapaTab(props) {
 
   return (
     <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <AlertaObservacoes os={props.os} />
       <div style={molduraAmarela}>
         {Componente
           ? <Componente {...props} />
