@@ -476,12 +476,19 @@ const IdentificacaoMaquina = ({ os, onUpdateOS }) => {
 // BlocoAcao "FAZER AGORA" amarelo wrap + sub-cards estilo GrupoBlock
 // (header com icone-square + label uppercase). Mesmas medidas e tipografia.
 // ============================================================================
-const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
+const SubAgAgendaV2 = ({ os, onUpdateOS, onMoverOS }) => {
   const { T, dark } = useTheme();
   const dias = useMemo(() => proxNDias(14), []);
-  const [diaSel, setDiaSel] = useState(os?.coleta?.data || dias[1]?.iso);
-  const [periodoSel, setPeriodoSel] = useState(os?.coleta?.periodo || 'tarde');
-  const [horaSel, setHoraSel] = useState(os?.coleta?.hora || null);
+  // Inicia com a data ja salva em data_agendamento (preferencia) ou coleta legacy.
+  const dataInicial = os?.data_agendamento?.slice(0, 10) || os?.coleta?.data || dias[1]?.iso;
+  const horaInicial = os?.data_agendamento?.slice(11, 16) || os?.coleta?.hora || null;
+  const [diaSel, setDiaSel] = useState(dataInicial);
+  const [periodoSel, setPeriodoSel] = useState(os?.coleta?.periodo || (
+    horaInicial && parseInt(horaInicial, 10) < 12 ? 'manha'
+      : horaInicial && parseInt(horaInicial, 10) < 18 ? 'tarde'
+      : horaInicial ? 'noite' : 'tarde'
+  ));
+  const [horaSel, setHoraSel] = useState(horaInicial);
   const diasOcupados = useMemo(() => new Set(os?.diasComColeta || []), [os?.diasComColeta]);
   const horariosOcupados = useMemo(
     () => new Set(os?.horariosOcupados?.[diaSel] || []),
@@ -489,10 +496,18 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
   );
   const horarios = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel]);
   const podeConfirmar = !!diaSel && !!horaSel;
-  const confirmar = () => onUpdateOS?.({
-    action: 'confirmar_agendamento',
-    data: diaSel, hora: horaSel, periodo: periodoSel,
-  });
+
+  // Confirma de verdade: monta ISO, salva data_agendamento + move pra etapa
+  // 'agendamento'. Usa as assinaturas reais (numero, patch) e (numero, etapa)
+  // — NAO a action-style que nunca foi implementada.
+  const confirmar = async () => {
+    if (!podeConfirmar) return;
+    const iso = new Date(`${diaSel}T${horaSel}:00-04:00`).toISOString();
+    await onUpdateOS?.(os.numero, { data_agendamento: iso });
+    // Move pra etapa 'agendamento' (unif id). Funciona pra atendimento/fabricacao/venda.
+    onMoverOS?.(os.numero, 'agendamento');
+  };
+
   const ctaLabel = podeConfirmar ? `Confirmar ${fmtBR(diaSel)} · ${horaSel}` : 'Escolha dia e hora';
 
   return (
@@ -771,13 +786,13 @@ const SubAgendadoV2 = ({ os, onUpdateOS }) => {
   );
 };
 
-const AcaoAgendamento = ({ os, onUpdateOS }) => {
+const AcaoAgendamento = ({ os, onUpdateOS, onMoverOS }) => {
   // V2 agora ativada em producao (Vercel) tambem. V1 mantida no arquivo
   // pra rollback rapido caso precise voltar.
   if (os?.etapa === 'agendado') {
-    return <SubAgendadoV2 os={os} onUpdateOS={onUpdateOS} />;
+    return <SubAgendadoV2 os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />;
   }
-  return <SubAgAgendaV2 os={os} onUpdateOS={onUpdateOS} />;
+  return <SubAgAgendaV2 os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />;
 };
 
 export default AcaoAgendamento;
