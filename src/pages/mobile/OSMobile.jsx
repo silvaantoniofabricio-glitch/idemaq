@@ -22,8 +22,6 @@ import FiltrosMobile from '../../components/mobile/FiltrosMobile'
 import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
 import NovaOSMobile from '../../components/os/NovaOSMobile'
-import { usePullToRefresh } from '../../hooks/usePullToRefresh'
-import PullIndicator from '../../components/ui/PullIndicator'
 
 // Cores das etapas — usadas pelo header de cada coluna kanban
 const COR_ETAPA = {
@@ -339,12 +337,27 @@ export default function OSMobile({ T, dark, user }) {
                   }}>{col.count}</span>
                 </div>
 
-                {/* Cards da coluna — scroll vertical com pull-to-refresh */}
-                <ColunaScroll T={T} dark={dark} viewMode={viewMode}
-                  cards={col.cards}
-                  onAbrirOS={setOsAberta}
-                  onRefresh={refetch}
-                />
+                {/* Cards da coluna — scroll vertical interno. */}
+                <div style={{
+                  flex: 1, minHeight: 0,
+                  overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                  background: dark ? '#0f1118' : '#eef1f5',
+                  borderRadius: '0 0 10px 10px',
+                  padding: '10px 8px 80px',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                  touchAction: 'pan-x pan-y',
+                }}>
+                  {col.cards.length === 0 ? (
+                    <div style={{
+                      color: T.textMuted, fontSize: 12, fontStyle: 'italic',
+                      textAlign: 'center', padding: '24px 8px',
+                    }}>Sem OS nesta etapa</div>
+                  ) : col.cards.map(os => (
+                    <OSCardMobile key={os.numero} T={T} dark={dark} os={os}
+                      compact={viewMode === 'compact'}
+                      onClick={() => setOsAberta(os)} />
+                  ))}
+                </div>
               </div>
             )
           })}
@@ -543,30 +556,3 @@ function EmptyState({ T, busca }) {
   )
 }
 
-// ─── Coluna scrollable com pull-to-refresh ──────────────────────────────────
-function ColunaScroll({ T, dark, viewMode, cards, onAbrirOS, onRefresh }) {
-  const { ref, pullDistance, refreshing, progress } = usePullToRefresh({ onRefresh })
-  return (
-    <div ref={ref} style={{
-      flex: 1, minHeight: 0,
-      overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-      background: dark ? '#0f1118' : '#eef1f5',
-      borderRadius: '0 0 10px 10px',
-      padding: '10px 8px 80px',
-      display: 'flex', flexDirection: 'column', gap: 8,
-      touchAction: 'pan-x pan-y',
-    }}>
-      <PullIndicator distance={pullDistance} refreshing={refreshing} progress={progress} />
-      {cards.length === 0 ? (
-        <div style={{
-          color: T.textMuted, fontSize: 12, fontStyle: 'italic',
-          textAlign: 'center', padding: '24px 8px',
-        }}>Sem OS nesta etapa</div>
-      ) : cards.map(os => (
-        <OSCardMobile key={os.numero} T={T} dark={dark} os={os}
-          compact={viewMode === 'compact'}
-          onClick={() => onAbrirOS(os)} />
-      ))}
-    </div>
-  )
-}
