@@ -428,8 +428,72 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
     return <BloqueioOrcamento T={T} dark={dark} os={os} itens={itens} onAbrirAba={onAbrirAba} />;
   }
 
+  // Resumo do diagnostico pro topo
+  const relatoCliente = os?.defeito || '';
+  const causaDiag = os?.pre_diagnostico?.causa_diagnostico || '';
+  const temResumo = relatoCliente || causaDiag || manutChecks.length > 0;
+
   return (
     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Resumo do diagnostico */}
+      {temResumo && (
+        <SubBloco T={T} dark={dark} icon="stethoscope"
+          label="Resumo do diagnóstico" color="blue">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {relatoCliente && (
+              <div>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.05em',
+                  marginBottom: 3,
+                }}>Relato do cliente</div>
+                <div style={{
+                  fontSize: 12.5, color: T.textPrimary, lineHeight: 1.4,
+                  borderLeft: `3px solid ${PALETA.yellowStrong}`, paddingLeft: 8,
+                }}>{relatoCliente}</div>
+              </div>
+            )}
+            {causaDiag && (
+              <div>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.05em',
+                  marginBottom: 3,
+                }}>Causa identificada</div>
+                <div style={{
+                  fontSize: 12.5, color: T.textPrimary, lineHeight: 1.4,
+                  borderLeft: `3px solid ${PALETA.blueStrong}`, paddingLeft: 8,
+                }}>{causaDiag}</div>
+              </div>
+            )}
+            {manutChecks.length > 0 && (
+              <div>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, color: T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.05em',
+                  marginBottom: 4,
+                }}>Componentes marcados · {manutChecks.length}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {manutChecks.map(c => (
+                    <span key={c.id} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 11, padding: '3px 7px', borderRadius: 999,
+                      background: c.prefix.bg, color: c.prefix.fg,
+                      border: `1px solid ${c.prefix.fg}33`, fontWeight: 600,
+                    }}>
+                      <b style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.04em' }}>
+                        {c.prefix.label.toUpperCase()}
+                      </b>
+                      {c.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </SubBloco>
+      )}
+
       {/* Banner de falhas vindas do Teste final */}
       {falhas.length > 0 && (
         <SubBloco T={T} dark={dark} icon="alert-triangle"
