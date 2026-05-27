@@ -745,7 +745,7 @@ const STATUS_META = {
   recusado:   { label: 'Orçamento recusado',          icon: 'ti-circle-x',  variant: 'rejected' },
 }
 
-function BotaoStatus({ os, onUpdateOS, T, dark }) {
+function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
   const [status, setStatus] = useState(os?.orcamento_status || 'idle')
   const [confirmando, setConfirmando] = useState(false)
   const azul    = corEtapa('blue', dark)
@@ -767,6 +767,11 @@ function BotaoStatus({ os, onUpdateOS, T, dark }) {
     setStatus(novo)
     setConfirmando(false)
     onUpdateOS?.(os.numero, { orcamento_status: novo })
+    // Aprovado pelo cliente → avanca direto pra "Conserto" (etapa oficina).
+    // Recusado mantem na etapa orcamento (operador decide depois).
+    if (novo === 'confirmado') {
+      onMoverOS?.(os.numero, 'oficina')
+    }
   }
 
   // Escolha confirmado/recusado
@@ -910,7 +915,7 @@ function Label({ T, children }) {
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onAbrirAba }) {
+export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAbrirAba }) {
   const [escolherTipo, setEscolherTipo] = useState({ acao: null, open: false })
   const { itens, addItem, removeItem } = useOSItens(os?.id)
   const [adicionandoTipo, setAdicionandoTipo] = useState(null)
@@ -1017,7 +1022,7 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onAbrirAba }) {
       />
 
       {/* Status do orçamento */}
-      <BotaoStatus T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} />
+      <BotaoStatus T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
 
       {/* Recebimento */}
       <FormRecebimento
