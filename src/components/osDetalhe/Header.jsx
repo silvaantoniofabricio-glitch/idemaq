@@ -456,8 +456,9 @@ export default function Header({
         </div>
       </div>
 
-      {/* === LINHA 3 — Timeline (com border-top) === */}
-      {!isRecusado && (
+      {/* === LINHA 3 — Timeline === remove na versão desktop (só aparece no
+          mobile via HeaderMobile, que tem seu próprio renderização). */}
+      {false && !isRecusado && (
         <div style={{
           padding: '14px 20px 14px',
           borderTop: `1px solid ${T.border}`,
