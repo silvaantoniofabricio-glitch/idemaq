@@ -186,39 +186,50 @@ export default function FormRecebimento({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-      {/* Valor */}
-      <div>
-        <Label T={T}>Valor deste recebimento</Label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, color: T.textMuted, fontWeight: 600 }}>R$</span>
-          <input
-            type="number" min="0" max={saldo} step="0.01"
-            value={valor}
-            onChange={(e) => {
-              const v = Math.max(0, Math.min(saldo, Number(e.target.value) || 0))
-              setValor(v)
-            }}
-            style={{
-              flex: 1, padding: '9px 12px', borderRadius: 7,
-              border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
-              fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums',
-              outline: 'none', textAlign: 'right',
-              fontFamily: 'inherit', boxSizing: 'border-box',
-            }}
-          />
-        </div>
-        {valor !== saldo && saldo > 0 && (
-          <div style={{ marginTop: 6 }}>
-            <Chip T={T} dark={dark} onClick={() => setValor(saldo)}>
-              receber tudo ({fmtBRL(saldo, { fr: true })})
-            </Chip>
+      {/* Bloco unificado: label "Valor Recebido" centralizado em cima dos 2
+          primeiros botoes (PIX/Cartao); input ocupando os 2 ultimos
+          (Dinheiro/A prazo). Tudo alinhado num grid de 4 colunas. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Linha 1: label + input (2 cols cada) */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
+          alignItems: 'center',
+        }}>
+          <div style={{
+            gridColumn: '1 / span 2',
+            textAlign: 'center',
+            fontSize: 11, color: T.textMuted, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '.4px',
+          }}>
+            Valor Recebido
           </div>
-        )}
-      </div>
+          <div style={{
+            gridColumn: '3 / span 2',
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 10px', borderRadius: 7,
+            border: `1px solid ${T.border}`, background: T.bg,
+            minHeight: 38,
+          }}>
+            <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 600 }}>R$</span>
+            <input
+              type="number" min="0" max={saldo} step="0.01"
+              value={valor}
+              onChange={(e) => {
+                const v = Math.max(0, Math.min(saldo, Number(e.target.value) || 0))
+                setValor(v)
+              }}
+              style={{
+                flex: 1, minWidth: 0,
+                padding: 0, border: 'none', outline: 'none',
+                background: 'transparent', color: T.textPrimary,
+                fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+                textAlign: 'right', fontFamily: 'inherit',
+              }}
+            />
+          </div>
+        </div>
 
-      {/* Forma de pagamento — top: PIX · Cartão · Dinheiro · A prazo */}
-      <div>
-        <Label T={T}>Forma de pagamento</Label>
+        {/* Linha 2: 4 botoes de forma — PIX · Cartao · Dinheiro · A prazo */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
           <FormaTopBtn
             T={T} dark={dark}
@@ -253,6 +264,15 @@ export default function FormRecebimento({
             sublabel="fiado"
           />
         </div>
+
+        {/* Chip "receber tudo" — só aparece se valor != saldo */}
+        {valor !== saldo && saldo > 0 && (
+          <div style={{ marginTop: 2 }}>
+            <Chip T={T} dark={dark} onClick={() => setValor(saldo)}>
+              receber tudo ({fmtBRL(saldo, { fr: true })})
+            </Chip>
+          </div>
+        )}
       </div>
 
       {/* Sub-leque do Cartão */}
