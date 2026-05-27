@@ -58,9 +58,10 @@ import VendasMobile from './pages/mobile/VendasMobile'
 export default function App() {
   const { T, dark, toggleTheme, isMobile } = useTheme()
   const [authUser, setAuthUser] = useState(null)
-  // Polling de versão — avisa quando o Vercel publica uma versão nova
-  // e auto-reload em 5s sem o user precisar atualizar manualmente.
-  const { hasUpdate, reload } = useAutoReload()
+  // Auto-reload temporariamente desligado (suspeita de causar problema
+  // no celular do user). hasUpdate fica false eternamente.
+  const hasUpdate = false
+  const reload = () => window.location.reload()
   // Registro do auth user na tabela `usuarios` (papel, apelido, uuid).
   // Antes o papel era inferido por email hardcoded — quando o Toni trocou os
   // emails dos funcionários no Auth, eles caíam no fallback "dono" e ganhavam
