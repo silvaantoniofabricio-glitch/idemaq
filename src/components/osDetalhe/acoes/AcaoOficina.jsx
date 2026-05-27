@@ -3,6 +3,7 @@ import { useTheme } from '../../../theme';
 import {
   TI, NowCard, BtnMobile, MOBILE, PALETA, Pill,
 } from '../../_shared/PrimitivasMobile';
+import { useOSItens } from '../../../hooks/useOSItens';
 
 const ETAPAS_SEQ = [
   { id: 'recebido',    label: 'Pré-diagnóstico' },
@@ -11,12 +12,12 @@ const ETAPAS_SEQ = [
   { id: 'oficina',     label: 'Conserto' },
 ];
 
-const StepTrail = ({ os, onAbrirAba }) => {
+const StepTrail = ({ os, itens, onAbrirAba }) => {
   const { T, dark } = useTheme();
 
   const statusOf = (etapaId) => {
     if (etapaId === 'oficina') return 'now-blocked';
-    if (etapaId === 'orcamento' && !os?.orcamento?.itens?.length) return 'miss';
+    if (etapaId === 'orcamento' && !(itens || []).length) return 'miss';
     return 'done';
   };
 
@@ -30,9 +31,9 @@ const StepTrail = ({ os, onAbrirAba }) => {
       return n ? `${n} componentes marcados` : 'feito';
     }
     if (etapaId === 'orcamento') {
-      const itens = os?.orcamento?.itens || [];
-      return itens.length
-        ? `${itens.length} itens cadastrados`
+      const n = (itens || []).length;
+      return n
+        ? `${n} itens cadastrados`
         : 'Pendente · sem itens cadastrados';
     }
     if (etapaId === 'oficina') {
@@ -176,9 +177,14 @@ const ResumoDiagnostico = ({ os }) => {
 
 const AcaoOficina = ({ os, onUpdateOS, onAbrirAba }) => {
   const { T, dark } = useTheme();
-  const orcamentoVazio = !os?.orcamento?.itens?.length;
+  const { itens } = useOSItens(os?.id);
+  // Gate correto: orcamento fechado = status 'confirmado' OU tem itens lancados.
+  // (Antes checava os.orcamento.itens — campo que nao existe no shape da OS,
+  // por isso ficava sempre bloqueado mesmo apos aprovacao.)
+  const orcamentoFechado =
+    os?.orcamento_status === 'confirmado' || (itens || []).length > 0;
 
-  if (orcamentoVazio) {
+  if (!orcamentoFechado) {
     return (
       <div style={{
         padding: 12, display: 'flex', flexDirection: 'column', gap: 12,
@@ -188,7 +194,7 @@ const AcaoOficina = ({ os, onUpdateOS, onAbrirAba }) => {
           titulo="em oficina"
           descricao="Antes de executar, você precisa fechar o orçamento."
         />
-        <StepTrail os={os} onAbrirAba={onAbrirAba} />
+        <StepTrail os={os} itens={itens} onAbrirAba={onAbrirAba} />
         <ResumoDiagnostico os={os} />
       </div>
     );
