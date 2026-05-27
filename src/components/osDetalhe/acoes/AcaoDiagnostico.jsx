@@ -249,6 +249,25 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
     setMarcadosPorGrupo(normalizeMarcados(os?.pre_diagnostico?.componentes_marcados));
   }, [os?.id]);
 
+  // Auto-save dos componentes marcados (debounce 400ms).
+  // Antes so persistia ao clicar "Concluir" — se o tecnico marcasse e
+  // arrastasse no kanban pra Conserto, as marcacoes se perdiam.
+  useEffect(() => {
+    if (!os?.id) return;
+    const salvoServ = normalizeMarcados(os?.pre_diagnostico?.componentes_marcados);
+    const sameJson = JSON.stringify(salvoServ) === JSON.stringify(marcadosPorGrupo);
+    if (sameJson) return;
+    const tid = setTimeout(() => {
+      onUpdateOS?.(os.numero, {
+        pre_diagnostico: {
+          ...(os.pre_diagnostico || {}),
+          componentes_marcados: marcadosPorGrupo,
+        },
+      });
+    }, 400);
+    return () => clearTimeout(tid);
+  }, [marcadosPorGrupo, os?.id, os?.numero]);
+
   // Resumo dos testes do Pré-diagnóstico (vem do checklist_etapa='recebido')
   const { itens: chkRecebido } = useChecklistEtapa(os.id, 'recebido');
   const testesComResultado = useMemo(
