@@ -169,9 +169,28 @@ export default function AcaoRecebido({ os, onMoverOS }) {
   const todosPreenchidos = TESTES.every(t => testes[t.id] != null);
 
   const { T, dark } = useTheme();
+  const relatoCliente = os?.defeito || '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* SUB-BLOCO 1: Checklist de testes (4 funções com OK/Defeito/Barulho) */}
+      {/* SUB-BLOCO 1: Relato do cliente — texto livre vindo da abertura da OS */}
+      <SubBloco T={T} dark={dark} icon="user" label="Relato do cliente" color="blue">
+        {relatoCliente ? (
+          <div style={{
+            fontSize: 13, color: T.textPrimary, lineHeight: 1.4,
+            borderLeft: `3px solid ${PALETA.yellowStrong}`, paddingLeft: 10,
+          }}>
+            {relatoCliente}
+          </div>
+        ) : (
+          <div style={{
+            fontSize: 12, color: T.textMuted, fontStyle: 'italic',
+          }}>
+            Sem relato registrado na abertura da OS.
+          </div>
+        )}
+      </SubBloco>
+
+      {/* SUB-BLOCO 2: Checklist de testes (4 funções com OK/Defeito/Barulho) */}
       <SubBloco T={T} dark={dark} icon="clipboard-check" label="Testes de funcionamento" color="blue">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {TESTES.map(t => (
@@ -183,7 +202,7 @@ export default function AcaoRecebido({ os, onMoverOS }) {
         </div>
       </SubBloco>
 
-      {/* SUB-BLOCO 2: Observações */}
+      {/* SUB-BLOCO 3: Observações */}
       <SubBloco T={T} dark={dark} icon="message-2" label="Observações" color="blue">
         <textarea
           placeholder="Ex: máquina chegou com cabo arrancado, painel arranhado…"

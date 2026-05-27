@@ -223,11 +223,30 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
     if (proxima) onMoverOS?.(os.numero, proxima.id);
   }
 
+  const relatoCliente = os?.defeito || '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {/* SUB-BLOCO 1: Resumo do pré-diagnóstico (se houver) */}
+      {/* SUB-BLOCO 1: Relato do cliente */}
+      <SubBloco T={T} dark={dark} icon="user" label="Relato do cliente" color="blue">
+        {relatoCliente ? (
+          <div style={{
+            fontSize: 13, color: T.textPrimary, lineHeight: 1.4,
+            borderLeft: `3px solid ${PALETA.yellowStrong}`, paddingLeft: 10,
+          }}>
+            {relatoCliente}
+          </div>
+        ) : (
+          <div style={{
+            fontSize: 12, color: T.textMuted, fontStyle: 'italic',
+          }}>
+            Sem relato registrado na abertura da OS.
+          </div>
+        )}
+      </SubBloco>
+
+      {/* SUB-BLOCO 2: Resumo da avaliação (testes feitos no Recebido) */}
       {testesComResultado.length > 0 && (
-        <SubBloco T={T} dark={dark} icon="clipboard-check" label="Pré-diagnóstico" color="blue">
+        <SubBloco T={T} dark={dark} icon="clipboard-check" label="Resumo da avaliação" color="blue">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {testesComResultado.map(t => {
               const meta = PRE_TONES[t.valor] || PRE_TONES.ok;
