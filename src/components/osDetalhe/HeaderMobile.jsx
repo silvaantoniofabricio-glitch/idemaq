@@ -65,22 +65,32 @@ const HeaderMobile = ({
       background: T.card,
       borderBottom: `1px solid ${T.border}`,
     }}>
-      {/* Topbar */}
+      {/* Linha 1 (combinada) · OS# + badge à esquerda · ações à direita.
+          Antes eram 2 linhas: topbar (X/histórico/dots) + OS#/badge.
+          X removido — modal fecha por swipe/back nativo do mobile. */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px 0',
+        padding: '8px 12px 4px', gap: 8,
       }}>
-        <button
-          onClick={onClose}
-          aria-label="Fechar"
-          style={{
-            border: 'none', background: 'transparent', cursor: 'pointer',
-            color: T.textMuted, padding: 4, lineHeight: 0,
-          }}
-        >
-          <TI name="x" size={18} />
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1 }}>
+          <span style={{
+            fontFamily: MONO_STACK,
+            fontSize: 11, color: T.textMuted, fontWeight: 600,
+            letterSpacing: '.04em', flexShrink: 0,
+          }}>
+            OS #{os?.numero}
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+            padding: '3px 8px', borderRadius: 999,
+            textTransform: 'uppercase', whiteSpace: 'nowrap',
+            background: toneStyle.bg, color: toneStyle.fg,
+            flexShrink: 0,
+          }}>
+            {badgeText}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <button
             onClick={onHistory}
             aria-label="Histórico"
@@ -88,17 +98,17 @@ const HeaderMobile = ({
               position: 'relative',
               background: PALETA.blueBg, color: PALETA.blueStrong,
               border: 'none', borderRadius: 999,
-              padding: 6, cursor: 'pointer', display: 'inline-flex',
+              padding: 5, cursor: 'pointer', display: 'inline-flex',
             }}
           >
-            <TI name="history" size={18} />
+            <TI name="history" size={16} />
             {historyCount > 0 && (
               <span style={{
-                position: 'absolute', top: -4, right: -4,
+                position: 'absolute', top: -3, right: -3,
                 background: PALETA.blue, color: '#fff',
-                fontSize: 10, fontWeight: 700,
-                borderRadius: 99, padding: '1px 5px',
-                minWidth: 18, textAlign: 'center', lineHeight: 1.4,
+                fontSize: 9, fontWeight: 700,
+                borderRadius: 99, padding: '1px 4px',
+                minWidth: 15, textAlign: 'center', lineHeight: 1.4,
               }}>{historyCount}</span>
             )}
           </button>
@@ -111,40 +121,18 @@ const HeaderMobile = ({
               cursor: 'pointer', lineHeight: 0,
             }}
           >
-            <TI name="dots-vertical" size={18} />
+            <TI name="dots-vertical" size={16} />
           </button>
         </div>
       </div>
 
-      {/* Linha 1 · OS # + badge */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 14px 4px',
-      }}>
-        <span style={{
-          fontFamily: MONO_STACK,
-          fontSize: 11.5, color: T.textMuted, fontWeight: 600,
-          letterSpacing: '.04em',
-        }}>
-          OS #{os?.numero}
-        </span>
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
-          padding: '4px 10px', borderRadius: 999,
-          textTransform: 'uppercase', whiteSpace: 'nowrap',
-          background: toneStyle.bg, color: toneStyle.fg,
-        }}>
-          {badgeText}
-        </span>
-      </div>
-
-      {/* Linha 2 · nome do cliente */}
+      {/* Linha 2 · nome do cliente — fonte reduzida 22→17 */}
       <div
         title={nome}
         style={{
-          padding: '0 14px 2px',
-          fontSize: 22, fontWeight: 700,
-          color: T.textPrimary, letterSpacing: '-.02em',
+          padding: '0 12px 1px',
+          fontSize: 17, fontWeight: 700,
+          color: T.textPrimary, letterSpacing: '-.01em',
           lineHeight: 1.15,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}
@@ -152,34 +140,34 @@ const HeaderMobile = ({
         {nome}
       </div>
 
-      {/* Linha 3 · equipamento ou ação de adicionar */}
+      {/* Linha 3 · equipamento ou ação de adicionar — padding reduzido */}
       {hasEquipamento ? (
         <div style={{
-          padding: '0 14px 14px',
-          fontSize: 13.5, color: T.textMuted, fontWeight: 500,
+          padding: '0 12px 8px',
+          fontSize: 12.5, color: T.textMuted, fontWeight: 500,
           display: 'flex', alignItems: 'center', gap: 6,
           lineHeight: 1.3,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          <TI name="device-laptop" size={14} color={T.textMuted} />
+          <TI name="device-laptop" size={13} color={T.textMuted} />
           {modelo && <span>{modelo}</span>}
           {modelo && serie && <span style={{ color: '#D1D5DB' }}>·</span>}
           {serie && (
-            <span style={{ fontFamily: MONO_STACK, fontSize: 12 }}>{serie}</span>
+            <span style={{ fontFamily: MONO_STACK, fontSize: 11.5 }}>{serie}</span>
           )}
         </div>
       ) : (
         <button
           onClick={onAdicionarEquipamento}
           style={{
-            padding: '0 14px 14px',
+            padding: '0 12px 8px',
             border: 'none', background: 'transparent',
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 13.5, color: PALETA.blueStrong, fontWeight: 600,
+            fontSize: 12.5, color: PALETA.blueStrong, fontWeight: 600,
             cursor: 'pointer', lineHeight: 1.3, textAlign: 'left',
           }}
         >
-          <TI name="plus" size={14} color={PALETA.blueStrong} />
+          <TI name="plus" size={13} color={PALETA.blueStrong} />
           adicionar equipamento
         </button>
       )}
@@ -198,19 +186,19 @@ const HeaderMobile = ({
               <button key={a.id}
                 onClick={() => setAba(a.id)}
                 style={{
-                  flex: 1, minHeight: 48, padding: '0 8px',
+                  flex: 1, minHeight: 42, padding: '0 6px',
                   border: 'none', background: ativo
                     ? (dark ? 'rgba(91,155,213,0.08)' : 'rgba(91,155,213,0.06)')
                     : 'transparent',
                   borderBottom: `2px solid ${ativo ? PALETA.blueStrong : 'transparent'}`,
                   color: ativo ? PALETA.blueStrong : T.textMuted,
-                  fontSize: 13, fontWeight: ativo ? 700 : 600,
+                  fontSize: 12.5, fontWeight: ativo ? 700 : 600,
                   cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                   transition: 'all .12s',
                   WebkitTapHighlightColor: 'transparent',
                 }}>
-                <TI name={a.icon} size={15} />
+                <TI name={a.icon} size={14} />
                 {a.label}
               </button>
             );
