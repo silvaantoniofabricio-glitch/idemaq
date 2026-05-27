@@ -14,8 +14,12 @@ import { P } from '../../theme'
 import { TIPOS_OS, ETAPAS_TODOS } from '../../utils/osData'
 import { podeMoverOS } from '../../utils/osHelpers'
 
+// Material 3 — aplicado quando etapa atual eh Agendamento (teste)
+const ETAPAS_M3 = new Set(['ag_agendamento', 'agendado', 'agendamento'])
+
 export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
   const cor = (d, c) => dark ? d : c
+  const m3 = ETAPAS_M3.has(os.etapa)
   const config = TIPOS_OS[os.tipo]
   const etapas = (config?.etapas || []).filter(e => admin || !e.adminOnly)
   const etapaIdx = etapas.findIndex(e => e.id === os.etapa)
@@ -97,7 +101,7 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
         {/* Voltar — com nome da etapa anterior */}
         {anteriorCfg ? (
           <MiniBtnMobile
-            T={T} azul={azul}
+            T={T} azul={azul} m3={m3}
             habilitado={voltarHabilitado}
             motivo={podeVoltar.motivo}
             label={anteriorCfg.label}
@@ -107,7 +111,7 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
         ) : <span style={{ width: 1 }} aria-hidden="true" />}
 
         {/* Pular para — menu */}
-        <PularMenuMobile T={T} dark={dark} azul={azul}
+        <PularMenuMobile T={T} dark={dark} azul={azul} m3={m3}
           etapas={etapasAlcancaveis}
           onEscolher={(unifId) => onMoverOS(os.numero, unifId)}
         />
@@ -115,7 +119,7 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
         {/* Avançar — com nome da próxima etapa, mesma visual do Voltar */}
         {proximaCfg ? (
           <MiniBtnMobile
-            T={T} azul={azul}
+            T={T} azul={azul} m3={m3}
             habilitado={avancarHabilitado}
             motivo={podeAvancar.motivo}
             label={proximaCfg.label}
@@ -128,7 +132,7 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
   )
 }
 
-function PularMenuMobile({ T, dark, azul, etapas, onEscolher }) {
+function PularMenuMobile({ T, dark, azul, etapas, onEscolher, m3 }) {
   const [aberto, setAberto] = useState(false)
   const ref = useRef(null)
   useEffect(() => {
@@ -147,7 +151,17 @@ function PularMenuMobile({ T, dark, azul, etapas, onEscolher }) {
         onClick={() => setAberto(v => !v)}
         title="Pular para uma etapa específica"
         aria-label="Pular para etapa"
-        style={{
+        style={m3 ? {
+          // M3 Text button — pill, label-large
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '0 12px', borderRadius: 999,
+          border: 'none', background: 'transparent',
+          color: azul, fontSize: 14, fontWeight: 500,
+          letterSpacing: '0.1px',
+          cursor: 'pointer', fontFamily: 'inherit',
+          WebkitTapHighlightColor: 'transparent',
+          minHeight: 40,
+        } : {
           display: 'inline-flex', alignItems: 'center', gap: 5,
           padding: '4px 10px', borderRadius: 6,
           border: 'none', background: 'transparent',
@@ -191,11 +205,37 @@ function PularMenuMobile({ T, dark, azul, etapas, onEscolher }) {
 
 // Botao Voltar/Avancar — mesma visual flat do desktop Footer.MiniBtn.
 // Sem background, so com chevron + nome da etapa. Touch target 44+px.
-function MiniBtnMobile({ T, azul, habilitado, motivo, label, direcao, onClick }) {
+function MiniBtnMobile({ T, azul, habilitado, motivo, label, direcao, onClick, m3 }) {
   const isAvancar = direcao === 'avancar'
   const titulo = habilitado
     ? (isAvancar ? `Avançar para ${label}` : `Voltar para ${label}`)
     : motivo
+  // M3 Text button — pill 40dp, label-large 14sp, color primary
+  if (m3) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={!habilitado}
+        title={titulo}
+        aria-label={titulo}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '0 12px', borderRadius: 999,
+          border: 'none', background: 'transparent',
+          color: habilitado ? azul : T.textDim,
+          fontSize: 14, fontWeight: 500, letterSpacing: '0.1px',
+          cursor: habilitado ? 'pointer' : 'not-allowed',
+          opacity: habilitado ? 1 : 0.38,
+          fontFamily: 'inherit',
+          WebkitTapHighlightColor: 'transparent',
+          minHeight: 40,
+        }}>
+        {!isAvancar && <i className="ti ti-chevron-left" style={{ fontSize: 18 }} aria-hidden="true" />}
+        <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+        {isAvancar && <i className="ti ti-chevron-right" style={{ fontSize: 18 }} aria-hidden="true" />}
+      </button>
+    )
+  }
   return (
     <button
       onClick={onClick}
