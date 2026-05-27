@@ -166,8 +166,9 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        {/* Descrição — com autocomplete */}
-        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+        {/* Descrição — picker eh renderizado fora desta coluna pra ocupar
+            a largura inteira do card (e nao so a do input de descricao). */}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <input
             type="text"
             placeholder={
@@ -191,23 +192,6 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
             autoFocus
             style={inlineInputStyle}
           />
-          {pickerAberto && tipo.id === 'peca' && (
-            <PecaPicker T={T} dark={dark} fg={fg}
-              termo={nome}
-              onEscolher={escolherPecaDoEstoque}
-            />
-          )}
-          {pickerAberto && tipo.id !== 'peca' && (
-            <SugestoesPicker T={T} dark={dark} fg={fg}
-              sugestoes={SUGESTOES[tipo.id] || []}
-              termo={nome}
-              onEscolher={(s) => {
-                setNome(s.nome)
-                setValor(String(s.valor))
-                setPickerAberto(false)
-              }}
-            />
-          )}
         </div>
 
         {/* Qtd */}
@@ -262,6 +246,28 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
         </button>
       </div>
 
+      {/* Picker — fora da coluna do input pra ocupar a largura inteira do
+          card. Renderiza inline depois do row, no fluxo normal (sem
+          position:absolute) — assim ocupa exatamente a largura da coluna
+          Serviços/Peças/Deslocamento. */}
+      {pickerAberto && tipo.id === 'peca' && (
+        <PecaPicker T={T} dark={dark} fg={fg}
+          termo={nome}
+          onEscolher={escolherPecaDoEstoque}
+        />
+      )}
+      {pickerAberto && tipo.id !== 'peca' && (
+        <SugestoesPicker T={T} dark={dark} fg={fg}
+          sugestoes={SUGESTOES[tipo.id] || []}
+          termo={nome}
+          onEscolher={(s) => {
+            setNome(s.nome)
+            setValor(String(s.valor))
+            setPickerAberto(false)
+          }}
+        />
+      )}
+
       {/* Indicador "Vinculado ao estoque" — só se selecionou peça do estoque */}
       {tipo.id === 'peca' && pecaIdSelecionada && (
         <div style={{
@@ -286,10 +292,8 @@ function SugestoesPicker({ T, dark, fg, sugestoes, termo, onEscolher }) {
   if (matches.length === 0) return null
   return (
     <div style={{
-      position: 'absolute', top: '100%', left: 0, right: 0,
-      marginTop: 4, zIndex: 50,
       background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.2)',
+      borderRadius: 8, overflow: 'hidden',
       maxHeight: 200, overflowY: 'auto',
     }}>
       {matches.map((s, i) => (
@@ -330,10 +334,8 @@ function PecaPicker({ T, dark, fg, termo, onEscolher }) {
 
   return (
     <div style={{
-      position: 'absolute', top: '100%', left: 0, right: 0,
-      marginTop: 4, zIndex: 50,
       background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.2)',
+      borderRadius: 8, overflow: 'hidden',
       maxHeight: 240, overflowY: 'auto',
     }}>
       {loading && pecas.length === 0 && (
