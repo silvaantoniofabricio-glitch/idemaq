@@ -135,95 +135,143 @@ function AddItemForm({ tipo, T, dark, onSave, onCancel, saving }) {
     onSave(payload)
   }
 
+  // Estilo inline dos inputs (sem Label/padding extra do componente Input)
+  const inlineInputStyle = {
+    width: '100%', boxSizing: 'border-box',
+    padding: '8px 10px', borderRadius: 7,
+    border: `1px solid ${T.border}`,
+    background: T.bg, color: T.textPrimary,
+    fontSize: 13, outline: 'none', fontFamily: 'inherit',
+    fontVariantNumeric: 'tabular-nums',
+  }
+  const iconBtnStyle = (color, bgC, disabled) => ({
+    width: 36, height: 36, borderRadius: 7, flexShrink: 0,
+    background: bgC, border: 'none', color,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.45 : 1,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    fontFamily: 'inherit',
+    WebkitTapHighlightColor: 'transparent',
+  })
+  const azul = corEtapa('blue', dark)
+  const azulBg = dark ? 'rgba(91,155,213,0.20)' : 'rgba(91,155,213,0.15)'
+
   return (
     <div style={{
       background: bg, border: `1px solid ${fg}44`,
-      borderRadius: 10, padding: 12,
-      display: 'flex', flexDirection: 'column', gap: 10,
+      borderRadius: 10, padding: 10,
+      display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      {/* Título do form */}
+      {/* Linha única: [Descrição flex] [Qtd 50px] [R$ valor 90px] [✗] [✓] */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        fontSize: 11, fontWeight: 700, color: fg,
-        textTransform: 'uppercase', letterSpacing: '.05em',
       }}>
-        <i className={`ti ${tipo.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
-        Novo {tipo.label.replace(/s$/, '').toLowerCase()}
-      </div>
-
-      {/* Descrição — com autocomplete: peças vêm do estoque; serviço e
-          deslocamento vêm das sugestões fixas (Limpeza/Manutenção/Deslocamento). */}
-      <div style={{ position: 'relative' }}>
-        <Label T={T}>Descrição</Label>
-        <Input T={T}
-          placeholder={
-            tipo.id === 'peca' ? 'Buscar no estoque ou digitar…'
-            : tipo.id === 'servico' ? 'Ex: Limpeza, Manutenção…'
-            : tipo.id === 'desloc' ? 'Ex: Deslocamento'
-            : 'Ex: Troca de correia'
-          }
-          value={nome}
-          onChange={e => {
-            setNome(e.target.value)
-            setPecaIdSelecionada(null)
-            setPickerAberto(true)
-          }}
-          onFocus={() => setPickerAberto(true)}
-          onBlur={() => setTimeout(() => setPickerAberto(false), 200)}
-          autoFocus
-        />
-        {pickerAberto && tipo.id === 'peca' && (
-          <PecaPicker T={T} dark={dark} fg={fg}
-            termo={nome}
-            onEscolher={escolherPecaDoEstoque}
+        {/* Descrição — com autocomplete */}
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <input
+            type="text"
+            placeholder={
+              tipo.id === 'peca' ? 'Buscar peça…'
+              : tipo.id === 'servico' ? 'Serviço…'
+              : tipo.id === 'desloc' ? 'Deslocamento…'
+              : 'Descrição…'
+            }
+            value={nome}
+            onChange={e => {
+              setNome(e.target.value)
+              setPecaIdSelecionada(null)
+              setPickerAberto(true)
+            }}
+            onFocus={() => setPickerAberto(true)}
+            onBlur={() => setTimeout(() => setPickerAberto(false), 200)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && valido) handleSave()
+              if (e.key === 'Escape') onCancel()
+            }}
+            autoFocus
+            style={inlineInputStyle}
           />
-        )}
-        {pickerAberto && tipo.id !== 'peca' && (
-          <SugestoesPicker T={T} dark={dark} fg={fg}
-            sugestoes={SUGESTOES[tipo.id] || []}
-            termo={nome}
-            onEscolher={(s) => {
-              setNome(s.nome)
-              setValor(String(s.valor))
-              setPickerAberto(false)
+          {pickerAberto && tipo.id === 'peca' && (
+            <PecaPicker T={T} dark={dark} fg={fg}
+              termo={nome}
+              onEscolher={escolherPecaDoEstoque}
+            />
+          )}
+          {pickerAberto && tipo.id !== 'peca' && (
+            <SugestoesPicker T={T} dark={dark} fg={fg}
+              sugestoes={SUGESTOES[tipo.id] || []}
+              termo={nome}
+              onEscolher={(s) => {
+                setNome(s.nome)
+                setValor(String(s.valor))
+                setPickerAberto(false)
+              }}
+            />
+          )}
+        </div>
+
+        {/* Qtd */}
+        <input
+          type="number" min="1" step="1"
+          value={qtd}
+          onChange={e => setQtd(e.target.value)}
+          aria-label="Quantidade"
+          title="Quantidade"
+          style={{ ...inlineInputStyle, width: 52, textAlign: 'center', flexShrink: 0 }}
+        />
+
+        {/* R$ Valor unit. */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 3,
+          padding: '0 4px 0 8px', borderRadius: 7,
+          border: `1px solid ${T.border}`, background: T.bg,
+          width: 92, flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>R$</span>
+          <input
+            type="number" min="0" step="0.01"
+            placeholder="0,00"
+            value={valor}
+            onChange={e => setValor(e.target.value)}
+            aria-label="Valor unitário"
+            title="Valor unitário"
+            style={{
+              flex: 1, minWidth: 0,
+              padding: '8px 0', border: 'none', outline: 'none',
+              background: 'transparent', color: T.textPrimary,
+              fontSize: 13, fontFamily: 'inherit',
+              fontVariantNumeric: 'tabular-nums', textAlign: 'right',
             }}
           />
-        )}
-        {tipo.id === 'peca' && pecaIdSelecionada && (
-          <div style={{
-            marginTop: 4, fontSize: 10.5, color: fg, fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-          }}>
-            <i className="ti ti-link" style={{ fontSize: 11 }} aria-hidden="true" />
-            Vinculado ao estoque (baixa automática)
-          </div>
-        )}
+        </div>
+
+        {/* Cancelar (X) */}
+        <button type="button"
+          onClick={onCancel} disabled={saving}
+          aria-label="Cancelar" title="Cancelar"
+          style={iconBtnStyle(T.textMuted, 'transparent', saving)}>
+          <i className="ti ti-x" style={{ fontSize: 16 }} aria-hidden="true" />
+        </button>
+
+        {/* Salvar (check) */}
+        <button type="button"
+          onClick={handleSave} disabled={!valido || saving}
+          aria-label={saving ? 'Salvando' : 'Salvar'} title="Salvar"
+          style={iconBtnStyle(azul, azulBg, !valido || saving)}>
+          <i className={`ti ${saving ? 'ti-loader-2' : 'ti-check'}`} style={{ fontSize: 16 }} aria-hidden="true" />
+        </button>
       </div>
 
-      {/* Qtd + Valor */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div>
-          <Label T={T}>Qtd</Label>
-          <Input T={T} type="number" min="1" step="1" value={qtd}
-            onChange={e => setQtd(e.target.value)} />
+      {/* Indicador "Vinculado ao estoque" — só se selecionou peça do estoque */}
+      {tipo.id === 'peca' && pecaIdSelecionada && (
+        <div style={{
+          fontSize: 10.5, color: fg, fontWeight: 600,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+        }}>
+          <i className="ti ti-link" style={{ fontSize: 11 }} aria-hidden="true" />
+          Vinculado ao estoque
         </div>
-        <div>
-          <Label T={T}>Valor unit. (R$)</Label>
-          <Input T={T} type="number" min="0" step="0.01" placeholder="0,00"
-            value={valor} onChange={e => setValor(e.target.value)} />
-        </div>
-      </div>
-
-      {/* Ações */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Btn T={T} dark={dark} icon="ti-x" onClick={onCancel} disabled={saving}>
-          Cancelar
-        </Btn>
-        <Btn T={T} dark={dark} icon="ti-check" variant="blue"
-          onClick={handleSave} disabled={!valido || saving}>
-          {saving ? 'Salvando…' : 'Salvar'}
-        </Btn>
-      </div>
+      )}
     </div>
   )
 }
