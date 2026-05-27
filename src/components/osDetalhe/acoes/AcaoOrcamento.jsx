@@ -14,7 +14,7 @@ import BlocoAcao from './BlocoAcao'
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const TIPOS = [
   { id: 'servico', label: 'Serviços',     icon: 'ti-tool',    corKey: 'blue'   },
-  { id: 'peca',    label: 'Peças',        icon: 'ti-puzzle',  corKey: 'purple' },
+  { id: 'peca',    label: 'Peças',        icon: 'ti-package', corKey: 'purple' },
   { id: 'desloc',  label: 'Deslocamento', icon: 'ti-truck',   corKey: 'yellow' },
 ]
 
