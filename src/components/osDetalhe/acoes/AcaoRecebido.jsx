@@ -158,6 +158,18 @@ export default function AcaoRecebido({ os, onMoverOS }) {
     }));
   }
 
+  // Auto-save: salva o checklist sempre que `testes` ou `obs` mudam,
+  // com debounce de 500ms. Garante que dados nao sao perdidos se o
+  // user fechar a OS antes de clicar "Avancar".
+  useEffect(() => {
+    if (!hidratado) return;  // Espera hidratar antes de salvar
+    const t = setTimeout(() => {
+      salvarChk(serializarChecklist(), obs || null);
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testes, obs, hidratado]);
+
   async function avancar() {
     setSalvando(true);
     await salvarChk(serializarChecklist(), obs || null);
