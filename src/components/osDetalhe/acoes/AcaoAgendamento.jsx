@@ -566,7 +566,7 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
         </div>
       </SubBloco>
 
-      {/* Bloco PERÍODO */}
+      {/* Bloco PERÍODO — botoes inline horizontais (icone + label + range) */}
       <SubBloco T={T} dark={dark} icon="clock" label="Período" color="blue">
         <div style={{ display: 'flex', gap: 6 }}>
           {PERIODOS.map(p => {
@@ -574,16 +574,16 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
             return (
               <button key={p.id} onClick={() => setPeriodoSel(p.id)}
                 style={{
-                  flex: 1, padding: '8px 4px', borderRadius: 10,
+                  flex: 1, minHeight: 36, padding: '0 8px', borderRadius: 8,
                   background: sel ? (dark ? 'rgba(91,155,213,0.18)' : PALETA.blueBg) : T.bg,
                   border: `1px solid ${sel ? PALETA.blueLight : T.border}`,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: 2,
-                  fontSize: 11, fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontSize: 11.5, fontWeight: 600,
                   color: sel ? PALETA.blueStrong : T.textMuted,
                   cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
                 }}>
-                <TI name={p.icon} size={18} color={sel ? PALETA.blueStrong : '#9CA3AF'} />
+                <TI name={p.icon} size={14} color={sel ? PALETA.blueStrong : '#9CA3AF'} />
                 <span>{p.label}</span>
                 <span style={{
                   fontSize: 10, color: '#9CA3AF',
@@ -595,9 +595,9 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
         </div>
       </SubBloco>
 
-      {/* Bloco HORÁRIO */}
+      {/* Bloco HORÁRIO — 4 colunas + slots compactos */}
       <SubBloco T={T} dark={dark} icon="clock-hour-4" label="Horário · 15 em 15 min" color="blue">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
           {horarios.map(h => {
             const sel = h === horaSel;
             const gone = horariosOcupados.has(h);
@@ -605,16 +605,16 @@ const SubAgAgendaV2 = ({ os, onUpdateOS }) => {
               <button key={h} disabled={gone}
                 onClick={() => !gone && setHoraSel(h)}
                 style={{
-                  minHeight: MOBILE.btnHeight, borderRadius: 10,
+                  minHeight: 32, borderRadius: 6,
                   background: sel ? PALETA.blue : (gone ? (dark ? 'rgba(255,255,255,0.04)' : '#F8F9FB') : T.bg),
                   border: `1px solid ${sel ? PALETA.blueStrong : T.border}`,
                   color: sel ? '#fff' : (gone ? '#D1D5DB' : T.textPrimary),
-                  fontSize: 14.5, fontWeight: 600,
+                  fontSize: 12, fontWeight: 600,
                   fontFamily: 'ui-monospace,monospace',
-                  letterSpacing: '.02em',
                   cursor: gone ? 'not-allowed' : 'pointer',
                   textDecoration: gone ? 'line-through' : 'none',
                   WebkitTapHighlightColor: 'transparent',
+                  padding: 0,
                 }}>{h}</button>
             );
           })}
