@@ -78,7 +78,7 @@ function SubBloco({ T, dark, icon, label, color = 'blue', children, action }) {
         }}>{label}</span>
         {action}
       </div>
-      <div style={{ padding: '10px 12px' }}>{children}</div>
+      <div style={{ padding: '8px' }}>{children}</div>
     </div>
   );
 }
@@ -88,8 +88,8 @@ function CheckRow({ T, dark, label, checked, disabled, onToggle, prefix, badge }
   return (
     <button type="button" onClick={disabled ? undefined : onToggle} disabled={disabled}
       style={{
-        display: 'flex', alignItems: 'center', gap: 9,
-        padding: '7px 8px', fontSize: 13, border: 'none',
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '6px 7px', fontSize: 11.5, border: 'none',
         background: checked
           ? (dark ? 'rgba(46,125,94,0.12)' : (PALETA.greenBg + '88'))
           : 'transparent',
@@ -100,26 +100,26 @@ function CheckRow({ T, dark, label, checked, disabled, onToggle, prefix, badge }
         WebkitTapHighlightColor: 'transparent',
       }}>
       <span style={{
-        width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+        width: 15, height: 15, borderRadius: 3, flexShrink: 0,
         border: `1.5px solid ${checked ? PALETA.greenStrong : '#D1D5DB'}`,
         background: checked ? PALETA.greenStrong : 'transparent',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         color: '#fff',
       }}>
-        {checked && <TI name="check" size={12} />}
+        {checked && <TI name="check" size={10} />}
       </span>
       {prefix && (
         <span style={{
-          fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 4,
+          fontSize: 8.5, fontWeight: 700, padding: '1px 4px', borderRadius: 3,
           flexShrink: 0,
           background: prefix.bg, color: prefix.fg,
-          textTransform: 'uppercase', letterSpacing: '.04em',
+          textTransform: 'uppercase', letterSpacing: '.03em',
         }}>{prefix.label}</span>
       )}
       <span style={{
         flex: 1, minWidth: 0,
         color: checked ? T.textMuted : T.textPrimary,
-        fontWeight: checked ? 500 : 500,
+        fontWeight: 500,
         textDecoration: checked ? 'line-through' : 'none',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{label}</span>
@@ -211,14 +211,22 @@ function SecaoChecklist({ T, dark, titulo, icon, checks, valores, onToggle, bloq
 }
 
 // ─── Status badge do lado (Limpeza/Manutenção) ────────────────────────────
-function StatusLado({ status }) {
+// Bolinha compacta pra caber no header quando os 2 cards ficam lado a lado.
+function StatusBolinha({ status }) {
   const map = {
-    pendente:   { tone: 'neutral', icon: 'clock',         label: 'Pendente' },
-    andamento:  { tone: 'yellow',  icon: 'progress',      label: 'Em andamento' },
-    concluido:  { tone: 'green',   icon: 'circle-check',  label: 'Concluído' },
+    pendente:  { color: '#9CA3AF', title: 'Pendente' },
+    andamento: { color: PALETA.yellowStrong, title: 'Em andamento' },
+    concluido: { color: PALETA.greenStrong,  title: 'Concluído' },
   };
   const m = map[status] || map.pendente;
-  return <Pill tone={m.tone} icon={m.icon}>{m.label}</Pill>;
+  return (
+    <span title={m.title}
+      style={{
+        width: 10, height: 10, borderRadius: 99,
+        background: m.color, flexShrink: 0,
+        boxShadow: status === 'andamento' ? `0 0 0 2px ${m.color}33` : 'none',
+      }} />
+  );
 }
 
 // ─── Card de um lado (Limpeza ou Manutenção) ──────────────────────────────
@@ -240,14 +248,14 @@ function CardLado({
 
   return (
     <SubBloco T={T} dark={dark} icon={icon} label={titulo} color={color}
-      action={<StatusLado status={status} />}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      action={<StatusBolinha status={status} />}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <SecaoChecklist T={T} dark={dark}
           titulo="Desmontagem" icon="tools-off"
           checks={desmCheck} valores={desmVal} onToggle={onToggleDesm}
           sync />
         <SecaoChecklist T={T} dark={dark}
-          titulo={titulo === 'Limpeza' ? 'Limpeza' : 'Serviço'}
+          titulo={titulo === 'Limpeza' ? 'Limpeza' : 'Manutenção'}
           icon={titulo === 'Limpeza' ? 'droplet' : 'tool'}
           checks={servCheck} valores={servVal} onToggle={onToggleServ} />
         <SecaoChecklist T={T} dark={dark}
@@ -400,34 +408,41 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
         </SubBloco>
       )}
 
-      {/* Card Limpeza */}
-      {temLimpeza && (
-        <CardLado T={T} dark={dark}
-          titulo="Limpeza" icon="droplet" color="blue"
-          status={os?.limpeza || 'pendente'}
-          desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
-          servCheck={CHECKS_LIMPEZA} servVal={limpVal}
-          montCheck={CHECKS_MONTAGEM} montVal={montVal}
-          onToggleDesm={toggleEm('desmontagem')}
-          onToggleServ={toggleEm('limpeza_serv')}
-          onToggleMont={toggleEm('montagem')}
-          outroServDone={manutServDone}
-          outroLabel="Manutenção" />
-      )}
-
-      {/* Card Manutencao */}
-      {temManutencao && (
-        <CardLado T={T} dark={dark}
-          titulo="Manutenção" icon="tool" color="yellow"
-          status={os?.manutencao || 'pendente'}
-          desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
-          servCheck={manutChecks} servVal={manutVal}
-          montCheck={CHECKS_MONTAGEM} montVal={montVal}
-          onToggleDesm={toggleEm('desmontagem')}
-          onToggleServ={toggleEm('manut_serv')}
-          onToggleMont={toggleEm('montagem')}
-          outroServDone={limpServDone}
-          outroLabel="Limpeza" />
+      {/* Cards Limpeza + Manutencao lado a lado (2 colunas) */}
+      {(temLimpeza || temManutencao) && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: (temLimpeza && temManutencao) ? '1fr 1fr' : '1fr',
+          gap: 8,
+          alignItems: 'start',
+        }}>
+          {temLimpeza && (
+            <CardLado T={T} dark={dark}
+              titulo="Limpeza" icon="droplet" color="blue"
+              status={os?.limpeza || 'pendente'}
+              desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
+              servCheck={CHECKS_LIMPEZA} servVal={limpVal}
+              montCheck={CHECKS_MONTAGEM} montVal={montVal}
+              onToggleDesm={toggleEm('desmontagem')}
+              onToggleServ={toggleEm('limpeza_serv')}
+              onToggleMont={toggleEm('montagem')}
+              outroServDone={manutServDone}
+              outroLabel="Manutenção" />
+          )}
+          {temManutencao && (
+            <CardLado T={T} dark={dark}
+              titulo="Manutenção" icon="tool" color="yellow"
+              status={os?.manutencao || 'pendente'}
+              desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
+              servCheck={manutChecks} servVal={manutVal}
+              montCheck={CHECKS_MONTAGEM} montVal={montVal}
+              onToggleDesm={toggleEm('desmontagem')}
+              onToggleServ={toggleEm('manut_serv')}
+              onToggleMont={toggleEm('montagem')}
+              outroServDone={limpServDone}
+              outroLabel="Limpeza" />
+          )}
+        </div>
       )}
 
       {/* Caso raro: orcamento sem item identificavel */}
