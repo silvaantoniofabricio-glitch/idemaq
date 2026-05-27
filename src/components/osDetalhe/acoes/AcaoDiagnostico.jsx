@@ -283,8 +283,8 @@ const AcaoDiagnostico = ({ os, onUpdateOS, onMoverOS }) => {
           const vaz = os?.pre_diagnostico?.vazamentos || {};
           const locais = []
           if (vaz.entrada)  locais.push('Entrada')
-          if (vaz.saida)    locais.push('Saída')
           if (vaz.agitacao) locais.push('Agitação')
+          if (vaz.saida)    locais.push('Saída')
           if (locais.length === 0) return null
           return (
             <div style={{ marginBottom: 8 }}>

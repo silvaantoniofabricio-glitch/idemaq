@@ -333,8 +333,8 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
           }}>
             {[
               { id: 'entrada',  label: 'Entrada',  icon: 'droplet' },
-              { id: 'saida',    label: 'Saída',    icon: 'droplet-off' },
               { id: 'agitacao', label: 'Agitação', icon: 'refresh' },
+              { id: 'saida',    label: 'Saída',    icon: 'droplet-off' },
             ].map(v => {
               const ativo = vazamentos[v.id];
               return (
