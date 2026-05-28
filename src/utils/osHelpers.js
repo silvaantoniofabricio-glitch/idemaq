@@ -70,8 +70,17 @@ export function podeMoverOS(os, etapaAlvo, opts = {}) {
   }
 
   if (etapaAlvo === 'teste_final' && os.etapa === 'oficina') {
-    if (os.limpeza !== 'concluido' || os.manutencao !== 'concluido') {
-      return { ok: false, motivo: 'Limpeza e manutenção precisam estar concluídas antes do teste final' }
+    // Lê status de pre_diagnostico.oficina (as colunas top-level os.limpeza/os.manutencao
+    // nunca foram criadas no banco). Se nenhum status foi gravado ainda, bloqueia.
+    const oficina = os.pre_diagnostico?.oficina || {}
+    const limpStatus  = oficina.limpeza_status
+    const manutStatus = oficina.manutencao_status
+    // Pelo menos um dos lados deve estar presente; os que estão presentes devem ser 'concluido'
+    const algumPresente = limpStatus || manutStatus
+    const limpOk  = !limpStatus  || limpStatus  === 'concluido'
+    const manutOk = !manutStatus || manutStatus === 'concluido'
+    if (!algumPresente || !limpOk || !manutOk) {
+      return { ok: false, motivo: 'Conclua o conserto antes de ir pro Teste final' }
     }
   }
 

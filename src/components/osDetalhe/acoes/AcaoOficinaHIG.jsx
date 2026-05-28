@@ -479,18 +479,13 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
     }
 
     const novaOficina = { ...oficinaJsonb, execucao: novoExec }
-    if (temLimpeza)    novaOficina.limpeza_status    = calcStatus(limpServOk)
-    if (temManutencao) novaOficina.manutencao_status = calcStatus(manutServOk)
-
-    // Escreve nas colunas top-level que podeMoverOS usa pra liberar Teste final.
-    // Se o lado não existe na OS, considera 'concluido' pra não bloquear.
-    const statusLimpeza    = temLimpeza    ? calcStatus(limpServOk)    : 'concluido'
-    const statusManutencao = temManutencao ? calcStatus(manutServOk)   : 'concluido'
+    // Grava status em pre_diagnostico.oficina — lido por podeMoverOS pra liberar Teste final.
+    // Se o lado não existe na OS, marca 'concluido' pra não bloquear.
+    novaOficina.limpeza_status    = temLimpeza    ? calcStatus(limpServOk)  : 'concluido'
+    novaOficina.manutencao_status = temManutencao ? calcStatus(manutServOk) : 'concluido'
 
     onUpdateOS?.(os.numero, {
       pre_diagnostico: { ...(os.pre_diagnostico || {}), oficina: novaOficina },
-      limpeza:    statusLimpeza,
-      manutencao: statusManutencao,
     })
   }
 

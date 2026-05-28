@@ -35,8 +35,6 @@ const COLUNAS_SAFE = new Set([
   'pre_diagnostico',
   // observacoes livres da OS (header + detalhe)
   'observacoes',
-  // status do conserto (lido por podeMoverOS pra liberar Teste final)
-  'limpeza', 'manutencao',
 ])
 
 /**
