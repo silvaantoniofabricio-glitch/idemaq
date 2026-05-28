@@ -293,9 +293,9 @@ export default function LogisticaMobile({ T, dark }) {
       {/* Mapa + popup flutuante quando OS clicada */}
       <div style={{ position: 'relative' }}>
         <div style={{
-          borderRadius: 14, overflow: 'hidden',
-          border: `1px solid ${T.border}`,
-          boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
+          borderRadius: 16, overflow: 'hidden',
+          background: T.card,
+          boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
         }}>
           <MapaLogistica
             T={T} dark={dark}
@@ -328,10 +328,9 @@ export default function LogisticaMobile({ T, dark }) {
       {/* Grouped card list — 3 rotas num bloco visualmente único */}
       <div style={{
         background: T.card,
-        borderRadius: 14,
-        border: `1px solid ${T.border}`,
+        borderRadius: 16,
         overflow: 'hidden',
-        boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
+        boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
       }}>
         {slotsRotas.map((slot, idx) => (
           <RotaAccordion
