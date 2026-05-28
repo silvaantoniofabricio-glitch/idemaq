@@ -14,6 +14,7 @@ import { useOSItens } from '../../../hooks/useOSItens'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import { resolverFotoUrl, FOTO_STORAGE_MARKER } from '../../../utils/osStorage'
+import FotosColetaSection from '../FotosColetaSection'
 import {
   HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT,
   higType, higInsetCard,
@@ -549,6 +550,8 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
     }}>
 
       <SecaoCliente T={T} dark={dark} os={os} />
+
+      <FotosColetaSection T={T} dark={dark} os={os} readOnly />
 
       {admin && !itensLoading && (
         <SecaoFinanceiro T={T} dark={dark} os={os} itens={itens} />

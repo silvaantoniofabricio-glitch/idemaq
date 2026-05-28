@@ -13,6 +13,7 @@ import {
   Modal, ModalHeader, Button, Input, Textarea,
   useToast,
 } from '../ui'
+import FotosColetaSection from './FotosColetaSection'
 
 export default function FormEquipamentoEdit({
   T, dark, mobile,
@@ -119,6 +120,12 @@ export default function FormEquipamentoEdit({
             Dados do equipamento são <strong style={{ color: corHero(dark) }}>desta OS</strong> — alterar aqui não muda OS anteriores do mesmo cliente.
           </span>
         </div>
+
+        <FotosColetaSection
+          T={T} dark={dark}
+          os={os}
+          onUpdateOS={onUpdateOS}
+        />
       </div>
 
       <div style={{
