@@ -269,7 +269,7 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
       {/* Sub-header + itens de serviço */}
       {manutChecks.length > 0 ? (
         <>
-          <CardSubHeader T={T} dark={dark} done={servFeitos} total={manutChecks.length} />
+          <Sep T={T} />
           {manutChecks.map((c, i) => (
             <React.Fragment key={c.id}>
               {i > 0 && <Sep T={T} />}
