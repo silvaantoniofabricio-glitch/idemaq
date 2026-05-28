@@ -259,19 +259,26 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [os?.observacoes])
 
-  // ── Auto-saves ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!hidratado) return
-    const t = setTimeout(() => {
-      salvarChk(TESTES.map(t => ({
-        id: t.id, label: t.label,
-        checked: naoLiga ? false : testes[t.id] === 'ok',
-        valor:   naoLiga ? 'na'  : (testes[t.id] || null),
-      })), null)
-    }, 500)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testes, naoLiga, hidratado])
+  // Salva imediatamente no clique — sem debounce
+  function salvarTestes(novoTestes, novoNaoLiga) {
+    salvarChk(TESTES.map(t => ({
+      id: t.id, label: t.label,
+      checked: novoNaoLiga ? false : novoTestes[t.id] === 'ok',
+      valor:   novoNaoLiga ? 'na'  : (novoTestes[t.id] || null),
+    })), null)
+  }
+
+  function setResultado(testeId, valor) {
+    const novoTestes = { ...testes, [testeId]: valor }
+    setTestes(novoTestes)
+    salvarTestes(novoTestes, naoLiga)
+  }
+
+  function toggleNaoLiga() {
+    const novo = !naoLiga
+    setNaoLiga(novo)
+    salvarTestes(testes, novo)
+  }
 
   useEffect(() => {
     if (!hidratado || obs === (os?.observacoes || '')) return
@@ -405,7 +412,7 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
             type="button"
             role="switch"
             aria-checked={naoLiga}
-            onClick={() => setNaoLiga(v => !v)}
+            onClick={toggleNaoLiga}
             style={{
               width: 51, height: 31, borderRadius: 999,
               border: 'none', padding: 2, flexShrink: 0,
@@ -466,7 +473,7 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
                 T={T} dark={dark}
                 teste={teste}
                 value={testes[teste.id]}
-                onChange={v => setTestes(prev => ({ ...prev, [teste.id]: v }))}
+                onChange={v => setResultado(teste.id, v)}
               />
             </React.Fragment>
           ))}

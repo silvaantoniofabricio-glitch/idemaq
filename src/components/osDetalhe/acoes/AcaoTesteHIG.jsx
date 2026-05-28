@@ -234,16 +234,30 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obs, hidratado])
 
-  function serializarChecklist() {
-    const linhasTestes = TESTES.map(t => ({
-      id: `teste:${t.id}`, label: t.label,
-      checked: testes[t.id] === 'ok',
-      valor: testes[t.id] || null,
+  function serializarChecklist(novoTestes, novoAcab) {
+    const t = novoTestes ?? testes
+    const a = novoAcab ?? acabamento
+    const linhasTestes = TESTES.map(item => ({
+      id: `teste:${item.id}`, label: item.label,
+      checked: t[item.id] === 'ok',
+      valor: t[item.id] || null,
     }))
     const linhasAcab = temLimpeza
-      ? ACABAMENTO.map(a => ({ id: `acab:${a.id}`, label: a.label, checked: !!acabamento[a.id] }))
+      ? ACABAMENTO.map(item => ({ id: `acab:${item.id}`, label: item.label, checked: !!a[item.id] }))
       : []
     return [...linhasTestes, ...linhasAcab]
+  }
+
+  function setResultado(testeId, valor) {
+    const novoTestes = { ...testes, [testeId]: valor }
+    setTestes(novoTestes)
+    salvarChk(serializarChecklist(novoTestes, null), null)
+  }
+
+  function toggleAcab(itemId) {
+    const novoAcab = { ...acabamento, [itemId]: !acabamento[itemId] }
+    setAcabamento(novoAcab)
+    salvarChk(serializarChecklist(null, novoAcab), null)
   }
 
   const falhas = TESTES
@@ -307,7 +321,7 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
               T={T} dark={dark}
               teste={teste}
               value={testes[teste.id]}
-              onChange={v => setTestes(prev => ({ ...prev, [teste.id]: v }))}
+              onChange={v => setResultado(teste.id, v)}
             />
           </React.Fragment>
         ))}
@@ -332,7 +346,7 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
               const on = !!acabamento[a.id]
               return (
                 <button key={a.id} type="button"
-                  onClick={() => setAcabamento(prev => ({ ...prev, [a.id]: !prev[a.id] }))}
+                  onClick={() => toggleAcab(a.id)}
                   style={{
                     flex: '1 1 0', minHeight: 52,
                     borderRadius: HIG_RADIUS.card,
