@@ -183,9 +183,15 @@ export default function Kanban({ T, dark, user }) {
     if (osError) notify('erro', 'Erro ao carregar OS — tente recarregar')
   }, [osError])
 
+  // Universo: sempre TODAS as OS, filtradas pelos tipos ativos (toggle)
+  const todasUniverso = osList.filter(o => tiposAtivos.has(o.tipo))
+  const buscando = busca.trim().length > 0
+
   // Zona define quais colunas aparecem. 'todos' = todas as colunas de ETAPAS_TODOS.
+  // Durante busca, ignora o filtro de zona — senão OS fora da zona ativa
+  // passam pelo filtro mas somem porque não há coluna pra elas (linha distribuir).
   const zonaCfg = ZONAS.find(z => z.id === zona)
-  const etapasAtivas = zona === 'todos'
+  const etapasAtivas = (zona === 'todos' || buscando)
     ? ETAPAS_TODOS
     : ETAPAS_TODOS.filter(e => zonaCfg.etapas.includes(e.id))
   const etapasVisiveis = etapasAtivas.filter(e => admin || !e.adminOnly)
@@ -193,10 +199,6 @@ export default function Kanban({ T, dark, user }) {
   const corPaleta = zona === 'todos' ? 'blue' : zonaCfg.cor
   const tipoCor = corEtapa(corPaleta, dark)
   const tipoBg  = bgEtapa(corPaleta, dark)
-
-  // Universo: sempre TODAS as OS, filtradas pelos tipos ativos (toggle)
-  const todasUniverso = osList.filter(o => tiposAtivos.has(o.tipo))
-  const buscando = busca.trim().length > 0
 
   const osFiltradas = todasUniverso
     .filter(o => verRecusados ? true : o.etapa !== 'recusado')
