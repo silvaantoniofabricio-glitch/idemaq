@@ -554,15 +554,9 @@ function GrupoItens({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
           </div>
         )}
       </HIGSection>
-
-      {/* AddItemForm abaixo do grupo correto */}
-      {adicionando && (
-        <AddItemForm tipo={tipo} T={T} dark={dark}
-          saving={false}
-          onSave={onAdd.__save}
-          onCancel={onAdd.__cancel}
-        />
-      )}
+      {/* AddItemForm e renderizado pelo pai (logo abaixo de cada GrupoItens)
+          pra evitar duplicacao. Antes este componente renderizava tambem,
+          resultando em 2 inputs aparecendo no clique de '+ Adicionar'. */}
     </>
   )
 }
