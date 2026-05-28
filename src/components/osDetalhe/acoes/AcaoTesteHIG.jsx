@@ -1,24 +1,19 @@
 // src/components/osDetalhe/acoes/AcaoTesteHIG.jsx
-// Teste final — Apple HIG, do zero.
+// Teste final — Apple HIG, padrão idêntico ao AcaoRecebidoHIG.
 //
 // Seções:
-//   1. Resumo do diagnóstico (relato · causa · componentes)
-//   2. Testes finais — acordeão por teste (OK / Defeito / Barulho)
-//   3. Acabamento — 3 checkrows (Secagem · Polimento · Enceramento),
-//      só aparece se OS tem Limpeza no orçamento
-//   4. Observações (textarea · auto-save · global os.observacoes)
-//   5. CTA — "Aprovar · ir pra Entrega" ou "Voltar pra oficina (N falhas)"
-//
-// Lógica preservada de AcaoTeste.jsx:
-//  - podeAprovar = todos testes preenchidos + todos OK + acabamento OK
-//  - podeVoltarOficina = há defeito ou barulho em qualquer teste
-//  - Persistência: useChecklistEtapa('teste_final') + useFalhaTeste
+//   1. Testes finais — acordeão por teste (OK / Defeito / Barulho)
+//      mesmo TesteAccordion + ResultBadge do Avaliação
+//   2. Acabamento (Secagem · Polimento · Enceramento) — 3 tiles toggle,
+//      mesmo padrão dos Vazamentos do Avaliação; só se OS tem Limpeza
+//   3. Observações (textarea · auto-save · os.observacoes)
+//   4. CTA azul "Aprovar · ir pra Entrega" ou vermelho "Voltar pra oficina"
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../theme'
 import { TI } from '../../_shared/PrimitivasMobile'
 import {
-  HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR,
+  HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT,
   higType, higFilledButton, higInsetCard,
 } from '../../../theme-hig'
 import { ETAPAS_TODOS } from '../../../utils/osData'
@@ -41,316 +36,175 @@ const ACABAMENTO = [
   { id: 'enceramento', label: 'Enceramento', icon: 'droplet-half-2' },
 ]
 
+// Mesmas opções do Avaliação — padrão idêntico
 const OPCOES = [
-  {
-    id: 'ok',
-    label: 'OK',
-    icon: 'check',
-    color: HIG_COLOR.green,
-    bgDark: 'rgba(52,199,89,0.18)',
-    bgLight: 'rgba(52,199,89,0.12)',
-  },
-  {
-    id: 'defeito',
-    label: 'Defeito',
-    icon: 'alert-triangle',
-    color: HIG_COLOR.red,
-    bgDark: 'rgba(255,59,48,0.18)',
-    bgLight: 'rgba(255,59,48,0.10)',
-  },
-  {
-    id: 'barulho',
-    label: 'Barulho',
-    icon: 'volume',
-    color: HIG_COLOR.orange,
-    bgDark: 'rgba(255,149,0,0.18)',
-    bgLight: 'rgba(255,149,0,0.12)',
-  },
+  { id: 'ok',      label: 'OK',      icon: 'check',          color: HIG_COLOR.green,  bgLight: '#E8F9EE', bgDark: 'rgba(52,199,89,0.15)'  },
+  { id: 'defeito', label: 'Defeito', icon: 'alert-triangle', color: HIG_COLOR.red,    bgLight: '#FEF0EF', bgDark: 'rgba(255,59,48,0.15)'   },
+  { id: 'barulho', label: 'Barulho', icon: 'volume',         color: HIG_COLOR.orange, bgLight: '#FFF5E6', bgDark: 'rgba(255,149,0,0.15)'   },
 ]
 
-// ─── Primitivos ───────────────────────────────────────────────────────────────
-function Sep({ T }) {
-  return <div style={{ height: 0.5, background: T.border, marginLeft: HIG_SPACE.lg }} />
-}
-
+// ─── HIGSection — idêntico ao Avaliação ──────────────────────────────────────
 function HIGSection({ T, dark, title, children, footer }) {
   return (
     <section>
-      {title && (
-        <div style={{
-          padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
-          ...higType('footnote'),
-          color: HIG_COLOR.gray,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-        }}>{title}</div>
-      )}
-      <div style={higInsetCard(T, dark)}>{children}</div>
+      <div style={{
+        ...higType('footnote'),
+        color: T.textMuted,
+        textTransform: 'uppercase',
+        padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
+        letterSpacing: 0.5,
+      }}>
+        {title}
+      </div>
+      <div style={higInsetCard(T, dark)}>
+        {children}
+      </div>
       {footer && (
         <div style={{
+          ...higType('footnote'),
+          color: T.textMuted,
           padding: `${HIG_SPACE.xxs}px ${HIG_SPACE.md}px 0`,
-          ...higType('caption1'),
-          color: HIG_COLOR.gray,
-        }}>{footer}</div>
+        }}>
+          {footer}
+        </div>
       )}
     </section>
   )
 }
 
-// Badge de resultado atual (exibido na linha fechada do acordeão)
+// ─── Separator — idêntico ao Avaliação ───────────────────────────────────────
+function Sep({ T, indent = 0 }) {
+  return (
+    <div style={{
+      height: 0.5,
+      background: T.border,
+      marginLeft: indent,
+      opacity: 0.7,
+    }} />
+  )
+}
+
+// ─── ResultBadge — idêntico ao Avaliação ─────────────────────────────────────
 function ResultBadge({ valor, dark }) {
-  if (!valor) return null
+  if (!valor) return (
+    <span style={{
+      ...higType('subheadline'),
+      color: HIG_COLOR.gray,
+      display: 'flex', alignItems: 'center', gap: 3,
+    }}>
+      <TI name="chevron-right" size={14} color={HIG_COLOR.gray} />
+    </span>
+  )
   const op = OPCOES.find(o => o.id === valor)
   if (!op) return null
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
-      ...higType('caption2'),
-      fontWeight: 700,
-      padding: '3px 8px',
-      borderRadius: HIG_RADIUS.pill,
+      padding: '3px 10px', borderRadius: 999,
       background: dark ? op.bgDark : op.bgLight,
       color: op.color,
+      ...higType('caption1'),
+      fontWeight: 700,
     }}>
-      <TI name={op.icon} size={10} />
+      <TI name={op.icon} size={11} color={op.color} />
       {op.label}
     </span>
   )
 }
 
-// ─── Acordeão de teste ────────────────────────────────────────────────────────
-function TesteAccordion({ T, dark, teste, valor, onChange, open, onToggle }) {
+// ─── TesteAccordion — idêntico ao Avaliação ──────────────────────────────────
+function TesteAccordion({ T, dark, teste, value, onChange, open, onToggle }) {
   return (
     <div>
-      {/* Linha principal — 44pt */}
       <button
         type="button"
         onClick={onToggle}
         style={{
-          width: '100%', minHeight: HIG_SIZE.touch,
-          display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+          width: '100%', minHeight: HIG_SIZE.listRow,
           padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
+          border: 'none', background: open
+            ? (dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)')
+            : 'transparent',
+          display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+          cursor: 'pointer', textAlign: 'left', fontFamily: HIG_FONT,
           WebkitTapHighlightColor: 'transparent',
-          fontFamily: 'inherit',
-          textAlign: 'left',
+          transition: 'background .12s',
         }}
       >
-        {/* Ícone badge 32px */}
+        {/* Ícone em badge colorido */}
         <span style={{
-          width: 32, height: 32, borderRadius: HIG_RADIUS.sm, flexShrink: 0,
-          background: valor
-            ? (dark ? OPCOES.find(o => o.id === valor)?.bgDark : OPCOES.find(o => o.id === valor)?.bgLight)
-            : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray6),
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'background 0.15s',
+          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+          background: value
+            ? (dark ? OPCOES.find(o => o.id === value)?.bgDark : OPCOES.find(o => o.id === value)?.bgLight)
+            : (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.055)'),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'background .15s',
         }}>
           <TI
-            name={valor ? OPCOES.find(o => o.id === valor)?.icon || teste.icon : teste.icon}
+            name={teste.icon}
             size={16}
-            color={valor ? OPCOES.find(o => o.id === valor)?.color : HIG_COLOR.gray}
+            color={value ? OPCOES.find(o => o.id === value)?.color : HIG_COLOR.gray}
           />
         </span>
 
         {/* Label */}
-        <span style={{ flex: 1, ...higType('subheadline'), color: T.textPrimary }}>
+        <span style={{
+          flex: 1, minWidth: 0,
+          ...higType('body'),
+          color: T.textPrimary,
+          textAlign: 'left',
+        }}>
           {teste.label}
         </span>
 
-        {/* Badge resultado ou chevron */}
-        {valor
-          ? <ResultBadge valor={valor} dark={dark} />
-          : <TI name={open ? 'chevron-up' : 'chevron-down'} size={14} color={HIG_COLOR.gray3} />
-        }
-        {valor && (
-          <TI name={open ? 'chevron-up' : 'chevron-down'} size={14} color={HIG_COLOR.gray3} />
-        )}
+        <ResultBadge valor={value} dark={dark} />
       </button>
 
-      {/* Painel expandido — 3 botões em grid */}
+      {/* Painel expandido — 3 opções em grid */}
       {open && (
         <div style={{
+          padding: `${HIG_SPACE.xs}px ${HIG_SPACE.sm}px ${HIG_SPACE.sm}px`,
           display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
           gap: HIG_SPACE.xs,
-          padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px ${HIG_SPACE.sm}px`,
-          background: dark ? 'rgba(255,255,255,0.03)' : HIG_COLOR.gray6,
+          borderTop: `0.5px solid ${T.border}`,
+          background: dark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.015)',
         }}>
           {OPCOES.map(op => {
-            const sel = valor === op.id
+            const sel = value === op.id
             return (
               <button
                 key={op.id}
                 type="button"
-                onClick={() => {
-                  onChange(sel ? null : op.id)
-                  onToggle()
-                }}
+                onClick={() => { onChange(sel ? null : op.id); onToggle() }}
                 style={{
-                  minHeight: 60,
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 5,
-                  borderRadius: HIG_RADIUS.md,
-                  border: `1.5px solid ${sel ? op.color : (dark ? 'rgba(255,255,255,0.12)' : HIG_COLOR.gray4)}`,
+                  minHeight: 56,
+                  borderRadius: HIG_RADIUS.card,
+                  border: `1.5px solid ${sel ? op.color : T.border}`,
                   background: sel
                     ? (dark ? op.bgDark : op.bgLight)
-                    : (dark ? 'rgba(255,255,255,0.06)' : '#fff'),
+                    : (dark ? 'rgba(255,255,255,0.04)' : T.card),
                   cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 5,
                   WebkitTapHighlightColor: 'transparent',
-                  fontFamily: 'inherit',
-                  transition: 'background 0.12s, border-color 0.12s',
+                  transition: 'background .12s, border-color .12s',
+                  fontFamily: HIG_FONT,
                 }}
               >
-                <TI name={op.icon} size={20} color={sel ? op.color : HIG_COLOR.gray} />
+                <TI name={op.icon} size={20} color={sel ? op.color : T.textMuted} />
                 <span style={{
-                  ...higType('caption2'),
-                  fontWeight: 600,
-                  color: sel ? op.color : HIG_COLOR.gray,
-                }}>{op.label}</span>
+                  ...higType('caption1'),
+                  color: sel ? op.color : T.textMuted,
+                  fontWeight: sel ? 700 : 500,
+                }}>
+                  {op.label}
+                </span>
               </button>
             )
           })}
         </div>
       )}
     </div>
-  )
-}
-
-// ─── CheckRow de acabamento ───────────────────────────────────────────────────
-function AcabCheckRow({ T, dark, item, feito, onToggle }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      style={{
-        width: '100%', minHeight: HIG_SIZE.touch,
-        display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-        background: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        WebkitTapHighlightColor: 'transparent',
-        fontFamily: 'inherit',
-        textAlign: 'left',
-      }}
-    >
-      {/* Checkbox */}
-      <span style={{
-        width: 22, height: 22, borderRadius: HIG_RADIUS.sm, flexShrink: 0,
-        border: `1.5px solid ${feito ? HIG_COLOR.green : HIG_COLOR.gray3}`,
-        background: feito
-          ? HIG_COLOR.green
-          : (dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)'),
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'background 0.15s, border-color 0.15s',
-      }}>
-        {feito && <TI name="check" size={13} color="#fff" />}
-      </span>
-
-      {/* Ícone + label */}
-      <span style={{
-        width: 28, height: 28, borderRadius: HIG_RADIUS.sm, flexShrink: 0,
-        background: feito
-          ? (dark ? 'rgba(52,199,89,0.18)' : 'rgba(52,199,89,0.12)')
-          : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray6),
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <TI name={item.icon} size={14} color={feito ? HIG_COLOR.green : HIG_COLOR.gray} />
-      </span>
-
-      <span style={{
-        flex: 1,
-        ...higType('subheadline'),
-        color: feito ? HIG_COLOR.gray : T.textPrimary,
-        textDecoration: feito ? 'line-through' : 'none',
-      }}>{item.label}</span>
-    </button>
-  )
-}
-
-// ─── Resumo do diagnóstico ────────────────────────────────────────────────────
-function ResumoDiagnostico({ T, dark, os }) {
-  const relato = os?.defeito || ''
-  const causa = os?.pre_diagnostico?.causa_diagnostico || ''
-  const marcados = os?.pre_diagnostico?.componentes_marcados || {}
-  const chips = []
-  for (const [, items] of Object.entries(marcados)) {
-    if (!items || typeof items !== 'object') continue
-    const pares = Array.isArray(items)
-      ? items.map(id => [id, 'troca'])
-      : Object.entries(items)
-    for (const [itemId, acao] of pares) {
-      const cat = CATEGORIA_POR_ID[itemId]
-      chips.push({ id: itemId, label: cat?.label || itemId, acao })
-    }
-  }
-  if (!relato && !causa && chips.length === 0) return null
-
-  const isManut = (acao) => acao === 'manutencao'
-
-  return (
-    <HIGSection T={T} dark={dark} title="Diagnóstico">
-      {relato && (
-        <>
-          <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px` }}>
-            <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xxs }}>
-              Relato do cliente
-            </div>
-            <div style={{
-              borderLeft: `3px solid ${HIG_COLOR.orange}`,
-              paddingLeft: HIG_SPACE.sm,
-              ...higType('footnote'),
-              color: T.textPrimary, lineHeight: '18px',
-            }}>{relato}</div>
-          </div>
-          {(causa || chips.length > 0) && <Sep T={T} />}
-        </>
-      )}
-      {causa && (
-        <>
-          <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px` }}>
-            <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xxs }}>
-              Causa identificada
-            </div>
-            <div style={{
-              borderLeft: `3px solid ${HIG_COLOR.tintIdemaq}`,
-              paddingLeft: HIG_SPACE.sm,
-              ...higType('footnote'),
-              color: T.textPrimary, lineHeight: '18px',
-            }}>{causa}</div>
-          </div>
-          {chips.length > 0 && <Sep T={T} />}
-        </>
-      )}
-      {chips.length > 0 && (
-        <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px` }}>
-          <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xs }}>
-            Componentes · {chips.length}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {chips.map(c => {
-              const iM = isManut(c.acao)
-              const col = iM ? HIG_COLOR.orange : HIG_COLOR.red
-              const bg  = iM
-                ? (dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.10)')
-                : (dark ? 'rgba(255,59,48,0.15)'  : 'rgba(255,59,48,0.08)')
-              return (
-                <span key={c.id} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  ...higType('caption2'), fontWeight: 600,
-                  padding: '3px 8px', borderRadius: HIG_RADIUS.pill,
-                  background: bg, color: col, border: `1px solid ${col}33`,
-                }}>
-                  <span style={{ fontWeight: 700, fontSize: 10 }}>{iM ? 'MANUT.' : 'TROCA'}</span>
-                  {c.label}
-                </span>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </HIGSection>
   )
 }
 
@@ -375,11 +229,11 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     () => ACABAMENTO.reduce((acc, a) => ({ ...acc, [a.id]: false }), {})
   )
   const [obs, setObs] = useState(os?.observacoes || '')
+  const [openRow, setOpenRow] = useState(null)
   const [hidratado, setHidratado] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [aberto, setAberto] = useState(null) // id do teste com acordeão aberto
 
-  // Hidratação inicial do checklist
+  // Hidratação
   useEffect(() => {
     if (loadingChk || hidratado) return
     const novoTestes = TESTES.reduce((acc, t) => {
@@ -396,7 +250,6 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     setHidratado(true)
   }, [loadingChk, chkItens, hidratado, os?.observacoes])
 
-  // Sincroniza obs quando outra etapa altera os.observacoes
   useEffect(() => {
     if (hidratado) setObs(os?.observacoes || '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,21 +257,11 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
 
   // Auto-save obs (debounce 500ms)
   useEffect(() => {
-    if (!hidratado) return
-    if (obs === (os?.observacoes || '')) return
-    const t = setTimeout(() => {
-      onUpdateOS?.(os.numero, { observacoes: obs })
-    }, 500)
+    if (!hidratado || obs === (os?.observacoes || '')) return
+    const t = setTimeout(() => onUpdateOS?.(os.numero, { observacoes: obs }), 500)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obs, hidratado])
-
-  function setResultado(testeId, valor) {
-    setTestes(prev => ({ ...prev, [testeId]: valor }))
-  }
-  function toggleAcab(itemId) {
-    setAcabamento(prev => ({ ...prev, [itemId]: !prev[itemId] }))
-  }
 
   function serializarChecklist() {
     const linhasTestes = TESTES.map(t => ({
@@ -436,21 +279,18 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     .filter(t => testes[t.id] === 'defeito' || testes[t.id] === 'barulho')
     .map(t => `${t.label}: ${testes[t.id] === 'defeito' ? 'com defeito' : 'com barulho'}`)
 
-  const todosTestesPreenchidos = TESTES.every(t => testes[t.id] != null)
-  const todosTestesOk = todosTestesPreenchidos && falhas.length === 0
+  const todosPreenchidos = TESTES.every(t => testes[t.id] != null)
+  const todosOk = todosPreenchidos && falhas.length === 0
   const acabPendentes = ACABAMENTO.filter(a => !acabamento[a.id]).length
   const todoAcabOk = !temLimpeza || acabPendentes === 0
-  const podeAprovar = todosTestesOk && todoAcabOk
+  const podeAprovar = todosOk && todoAcabOk
   const podeVoltarOficina = falhas.length > 0
-
-  const okCount = TESTES.filter(t => testes[t.id] === 'ok').length
+  const preenchidos = TESTES.filter(t => testes[t.id] != null).length
 
   async function aprovar() {
     setSalvando(true)
     await salvarChk(serializarChecklist(), null)
-    if (obs !== (os?.observacoes || '')) {
-      onUpdateOS?.(os.numero, { observacoes: obs })
-    }
+    if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     await sincronizarAbertas([])
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'entrega')
     setSalvando(false)
@@ -460,72 +300,104 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
   async function voltarOficina() {
     setSalvando(true)
     await salvarChk(serializarChecklist(), null)
-    if (obs !== (os?.observacoes || '')) {
-      onUpdateOS?.(os.numero, { observacoes: obs })
-    }
+    if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     await sincronizarAbertas(falhas)
     const oficina = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')
     setSalvando(false)
     if (oficina) onMoverOS(os.numero, oficina.id)
   }
 
+  const ctaBg = podeAprovar
+    ? HIG_COLOR.tintIdemaq
+    : (dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA')
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      gap: HIG_SPACE.lg,
+      fontFamily: HIG_FONT,
+      padding: `0 0 ${HIG_SPACE.md}px`,
+    }}>
 
-      {/* 1. Resumo do diagnóstico */}
-      <ResumoDiagnostico T={T} dark={dark} os={os} />
-
-      {/* 2. Testes finais — acordeão */}
+      {/* ── 1. Testes finais ─────────────────────────────────────────────── */}
       <HIGSection
         T={T} dark={dark}
         title="Testes finais"
-        footer={todosTestesPreenchidos
-          ? (todosTestesOk
-              ? `Todos os ${TESTES.length} testes passaram ✓`
-              : `${falhas.length} falha${falhas.length > 1 ? 's' : ''} detectada${falhas.length > 1 ? 's' : ''}`)
-          : `${okCount} de ${TESTES.length} preenchidos`}
+        footer={
+          preenchidos > 0
+            ? `${preenchidos} de ${TESTES.length} avaliados`
+            : 'Toque em cada teste para avaliar'
+        }
       >
-        {TESTES.map((t, i) => (
-          <React.Fragment key={t.id}>
-            {i > 0 && <Sep T={T} />}
+        {TESTES.map((teste) => (
+          <React.Fragment key={teste.id}>
+            <Sep T={T} indent={HIG_SPACE.md + 32 + HIG_SPACE.sm} />
             <TesteAccordion
               T={T} dark={dark}
-              teste={t}
-              valor={testes[t.id]}
-              onChange={(v) => setResultado(t.id, v)}
-              open={aberto === t.id}
-              onToggle={() => setAberto(aberto === t.id ? null : t.id)}
+              teste={teste}
+              value={testes[teste.id]}
+              onChange={v => setTestes(prev => ({ ...prev, [teste.id]: v }))}
+              open={openRow === teste.id}
+              onToggle={() => setOpenRow(prev => prev === teste.id ? null : teste.id)}
             />
           </React.Fragment>
         ))}
       </HIGSection>
 
-      {/* 3. Acabamento (só se tem Limpeza) */}
+      {/* ── 2. Acabamento (só se tem Limpeza) ────────────────────────────── */}
       {temLimpeza && (
         <HIGSection
           T={T} dark={dark}
           title="Acabamento"
-          footer={acabPendentes === 0
-            ? 'Acabamento completo ✓'
-            : `${ACABAMENTO.length - acabPendentes} de ${ACABAMENTO.length} marcados`}
+          footer={
+            acabPendentes === 0
+              ? 'Acabamento completo'
+              : `${ACABAMENTO.length - acabPendentes} de ${ACABAMENTO.length} marcados`
+          }
         >
-          {ACABAMENTO.map((a, i) => (
-            <React.Fragment key={a.id}>
-              {i > 0 && <Sep T={T} />}
-              <AcabCheckRow
-                T={T} dark={dark}
-                item={a}
-                feito={!!acabamento[a.id]}
-                onToggle={() => toggleAcab(a.id)}
-              />
-            </React.Fragment>
-          ))}
+          <div style={{
+            padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
+            display: 'flex', gap: HIG_SPACE.xs,
+          }}>
+            {ACABAMENTO.map(a => {
+              const on = !!acabamento[a.id]
+              return (
+                <button key={a.id} type="button"
+                  onClick={() => setAcabamento(prev => ({ ...prev, [a.id]: !prev[a.id] }))}
+                  style={{
+                    flex: '1 1 0', minHeight: 52,
+                    borderRadius: HIG_RADIUS.card,
+                    border: `1.5px solid ${on ? HIG_COLOR.tintIdemaq : T.border}`,
+                    background: on
+                      ? (dark ? 'rgba(91,155,213,0.18)' : 'rgba(91,155,213,0.10)')
+                      : 'transparent',
+                    cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 4,
+                    WebkitTapHighlightColor: 'transparent',
+                    transition: 'background .12s, border-color .12s',
+                    fontFamily: HIG_FONT,
+                  }}>
+                  <TI name={a.icon} size={18}
+                    color={on ? HIG_COLOR.tintIdemaq : T.textMuted} />
+                  <span style={{
+                    ...higType('caption1'),
+                    color: on ? HIG_COLOR.tintIdemaq : T.textMuted,
+                    fontWeight: on ? 700 : 500,
+                  }}>
+                    {a.label}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </HIGSection>
       )}
 
-      {/* 4. Observações */}
-      <HIGSection T={T} dark={dark} title="Observações">
-        <div style={{ padding: `${HIG_SPACE.xs}px ${HIG_SPACE.sm}px` }}>
+      {/* ── 3. Observações ───────────────────────────────────────────────── */}
+      <HIGSection T={T} dark={dark} title="Observações"
+        footer="Visível em todas as etapas.">
+        <div style={{ padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px` }}>
           <textarea
             placeholder="Ex: ficou tudo OK; cliente vai retirar amanhã…"
             value={obs}
@@ -534,68 +406,60 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
             style={{
               width: '100%', boxSizing: 'border-box',
               padding: `${HIG_SPACE.xs}px ${HIG_SPACE.sm}px`,
-              borderRadius: HIG_RADIUS.md,
+              borderRadius: HIG_RADIUS.small,
               border: `1px solid ${T.border}`,
-              background: 'transparent',
+              background: dark ? 'rgba(255,255,255,0.04)' : HIG_COLOR.gray6,
               color: T.textPrimary,
               ...higType('subheadline'),
-              fontFamily: 'inherit',
-              outline: 'none',
-              resize: 'vertical',
-              WebkitTapHighlightColor: 'transparent',
+              fontFamily: HIG_FONT,
+              outline: 'none', resize: 'vertical',
             }}
           />
         </div>
       </HIGSection>
 
-      {/* 5. CTAs */}
-      {!podeVoltarOficina && (
+      {/* ── 4. CTA ───────────────────────────────────────────────────────── */}
+      {!podeVoltarOficina ? (
         <button
           type="button"
-          disabled={!podeAprovar || salvando}
           onClick={aprovar}
+          disabled={!podeAprovar || salvando}
           style={{
-            ...higFilledButton(
-              podeAprovar ? HIG_COLOR.tintIdemaq : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5)
-            ),
-            color: podeAprovar ? '#fff' : HIG_COLOR.gray,
-            cursor: podeAprovar && !salvando ? 'pointer' : 'default',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: HIG_SPACE.sm,
-            WebkitTapHighlightColor: 'transparent',
+            ...higFilledButton(T, dark),
+            width: '100%',
+            background: ctaBg,
+            color: podeAprovar ? '#FFFFFF' : T.textDim,
+            opacity: salvando ? 0.6 : 1,
+            cursor: (podeAprovar && !salvando) ? 'pointer' : 'not-allowed',
           }}
         >
-          <TI name={podeAprovar ? 'circle-check' : 'lock'} size={17} />
-          <span style={{ ...higType('headline'), color: 'inherit' }}>
-            {salvando
-              ? 'Salvando…'
-              : podeAprovar
-                ? 'Aprovar teste · ir pra Entrega'
-                : !todosTestesPreenchidos
-                  ? `Preencha os ${TESTES.length} testes`
-                  : `Marque o acabamento (${acabPendentes} pendente${acabPendentes !== 1 ? 's' : ''})`}
-          </span>
+          <TI name={salvando ? 'loader-2' : (podeAprovar ? 'circle-check' : 'lock')} size={18} />
+          {salvando
+            ? 'Salvando…'
+            : podeAprovar
+              ? 'Aprovar teste · ir pra Entrega'
+              : !todosPreenchidos
+                ? `Avalie os ${TESTES.length} testes para continuar`
+                : `Marque o acabamento (${acabPendentes} pendente${acabPendentes !== 1 ? 's' : ''})`}
         </button>
-      )}
-
-      {podeVoltarOficina && (
+      ) : (
         <button
           type="button"
-          disabled={salvando}
           onClick={voltarOficina}
+          disabled={salvando}
           style={{
-            ...higFilledButton(HIG_COLOR.red),
-            color: '#fff',
-            cursor: salvando ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: HIG_SPACE.sm,
-            WebkitTapHighlightColor: 'transparent',
+            ...higFilledButton(T, dark),
+            width: '100%',
+            background: salvando ? (dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA') : HIG_COLOR.red,
+            color: salvando ? T.textDim : '#FFFFFF',
+            opacity: salvando ? 0.6 : 1,
+            cursor: salvando ? 'not-allowed' : 'pointer',
           }}
         >
-          <TI name="arrow-back-up" size={17} />
-          <span style={{ ...higType('headline'), color: '#fff' }}>
-            {salvando
-              ? 'Salvando…'
-              : `Voltar pra oficina (${falhas.length} ${falhas.length === 1 ? 'falha' : 'falhas'})`}
-          </span>
+          <TI name={salvando ? 'loader-2' : 'arrow-back-up'} size={18} />
+          {salvando
+            ? 'Salvando…'
+            : `Voltar pra oficina (${falhas.length} ${falhas.length === 1 ? 'falha' : 'falhas'})`}
         </button>
       )}
 
