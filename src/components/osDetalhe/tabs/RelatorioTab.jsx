@@ -3,7 +3,7 @@
 // Seções: 1. Cliente & Equipamento  2. Financeiro (admin)
 //         3. O que foi feito        4. Banners contextuais
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { corEtapa } from '../../../utils/colors'
 import {
   dentroGarantia, calcStatusPrazo, totalAPagar,
@@ -13,7 +13,10 @@ import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
-import { resolverFotoUrl, FOTO_STORAGE_MARKER } from '../../../utils/osStorage'
+import {
+  resolverFotoUrl, FOTO_STORAGE_MARKER,
+  uploadFotoColeta, removerFotoColeta,
+} from '../../../utils/osStorage'
 import {
   HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT,
   higType, higInsetCard,
@@ -63,8 +66,11 @@ function Sep({ T, indent = 0 }) {
 }
 
 // ─── 1. Cliente & Equipamento ────────────────────────────────────────────────
-function SecaoCliente({ T, dark, os }) {
+function SecaoCliente({ T, dark, os, onUpdateOS }) {
   const [fotoUrl, setFotoUrl] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const inputFotoRef = useRef(null)
+  const azul = HIG_COLOR.tintIdemaq
 
   useEffect(() => {
     const raw = os?.pre_diagnostico?.foto
@@ -75,6 +81,28 @@ function SecaoCliente({ T, dark, os }) {
       setFotoUrl(raw)
     }
   }, [os?.id, os?.pre_diagnostico?.foto])
+
+  async function escolherFoto(file) {
+    if (!file || !file.type?.startsWith('image/')) return
+    setUploading(true)
+    const res = await uploadFotoColeta(os.id, file)
+    setUploading(false)
+    if (!res.ok) return
+    setFotoUrl(res.url)
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: { ...(os.pre_diagnostico || {}), foto: FOTO_STORAGE_MARKER },
+    })
+  }
+
+  async function removerFoto(e) {
+    e?.stopPropagation()
+    if (!window.confirm('Remover a foto?')) return
+    const res = await removerFotoColeta(os.id)
+    if (!res.ok) return
+    setFotoUrl(null)
+    const { foto, ...resto } = os.pre_diagnostico || {}
+    onUpdateOS?.(os.numero, { pre_diagnostico: resto })
+  }
 
   const dateParts = []
   if (os.abertura || os.criado_em)
@@ -95,21 +123,52 @@ function SecaoCliente({ T, dark, os }) {
         padding: HIG_SPACE.md,
         display: 'flex', alignItems: 'center', gap: HIG_SPACE.md,
       }}>
-        <div style={{
-          width: 56, height: 56, flexShrink: 0,
-          borderRadius: HIG_RADIUS.card,
-          background: fotoUrl
-            ? `url(${fotoUrl}) center/cover no-repeat`
-            : (dark ? '#2c4257' : '#e8f0f8'),
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          overflow: 'hidden',
-        }}>
-          {!fotoUrl && (
-            <i className="ti ti-photo"
-              style={{ fontSize: 22, color: HIG_COLOR.tintIdemaq, opacity: 0.5 }}
+        <div
+          onClick={() => !uploading && inputFotoRef.current?.click()}
+          style={{
+            width: 56, height: 56, flexShrink: 0,
+            borderRadius: HIG_RADIUS.card,
+            background: fotoUrl
+              ? `url(${fotoUrl}) center/cover no-repeat`
+              : (dark ? '#2c4257' : '#e8f0f8'),
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            overflow: 'hidden', cursor: 'pointer', position: 'relative',
+          }}
+        >
+          {!fotoUrl && !uploading && (
+            <i className="ti ti-camera-plus"
+              style={{ fontSize: 22, color: azul, opacity: 0.6 }}
               aria-hidden="true" />
           )}
+          {uploading && (
+            <i className="ti ti-loader-2"
+              style={{ fontSize: 20, color: azul, animation: 'spin 1s linear infinite' }}
+              aria-hidden="true" />
+          )}
+          {fotoUrl && !uploading && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'rgba(0,0,0,0)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'background 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.35)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0)'}
+            >
+              <i className="ti ti-camera"
+                style={{ fontSize: 18, color: '#fff', opacity: 0, transition: 'opacity 0.15s' }}
+                aria-hidden="true" />
+            </div>
+          )}
         </div>
+        <input
+          ref={inputFotoRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: 'none' }}
+          onChange={e => escolherFoto(e.target.files?.[0])}
+        />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -521,7 +580,7 @@ function tipoIcone(tipo) {
 }
 
 // ─── Componente principal ────────────────────────────────────────────────────
-export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {
+export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS, onUpdateOS }) {
   const { itens, loading: itensLoading } = useOSItens(os?.id)
   const checkRecebido = useChecklistEtapa(os?.id, 'recebido')
   const checkOficina  = useChecklistEtapa(os?.id, 'em_oficina')
@@ -548,7 +607,7 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
       fontFamily: HIG_FONT,
     }}>
 
-      <SecaoCliente T={T} dark={dark} os={os} />
+      <SecaoCliente T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} />
 
       {admin && !itensLoading && (
         <SecaoFinanceiro T={T} dark={dark} os={os} itens={itens} />
