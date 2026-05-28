@@ -5,7 +5,9 @@
 // HeaderMobile + FooterMobile dedicados (mais touch-friendly).
 
 import React, { useState, useEffect, useRef } from 'react'
-import { isAdmin } from '../../utils/osHelpers'
+import { isAdmin, podeMoverOS } from '../../utils/osHelpers'
+import { TIPOS_OS } from '../../utils/osData'
+import { corEtapa } from '../../utils/colors'
 import Header from './Header'
 import HeaderMobile from './HeaderMobile'
 import Footer from './Footer'
@@ -16,6 +18,13 @@ import PagamentoTab from './tabs/PagamentoTab'
 import EtapaTab from './tabs/EtapaTab'
 import { usePullToRefresh } from '../../hooks/usePullToRefresh'
 import PullIndicator from '../ui/PullIndicator'
+
+// Apple HIG — easing usada em UIPageViewController scroll-style
+const APPLE_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)'
+const SWIPE_DURATION = 280  // ms
+const SWIPE_DIRECTION_LOCK = 10  // px — distância antes de decidir horizontal/vertical
+const SWIPE_COMMIT_RATIO = 0.28  // 28% da largura
+const SWIPE_COMMIT_VELOCITY = 0.45  // px/ms
 
 function abaInicial(etapa) {
   if (etapa === 'pagamento') return 'pagamento'
@@ -108,6 +117,104 @@ export default function OSDetalhe({
     }
   }
 
+  // === Swipe horizontal pra avançar/voltar etapa (mobile only) ===
+  // Padrão Apple HIG (UIPageViewController scroll-style):
+  //   - Tracking 1:1 enquanto arrasta
+  //   - Rubber band em borda sem destino
+  //   - Snap por threshold de distância OU velocidade
+  //   - Easing apple-spring no commit/cancel
+  const etapasOrdem = TIPOS_OS[os.tipo]?.etapas || []
+  const idxAtual = etapasOrdem.findIndex(e => e.id === os.etapa)
+  const proxEtapa = idxAtual >= 0 ? etapasOrdem[idxAtual + 1] : null
+  const antEtapa  = idxAtual >  0 ? etapasOrdem[idxAtual - 1] : null
+  const canNext = proxEtapa && podeMoverOS(os, proxEtapa.id).ok
+  const canPrev = antEtapa  && podeMoverOS(os, antEtapa.id).ok
+
+  const swipeRef = useRef(null)
+  const [swipeX, setSwipeX] = useState(0)
+  const [swipeState, setSwipeState] = useState('idle')  // 'idle' | 'dragging' | 'animating'
+
+  function onSwipeStart(e) {
+    if (!mobile) return
+    if (swipeState === 'animating') return
+    const t = e.touches?.[0]
+    if (!t) return
+    swipeRef.current = {
+      x0: t.clientX, y0: t.clientY,
+      t0: Date.now(),
+      locked: null,
+    }
+  }
+  function onSwipeMove(e) {
+    if (!swipeRef.current) return
+    const t = e.touches?.[0]
+    if (!t) return
+    const dx = t.clientX - swipeRef.current.x0
+    const dy = t.clientY - swipeRef.current.y0
+
+    // Decisão de direção (lock)
+    if (!swipeRef.current.locked) {
+      if (Math.abs(dx) < SWIPE_DIRECTION_LOCK && Math.abs(dy) < SWIPE_DIRECTION_LOCK) return
+      // Horizontal só ganha quando claramente predominante (1.4x) — protege scroll
+      if (Math.abs(dx) > Math.abs(dy) * 1.4) {
+        swipeRef.current.locked = 'h'
+        setSwipeState('dragging')
+      } else {
+        swipeRef.current.locked = 'v'
+        swipeRef.current = null
+        return
+      }
+    }
+
+    const goingNext = dx < 0
+    const canGo = goingNext ? canNext : canPrev
+    // Rubber band quando não há destino
+    const translateX = canGo ? dx : Math.sign(dx) * Math.pow(Math.abs(dx), 0.72)
+    setSwipeX(translateX)
+  }
+  function onSwipeEnd() {
+    const ref = swipeRef.current
+    swipeRef.current = null
+    if (!ref || ref.locked !== 'h') {
+      if (swipeState === 'dragging') setSwipeState('idle')
+      return
+    }
+    const width = window.innerWidth || 360
+    const dx = swipeX
+    const dt = Math.max(1, Date.now() - ref.t0)
+    const velocity = dx / dt
+    const goingNext = dx < 0
+    const canGo = goingNext ? canNext : canPrev
+    const alvo = goingNext ? proxEtapa?.id : antEtapa?.id
+    const commit = canGo && (
+      Math.abs(dx) > width * SWIPE_COMMIT_RATIO ||
+      Math.abs(velocity) > SWIPE_COMMIT_VELOCITY
+    )
+
+    setSwipeState('animating')
+
+    if (commit && alvo) {
+      // Anima saída pra borda e troca etapa ao terminar
+      setSwipeX(goingNext ? -width : width)
+      setTimeout(() => {
+        // Reset instantâneo (sem transição) + commit da nova etapa
+        setSwipeState('idle')
+        setSwipeX(0)
+        onMoverOS?.(os.numero, alvo)
+      }, SWIPE_DURATION)
+    } else {
+      // Spring back
+      setSwipeX(0)
+      setTimeout(() => setSwipeState('idle'), SWIPE_DURATION)
+    }
+  }
+
+  // Label de destino na borda — só durante drag, indica pra onde vai
+  const swipeDirection = swipeX < 0 ? 'next' : swipeX > 0 ? 'prev' : null
+  const swipeAlvo = swipeDirection === 'next' ? proxEtapa : swipeDirection === 'prev' ? antEtapa : null
+  const swipeProgress = Math.min(1, Math.abs(swipeX) / (window.innerWidth * SWIPE_COMMIT_RATIO || 100))
+  const swipeOk = swipeDirection === 'next' ? canNext : swipeDirection === 'prev' ? canPrev : false
+
   // Props comuns repassados às abas.
   const tabProps = {
     T, dark, os, user, osBase, usuarios, admin,
@@ -198,13 +305,21 @@ export default function OSDetalhe({
             mobile={mobile}
           />
 
-          <div ref={scrollRef} style={{
-            flex: 1, overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            background: T.bg,
-            overscrollBehavior: 'contain',
-            touchAction: 'pan-y',
-          }}>
+          <div
+            ref={scrollRef}
+            onTouchStart={onSwipeStart}
+            onTouchMove={onSwipeMove}
+            onTouchEnd={onSwipeEnd}
+            onTouchCancel={onSwipeEnd}
+            style={{
+              flex: 1, overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              background: T.bg,
+              overscrollBehavior: 'contain',
+              touchAction: 'pan-y',
+              position: 'relative',
+            }}
+          >
             {mobile && (
               <PullIndicator
                 distance={pullDistance}
@@ -212,9 +327,30 @@ export default function OSDetalhe({
                 progress={progress}
               />
             )}
-            {aba === 'etapa'     && <EtapaTab {...tabProps} />}
-            {aba === 'relatorio' && <RelatorioTab {...tabProps} />}
-            {aba === 'pagamento' && <PagamentoTab {...tabProps} />}
+
+            {/* Hint de destino — só durante drag horizontal */}
+            {mobile && swipeAlvo && swipeState !== 'idle' && (
+              <SwipeHint
+                T={T} dark={dark}
+                etapa={swipeAlvo}
+                direction={swipeDirection}
+                progress={swipeProgress}
+                ok={swipeOk}
+              />
+            )}
+
+            {/* Container translatado — 1:1 com o dedo */}
+            <div style={{
+              transform: swipeX ? `translate3d(${swipeX}px, 0, 0)` : undefined,
+              transition: swipeState === 'animating'
+                ? `transform ${SWIPE_DURATION}ms ${APPLE_EASING}`
+                : 'none',
+              willChange: swipeState !== 'idle' ? 'transform' : undefined,
+            }}>
+              {aba === 'etapa'     && <EtapaTab {...tabProps} />}
+              {aba === 'relatorio' && <RelatorioTab {...tabProps} />}
+              {aba === 'pagamento' && <PagamentoTab {...tabProps} />}
+            </div>
           </div>
 
           <FooterC
@@ -238,5 +374,60 @@ export default function OSDetalhe({
         />
       )}
     </>
+  )
+}
+
+// Indicador na borda mostrando pra qual etapa o swipe vai levar.
+// Aparece grudado na borda oposta ao movimento (igual iOS back gesture).
+function SwipeHint({ T, dark, etapa, direction, progress, ok }) {
+  const cor = corEtapa(ok ? (etapa.cor || 'blue') : 'red', dark)
+  const isPrev = direction === 'prev'
+  // Opacidade segue progresso (até 1 no threshold de commit)
+  const opacity = Math.min(1, 0.3 + progress * 0.7)
+  // Escala/translateX dá feedback de "tá quase comitando"
+  const scale = 0.92 + progress * 0.08
+
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute', top: 0, bottom: 0,
+        [isPrev ? 'left' : 'right']: 0,
+        width: 110,
+        display: 'flex', alignItems: 'center',
+        justifyContent: isPrev ? 'flex-start' : 'flex-end',
+        padding: isPrev ? '0 0 0 14px' : '0 14px 0 0',
+        pointerEvents: 'none',
+        zIndex: 5,
+      }}
+    >
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        opacity,
+        transform: `scale(${scale})`,
+        transition: 'opacity .08s linear, transform .08s linear',
+      }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 22,
+          background: ok ? cor + '22' : 'rgba(200,80,80,0.18)',
+          border: `1.5px solid ${cor}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: `0 4px 12px ${cor}33`,
+        }}>
+          <i
+            className={`ti ${ok ? (isPrev ? 'ti-arrow-left' : 'ti-arrow-right') : 'ti-ban'}`}
+            style={{ fontSize: 22, color: cor }}
+          />
+        </div>
+        <span style={{
+          fontSize: 11.5, fontWeight: 700, color: cor,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+          textShadow: dark ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 2px rgba(255,255,255,0.8)',
+          maxWidth: 100, textAlign: 'center', lineHeight: 1.2,
+        }}>
+          {ok ? etapa.curto || etapa.label : 'Bloqueado'}
+        </span>
+      </div>
+    </div>
   )
 }
