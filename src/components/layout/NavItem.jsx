@@ -1,34 +1,49 @@
 // idemaq-src/components/layout/NavItem.jsx
-import React from 'react'
+// Item de navegação — Apple HIG: pill inset, hover sutil, peso 600 quando ativo.
+
+import React, { useState } from 'react'
 import { P } from '../../theme'
 
 export default function NavItem({ m, active, onClick, collapsed, T, dark }) {
+  const [hov, setHov] = useState(false)
+
   const activeBg  = dark ? '#1a3a5c' : '#e6f1fb'
   const activeClr = dark ? P.blue    : P.blueDark
   const iconClr   = dark ? (active ? P.blue : T.textDim) : (active ? P.blueDark : T.textMuted)
-  // Padding-left fixo (20px) em ambos estados pra ícone não pular ao expandir/colapsar.
-  // Em 56px colapsado: ícone 16px ocupa x=20-36, centro em 28 (= centro visual da barra).
-  // Em 210px expandido: ícone fica no MESMO x=20-36; label segue depois.
+  const hoverBg   = dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.045)'
+
   return (
-    <button onClick={onClick} title={collapsed ? m.label : undefined}
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      title={collapsed ? m.label : undefined}
       style={{
-        width: '100%', display: 'flex', alignItems: 'center',
+        width: 'calc(100% - 8px)',
+        margin: '1px 4px',
+        display: 'flex', alignItems: 'center',
         gap: 9,
-        padding: '9px 10px 9px 20px',
-        justifyContent: 'flex-start',
+        padding: collapsed ? '9px 0' : '8px 10px 8px 12px',
+        justifyContent: collapsed ? 'center' : 'flex-start',
         border: 'none', cursor: 'pointer',
         fontSize: 13, textAlign: 'left',
-        background: active ? activeBg : 'transparent',
+        background: active ? activeBg : (hov ? hoverBg : 'transparent'),
         color: active ? activeClr : T.textMuted,
-        borderRadius: 7,
+        borderRadius: 8,
         position: 'relative',
-        marginBottom: 1,
         fontFamily: 'inherit',
         overflow: 'hidden',
+        transition: 'background .1s',
       }}
     >
-      <i className={`ti ${m.icon}`} style={{ fontSize: 16, flexShrink: 0, color: iconClr }} aria-hidden="true" />
-      {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>{m.label}</span>}
+      <i className={`ti ${m.icon}`}
+         style={{ fontSize: 16, flexShrink: 0, color: iconClr, transition: 'color .1s' }}
+         aria-hidden="true" />
+      {!collapsed && (
+        <span style={{ whiteSpace: 'nowrap', fontWeight: active ? 600 : 500 }}>
+          {m.label}
+        </span>
+      )}
       {m.badge && (
         <span style={{
           position: 'absolute',
