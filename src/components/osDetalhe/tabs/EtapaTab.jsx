@@ -31,6 +31,7 @@ import AcaoOrcamentoHIG from '../acoes/AcaoOrcamentoHIG'
 import AcaoOficinaHIG from '../acoes/AcaoOficinaHIG'
 import AcaoTesteHIG from '../acoes/AcaoTesteHIG'
 import AcaoEntregaHIG from '../acoes/AcaoEntregaHIG'
+import AcaoPagamentoHIG from '../acoes/AcaoPagamentoHIG'
 
 const MAP = {
   // HIG aplicado em TODAS as etapas — cada uma com arquivo dedicado.
@@ -42,7 +43,7 @@ const MAP = {
   oficina: AcaoOficinaHIG,            // Conserto  (Limpeza + Manutenção)
   teste_final: AcaoTesteHIG,          // Teste final (4 testes + acabamento)
   entrega: AcaoEntregaHIG,            // Entrega   (agendar + confirmar entrega)
-  pagamento: AcaoPagamento,
+  pagamento: AcaoPagamentoHIG,        // A receber (resumo + FormRecebimento)
   concluido: AcaoConcluido,
   recusado: AcaoRecusada,
   // Aliases / variantes que aparecem em Fabricação e Venda
