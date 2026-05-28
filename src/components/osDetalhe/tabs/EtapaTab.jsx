@@ -30,6 +30,7 @@ import AcaoDiagnosticoHIG from '../acoes/AcaoDiagnosticoHIG'
 import AcaoOrcamentoHIG from '../acoes/AcaoOrcamentoHIG'
 import AcaoOficinaHIG from '../acoes/AcaoOficinaHIG'
 import AcaoTesteHIG from '../acoes/AcaoTesteHIG'
+import AcaoEntregaHIG from '../acoes/AcaoEntregaHIG'
 
 const MAP = {
   // HIG aplicado em TODAS as etapas — cada uma com arquivo dedicado.
@@ -40,13 +41,13 @@ const MAP = {
   orcamento: AcaoOrcamentoHIG,        // Orçamento (itens + total + aprovação)
   oficina: AcaoOficinaHIG,            // Conserto  (Limpeza + Manutenção)
   teste_final: AcaoTesteHIG,          // Teste final (4 testes + acabamento)
-  entrega: AcaoEntrega,
+  entrega: AcaoEntregaHIG,            // Entrega   (agendar + confirmar entrega)
   pagamento: AcaoPagamento,
   concluido: AcaoConcluido,
   recusado: AcaoRecusada,
   // Aliases / variantes que aparecem em Fabricação e Venda
   agendamento: AcaoAgendamentoHIG,
-  entregue: AcaoEntrega,
+  entregue: AcaoEntregaHIG,
 }
 
 // Alerta amarelo persistente — aparece no topo de toda etapa quando há
