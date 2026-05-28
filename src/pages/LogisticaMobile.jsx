@@ -488,8 +488,8 @@ function Pill({ T, cor, icon, title, children }) {
 export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDetalhe }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
-  const tipoUi = tipoUiPorEtapa(os.etapa_db)
-  const visual = VISUAL_TIPO[tipoUi]
+  const tipoUi = normalizarTipoUi(tipoUiPorEtapa(os.etapa_db))
+  const visual = VISUAL_TIPO[tipoUi] || VISUAL_TIPO.outros
   const corT = corEtapa(visual.corKey, dark)
 
   return (
@@ -596,8 +596,11 @@ function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd
       boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
     }}>
       {osList.map((os, idx) => {
-        const tipoUi = tipoUiPorEtapa(os.etapa_db)
-        const visual = VISUAL_TIPO[tipoUi]
+        // tipoUiPorEtapa retorna variantes como 'aguardando_coleta' e
+        // 'aguardando_entrega' que NAO existem em VISUAL_TIPO (so coleta,
+        // entrega, receber, outros). normalizarTipoUi agrupa pra base.
+        const tipoUi = normalizarTipoUi(tipoUiPorEtapa(os.etapa_db))
+        const visual = VISUAL_TIPO[tipoUi] || VISUAL_TIPO.outros
         const corT = corEtapa(visual.corKey, dark)
         const sendoArrastado = arrastando?.os?.id === os.id
 
