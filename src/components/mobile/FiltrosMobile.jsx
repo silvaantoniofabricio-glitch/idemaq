@@ -1,7 +1,5 @@
 // idemaq-src/components/mobile/FiltrosMobile.jsx
-// Barra horizontal de filtros pro OSMobile.
-// Chips de zona + botão "Mais" (mesmo estilo dos chips) que abre bottom sheet
-// com: barra de busca, botão Nova OS e filtro de tipos.
+// Barra de filtros do OSMobile — Apple HIG: segmented control para zonas.
 
 import React, { useState, useEffect } from 'react'
 import { P } from '../../theme'
@@ -33,16 +31,29 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
     ...ZONAS,
   ]
 
-  const totalTipos   = Object.keys(TIPOS_OS).length
-  const tiposAtivos  = filtros.tipos.size
+  const totalTipos     = Object.keys(TIPOS_OS).length
+  const tiposAtivos    = filtros.tipos.size
   const tiposFiltrando = tiposAtivos < totalTipos
-  const temBusca     = busca && busca.trim().length > 0
-  const maisAtivo    = maisOpen || tiposFiltrando || temBusca
+  const temBusca       = busca && busca.trim().length > 0
+  const maisAtivo      = maisOpen || tiposFiltrando || temBusca
+
+  // Segmented control
+  const segBg = dark ? 'rgba(255,255,255,0.07)' : '#e4e4e9'
+  const segAtivo = dark
+    ? { background: T.card, color: T.textPrimary, boxShadow: '0 1px 3px rgba(0,0,0,.4)', fontWeight: 600 }
+    : { background: '#ffffff', color: T.textPrimary, boxShadow: '0 1px 3px rgba(0,0,0,.12)', fontWeight: 600 }
+  const segInativo = { background: 'transparent', color: T.textMuted, boxShadow: 'none', fontWeight: 500 }
 
   return (
     <>
-      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-        {/* Chips de zona */}
+      {/* Segmented control de zonas */}
+      <div style={{
+        display: 'flex',
+        background: segBg,
+        borderRadius: 10,
+        padding: 3,
+        gap: 2,
+      }}>
         {zonas.map(z => {
           const ativo = filtros.zona === z.id
           return (
@@ -50,39 +61,38 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
               style={{
                 flex: 1, minWidth: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                padding: '7px 4px', borderRadius: 20,
+                padding: '7px 4px',
+                borderRadius: 8,
+                border: 'none',
                 minHeight: 32,
-                background: ativo ? azulBg : T.card,
-                border: `1px solid ${ativo ? azul : T.border}`,
-                color: ativo ? azul : T.textSecondary,
-                fontSize: 11.5, fontWeight: ativo ? 700 : 500,
                 cursor: 'pointer', fontFamily: 'inherit',
+                transition: 'all .12s',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                ...(ativo ? segAtivo : segInativo),
               }}>
               <i className={`ti ${z.icon}`} style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{z.label}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 11.5 }}>{z.label}</span>
             </button>
           )
         })}
 
-        {/* Botão "Mais" — mesmo estilo dos chips de zona */}
+        {/* Botão "Mais" */}
         <button
           onClick={() => setMaisOpen(true)}
           style={{
             flex: 1, minWidth: 0,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            padding: '7px 4px', borderRadius: 20,
+            padding: '7px 4px',
+            borderRadius: 8,
+            border: 'none',
             minHeight: 32,
-            background: maisAtivo ? azulBg : T.card,
-            border: `1px solid ${maisAtivo ? azul : T.border}`,
-            color: maisAtivo ? azul : T.textSecondary,
-            fontSize: 11.5, fontWeight: maisAtivo ? 700 : 500,
             cursor: 'pointer', fontFamily: 'inherit',
             position: 'relative',
+            transition: 'all .12s',
+            ...(maisAtivo ? segAtivo : segInativo),
           }}>
           <i className="ti ti-dots" style={{ fontSize: 13 }} aria-hidden="true" />
-          <span>Mais</span>
-          {/* Badge quando há filtro ou busca ativa */}
+          <span style={{ fontSize: 11.5 }}>Mais</span>
           {(tiposFiltrando || temBusca) && (
             <span style={{
               position: 'absolute', top: -3, right: -3,
@@ -137,7 +147,6 @@ function MaisSheet({ T, dark, busca, setBusca, onNova, filtros, toggleTipo, tipo
   }
 
   const inputRef = React.useRef(null)
-  // Foca a busca ao abrir
   useEffect(() => {
     if (montado) setTimeout(() => inputRef.current?.focus(), 80)
   }, [montado])
