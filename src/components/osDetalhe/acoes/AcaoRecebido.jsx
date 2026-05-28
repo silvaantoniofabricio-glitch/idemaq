@@ -3,7 +3,7 @@
 // máquina antes de enviar pro diagnóstico. Persiste via checklist_etapa.
 // V2: padrão Orçamento/Agenda — HeaderFlat + SubBloco com cards compactos.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTheme } from '../../../theme';
 import {
   TI, NowCard, Group, TextArea, BtnMobile, MOBILE, PALETA,
@@ -111,6 +111,9 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
   const [hidratado, setHidratado] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
+  // Ref pra salvar no unmount caso o debounce seja cancelado pelo fechamento do modal
+  const pendingChkRef = useRef(null);
+
   // Hidrata flags do pre_diagnostico jsonb (equipamento_nao_liga + motivo + vazamentos)
   useEffect(() => {
     setNaoLiga(!!os?.pre_diagnostico?.equipamento_nao_liga);
@@ -157,12 +160,25 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
   // vai pro os.observacoes via useEffect separado abaixo.
   useEffect(() => {
     if (!hidratado) return;
+    const chk = serializarChecklist();
+    pendingChkRef.current = chk;
     const t = setTimeout(() => {
-      salvarChk(serializarChecklist(), null);
+      salvarChk(chk, null);
+      pendingChkRef.current = null;
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testes, naoLiga, hidratado]);
+
+  // Salva no unmount caso o modal feche antes do debounce disparar
+  useEffect(() => {
+    return () => {
+      if (pendingChkRef.current) {
+        salvarChk(pendingChkRef.current, null);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-save de obs no campo global os.observacoes (debounce 500ms)
   useEffect(() => {
