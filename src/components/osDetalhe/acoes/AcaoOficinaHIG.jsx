@@ -1,20 +1,20 @@
 // src/components/osDetalhe/acoes/AcaoOficinaHIG.jsx
 // Oficina (Conserto) — Apple HIG, do zero.
 //
-// Seções:
-//   1. Gate: orçamento fechado? Se não → tela BloqueioOrcamento
-//   2. Resumo do diagnóstico (relato · causa · componentes)
-//   3. Banner falhas do teste final (quando OS volta pra corrigir)
-//   4. Aviso diagnóstico vazio (tem manutenção mas sem componentes)
-//   5. Lado Limpeza (HIGSection com 3 linhas: Desmont. · Limpeza · Montagem)
-//   6. Lado Manutenção (HIGSection com Desmont. · serviço por componente · Montagem)
-//   7. CTA "Concluir conserto → Teste final"
+// Layout Apple HIG correto:
+//   - Seção = footnote uppercase cinza + higInsetCard abaixo (nunca ícone no header)
+//   - Rows = 44pt, checkbox 22px, label, separador 0.5px
+//   - Status pill inline na linha do título da seção
+//   - Montagem bloqueada = row com cadeado dentro do card (não desabilita row)
 //
-// Lógica preservada de AcaoOficina.jsx:
-//  - Desmontagem e Montagem são COMPARTILHADAS (marcar num lado marca no outro)
-//  - Montagem bloqueada até: desm OK + serviço próprio OK + serviço do outro OK
-//  - Persistência em pre_diagnostico.oficina.execucao (jsonb)
-//  - Limpeza ativa se orcamento tem /limpeza/i; Manutenção = o resto
+// Seções:
+//   1. Gate: orçamento fechado? → BloqueioOrcamento se não
+//   2. Resumo diagnóstico (relato · causa · componentes)
+//   3. Banner falhas do teste final (OS voltou da oficina)
+//   4. Aviso diagnóstico vazio
+//   5. Seção LIMPEZA (Desmontagem · Limpeza · Montagem)
+//   6. Seção MANUTENÇÃO (Desmontagem · componentes · Montagem)
+//   7. CTA azul
 
 import React, { useMemo } from 'react'
 import { useTheme } from '../../../theme'
@@ -27,23 +27,32 @@ import { useOSItens } from '../../../hooks/useOSItens'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 
-// ─── Primitivos ───────────────────────────────────────────────────────────────
-
+// ─── Separador ───────────────────────────────────────────────────────────────
 function Sep({ T }) {
-  return <div style={{ height: 0.5, background: T.border, marginLeft: HIG_SPACE.lg }} />
+  return <div style={{ height: 0.5, background: T.border, marginLeft: 56 }} />
 }
 
-function HIGSection({ T, dark, title, children, footer }) {
+// ─── HIGSection — título uppercase footnote + card + footer opcional ─────────
+// O título aceita um `right` para colocar pill/badge alinhado à direita.
+function HIGSection({ T, dark, title, right, children, footer }) {
   return (
     <section>
-      {title && (
+      {(title || right) && (
         <div style={{
+          display: 'flex', alignItems: 'center',
           padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
-          ...higType('footnote'),
-          color: HIG_COLOR.gray,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-        }}>{title}</div>
+        }}>
+          {title && (
+            <span style={{
+              flex: 1,
+              ...higType('footnote'),
+              color: HIG_COLOR.gray,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+            }}>{title}</span>
+          )}
+          {right}
+        </div>
       )}
       <div style={higInsetCard(T, dark)}>{children}</div>
       {footer && (
@@ -57,12 +66,12 @@ function HIGSection({ T, dark, title, children, footer }) {
   )
 }
 
-// Pill de status da seção (Limpeza / Manutenção)
+// ─── Pill de status ───────────────────────────────────────────────────────────
 function StatusPill({ status }) {
   const map = {
-    pendente:  { label: 'Pendente',  bg: HIG_COLOR.gray5, color: HIG_COLOR.gray },
-    andamento: { label: 'Em andamento', bg: 'rgba(255,149,0,0.15)', color: HIG_COLOR.orange },
-    concluido: { label: 'Concluído', bg: 'rgba(52,199,89,0.15)', color: HIG_COLOR.green },
+    pendente:  { label: 'Pendente',      bg: HIG_COLOR.gray5,               color: HIG_COLOR.gray },
+    andamento: { label: 'Em andamento',  bg: 'rgba(255,149,0,0.14)',         color: HIG_COLOR.orange },
+    concluido: { label: 'Concluído',     bg: 'rgba(52,199,89,0.14)',         color: HIG_COLOR.green },
   }
   const m = map[status] || map.pendente
   return (
@@ -77,59 +86,32 @@ function StatusPill({ status }) {
   )
 }
 
-// Header de seção com pill de status e badge sync ↔
-function LadoHeader({ T, dark, icon, label, status, synced }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-      padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
-    }}>
-      <span style={{
-        width: 28, height: 28, borderRadius: HIG_RADIUS.sm,
-        background: dark ? 'rgba(91,155,213,0.18)' : 'rgba(91,155,213,0.12)',
-        color: HIG_COLOR.tintIdemaq,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>
-        <TI name={icon} size={14} />
-      </span>
-      <span style={{ flex: 1, ...higType('footnote'), fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: HIG_COLOR.gray }}>
-        {label}
-      </span>
-      <StatusPill status={status} />
-    </div>
-  )
-}
-
-// ─── CheckRow — linha de 44pt com checkbox ────────────────────────────────────
-function CheckRow({ T, dark, label, checked, disabled, onToggle, badge, shared }) {
+// ─── CheckRow — linha 44pt com checkbox ──────────────────────────────────────
+// shared = mostra ↔ indicando que esse passo é compartilhado Limpeza/Manutenção
+function CheckRow({ T, dark, label, checked, onToggle, badge, shared }) {
   return (
     <button
       type="button"
-      onClick={disabled ? undefined : onToggle}
-      disabled={disabled}
+      onClick={onToggle}
       style={{
         width: '100%', minHeight: HIG_SIZE.touch,
         display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-        background: 'transparent',
-        border: 'none',
-        cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.45 : 1,
+        padding: `0 ${HIG_SPACE.md}px`,
+        background: 'transparent', border: 'none',
+        cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
-        fontFamily: 'inherit',
-        textAlign: 'left',
+        fontFamily: 'inherit', textAlign: 'left',
       }}
     >
-      {/* Checkbox */}
+      {/* Checkbox iOS — 22px */}
       <span style={{
-        width: 22, height: 22, borderRadius: HIG_RADIUS.sm, flexShrink: 0,
+        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
         border: `1.5px solid ${checked ? HIG_COLOR.green : HIG_COLOR.gray3}`,
         background: checked
           ? HIG_COLOR.green
-          : (dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)'),
+          : (dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)'),
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'background 0.15s, border-color 0.15s',
+        transition: 'background .15s, border-color .15s',
       }}>
         {checked && <TI name="check" size={13} color="#fff" />}
       </span>
@@ -142,154 +124,195 @@ function CheckRow({ T, dark, label, checked, disabled, onToggle, badge, shared }
         textDecoration: checked ? 'line-through' : 'none',
       }}>{label}</span>
 
-      {/* Badge de ação (Troca / Manut.) */}
+      {/* Badge Troca / Manut. */}
       {badge && (
         <span style={{
-          ...higType('caption2'),
-          fontWeight: 700,
-          padding: '2px 7px',
-          borderRadius: HIG_RADIUS.pill,
-          background: badge.bg,
-          color: badge.color,
-          flexShrink: 0,
+          ...higType('caption2'), fontWeight: 700,
+          padding: '2px 7px', borderRadius: HIG_RADIUS.pill,
+          background: badge.bg, color: badge.color, flexShrink: 0,
         }}>{badge.label}</span>
       )}
 
-      {/* Ícone compartilhado ↔ */}
+      {/* Indicador ↔ compartilhado */}
       {shared && (
-        <TI name="arrows-left-right" size={12} color={HIG_COLOR.gray2} />
+        <TI name="arrows-left-right" size={12} color={HIG_COLOR.gray3} />
       )}
     </button>
   )
 }
 
-// ─── Linha de bloqueio (com cadeado + motivo) ────────────────────────────────
+// ─── BloqueioRow — mostra por que a Montagem está travada ────────────────────
 function BloqueioRow({ T, dark, msg }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-      padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-      background: dark ? 'rgba(255,204,0,0.08)' : 'rgba(255,204,0,0.10)',
-      minHeight: 36,
+      padding: `0 ${HIG_SPACE.md}px`,
+      minHeight: HIG_SIZE.touch,
+      background: dark ? 'rgba(255,149,0,0.06)' : 'rgba(255,149,0,0.05)',
     }}>
-      <TI name="lock" size={13} color={HIG_COLOR.orange} />
-      <span style={{ ...higType('caption1'), color: HIG_COLOR.orange, flex: 1 }}>{msg}</span>
+      <span style={{
+        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+        background: dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.10)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <TI name="lock" size={12} color={HIG_COLOR.orange} />
+      </span>
+      <span style={{ flex: 1, ...higType('footnote'), color: HIG_COLOR.orange }}>
+        {msg}
+      </span>
     </div>
   )
 }
 
-// ─── Sub-header de grupo dentro do card ──────────────────────────────────────
-function SubGroupHeader({ T, dark, label, count }) {
+// ─── SubHeader dentro do card (antes dos itens de manutenção) ────────────────
+function CardSubHeader({ T, dark, done, total }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
       padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-      background: dark ? 'rgba(255,255,255,0.04)' : HIG_COLOR.gray6,
+      background: dark ? 'rgba(255,255,255,0.03)' : HIG_COLOR.gray6,
       borderTop: `0.5px solid ${T.border}`,
     }}>
-      <TI name="tool" size={12} color={HIG_COLOR.gray} />
-      <span style={{ flex: 1, ...higType('caption1'), fontWeight: 600, color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-        {label}
+      <TI name="tool" size={11} color={HIG_COLOR.gray} />
+      <span style={{ flex: 1, ...higType('caption2'), fontWeight: 600, color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Serviço de manutenção
       </span>
-      {count > 0 && (
-        <span style={{
-          ...higType('caption2'),
-          fontWeight: 700,
-          padding: '1px 6px',
-          borderRadius: HIG_RADIUS.pill,
-          background: dark ? 'rgba(255,255,255,0.10)' : HIG_COLOR.gray5,
-          color: HIG_COLOR.gray,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{count}</span>
-      )}
+      <span style={{
+        ...higType('caption2'), fontWeight: 700,
+        padding: '1px 6px', borderRadius: HIG_RADIUS.pill,
+        background: done === total
+          ? 'rgba(52,199,89,0.14)'
+          : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5),
+        color: done === total ? HIG_COLOR.green : HIG_COLOR.gray,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{done}/{total}</span>
     </div>
   )
 }
 
-// ─── Card de lado (Limpeza ou Manutenção) ─────────────────────────────────────
-function CardLado({
-  T, dark, titulo, icon, status,
-  desmCheck, servChecks, montCheck,
-  desmVal, servVal, montVal,
-  onToggleDesm, onToggleServ, onToggleMont,
-  outroServDone, outroLabel,
-  sempreLista,
-}) {
-  const desmDone = desmCheck.every(c => desmVal[c.id])
-  const servDone = servChecks.length > 0 && servChecks.every(c => servVal[c.id])
+// ─── Seção Limpeza ────────────────────────────────────────────────────────────
+function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal, onToggleDesm, onToggleLimp, onToggleMont, outroServDone }) {
+  const desmDone = !!desmVal.feito
+  const limpDone = !!limpVal.feito
 
   let montBloqueio = null
   if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
-  else if (!servDone) montBloqueio = `Conclua ${titulo.toLowerCase()} primeiro`
-  else if (!outroServDone) montBloqueio = `Aguardando ${outroLabel}`
+  else if (!limpDone) montBloqueio = 'Conclua a limpeza primeiro'
+  else if (!outroServDone) montBloqueio = 'Aguardando manutenção'
 
   return (
-    <section>
-      <LadoHeader T={T} dark={dark} icon={icon} label={titulo} status={status} />
-      <div style={higInsetCard(T, dark)}>
+    <HIGSection
+      T={T} dark={dark}
+      title="Limpeza"
+      right={<StatusPill status={status} />}
+    >
+      <CheckRow
+        T={T} dark={dark}
+        label="Desmontagem"
+        checked={desmDone}
+        onToggle={() => onToggleDesm('feito')}
+        shared
+      />
 
-        {/* Desmontagem — sempre 1 check (shared) */}
-        <CheckRow
-          T={T} dark={dark}
-          label="Desmontagem"
-          checked={!!desmVal[desmCheck[0].id]}
-          onToggle={() => onToggleDesm(desmCheck[0].id)}
-          shared
-        />
+      <Sep T={T} />
 
-        <Sep T={T} />
+      <CheckRow
+        T={T} dark={dark}
+        label="Limpeza feita"
+        checked={limpDone}
+        onToggle={() => onToggleLimp('feito')}
+      />
 
-        {/* Serviço */}
-        {servChecks.length === 0 ? (
-          <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`, ...higType('footnote'), color: HIG_COLOR.gray, fontStyle: 'italic' }}>
-            Sem itens de serviço
-          </div>
-        ) : sempreLista ? (
-          <>
-            <SubGroupHeader T={T} dark={dark} label="Serviço de manutenção" count={servChecks.filter(c => servVal[c.id]).length + '/' + servChecks.length} />
-            {servChecks.map((c, i) => (
-              <React.Fragment key={c.id}>
-                {i > 0 && <Sep T={T} />}
-                <CheckRow
-                  T={T} dark={dark}
-                  label={c.label}
-                  checked={!!servVal[c.id]}
-                  onToggle={() => onToggleServ(c.id)}
-                  badge={c.badge}
-                />
-              </React.Fragment>
-            ))}
-          </>
-        ) : (
-          <CheckRow
-            T={T} dark={dark}
-            label={servChecks[0].label}
-            checked={!!servVal[servChecks[0].id]}
-            onToggle={() => onToggleServ(servChecks[0].id)}
-          />
-        )}
+      <Sep T={T} />
 
-        <Sep T={T} />
-
-        {/* Montagem — shared, pode estar bloqueada */}
-        {montBloqueio ? (
-          <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
-        ) : (
+      {montBloqueio
+        ? <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
+        : (
           <CheckRow
             T={T} dark={dark}
             label="Montagem"
-            checked={!!montVal[montCheck[0].id]}
-            onToggle={() => onToggleMont(montCheck[0].id)}
+            checked={!!montVal.feito}
+            onToggle={() => onToggleMont('feito')}
             shared
           />
-        )}
-
-      </div>
-    </section>
+        )
+      }
+    </HIGSection>
   )
 }
 
-// ─── ResumoDiagnostico ────────────────────────────────────────────────────────
+// ─── Seção Manutenção ─────────────────────────────────────────────────────────
+function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChecks, onToggleDesm, onToggleManut, onToggleMont, outroServDone }) {
+  const desmDone = !!desmVal.feito
+  const servDone = manutChecks.length > 0 && manutChecks.every(c => manutVal[c.id])
+  const servFeitos = manutChecks.filter(c => manutVal[c.id]).length
+
+  let montBloqueio = null
+  if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
+  else if (!servDone) montBloqueio = 'Conclua todos os itens de serviço'
+  else if (!outroServDone) montBloqueio = 'Aguardando limpeza'
+
+  return (
+    <HIGSection
+      T={T} dark={dark}
+      title="Manutenção"
+      right={<StatusPill status={status} />}
+    >
+      <CheckRow
+        T={T} dark={dark}
+        label="Desmontagem"
+        checked={desmDone}
+        onToggle={() => onToggleDesm('feito')}
+        shared
+      />
+
+      {/* Sub-header + itens de serviço */}
+      {manutChecks.length > 0 ? (
+        <>
+          <CardSubHeader T={T} dark={dark} done={servFeitos} total={manutChecks.length} />
+          {manutChecks.map((c, i) => (
+            <React.Fragment key={c.id}>
+              {i > 0 && <Sep T={T} />}
+              <CheckRow
+                T={T} dark={dark}
+                label={c.label}
+                checked={!!manutVal[c.id]}
+                onToggle={() => onToggleManut(c.id)}
+                badge={c.badge}
+              />
+            </React.Fragment>
+          ))}
+        </>
+      ) : (
+        <>
+          <Sep T={T} />
+          <div style={{ padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch, display: 'flex', alignItems: 'center' }}>
+            <span style={{ ...higType('footnote'), color: HIG_COLOR.gray, fontStyle: 'italic' }}>
+              Sem componentes marcados no diagnóstico
+            </span>
+          </div>
+        </>
+      )}
+
+      <Sep T={T} />
+
+      {montBloqueio
+        ? <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
+        : (
+          <CheckRow
+            T={T} dark={dark}
+            label="Montagem"
+            checked={!!montVal.feito}
+            onToggle={() => onToggleMont('feito')}
+            shared
+          />
+        )
+      }
+    </HIGSection>
+  )
+}
+
+// ─── Resumo diagnóstico ───────────────────────────────────────────────────────
 function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
   if (!relato && !causa && componentes.length === 0) return null
   return (
@@ -300,13 +323,9 @@ function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
             <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xxs }}>
               Relato do cliente
             </div>
-            <div style={{
-              borderLeft: `3px solid ${HIG_COLOR.orange}`,
-              paddingLeft: HIG_SPACE.sm,
-              ...higType('footnote'),
-              color: T.textPrimary,
-              lineHeight: '18px',
-            }}>{relato}</div>
+            <div style={{ borderLeft: `3px solid ${HIG_COLOR.orange}`, paddingLeft: HIG_SPACE.sm, ...higType('footnote'), color: T.textPrimary, lineHeight: '18px' }}>
+              {relato}
+            </div>
           </div>
           {(causa || componentes.length > 0) && <Sep T={T} />}
         </>
@@ -317,13 +336,9 @@ function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
             <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xxs }}>
               Causa identificada
             </div>
-            <div style={{
-              borderLeft: `3px solid ${HIG_COLOR.tintIdemaq}`,
-              paddingLeft: HIG_SPACE.sm,
-              ...higType('footnote'),
-              color: T.textPrimary,
-              lineHeight: '18px',
-            }}>{causa}</div>
+            <div style={{ borderLeft: `3px solid ${HIG_COLOR.tintIdemaq}`, paddingLeft: HIG_SPACE.sm, ...higType('footnote'), color: T.textPrimary, lineHeight: '18px' }}>
+              {causa}
+            </div>
           </div>
           {componentes.length > 0 && <Sep T={T} />}
         </>
@@ -331,21 +346,18 @@ function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
       {componentes.length > 0 && (
         <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px` }}>
           <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xs }}>
-            Componentes marcados · {componentes.length}
+            Componentes · {componentes.length}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {componentes.map(c => (
               <span key={c.id} style={{
+                ...higType('caption2'), fontWeight: 600,
+                padding: '3px 8px', borderRadius: HIG_RADIUS.pill,
+                background: c.badge.bg, color: c.badge.color,
+                border: `1px solid ${c.badge.color}33`,
                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                ...higType('caption2'),
-                fontWeight: 600,
-                padding: '3px 8px',
-                borderRadius: HIG_RADIUS.pill,
-                background: c.badgeBg,
-                color: c.badgeColor,
-                border: `1px solid ${c.badgeColor}33`,
               }}>
-                <span style={{ fontWeight: 700, fontSize: 10 }}>{c.acao.toUpperCase()}</span>
+                <span style={{ fontWeight: 700, fontSize: 10 }}>{c.badge.label}</span>
                 {c.label}
               </span>
             ))}
@@ -356,55 +368,55 @@ function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
   )
 }
 
-// ─── Banner falhas do Teste ───────────────────────────────────────────────────
+// ─── Banner falhas do Teste final ─────────────────────────────────────────────
 function BannerFalhas({ T, dark, falhas }) {
   if (!falhas.length) return null
   return (
-    <div style={{
-      ...higInsetCard(T, dark),
-      overflow: 'hidden',
-      border: `1px solid ${HIG_COLOR.red}44`,
-    }}>
+    <HIGSection T={T} dark={dark}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
         padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-        background: dark ? 'rgba(255,59,48,0.12)' : 'rgba(255,59,48,0.08)',
-        borderBottom: `0.5px solid ${T.border}`,
+        background: dark ? 'rgba(255,59,48,0.12)' : 'rgba(255,59,48,0.07)',
+        minHeight: 40,
       }}>
-        <TI name="alert-triangle" size={15} color={HIG_COLOR.red} />
+        <TI name="alert-triangle" size={14} color={HIG_COLOR.red} />
         <span style={{ ...higType('footnote'), fontWeight: 700, color: HIG_COLOR.red, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Falhas do teste final — corrigir
         </span>
       </div>
       {falhas.map((f, i) => (
         <React.Fragment key={i}>
-          {i > 0 && <Sep T={T} />}
+          <Sep T={T} />
           <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: HIG_SPACE.sm,
-            padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
-            minHeight: HIG_SIZE.touch,
+            display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+            padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch,
           }}>
-            <TI name="x" size={13} color={HIG_COLOR.red} style={{ marginTop: 2 }} />
+            <span style={{
+              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+              background: dark ? 'rgba(255,59,48,0.15)' : 'rgba(255,59,48,0.08)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <TI name="x" size={12} color={HIG_COLOR.red} />
+            </span>
             <span style={{ ...higType('subheadline'), color: T.textPrimary, flex: 1 }}>
               {typeof f === 'string' ? f : (f.label || f.descricao || JSON.stringify(f))}
             </span>
           </div>
         </React.Fragment>
       ))}
-    </div>
+    </HIGSection>
   )
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-const CHECKS_DESMONTAGEM = [{ id: 'feito', label: 'Desmontagem feita' }]
-const CHECKS_LIMPEZA     = [{ id: 'feito', label: 'Limpeza feita' }]
-const CHECKS_MONTAGEM    = [{ id: 'feito', label: 'Montagem feita' }]
+// ─── Constantes de checklist ──────────────────────────────────────────────────
+const CHECKS_DESMONTAGEM = [{ id: 'feito' }]
+const CHECKS_MONTAGEM    = [{ id: 'feito' }]
 
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }) {
   const { T, dark } = useTheme()
   const { itens } = useOSItens(os?.id)
 
-  // Detecta lados ativos
   const temLimpeza = useMemo(
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
     [itens]
@@ -414,40 +426,35 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
     [itens]
   )
 
-  // Checklist da Manutenção (derivado do diagnóstico)
+  // Checklist da manutenção vem do diagnóstico
   const manutChecks = useMemo(() => {
     const marcados = os?.pre_diagnostico?.componentes_marcados || {}
     const out = []
-    for (const [grupoId, items] of Object.entries(marcados)) {
+    for (const [, items] of Object.entries(marcados)) {
       if (!items || typeof items !== 'object') continue
       const pares = Array.isArray(items)
         ? items.map(id => [id, 'troca'])
         : Object.entries(items)
       for (const [itemId, acao] of pares) {
         const cat = CATEGORIA_POR_ID[itemId]
-        const label = cat?.label || itemId
         const isManut = acao === 'manutencao'
         out.push({
           id: itemId,
-          label,
+          label: cat?.label || itemId,
           badge: {
             label: isManut ? 'Manut.' : 'Troca',
             color: isManut ? HIG_COLOR.orange : HIG_COLOR.red,
             bg: isManut
-              ? (dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.12)')
-              : (dark ? 'rgba(255,59,48,0.15)' : 'rgba(255,59,48,0.10)'),
+              ? (dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.10)')
+              : (dark ? 'rgba(255,59,48,0.15)'  : 'rgba(255,59,48,0.08)'),
           },
-          // Compat pra ResumoDiagnostico
-          acao,
-          badgeBg:    isManut ? (dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.12)') : (dark ? 'rgba(255,59,48,0.15)' : 'rgba(255,59,48,0.10)'),
-          badgeColor: isManut ? HIG_COLOR.orange : HIG_COLOR.red,
         })
       }
     }
     return out
   }, [os?.pre_diagnostico?.componentes_marcados, dark])
 
-  // Estado persistido em pre_diagnostico.oficina
+  // Estado persistido em pre_diagnostico.oficina.execucao
   const oficinaJsonb = os?.pre_diagnostico?.oficina || {}
   const exec = oficinaJsonb.execucao || {}
   const desmVal  = exec.desmontagem  || {}
@@ -455,23 +462,19 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
   const limpVal  = exec.limpeza_serv || {}
   const manutVal = exec.manut_serv   || {}
 
-  // Falhas do Teste final
   const falhas = Array.isArray(os?.pre_diagnostico?.teste_falhas)
-    ? os.pre_diagnostico.teste_falhas
-    : []
+    ? os.pre_diagnostico.teste_falhas : []
 
-  // Persistência
   function persistExec(novoExec) {
-    const desmOk = CHECKS_DESMONTAGEM.every(c => novoExec.desmontagem?.[c.id])
-    const montOk = CHECKS_MONTAGEM.every(c => novoExec.montagem?.[c.id])
-    const limpServOk = CHECKS_LIMPEZA.every(c => novoExec.limpeza_serv?.[c.id])
+    const desmOk = !!novoExec.desmontagem?.feito
+    const montOk = !!novoExec.montagem?.feito
+    const limpServOk = !!novoExec.limpeza_serv?.feito
     const manutServOk = manutChecks.length > 0
       && manutChecks.every(c => novoExec.manut_serv?.[c.id])
 
     const calcStatus = (servOk) => {
-      const algum = desmOk || servOk || montOk
       if (desmOk && servOk && montOk) return 'concluido'
-      if (algum) return 'andamento'
+      if (desmOk || servOk || montOk) return 'andamento'
       return 'pendente'
     }
 
@@ -487,21 +490,17 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
   const toggleEm = (secao) => (chaveId) => {
     const atual = exec[secao] || {}
     const novo = { ...atual }
-    if (novo[chaveId]) delete novo[chaveId]
-    else novo[chaveId] = true
+    if (novo[chaveId]) delete novo[chaveId]; else novo[chaveId] = true
     persistExec({ ...exec, [secao]: novo })
   }
 
-  // Estados dos serviços (pra anti-erro da Montagem)
-  const limpServDone = !temLimpeza || CHECKS_LIMPEZA.every(c => limpVal[c.id])
+  const limpServDone = !temLimpeza || !!limpVal.feito
   const manutServDone = !temManutencao
     || (manutChecks.length > 0 && manutChecks.every(c => manutVal[c.id]))
 
-  const desmDone = CHECKS_DESMONTAGEM.every(c => desmVal[c.id])
-  const montDone = CHECKS_MONTAGEM.every(c => montVal[c.id])
-  const tudoDone = desmDone && limpServDone && manutServDone && montDone
-
-  const semDiagnostico = temManutencao && manutChecks.length === 0
+  const desmDone  = !!desmVal.feito
+  const montDone  = !!montVal.feito
+  const tudoDone  = desmDone && limpServDone && manutServDone && montDone
 
   function concluirOficina() {
     if (!tudoDone) return
@@ -516,30 +515,26 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
     return <BloqueioOrcamento T={T} dark={dark} os={os} itens={itens} onAbrirAba={onAbrirAba} />
   }
 
-  // Dados pro resumo
-  const relatoCliente = os?.defeito || ''
-  const causaDiag = os?.pre_diagnostico?.causa_diagnostico || ''
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg }}>
 
-      {/* 1. Resumo do diagnóstico */}
+      {/* 1. Resumo diagnóstico */}
       <ResumoDiagnostico
         T={T} dark={dark}
-        relato={relatoCliente}
-        causa={causaDiag}
+        relato={os?.defeito || ''}
+        causa={os?.pre_diagnostico?.causa_diagnostico || ''}
         componentes={manutChecks}
       />
 
-      {/* 2. Banner falhas do Teste final */}
+      {/* 2. Falhas do Teste (quando OS volta) */}
       <BannerFalhas T={T} dark={dark} falhas={falhas} />
 
       {/* 3. Aviso diagnóstico vazio */}
-      {semDiagnostico && (
+      {temManutencao && manutChecks.length === 0 && (
         <HIGSection T={T} dark={dark}>
           <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: HIG_SPACE.sm,
-            padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
+            display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+            padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch,
           }}>
             <span style={{
               width: 28, height: 28, borderRadius: HIG_RADIUS.sm, flexShrink: 0,
@@ -549,59 +544,44 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
             }}>
               <TI name="info-circle" size={14} />
             </span>
-            <div>
-              <div style={{ ...higType('subheadline'), fontWeight: 600, color: T.textPrimary, marginBottom: 2 }}>
-                Diagnóstico vazio
-              </div>
-              <div style={{ ...higType('footnote'), color: HIG_COLOR.gray, lineHeight: '18px' }}>
-                O orçamento tem itens de manutenção mas o diagnóstico não tem componentes
-                marcados. Volte e marque os componentes pra gerar o checklist de serviço.
-              </div>
-            </div>
+            <span style={{ ...higType('footnote'), color: HIG_COLOR.gray, flex: 1, lineHeight: '18px' }}>
+              O orçamento tem manutenção mas o diagnóstico não tem componentes marcados. Volte e marque os componentes.
+            </span>
           </div>
         </HIGSection>
       )}
 
-      {/* 4. Lados: Limpeza e Manutenção */}
-      {(temLimpeza || temManutencao) ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg }}>
-          {temLimpeza && (
-            <CardLado
-              T={T} dark={dark}
-              titulo="Limpeza" icon="droplet"
-              status={oficinaJsonb.limpeza_status || 'pendente'}
-              desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
-              servChecks={CHECKS_LIMPEZA} servVal={limpVal}
-              montCheck={CHECKS_MONTAGEM} montVal={montVal}
-              onToggleDesm={toggleEm('desmontagem')}
-              onToggleServ={toggleEm('limpeza_serv')}
-              onToggleMont={toggleEm('montagem')}
-              outroServDone={manutServDone} outroLabel="Manutenção"
-              sempreLista={false}
-            />
-          )}
-          {temManutencao && (
-            <CardLado
-              T={T} dark={dark}
-              titulo="Manutenção" icon="tool"
-              status={oficinaJsonb.manutencao_status || 'pendente'}
-              desmCheck={CHECKS_DESMONTAGEM} desmVal={desmVal}
-              servChecks={manutChecks} servVal={manutVal}
-              montCheck={CHECKS_MONTAGEM} montVal={montVal}
-              onToggleDesm={toggleEm('desmontagem')}
-              onToggleServ={toggleEm('manut_serv')}
-              onToggleMont={toggleEm('montagem')}
-              outroServDone={limpServDone} outroLabel="Limpeza"
-              sempreLista={true}
-            />
-          )}
-        </div>
-      ) : (
+      {/* 4. Lados */}
+      {temLimpeza && (
+        <SecaoLimpeza
+          T={T} dark={dark}
+          status={oficinaJsonb.limpeza_status || 'pendente'}
+          desmVal={desmVal} limpVal={limpVal} montVal={montVal}
+          onToggleDesm={toggleEm('desmontagem')}
+          onToggleLimp={toggleEm('limpeza_serv')}
+          onToggleMont={toggleEm('montagem')}
+          outroServDone={manutServDone}
+        />
+      )}
+
+      {temManutencao && (
+        <SecaoManutencao
+          T={T} dark={dark}
+          status={oficinaJsonb.manutencao_status || 'pendente'}
+          desmVal={desmVal} manutVal={manutVal} montVal={montVal}
+          manutChecks={manutChecks}
+          onToggleDesm={toggleEm('desmontagem')}
+          onToggleManut={toggleEm('manut_serv')}
+          onToggleMont={toggleEm('montagem')}
+          outroServDone={limpServDone}
+        />
+      )}
+
+      {!temLimpeza && !temManutencao && (
         <HIGSection T={T} dark={dark} title="Conserto">
           <div style={{
             display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-            padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
-            minHeight: HIG_SIZE.touch,
+            padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch,
           }}>
             <TI name="info-circle" size={15} color={HIG_COLOR.gray} />
             <span style={{ ...higType('subheadline'), color: HIG_COLOR.gray }}>
@@ -618,7 +598,9 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
         onClick={concluirOficina}
         style={{
           ...higFilledButton(
-            tudoDone ? HIG_COLOR.tintIdemaq : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5)
+            tudoDone
+              ? HIG_COLOR.tintIdemaq
+              : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5)
           ),
           color: tudoDone ? '#fff' : HIG_COLOR.gray,
           cursor: tudoDone ? 'pointer' : 'default',
@@ -660,8 +642,12 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
       const n = (itens || []).length
       return n ? `${n} itens cadastrados` : 'Pendente — sem itens'
     }
-    if (id === 'oficina') return 'Liberado quando orçamento for fechado'
+    if (id === 'oficina') return 'Liberado quando o orçamento for fechado'
     return 'Feito'
+  }
+
+  function Sep2({ T }) {
+    return <div style={{ height: 0.5, background: T.border, marginLeft: HIG_SPACE.md + 28 + HIG_SPACE.sm }} />
   }
 
   return (
@@ -671,9 +657,9 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
       <div style={{
         display: 'flex', alignItems: 'flex-start', gap: HIG_SPACE.sm,
         padding: HIG_SPACE.md,
-        background: dark ? 'rgba(255,149,0,0.10)' : 'rgba(255,149,0,0.08)',
+        background: dark ? 'rgba(255,149,0,0.10)' : 'rgba(255,149,0,0.07)',
         borderRadius: HIG_RADIUS.md,
-        border: `1px solid ${HIG_COLOR.orange}44`,
+        border: `1px solid ${HIG_COLOR.orange}33`,
       }}>
         <span style={{
           width: 32, height: 32, borderRadius: HIG_RADIUS.md, flexShrink: 0,
@@ -688,7 +674,7 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
             Etapa anterior pendente
           </div>
           <div style={{ ...higType('footnote'), color: HIG_COLOR.gray, lineHeight: '18px' }}>
-            Feche o orçamento antes de executar o conserto.
+            Feche o orçamento antes de iniciar o conserto.
           </div>
         </div>
       </div>
@@ -698,19 +684,17 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
         <div style={{
           padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
           ...higType('footnote'),
-          color: HIG_COLOR.gray,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
+          color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em',
         }}>Progresso</div>
         <div style={higInsetCard(T, dark)}>
           {ETAPAS_SEQ.map((step, idx) => {
             const status = statusOf(step.id)
-            const meta = metaOf(step.id)
+            const meta   = metaOf(step.id)
             const isLast = idx === ETAPAS_SEQ.length - 1
             const cfg = {
-              done:    { icon: 'check', iconColor: HIG_COLOR.green,          bg: 'rgba(52,199,89,0.15)',       lineColor: HIG_COLOR.green },
-              miss:    { icon: 'alert-circle', iconColor: HIG_COLOR.orange,  bg: 'rgba(255,149,0,0.12)',       lineColor: HIG_COLOR.orange },
-              blocked: { icon: 'lock', iconColor: HIG_COLOR.gray2,           bg: dark ? 'rgba(255,255,255,0.06)' : HIG_COLOR.gray5, lineColor: T.border },
+              done:    { icon: 'check',        iconColor: HIG_COLOR.green,  bg: 'rgba(52,199,89,0.14)',  lineColor: HIG_COLOR.green },
+              miss:    { icon: 'alert-circle',  iconColor: HIG_COLOR.orange, bg: 'rgba(255,149,0,0.12)', lineColor: HIG_COLOR.orange },
+              blocked: { icon: 'lock',          iconColor: HIG_COLOR.gray2,  bg: dark ? 'rgba(255,255,255,0.06)' : HIG_COLOR.gray5, lineColor: T.border },
             }[status]
 
             return (
@@ -721,32 +705,27 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
                   minHeight: HIG_SIZE.touch,
                   position: 'relative',
                 }}>
-                  {/* Linha vertical de conexão */}
                   {!isLast && (
                     <div style={{
                       position: 'absolute',
-                      left: HIG_SPACE.md + 13,
-                      top: HIG_SIZE.touch - 4,
+                      left: HIG_SPACE.md + 14,
+                      top: HIG_SIZE.touch - 2,
                       bottom: 0,
                       width: 2,
                       background: cfg.lineColor,
-                      opacity: 0.35,
+                      opacity: 0.3,
                       zIndex: 0,
                     }} />
                   )}
-
-                  {/* Ícone */}
                   <span style={{
                     width: 28, height: 28, borderRadius: HIG_RADIUS.pill,
-                    background: cfg.bg,
-                    color: cfg.iconColor,
+                    background: cfg.bg, color: cfg.iconColor,
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0, zIndex: 1,
                   }}>
                     <TI name={cfg.icon} size={13} />
                   </span>
-
-                  <div style={{ flex: 1, paddingTop: 3 }}>
+                  <div style={{ flex: 1, paddingTop: 4 }}>
                     <div style={{
                       ...higType('subheadline'),
                       fontWeight: status === 'miss' ? 600 : 400,
@@ -756,22 +735,20 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
                     </div>
                     {meta && (
                       <div style={{
-                        ...higType('caption1'),
+                        ...higType('caption1'), marginTop: 1,
                         color: status === 'miss' ? HIG_COLOR.orange : HIG_COLOR.gray,
                         fontWeight: status === 'miss' ? 600 : 400,
-                        marginTop: 1,
                       }}>{meta}</div>
                     )}
                   </div>
                 </div>
-                {!isLast && <Sep T={T} />}
+                {!isLast && <Sep2 T={T} />}
               </React.Fragment>
             )
           })}
         </div>
       </section>
 
-      {/* CTA: voltar pro orçamento */}
       <button
         type="button"
         onClick={() => onAbrirAba?.('pagamento')}
