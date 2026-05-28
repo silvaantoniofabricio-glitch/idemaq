@@ -470,6 +470,8 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   const [escolha, setEscolha]         = useState(false)
   const inputCam = useRef(null)
   const inputGal = useRef(null)
+  // Confirmações inline (sem window.confirm — bloqueado em PWA iOS)
+  const [confirmSheet, setConfirmSheet] = useState(null) // null | 'entrega' | 'remover'
 
   useEffect(() => {
     let canc = false
@@ -493,8 +495,8 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
     notify('ok', 'Foto da entrega adicionada')
   }
 
-  async function removerFoto() {
-    if (!window.confirm('Remover a foto da entrega?')) return
+  async function removerFotoConfirmado() {
+    setConfirmSheet(null)
     if (fotoNoStorage) await removerFotoEntrega(os.id)
     setFotoUrl(null); setNoStorage(false)
     const { foto_entrega, ...resto } = os.pre_diagnostico || {}
@@ -502,16 +504,8 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
     notify('ok', 'Foto removida')
   }
 
-  // Confirmar entrega
-  function confirmarEntrega() {
-    if (!admin && !fotoNoStorage && !fotoUrl) {
-      notify('erro', 'Tire a foto da entrega antes de confirmar.')
-      return
-    }
-    if (!window.confirm(jaPaga
-      ? 'Confirmar entrega? A OS vai direto para Concluído (já paga).'
-      : 'Confirmar entrega? A OS vai para Pagamento.')) return
-
+  function confirmarEntregaConfirmado() {
+    setConfirmSheet(null)
     onUpdateOS?.(os.numero, {
       pre_diagnostico: {
         ...(os.pre_diagnostico || {}),
@@ -521,6 +515,15 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
     const destino = jaPaga ? 'concluido' : 'pagamento'
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === destino)
     if (proxima) onMoverOS(os.numero, proxima.id)
+  }
+
+  // Confirmar entrega — abre sheet de confirmação (sem window.confirm — bloqueado em PWA iOS)
+  function confirmarEntrega() {
+    if (!admin && !fotoNoStorage && !fotoUrl) {
+      notify('erro', 'Tire a foto da entrega antes de confirmar.')
+      return
+    }
+    setConfirmSheet('entrega')
   }
 
   const podeConfirmar = admin || fotoNoStorage || !!fotoUrl
@@ -579,7 +582,7 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
             label="Entrega"
             url={fotoUrl} uploading={uploading}
             onPick={() => setEscolha(true)}
-            onRemove={removerFoto} />
+            onRemove={() => setConfirmSheet('remover')} />
         </div>
         <input ref={inputCam} type="file" accept="image/*" capture="environment"
           onChange={e => escolherFoto(e.target.files?.[0])} style={{ display: 'none' }} />
@@ -593,6 +596,27 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
           actions={[
             { label: 'Tirar foto', onClick: () => { inputCam.current?.click(); setEscolha(false) } },
             { label: 'Escolher dos arquivos', onClick: () => { inputGal.current?.click(); setEscolha(false) } },
+          ]} />
+      )}
+
+      {/* Confirmação de remover foto */}
+      {confirmSheet === 'remover' && (
+        <ActionSheetHIG T={T} dark={dark}
+          onClose={() => setConfirmSheet(null)}
+          actions={[
+            { label: 'Remover foto', destructive: true, onClick: removerFotoConfirmado },
+          ]} />
+      )}
+
+      {/* Confirmação de entregar OS */}
+      {confirmSheet === 'entrega' && (
+        <ActionSheetHIG T={T} dark={dark}
+          onClose={() => setConfirmSheet(null)}
+          actions={[
+            {
+              label: jaPaga ? 'Confirmar entrega · Concluir OS' : 'Confirmar entrega · Ir para Pagamento',
+              onClick: confirmarEntregaConfirmado,
+            },
           ]} />
       )}
 
