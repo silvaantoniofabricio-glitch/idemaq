@@ -5,7 +5,7 @@
 // Consome useOSHistorico(os.id) — query real à tabela os_historico com JOIN
 // em usuarios (apelido + papel). Substituiu o campo os.historico em memória.
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { P } from '../../theme'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import { TIPOS_OS } from '../../utils/osData'
@@ -21,6 +21,7 @@ const COR_POR_PAPEL = {
 }
 
 export default function HistoricoPanel({ T, dark, os, onClose, mobile = false }) {
+  const _mdb = useRef(false)
   const cor = (d, c) => dark ? d : c
   const config = TIPOS_OS[os.tipo]
 
@@ -40,7 +41,8 @@ export default function HistoricoPanel({ T, dark, os, onClose, mobile = false })
 
   return (
     <div
-      onClick={onClose}
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 250,
         background: 'rgba(0,0,0,0.5)',

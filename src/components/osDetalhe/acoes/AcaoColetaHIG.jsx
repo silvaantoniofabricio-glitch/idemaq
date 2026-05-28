@@ -205,8 +205,11 @@ function FotoSlot({ T, dark, label, url, uploading, onPick, onRemove }) {
 
 // ─── iOS Action Sheet ─────────────────────────────────────────────────────
 function ActionSheet({ T, dark, onClose, actions }) {
+  const _mdb = useRef(false)
   return (
-    <div onClick={onClose}
+    <div
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         background: 'rgba(0,0,0,0.4)',

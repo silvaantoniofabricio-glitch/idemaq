@@ -1248,11 +1248,14 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
 // Sheet inline pra escolher entre "Orçamento" e "Recibo".
 // Usado tanto pelo "Gerar PDF" quanto pelo "Enviar WhatsApp".
 function EscolherDocModal({ T, dark, acao, onClose, onEscolher }) {
+  const _mdb = useRef(false)
   const titulo = acao === 'pdf' ? 'Gerar PDF de…' : 'Enviar pelo WhatsApp…'
   const azul = corEtapa('blue', dark)
   const verde = corEtapa('green', dark)
   return (
-    <div onClick={onClose}
+    <div
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         background: 'rgba(0,0,0,0.55)',

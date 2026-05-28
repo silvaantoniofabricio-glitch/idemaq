@@ -80,6 +80,7 @@ export default function OSDetalhe({
   // gesto é capturado errado).
   const sheetRef = useRef(null)
   const dragRef = useRef(null)
+  const _mouseDownOnBackdrop = useRef(false)
   const [dragY, setDragY] = useState(0)
 
   function onDragStart(e) {
@@ -123,7 +124,8 @@ export default function OSDetalhe({
     <>
       {/* Overlay + container — full-screen no mobile, centralizado no desktop */}
       <div
-        onClick={onClose}
+        onMouseDown={(e) => { _mouseDownOnBackdrop.current = e.target === e.currentTarget }}
+        onClick={(e) => { if (e.target === e.currentTarget && _mouseDownOnBackdrop.current) onClose() }}
         style={{
           position: 'fixed', inset: 0, zIndex: 200,
           background: 'rgba(0,0,0,0.6)',

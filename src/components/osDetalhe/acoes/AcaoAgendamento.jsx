@@ -631,8 +631,11 @@ const IdentificacaoMaquina = ({ os, onUpdateOS, onMoverOS }) => {
 
 // Bottom sheet pra escolher entre Camera e Galeria
 function EscolhaFotoSheet({ T, dark, onClose, onCamera, onGaleria }) {
+  const _mdb = useRef(false)
   return (
-    <div onClick={onClose}
+    <div
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         background: 'rgba(0,0,0,0.55)',

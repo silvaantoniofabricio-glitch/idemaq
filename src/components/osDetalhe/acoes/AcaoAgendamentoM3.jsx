@@ -4,7 +4,7 @@
 // Title/Body/Label, shape full (pills) pra botoes, filter chips pra dia/hora,
 // elevation suave em cards.
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useTheme } from '../../../theme'
 import { TI, PALETA } from '../../_shared/PrimitivasMobile'
 import {
@@ -593,8 +593,11 @@ function FotoSlotM3({ T, dark, label, url, uploading, onPick, onRemove }) {
 }
 
 function EscolhaFotoSheetM3({ T, dark, onClose, onCamera, onGaleria }) {
+  const _mdb = useRef(false)
   return (
-    <div onClick={onClose}
+    <div
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         background: 'rgba(0,0,0,0.55)',

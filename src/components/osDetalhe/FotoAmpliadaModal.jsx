@@ -2,9 +2,11 @@
 // Modal de foto ampliada — overlay escuro, foto centralizada, X pra fechar.
 // Fecha com Esc ou click fora. Sem outros controles (mantém simples).
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 
 export default function FotoAmpliadaModal({ src, alt = 'Foto', onClose }) {
+  const _mdb = useRef(false)
+
   // Esc fecha + trava scroll do body
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose?.() }
@@ -19,7 +21,8 @@ export default function FotoAmpliadaModal({ src, alt = 'Foto', onClose }) {
 
   return (
     <div
-      onClick={onClose}
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose?.() }}
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         background: 'rgba(0,0,0,0.85)',

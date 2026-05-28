@@ -85,14 +85,18 @@ function Sep({ T, indent = 0 }) {
 
 // ─── iOS Action Sheet ─────────────────────────────────────────────────────
 function ActionSheet({ T, dark, title, onClose, actions }) {
+  const _mdb = useRef(false)
   return (
-    <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, zIndex: 300,
-      background: 'rgba(0,0,0,0.45)',
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-      padding: HIG_SPACE.xs,
-      paddingBottom: `calc(env(safe-area-inset-bottom,0px) + ${HIG_SPACE.xs}px)`,
-    }}>
+    <div
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        padding: HIG_SPACE.xs,
+        paddingBottom: `calc(env(safe-area-inset-bottom,0px) + ${HIG_SPACE.xs}px)`,
+      }}>
       <div onClick={e => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', gap: HIG_SPACE.xs }}>
         {title && (

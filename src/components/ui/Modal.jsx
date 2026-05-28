@@ -2,7 +2,7 @@
 // Modal base reutilizável — overlay + container + fecha com ESC / clique fora.
 // Aceita maxWidth e modo mobile (alinha bottom).
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 
 export default function Modal({
   T, dark,
@@ -12,6 +12,8 @@ export default function Modal({
   mobile = false,
   closeOnOverlay = true,
 }) {
+  const mouseDownOnBackdrop = useRef(false)
+
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose?.() }
     document.addEventListener('keydown', handler)
@@ -25,7 +27,8 @@ export default function Modal({
 
   return (
     <div
-      onClick={closeOnOverlay ? onClose : undefined}
+      onMouseDown={closeOnOverlay ? (e) => { mouseDownOnBackdrop.current = e.target === e.currentTarget } : undefined}
+      onClick={closeOnOverlay ? (e) => { if (e.target === e.currentTarget && mouseDownOnBackdrop.current) onClose?.() } : undefined}
       style={{
         position: 'fixed', inset: 0, zIndex: 200,
         background: 'rgba(0,0,0,0.6)',
