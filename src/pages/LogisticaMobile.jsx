@@ -346,34 +346,50 @@ function MapaCard({ T, dark, children }) {
   )
 }
 
-// Pills HIG horizontais — wrap em vez de scroll, denso
+// Segmented control HIG — estilo iOS UISegmentedControl
+// Multi-select: cada segmento ativo fica "elevado" (T.card + shadow);
+// inativo fica transparente. Container unico com bg cinza claro.
 export function FiltroEtapas({ T, dark, ativas, onToggle }) {
-  const azul = corEtapa('blue', dark)
-  const bgInativo = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'
+  const bgContainer = dark ? 'rgba(120,120,128,0.24)' : 'rgba(118,118,128,0.12)'
 
   return (
-    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-      {FILTROS_ETAPA_LOGISTICA.map(f => {
+    <div style={{
+      display: 'flex',
+      background: bgContainer,
+      borderRadius: 9,
+      padding: 2,
+      gap: 0,
+    }}>
+      {FILTROS_ETAPA_LOGISTICA.map((f, i) => {
         const ativo = ativas.has(f.id)
         return (
           <button
             key={f.id}
             onClick={() => onToggle(f.id)}
             style={{
-              padding: '6px 11px',
-              borderRadius: 999,
+              flex: 1,
+              minWidth: 0,
+              minHeight: 30,
+              padding: '5px 4px',
+              borderRadius: 7,
               border: 'none',
-              background: ativo ? azul : bgInativo,
-              color: ativo ? '#fff' : T.textPrimary,
-              fontSize: 12, fontWeight: ativo ? 600 : 500,
-              cursor: 'pointer', fontFamily: 'inherit',
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              minHeight: 28,
+              background: ativo ? T.card : 'transparent',
+              color: T.textPrimary,
+              fontSize: 12,
+              fontWeight: ativo ? 600 : 500,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               letterSpacing: '-0.01em',
               WebkitTapHighlightColor: 'transparent',
-              transition: 'background .12s',
+              boxShadow: ativo
+                ? (dark
+                    ? '0 3px 8px rgba(0,0,0,0.24), 0 1px 2px rgba(0,0,0,0.16)'
+                    : '0 3px 8px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06)')
+                : 'none',
+              transition: 'background .12s, box-shadow .12s',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-            <i className={`ti ${f.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
             {f.label}
           </button>
         )
