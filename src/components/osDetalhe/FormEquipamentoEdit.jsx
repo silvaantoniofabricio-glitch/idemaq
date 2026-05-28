@@ -71,9 +71,9 @@ export default function FormEquipamentoEdit({
   }
 
   const [form, setForm] = useState({
-    marca: os?.marca || '',
-    modelo: os?.modelo || '',
-    serie: os?.serie || '',
+    marca: (os?.marca || '').toUpperCase(),
+    modelo: (os?.modelo || '').toUpperCase(),
+    serie: (os?.serie || '').toUpperCase(),
     defeito: os?.defeito || '',
   })
   const [salvando, setSalvando] = useState(false)
@@ -194,15 +194,15 @@ export default function FormEquipamentoEdit({
           <Input T={T} dark={dark}
             label="Marca"
             value={form.marca}
-            onChange={v => update('marca', v)}
+            onChange={v => update('marca', v.toUpperCase())}
             icon="ti-device-washing-machine"
-            placeholder="Ex: Brastemp"
+            placeholder="Ex: BRASTEMP"
             autoFocus
           />
           <Input T={T} dark={dark}
             label="Modelo"
             value={form.modelo}
-            onChange={v => update('modelo', v)}
+            onChange={v => update('modelo', v.toUpperCase())}
             placeholder="Ex: BWK11AB"
           />
         </div>
@@ -210,7 +210,7 @@ export default function FormEquipamentoEdit({
         <Input T={T} dark={dark}
           label="Número de série"
           value={form.serie}
-          onChange={v => update('serie', v)}
+          onChange={v => update('serie', v.toUpperCase())}
           icon="ti-hash"
           placeholder="Ex: 1A2B3C4D5E"
         />
@@ -244,9 +244,9 @@ export default function FormEquipamentoEdit({
             // o usuario ja digitou. Usuario revisa e clica Salvar.
             setForm(f => ({
               ...f,
-              marca:  f.marca  || campos.marca  || '',
-              modelo: f.modelo || campos.modelo || '',
-              serie:  f.serie  || campos.serie  || '',
+              marca:  f.marca  || (campos.marca  || '').toUpperCase(),
+              modelo: f.modelo || (campos.modelo || '').toUpperCase(),
+              serie:  f.serie  || (campos.serie  || '').toUpperCase(),
             }))
           }}
         />

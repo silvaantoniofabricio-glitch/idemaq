@@ -730,18 +730,18 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
                 {form.equipamentoMarca === 'Outros' && (
                   <div style={{ gridColumn: mobile ? '1' : '1 / -1' }}>
                     <label style={labelStyle}>NOME DA MARCA</label>
-                    <input value={form.equipamentoMarcaOutros} onChange={e=>update('equipamentoMarcaOutros', e.target.value)} placeholder="Ex: Mueller, Suggar, Mondial…" style={inputStyle} />
+                    <input value={form.equipamentoMarcaOutros} onChange={e=>update('equipamentoMarcaOutros', e.target.value.toUpperCase())} placeholder="Ex: MUELLER, SUGGAR, MONDIAL…" style={inputStyle} />
                   </div>
                 )}
 
                 <div>
                   <label style={labelStyle}>MODELO</label>
-                  <input value={form.equipamentoModelo} onChange={e=>update('equipamentoModelo', e.target.value)} placeholder="Ex: BWK11" style={inputStyle} />
+                  <input value={form.equipamentoModelo} onChange={e=>update('equipamentoModelo', e.target.value.toUpperCase())} placeholder="Ex: BWK11" style={inputStyle} />
                 </div>
 
                 <div>
                   <label style={labelStyle}>Nº DE SÉRIE</label>
-                  <input value={form.equipamentoSerie} onChange={e=>update('equipamentoSerie', e.target.value)} placeholder="Ex: SN-12345" style={inputStyle} />
+                  <input value={form.equipamentoSerie} onChange={e=>update('equipamentoSerie', e.target.value.toUpperCase())} placeholder="Ex: SN-12345" style={inputStyle} />
                 </div>
               </div>
             </div>
