@@ -1,115 +1,69 @@
 // src/components/osDetalhe/tabs/RelatorioTab.jsx
-// Aba Resumo — visão completa da OS numa coluna.
-// Seções (de cima pra baixo):
-//   1. Foto + dados do cliente e equipamento (compacto, um card)
-//   2. Resumo financeiro — total / pago / saldo (admin)
-//   3. Resumo das etapas (uma linha por etapa: ícone + data/responsável + texto)
-//   4. Banners contextuais (garantia, recusada)
+// Aba Resumo — visão completa da OS. Apple HIG.
+// Seções: 1. Cliente & Equipamento  2. Financeiro (admin)
+//         3. O que foi feito        4. Banners contextuais
 
 import React, { useState, useEffect } from 'react'
-import { P } from '../../../theme'
-import { corEtapa, bgEtapa } from '../../../utils/colors'
+import { corEtapa } from '../../../utils/colors'
 import {
-  dentroGarantia, calcStatusPrazo, diasPrazo,
-  totalAPagar, estaPagaTotal, estaPagaParcial,
+  dentroGarantia, calcStatusPrazo, totalAPagar,
+  estaPagaTotal, estaPagaParcial,
 } from '../../../utils/osHelpers'
-import { fmtBRL, fmtPrazoCurto, fmtDataHora } from '../../../utils/fmt'
-import { TIPOS_OS, ETAPAS_TODOS } from '../../../utils/osData'
+import { fmtBRL, fmtPrazoCurto } from '../../../utils/fmt'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import { resolverFotoUrl, FOTO_STORAGE_MARKER } from '../../../utils/osStorage'
+import {
+  HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT,
+  higType, higInsetCard,
+} from '../../../theme-hig'
 
-// ─── Mapeamento de etapas pra ícone + cor ────────────────────────────────────
+// ─── Metadados das etapas ────────────────────────────────────────────────────
 const ETAPA_META = {
-  ag_agendamento:  { icon: 'ti-calendar-time',      cor: 'neutro', label: 'Agenda' },
-  agendado:        { icon: 'ti-calendar-event',      cor: 'blue',   label: 'Coleta' },
-  recebido:        { icon: 'ti-clipboard-check',     cor: 'blue',   label: 'Avaliação' },
-  diagnostico:     { icon: 'ti-stethoscope',         cor: 'yellow', label: 'Diagnóstico' },
-  orcamento:       { icon: 'ti-receipt',             cor: 'yellow', label: 'Orçamento' },
-  oficina:         { icon: 'ti-tool',                cor: 'yellow', label: 'Conserto' },
-  teste_final:     { icon: 'ti-flask',               cor: 'blue',   label: 'Teste' },
-  entrega:         { icon: 'ti-truck-delivery',      cor: 'blue',   label: 'Entrega' },
-  pagamento:       { icon: 'ti-cash-banknote',       cor: 'blue',   label: 'A receber' },
-  concluido:       { icon: 'ti-circle-check',        cor: 'green',  label: 'Concluído' },
-  recusado:        { icon: 'ti-circle-x',            cor: 'red',    label: 'Recusado' },
+  ag_agendamento: { icon: 'ti-calendar-time',    cor: 'neutro', label: 'Agenda' },
+  agendado:       { icon: 'ti-calendar-event',   cor: 'blue',   label: 'Coleta' },
+  recebido:       { icon: 'ti-clipboard-check',  cor: 'blue',   label: 'Avaliação' },
+  diagnostico:    { icon: 'ti-stethoscope',      cor: 'yellow', label: 'Diagnóstico' },
+  orcamento:      { icon: 'ti-receipt',          cor: 'yellow', label: 'Orçamento' },
+  oficina:        { icon: 'ti-tool',             cor: 'yellow', label: 'Conserto' },
+  teste_final:    { icon: 'ti-flask',            cor: 'blue',   label: 'Teste' },
+  entrega:        { icon: 'ti-truck-delivery',   cor: 'blue',   label: 'Entrega' },
+  pagamento:      { icon: 'ti-cash-banknote',    cor: 'blue',   label: 'A receber' },
+  concluido:      { icon: 'ti-circle-check',     cor: 'green',  label: 'Concluído' },
+  recusado:       { icon: 'ti-circle-x',         cor: 'red',    label: 'Recusado' },
 }
 
-export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {
-  const cor = (d, c) => dark ? d : c
+// ─── Primitivos de layout HIG ────────────────────────────────────────────────
 
-  const azul    = corEtapa('blue', dark)
-  const verde   = corEtapa('green', dark)
-  const amarelo = corEtapa('yellow', dark)
-  const vermelho = corEtapa('red', dark)
-
-  const isRecusado = os.etapa === 'recusado'
-  const isConcluido = os.etapa === 'concluido'
-  const garantiaAtiva = isConcluido ? dentroGarantia(os) : false
-  const osOrigem = os.garantia && osBase ? osBase.find(o => o.numero === os.os_origem_id) : null
-
-  const { itens, loading: itensLoading } = useOSItens(os?.id)
-  const checkRecebido = useChecklistEtapa(os?.id, 'recebido')
-  const checkOficina  = useChecklistEtapa(os?.id, 'em_oficina')
-  const checkTeste    = useChecklistEtapa(os?.id, 'teste_final')
-  const { falhas }    = useFalhaTeste(os?.id)
-
-  const funcPorId = (id) => {
-    const u = (usuarios || []).find(x => x.id === id)
-    return u ? (u.apelido || u.nome || null) : null
-  }
-
-  // Dias em cada etapa, baseado no historico
-  const historico = os.historico || []
-
+function HIGSection({ T, dark, title, children, footer }) {
   return (
-    <div style={{ padding: '14px 16px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-      {/* ── 1. CLIENTE + EQUIPAMENTO ── */}
-      <CardCliente T={T} dark={dark} os={os} azul={azul} cor={cor} />
-
-      {/* ── 2. FINANCEIRO (admin only) ── */}
-      {admin && (
-        <CardFinanceiro
-          T={T} dark={dark} os={os} itens={itens} loading={itensLoading}
-          verde={verde} amarelo={amarelo} azul={azul} cor={cor}
-        />
+    <section>
+      <div style={{
+        ...higType('footnote'),
+        color: T.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
+      }}>{title}</div>
+      <div style={higInsetCard(T, dark)}>{children}</div>
+      {footer && (
+        <div style={{
+          ...higType('footnote'),
+          color: T.textMuted,
+          padding: `${HIG_SPACE.xxs}px ${HIG_SPACE.md}px 0`,
+        }}>{footer}</div>
       )}
-
-      {/* ── 3. RESUMO DAS ETAPAS ── */}
-      <CardResumoEtapas
-        T={T} dark={dark} os={os} admin={admin}
-        checkRecebido={checkRecebido} checkOficina={checkOficina} checkTeste={checkTeste}
-        falhas={falhas} itens={itens}
-        funcPorId={funcPorId}
-      />
-
-      {/* ── 5. BANNERS CONTEXTUAIS ── */}
-      {os.garantia && osOrigem && (
-        <Banner T={T} cor={azul} bg={bgEtapa('blue', dark)}
-          icon="ti-shield-check" titulo="OS em garantia"
-          texto={<>Referente à <strong>OS #{osOrigem.numero}</strong> de {osOrigem.cliente}.</>}
-          onClick={() => onAbrirOS?.(osOrigem.numero)} chevron={!!onAbrirOS}
-        />
-      )}
-      {garantiaAtiva && !os.garantia && (
-        <Banner T={T} cor={azul} bg={bgEtapa('blue', dark)}
-          icon="ti-shield-check" titulo="Garantia ativa"
-          texto="Se o cliente retornar com o mesmo defeito dentro do prazo, abra uma OS de garantia."
-        />
-      )}
-      {isRecusado && (
-        <Banner T={T} cor={vermelho} bg={cor('#2a1515', '#fde8e8')}
-          icon="ti-circle-x" titulo="OS recusada pelo cliente"
-          texto="Defina o destino da máquina na aba Etapa."
-        />
-      )}
-    </div>
+    </section>
   )
 }
 
-// ─── 1. CLIENTE + EQUIPAMENTO ────────────────────────────────────────────────
-function CardCliente({ T, dark, os, azul, cor }) {
+function Sep({ T, indent = 0 }) {
+  return <div style={{ height: 0.5, background: T.border, marginLeft: indent, opacity: 0.7 }} />
+}
+
+// ─── 1. Cliente & Equipamento ────────────────────────────────────────────────
+function SecaoCliente({ T, dark, os }) {
   const [fotoUrl, setFotoUrl] = useState(null)
 
   useEffect(() => {
@@ -122,125 +76,136 @@ function CardCliente({ T, dark, os, azul, cor }) {
     }
   }, [os?.id, os?.pre_diagnostico?.foto])
 
-  const temCliente = os.cliente || os.fone || os.endereco
-  const temEquipamento = os.marca || os.modelo || os.serie || os.defeito
+  const dateParts = []
+  if (os.abertura || os.criado_em)
+    dateParts.push(`Abertura: ${fmtPrazoCurto(os.abertura || os.criado_em)}`)
+  if (os.prazo) {
+    const status = calcStatusPrazo(os.prazo, os.etapa)
+    dateParts.push(`Prazo: ${fmtPrazoCurto(os.prazo)}${status === 'vencido' ? ' ⚠' : ''}`)
+  }
+  if (os.data_conclusao)
+    dateParts.push(`Concluída: ${fmtPrazoCurto(os.data_conclusao)}`)
 
   return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-    }}>
-      {/* Cabeçalho do card */}
+    <HIGSection T={T} dark={dark} title="Cliente & Equipamento"
+      footer={dateParts.length ? dateParts.join(' · ') : undefined}>
+
+      {/* Foto + nome + equipamento */}
       <div style={{
-        padding: '10px 14px 8px',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
+        padding: HIG_SPACE.md,
+        display: 'flex', alignItems: 'center', gap: HIG_SPACE.md,
       }}>
-        <i className="ti ti-id-badge-2" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-          textTransform: 'uppercase', letterSpacing: '.05em',
+        <div style={{
+          width: 56, height: 56, flexShrink: 0,
+          borderRadius: HIG_RADIUS.card,
+          background: fotoUrl
+            ? `url(${fotoUrl}) center/cover no-repeat`
+            : (dark ? '#2c4257' : '#e8f0f8'),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
         }}>
-          Cliente &amp; Equipamento
-        </span>
-        {/* OS número + tipo */}
-        <span style={{
-          marginLeft: 'auto',
-          fontSize: 11, fontWeight: 700, color: azul,
-          background: bgEtapa('blue', dark),
-          padding: '2px 8px', borderRadius: 10,
-          border: `1px solid ${azul}33`,
-        }}>
-          OS #{os.numero} · {TIPOS_OS[os.tipo]?.label || os.tipo}
-        </span>
-      </div>
+          {!fotoUrl && (
+            <i className="ti ti-photo"
+              style={{ fontSize: 22, color: HIG_COLOR.tintIdemaq, opacity: 0.5 }}
+              aria-hidden="true" />
+          )}
+        </div>
 
-      <div style={{ display: 'flex', gap: 0 }}>
-        {/* Foto da máquina */}
-        {fotoUrl && (
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            width: 80, flexShrink: 0,
-            borderRight: `1px solid ${T.border}`,
-            display: 'flex', alignItems: 'stretch',
+            ...higType('headline'),
+            color: T.textPrimary,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
-            <img
-              src={fotoUrl} alt="Foto da máquina"
-              style={{
-                width: '100%', objectFit: 'cover',
-                display: 'block',
-              }}
-            />
+            {os.cliente || 'Cliente não informado'}
           </div>
-        )}
-
-        <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Dados do cliente */}
-          {temCliente && (
-            <div>
-              <RowLabel T={T} dark={dark} icon="ti-user" label="Cliente" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
-                {os.cliente && <DadoLinha T={T} valor={os.cliente} destaque />}
-                {os.fone && (
-                  <DadoLinha T={T} icon="ti-phone" valor={os.fone} />
-                )}
-                {os.endereco && (
-                  <DadoLinha T={T} icon="ti-map-pin" valor={os.endereco} />
-                )}
-              </div>
+          {(os.marca || os.modelo) && (
+            <div style={{
+              ...higType('subheadline'),
+              color: T.textSecondary,
+              marginTop: 2,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {[os.marca, os.modelo].filter(Boolean).join(' ')}
+              {os.serie && (
+                <span style={{
+                  ...higType('caption2'),
+                  color: T.textMuted,
+                  marginLeft: 8,
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                }}>
+                  S/N {os.serie}
+                </span>
+              )}
             </div>
           )}
-
-          {/* Divisor */}
-          {temCliente && temEquipamento && (
-            <div style={{ height: 1, background: T.border }} />
-          )}
-
-          {/* Dados do equipamento */}
-          {temEquipamento && (
-            <div>
-              <RowLabel T={T} dark={dark} icon="ti-device-washing-machine" label="Equipamento" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
-                {(os.marca || os.modelo) && (
-                  <DadoLinha T={T}
-                    valor={[os.marca, os.modelo].filter(Boolean).join(' ')}
-                    destaque
-                  />
-                )}
-                {os.serie && (
-                  <DadoLinha T={T} icon="ti-barcode" valor={`Série: ${os.serie}`} />
-                )}
-                {os.defeito && (
-                  <DadoLinha T={T} icon="ti-alert-triangle" valor={os.defeito} muted />
-                )}
-              </div>
+          {os.defeito && (
+            <div style={{
+              ...higType('caption1'),
+              color: T.textMuted,
+              marginTop: 2,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {os.defeito}
             </div>
           )}
-
-          {/* Datas rápidas */}
-          <div style={{
-            display: 'flex', gap: 16, flexWrap: 'wrap',
-            paddingTop: 6, borderTop: `1px solid ${T.border}`,
-          }}>
-            <DataKV T={T} label="Abertura" valor={fmtPrazoCurto(os.abertura || os.criado_em)} />
-            {os.prazo && (
-              <DataKV T={T} label="Prazo" valor={fmtPrazoCurto(os.prazo)}
-                alerta={calcStatusPrazo(os.prazo, os.etapa) === 'vencido'}
-              />
-            )}
-            {os.data_conclusao && (
-              <DataKV T={T} label="Concluída" valor={fmtPrazoCurto(os.data_conclusao)} />
-            )}
-          </div>
         </div>
       </div>
-    </div>
+
+      {/* Telefone */}
+      {os.fone && (
+        <>
+          <Sep T={T} indent={HIG_SPACE.md} />
+          <div style={{
+            minHeight: HIG_SIZE.listRow,
+            padding: `0 ${HIG_SPACE.md}px`,
+            display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
+          }}>
+            <i className="ti ti-phone"
+              style={{ fontSize: 16, color: HIG_COLOR.tintIdemaq, flexShrink: 0 }}
+              aria-hidden="true" />
+            <span style={{ ...higType('body'), color: T.textPrimary, flex: 1 }}>
+              {os.fone}
+            </span>
+            <i className="ti ti-brand-whatsapp"
+              style={{ fontSize: 18, color: HIG_COLOR.green, flexShrink: 0 }}
+              aria-hidden="true" />
+          </div>
+        </>
+      )}
+
+      {/* Endereço */}
+      {os.endereco && (
+        <>
+          <Sep T={T} indent={HIG_SPACE.md} />
+          <div style={{
+            minHeight: HIG_SIZE.listRow,
+            padding: `0 ${HIG_SPACE.md}px`,
+            display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
+          }}>
+            <i className="ti ti-map-pin"
+              style={{ fontSize: 16, color: HIG_COLOR.tintIdemaq, flexShrink: 0 }}
+              aria-hidden="true" />
+            <span style={{
+              ...higType('subheadline'),
+              color: T.textSecondary,
+              flex: 1,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {os.endereco}
+            </span>
+            <i className="ti ti-map-2"
+              style={{ fontSize: 14, color: T.textMuted, flexShrink: 0 }}
+              aria-hidden="true" />
+          </div>
+        </>
+      )}
+    </HIGSection>
   )
 }
 
-// ─── 2. FINANCEIRO ───────────────────────────────────────────────────────────
-function CardFinanceiro({ T, dark, os, itens, loading, verde, amarelo, azul, cor }) {
-  if (loading) return null
-
+// ─── 2. Financeiro ───────────────────────────────────────────────────────────
+function SecaoFinanceiro({ T, dark, os, itens }) {
   function unit(i) { return i.valor_unitario ?? i.valor ?? 0 }
   function total(i) { return i.valor_total ?? unit(i) * (i.qtd ?? 1) }
 
@@ -252,91 +217,82 @@ function CardFinanceiro({ T, dark, os, itens, loading, verde, amarelo, azul, cor
   const pagaTotal = estaPagaTotal(os)
   const pagaParcial = estaPagaParcial(os)
 
-  const statusCor = pagaTotal ? verde : pagaParcial ? amarelo : T.textMuted
-  const statusLabel = pagaTotal ? 'Pago' : pagaParcial ? 'Parcial' : 'Não pago'
+  const statusCor = pagaTotal ? HIG_COLOR.green : pagaParcial ? HIG_COLOR.orange : T.textMuted
+  const statusLabel = pagaTotal ? 'Pago' : pagaParcial ? 'Parcial' : 'Em aberto'
   const statusIcon = pagaTotal ? 'ti-circle-check' : pagaParcial ? 'ti-clock-hour-3' : 'ti-circle-dashed'
 
   return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '10px 14px 8px',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <i className="ti ti-cash-banknote" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-          textTransform: 'uppercase', letterSpacing: '.05em',
-        }}>
-          Financeiro
-        </span>
-        <span style={{
-          marginLeft: 'auto',
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          fontSize: 10.5, fontWeight: 700, color: statusCor,
-          background: statusCor + '18', padding: '2px 8px', borderRadius: 10,
-          border: `1px solid ${statusCor}33`,
-        }}>
-          <i className={`ti ${statusIcon}`} style={{ fontSize: 11 }} aria-hidden="true" />
-          {statusLabel}
-        </span>
-      </div>
-
-      {/* 3 KPIs horizontais */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-        borderBottom: itens.length > 0 ? `1px solid ${T.border}` : 'none',
-      }}>
-        <KPI T={T} label="Total orçado" valor={fmtBRL(totalLiq)}
+    <HIGSection T={T} dark={dark} title="Financeiro">
+      {/* 3 KPIs em grid horizontal */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
+        <KPICell T={T}
+          label="Total orçado"
+          value={fmtBRL(totalLiq)}
           sub={desconto > 0 ? `desc. ${fmtBRL(desconto)}` : `${itens.length} iten${itens.length !== 1 ? 's' : ''}`}
-          border={false}
         />
-        <KPI T={T} label="Pago" valor={fmtBRL(pago)} cor={pago > 0 ? verde : T.textMuted}
-          sub={os.forma_pagamento || '—'} border
+        <KPICell T={T}
+          label="Pago"
+          value={fmtBRL(pago)}
+          valueCor={pago > 0 ? HIG_COLOR.green : T.textMuted}
+          sub={os.forma_pagamento || '—'}
+          border
         />
-        <KPI T={T} label="Saldo" valor={fmtBRL(saldo)}
-          cor={saldo === 0 ? verde : amarelo}
-          sub={saldo === 0 ? 'Quitado' : 'Em aberto'} border
+        <KPICell T={T}
+          label="Saldo"
+          value={fmtBRL(saldo)}
+          valueCor={saldo === 0 ? HIG_COLOR.green : HIG_COLOR.orange}
+          sub={saldo === 0 ? 'Quitado ✓' : 'Em aberto'}
+          border
         />
       </div>
 
-      {/* Lista compacta de itens */}
+      {/* Lista de itens */}
       {itens.length > 0 && (
-        <div style={{ padding: '8px 14px 10px' }}>
+        <>
+          <Sep T={T} />
           {itens.map((it, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '5px 0',
-              borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
-            }}>
-              <i className={`ti ${tipoIcone(it.tipo)}`}
-                style={{ fontSize: 12, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
-              <span style={{
-                flex: 1, fontSize: 12.5, color: T.textPrimary,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{it.nome || '(sem nome)'}</span>
-              <span style={{
-                fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-              }}>{it.qtd}×</span>
-              <span style={{
-                fontSize: 12.5, fontWeight: 600, color: T.textPrimary,
-                fontVariantNumeric: 'tabular-nums', minWidth: 64, textAlign: 'right',
-              }}>{fmtBRL(total(it))}</span>
-            </div>
+            <React.Fragment key={it.id || i}>
+              {i > 0 && <Sep T={T} indent={HIG_SPACE.md + 22 + HIG_SPACE.xs} />}
+              <div style={{
+                minHeight: HIG_SIZE.listRow,
+                padding: `0 ${HIG_SPACE.md}px`,
+                display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
+              }}>
+                <i className={`ti ${tipoIcone(it.tipo)}`}
+                  style={{ fontSize: 14, color: T.textMuted, flexShrink: 0, width: 22, textAlign: 'center' }}
+                  aria-hidden="true" />
+                <span style={{
+                  ...higType('subheadline'),
+                  color: T.textPrimary,
+                  flex: 1,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {it.nome || '(sem nome)'}
+                </span>
+                <span style={{ ...higType('footnote'), color: T.textMuted, marginRight: 8 }}>
+                  {it.qtd}×
+                </span>
+                <span style={{
+                  ...higType('subheadline'),
+                  fontWeight: 600,
+                  color: T.textPrimary,
+                  fontVariantNumeric: 'tabular-nums',
+                  minWidth: 64, textAlign: 'right',
+                }}>
+                  {fmtBRL(total(it))}
+                </span>
+              </div>
+            </React.Fragment>
           ))}
-        </div>
+        </>
       )}
-    </div>
+    </HIGSection>
   )
 }
 
-// ─── 3. RESUMO DAS ETAPAS ────────────────────────────────────────────────────
-function CardResumoEtapas({ T, dark, os, admin, checkRecebido, checkOficina, checkTeste, falhas, itens, funcPorId }) {
+// ─── 3. O que foi feito ──────────────────────────────────────────────────────
+function SecaoHistorico({ T, dark, os, admin, checkRecebido, checkOficina, checkTeste, falhas, itens, funcPorId }) {
   const historico = os.historico || []
-  const azul = corEtapa('blue', dark)
 
   function dadosEtapa(etapaDb) {
     const hist = historico.filter(h => {
@@ -361,29 +317,25 @@ function CardResumoEtapas({ T, dark, os, admin, checkRecebido, checkOficina, che
   const linhas = []
 
   const dRec = dadosEtapa('recebido')
-  if (dRec && !checkRecebido.loading) {
+  if (dRec && !checkRecebido.loading)
     linhas.push({ key: 'recebido', meta: ETAPA_META.recebido, dados: dRec, texto: resumoChecklist(checkRecebido) || '—' })
-  }
 
   const dDiag = dadosEtapa('diagnostico')
-  if (dDiag) {
-    const causa = os.diagnostico?.causa
-    linhas.push({ key: 'diagnostico', meta: ETAPA_META.diagnostico, dados: dDiag, texto: causa || '—' })
-  }
+  if (dDiag)
+    linhas.push({ key: 'diagnostico', meta: ETAPA_META.diagnostico, dados: dDiag, texto: os.diagnostico?.causa || '—' })
 
   const dOrc = dadosEtapa('orcamento')
   if (admin && dOrc) {
-    const subtotal = itens.reduce((s, i) => s + (i.valor_total ?? (i.valor_unitario ?? i.valor ?? 0) * (i.qtd ?? 1)), 0)
+    const sub = itens.reduce((s, i) => s + (i.valor_total ?? (i.valor_unitario ?? i.valor ?? 0) * (i.qtd ?? 1)), 0)
     linhas.push({
       key: 'orcamento', meta: ETAPA_META.orcamento, dados: dOrc,
-      texto: `${itens.length} iten${itens.length !== 1 ? 's' : ''} · ${fmtBRL(subtotal)}${os.desconto > 0 ? ` · desc. ${fmtBRL(os.desconto)}` : ''}`,
+      texto: `${itens.length} iten${itens.length !== 1 ? 's' : ''} · ${fmtBRL(sub)}${os.desconto > 0 ? ` · desc. ${fmtBRL(os.desconto)}` : ''}`,
     })
   }
 
   const dOf = dadosEtapa('em_oficina')
-  if (dOf && !checkOficina.loading) {
+  if (dOf && !checkOficina.loading)
     linhas.push({ key: 'oficina', meta: ETAPA_META.oficina, dados: dOf, texto: resumoChecklist(checkOficina) || '—' })
-  }
 
   const dTeste = dadosEtapa('teste_final')
   if (dTeste && !checkTeste.loading) {
@@ -395,9 +347,8 @@ function CardResumoEtapas({ T, dark, os, admin, checkRecebido, checkOficina, che
   }
 
   const dEnt = dadosEtapa('entrega')
-  if (dEnt) {
+  if (dEnt)
     linhas.push({ key: 'entrega', meta: ETAPA_META.entrega, dados: dEnt, texto: 'Máquina entregue ao cliente.' })
-  }
 
   const dPag = dadosEtapa('pagamento')
   if (admin && (dPag || os.valor_pago > 0)) {
@@ -409,603 +360,155 @@ function CardResumoEtapas({ T, dark, os, admin, checkRecebido, checkOficina, che
   }
 
   const dConc = dadosEtapa('concluido')
-  if (dConc) {
+  if (dConc)
     linhas.push({ key: 'concluido', meta: ETAPA_META.concluido, dados: dConc, texto: `Garantia de ${os.garantia_dias || 90} dias.` })
-  }
 
   const dRecus = dadosEtapa('recusado')
-  if (dRecus) {
+  if (dRecus)
     linhas.push({ key: 'recusado', meta: ETAPA_META.recusado, dados: dRecus, texto: 'OS recusada pelo cliente.' })
-  }
 
   const carregando = checkRecebido.loading || checkOficina.loading || checkTeste.loading
-  if (carregando) return null
-  if (linhas.length === 0) return null
+  if (carregando || linhas.length === 0) return null
 
   return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '10px 14px 8px',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <i className="ti ti-list-check" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-          textTransform: 'uppercase', letterSpacing: '.05em',
-        }}>
-          Resumo das etapas
-        </span>
-      </div>
-
-      <div>
-        {linhas.map(({ key, meta, dados, texto }, i) => {
-          const c = corEtapa(meta.cor, dark)
-          return (
-            <div key={key} style={{
-              padding: '10px 14px',
-              borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
-              display: 'flex', gap: 10, alignItems: 'flex-start',
+    <HIGSection T={T} dark={dark} title="O que foi feito">
+      {linhas.map(({ key, meta, dados, texto }, i) => {
+        const c = corEtapa(meta.cor, dark)
+        return (
+          <React.Fragment key={key}>
+            {i > 0 && <Sep T={T} indent={HIG_SPACE.md + 32 + HIG_SPACE.sm} />}
+            <div style={{
+              padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
+              display: 'flex', gap: HIG_SPACE.sm, alignItems: 'flex-start',
             }}>
+              {/* Ícone circular colorido */}
               <div style={{
-                width: 24, height: 24, borderRadius: '50%',
-                background: c + '22', border: `1.5px solid ${c}`,
+                width: 32, height: 32, borderRadius: '50%',
+                background: c + '1A',
+                border: `1.5px solid ${c}44`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
+                flexShrink: 0, marginTop: 1,
               }}>
-                <i className={`ti ${meta.icon}`} style={{ fontSize: 12, color: c }} aria-hidden="true" />
+                <i className={`ti ${meta.icon}`}
+                  style={{ fontSize: 14, color: c }}
+                  aria-hidden="true" />
               </div>
+
+              {/* Label + data + texto */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
-                  marginBottom: 2,
+                  display: 'flex', alignItems: 'baseline',
+                  justifyContent: 'space-between', gap: 8,
                 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
+                  <span style={{
+                    ...higType('subheadline'),
+                    fontWeight: 600,
+                    color: T.textPrimary,
+                  }}>
                     {meta.label}
                   </span>
                   {dados && (
-                    <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{
+                      ...higType('caption2'),
+                      color: T.textMuted,
+                      fontVariantNumeric: 'tabular-nums',
+                      flexShrink: 0,
+                    }}>
                       {fmtPrazoCurto(dados.data)}
                       {dados.responsavel ? ` · ${dados.responsavel}` : ''}
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                <div style={{
+                  ...higType('footnote'),
+                  color: T.textSecondary,
+                  marginTop: 2,
+                  lineHeight: '1.4',
+                }}>
                   {texto}
                 </div>
               </div>
             </div>
-          )
-        })}
-      </div>
-    </div>
+          </React.Fragment>
+        )
+      })}
+    </HIGSection>
   )
 }
 
-// ─── (legado, não usado) ─────────────────────────────────────────────────────
-function _CardTimelineLegacy({ T, dark, os, historico, funcPorId }) {
-  const azul = corEtapa('blue', dark)
-  const verde = corEtapa('green', dark)
-  const vermelho = corEtapa('red', dark)
-
-  if (historico.length === 0) return null
-
-  // Calcula tempo gasto em cada etapa
-  const eventos = historico.map((h, i) => {
-    const inicio = new Date(h.data)
-    const proximo = historico[i + 1]
-    const fim = proximo ? new Date(proximo.data) : new Date()
-    const minutos = Math.round((fim - inicio) / 60000)
-    return { ...h, minutos, fim }
-  })
-
-  function fmtTempo(min) {
-    if (min < 60) return `${min}min`
-    const h = Math.floor(min / 60)
-    if (h < 24) return `${h}h`
-    const d = Math.floor(h / 24)
-    return `${d}d`
-  }
-
-  function corPonto(etapa) {
-    const meta = ETAPA_META[etapa]
-    if (!meta) return azul
-    return corEtapa(meta.cor, dark)
-  }
-
-  const ultimo = eventos[eventos.length - 1]
-  const isFinal = os.etapa === 'concluido' || os.etapa === 'recusado'
-
+// ─── 4. Banners contextuais ──────────────────────────────────────────────────
+function BannerHIG({ T, dark, cor, icon, titulo, texto, onClick }) {
   return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        ...higInsetCard(T, dark),
+        padding: HIG_SPACE.md,
+        border: `1px solid ${cor}33`,
+        background: cor + '0F',
+        display: 'flex', alignItems: 'center', gap: HIG_SPACE.md,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
       <div style={{
-        padding: '10px 14px 8px',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
+        width: 40, height: 40, borderRadius: HIG_RADIUS.small,
+        background: cor + '1A',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
       }}>
-        <i className="ti ti-timeline" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-          textTransform: 'uppercase', letterSpacing: '.05em',
-        }}>
-          Linha do tempo
-        </span>
-        <span style={{ marginLeft: 'auto', fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-          {historico.length} moviment{historico.length === 1 ? 'ação' : 'ações'}
-        </span>
+        <i className={`ti ${icon}`}
+          style={{ fontSize: 20, color: cor }}
+          aria-hidden="true" />
       </div>
-
-      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 0 }}>
-        {eventos.map((ev, i) => {
-          const meta = ETAPA_META[ev.etapa] || { icon: 'ti-circle', cor: 'neutro', label: ev.etapa }
-          const cponto = corPonto(ev.etapa)
-          const isLast = i === eventos.length - 1
-          const resp = funcPorId(ev.funcionario)
-
-          return (
-            <div key={i} style={{ display: 'flex', gap: 12 }}>
-              {/* Ponto + linha */}
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                flexShrink: 0, width: 20,
-              }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: '50%',
-                  background: cponto + '22', border: `2px solid ${cponto}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, zIndex: 1,
-                }}>
-                  <i className={`ti ${meta.icon}`}
-                    style={{ fontSize: 10, color: cponto }} aria-hidden="true" />
-                </div>
-                {!isLast && (
-                  <div style={{
-                    width: 2, flex: 1, minHeight: 18,
-                    background: T.border, margin: '3px 0',
-                  }} />
-                )}
-              </div>
-
-              {/* Conteúdo */}
-              <div style={{
-                flex: 1, paddingBottom: isLast ? 0 : 14,
-                paddingTop: 1,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
-                    {meta.label}
-                  </span>
-                  {/* Tempo gasto */}
-                  {(!isLast || !isFinal) && (
-                    <span style={{
-                      fontSize: 10.5, color: T.textMuted,
-                      background: T.cardAlt, border: `1px solid ${T.border}`,
-                      padding: '1px 6px', borderRadius: 8,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>
-                      {fmtTempo(ev.minutos)}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                    {fmtPrazoCurto(ev.data)}
-                  </span>
-                  {resp && (
-                    <span style={{ fontSize: 11, color: T.textMuted }}>
-                      · {resp}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Ponto final — etapa atual (se não concluída/recusada, mostra "em andamento") */}
-        {!isFinal && (
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ width: 20, display: 'flex', justifyContent: 'center' }}>
-              <div style={{
-                width: 12, height: 12, borderRadius: '50%', marginTop: 4,
-                background: T.border, border: `2px dashed ${T.textDim}`,
-              }} />
-            </div>
-            <div style={{ paddingTop: 2 }}>
-              <span style={{ fontSize: 12, color: T.textMuted, fontStyle: 'italic' }}>
-                Em andamento…
-              </span>
-            </div>
-          </div>
-        )}
+      <div style={{ flex: 1 }}>
+        <div style={{
+          ...higType('subheadline'),
+          fontWeight: 600,
+          color: T.textPrimary,
+        }}>{titulo}</div>
+        <div style={{
+          ...higType('footnote'),
+          color: T.textSecondary,
+          marginTop: 2,
+        }}>{texto}</div>
       </div>
-    </div>
-  )
-}
-
-// ─── (legado, não usado) ─────────────────────────────────────────────────────
-function _CardEtapasLegacy({
-  T, dark, os, admin, checkRecebido, checkOficina, checkTeste, falhas,
-  itens, azul, verde, amarelo, vermelho, cor, funcPorId,
-}) {
-  const historico = os.historico || []
-
-  function dadosEtapa(etapaDb) {
-    const hist = historico.filter(h => {
-      if (etapaDb === 'em_oficina') return h.etapa === 'oficina'
-      if (etapaDb === 'entrega') return h.etapa === 'entrega' || h.etapa === 'entregue'
-      return h.etapa === etapaDb
-    })
-    if (hist.length === 0) return null
-    const u = hist[hist.length - 1]
-    return { data: u.data, responsavel: funcPorId(u.funcionario) }
-  }
-
-  function resumirChecklist(itens) {
-    if (!itens?.length) return null
-    const total = itens.length
-    const ok = itens.filter(i => i.valor === 'ok' || i.checked === true).length
-    const problemas = itens
-      .filter(i => i.valor === 'defeito' || i.valor === 'barulho')
-      .map(i => ({ label: i.label || i.id, tipo: i.valor }))
-    return { total, ok, problemas }
-  }
-
-  const blocos = []
-
-  // Recebido
-  const dadosRecebido = dadosEtapa('recebido')
-  if ((checkRecebido.itens.length > 0 || dadosRecebido) && !checkRecebido.loading) {
-    const res = resumirChecklist(checkRecebido.itens)
-    blocos.push({ key: 'recebido', meta: ETAPA_META.recebido, dados: dadosRecebido, conteudo: (
-      <>
-        {res && <ChkResumo res={res} T={T} verde={verde} vermelho={vermelho} />}
-        {checkRecebido.observacoes && <ObsTexto T={T} texto={checkRecebido.observacoes} />}
-        {!res && !checkRecebido.observacoes && <Vazio T={T} />}
-      </>
-    )})
-  }
-
-  // Diagnóstico
-  const dadosDiag = dadosEtapa('diagnostico')
-  const causa = os.diagnostico?.causa
-  if (dadosDiag || causa) {
-    blocos.push({ key: 'diagnostico', meta: ETAPA_META.diagnostico, dados: dadosDiag, conteudo: (
-      causa
-        ? <ObsTexto T={T} label="Causa apontada" texto={causa} />
-        : <Vazio T={T} />
-    )})
-  }
-
-  // Orçamento (admin)
-  const dadosOrc = dadosEtapa('orcamento')
-  if (admin && dadosOrc) {
-    const subtotal = itens.reduce((s, i) => s + (i.valor_total ?? (i.valor_unitario ?? i.valor ?? 0) * (i.qtd ?? 1)), 0)
-    blocos.push({ key: 'orcamento', meta: ETAPA_META.orcamento, dados: dadosOrc, conteudo: (
-      <span style={{ fontSize: 12, color: T.textMuted }}>
-        {itens.length} iten{itens.length !== 1 ? 's' : ''} · {fmtBRL(subtotal)}
-        {os.desconto > 0 ? ` · desc. ${fmtBRL(os.desconto)}` : ''}
-      </span>
-    )})
-  }
-
-  // Em oficina
-  const dadosOficina = dadosEtapa('em_oficina')
-  if ((checkOficina.itens.length > 0 || dadosOficina) && !checkOficina.loading) {
-    const res = resumirChecklist(checkOficina.itens)
-    blocos.push({ key: 'oficina', meta: ETAPA_META.oficina, dados: dadosOficina, conteudo: (
-      <>
-        {res && <ChkResumo res={res} T={T} verde={verde} vermelho={vermelho} />}
-        {checkOficina.observacoes && <ObsTexto T={T} texto={checkOficina.observacoes} />}
-        {!res && !checkOficina.observacoes && <Vazio T={T} />}
-      </>
-    )})
-  }
-
-  // Teste final
-  const dadosTeste = dadosEtapa('teste_final')
-  if ((checkTeste.itens.length > 0 || dadosTeste || falhas.length > 0) && !checkTeste.loading) {
-    const res = resumirChecklist(checkTeste.itens)
-    blocos.push({ key: 'teste', meta: ETAPA_META.teste_final, dados: dadosTeste, conteudo: (
-      <>
-        {res && <ChkResumo res={res} T={T} verde={verde} vermelho={vermelho} />}
-        {checkTeste.observacoes && <ObsTexto T={T} texto={checkTeste.observacoes} />}
-        {falhas.length > 0 && <FalhasLista T={T} falhas={falhas} vermelho={vermelho} verde={verde} />}
-        {!res && !checkTeste.observacoes && falhas.length === 0 && <Vazio T={T} />}
-      </>
-    )})
-  }
-
-  // Entrega
-  const dadosEntrega = dadosEtapa('entrega')
-  if (dadosEntrega) {
-    blocos.push({ key: 'entrega', meta: ETAPA_META.entrega, dados: dadosEntrega, conteudo: (
-      <Vazio T={T} texto="Máquina entregue ao cliente." />
-    )})
-  }
-
-  // Pagamento (admin)
-  const dadosPag = dadosEtapa('pagamento')
-  if (admin && (dadosPag || os.valor_pago > 0)) {
-    const pagaTotal = estaPagaTotal(os)
-    const saldo = Math.max(0, totalAPagar(os) - (os.valor_pago || 0))
-    blocos.push({ key: 'pagamento', meta: ETAPA_META.pagamento, dados: dadosPag, conteudo: (
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        <KVinline T={T} label="Pago" valor={fmtBRL(os.valor_pago || 0)} cor={os.valor_pago > 0 ? verde : T.textMuted} />
-        <KVinline T={T} label="Forma" valor={os.forma_pagamento || '—'} />
-        <KVinline T={T} label="Saldo" valor={fmtBRL(saldo)} cor={saldo === 0 ? verde : amarelo} />
-      </div>
-    )})
-  }
-
-  // Concluído
-  const dadosConcluido = dadosEtapa('concluido')
-  if (dadosConcluido) {
-    blocos.push({ key: 'concluido', meta: ETAPA_META.concluido, dados: dadosConcluido, conteudo: (
-      <Vazio T={T} texto={`Garantia de ${os.garantia_dias || 90} dias.`} />
-    )})
-  }
-
-  // Recusado
-  const dadosRecusado = dadosEtapa('recusado')
-  if (dadosRecusado) {
-    blocos.push({ key: 'recusado', meta: ETAPA_META.recusado, dados: dadosRecusado, conteudo: (
-      <Vazio T={T} texto="OS recusada pelo cliente." />
-    )})
-  }
-
-  const carregando = checkRecebido.loading || checkOficina.loading || checkTeste.loading
-  if (carregando) return null
-  if (blocos.length === 0) return null
-
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 10, overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '10px 14px 8px',
-        borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <i className="ti ti-list-check" style={{ fontSize: 14, color: corEtapa('blue', false) }} aria-hidden="true" />
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-          textTransform: 'uppercase', letterSpacing: '.05em',
-        }}>
-          O que foi feito
-        </span>
-      </div>
-
-      <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {blocos.map(({ key, meta, dados, conteudo }) => {
-          const c = corEtapa(meta.cor, false)
-          return (
-            <div key={key} style={{
-              borderLeft: `3px solid ${c}`,
-              paddingLeft: 10,
-            }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                marginBottom: 4,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <i className={`ti ${meta.icon}`} style={{ fontSize: 13, color: c }} aria-hidden="true" />
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: T.textPrimary }}>
-                    {meta.label}
-                  </span>
-                </div>
-                {dados && (
-                  <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                    {fmtPrazoCurto(dados.data)}
-                    {dados.responsavel ? ` · ${dados.responsavel}` : ''}
-                  </span>
-                )}
-              </div>
-              <div>{conteudo}</div>
-            </div>
-          )
-        })}
-      </div>
+      {onClick && (
+        <i className="ti ti-chevron-right"
+          style={{ fontSize: 16, color: T.textMuted }}
+          aria-hidden="true" />
+      )}
     </div>
   )
 }
 
 // ─── Primitivos internos ──────────────────────────────────────────────────────
-
-function RowLabel({ T, dark, icon, label }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 11, color: T.textMuted }} aria-hidden="true" />
-      <span style={{
-        fontSize: 10, fontWeight: 700, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.05em',
-      }}>{label}</span>
-    </div>
-  )
-}
-
-function DadoLinha({ T, icon, valor, destaque, muted }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-      {icon && (
-        <i className={`ti ${icon}`}
-          style={{ fontSize: 11, color: T.textMuted, marginTop: 2, flexShrink: 0 }} aria-hidden="true" />
-      )}
-      <span style={{
-        fontSize: destaque ? 13.5 : 12.5,
-        fontWeight: destaque ? 700 : 400,
-        color: muted ? T.textMuted : T.textPrimary,
-        lineHeight: 1.3,
-        wordBreak: 'break-word',
-      }}>{valor}</span>
-    </div>
-  )
-}
-
-function DataKV({ T, label, valor, alerta }) {
-  return (
-    <div>
-      <div style={{
-        fontSize: 9.5, fontWeight: 700, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.05em',
-      }}>{label}</div>
-      <div style={{
-        fontSize: 12, fontWeight: 600,
-        color: alerta ? '#E53935' : T.textPrimary,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{valor || '—'}</div>
-    </div>
-  )
-}
-
-function KPI({ T, label, valor, cor, sub, border }) {
+function KPICell({ T, label, value, valueCor, sub, border }) {
   return (
     <div style={{
-      padding: '10px 14px',
-      borderLeft: border ? `1px solid ${T.border}` : 'none',
+      padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
+      borderLeft: border ? `0.5px solid ${T.border}` : 'none',
     }}>
       <div style={{
-        fontSize: 10, fontWeight: 700, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4,
-      }}>{label}</div>
+        ...higType('caption2'),
+        color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: 0.3,
+        marginBottom: 4,
+      }}>
+        {label}
+      </div>
       <div style={{
-        fontSize: 16, fontWeight: 700,
-        color: cor || T.textPrimary,
+        ...higType('callout'),
+        fontWeight: 700,
+        color: valueCor || T.textPrimary,
         fontVariantNumeric: 'tabular-nums',
-      }}>{valor}</div>
+      }}>
+        {value}
+      </div>
       {sub && (
-        <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2 }}>{sub}</div>
+        <div style={{ ...higType('caption2'), color: T.textMuted, marginTop: 2 }}>
+          {sub}
+        </div>
       )}
-    </div>
-  )
-}
-
-function KVinline({ T, label, valor, cor }) {
-  return (
-    <div>
-      <div style={{
-        fontSize: 9.5, fontWeight: 700, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.04em',
-      }}>{label}</div>
-      <div style={{
-        fontSize: 12.5, fontWeight: 600,
-        color: cor || T.textPrimary,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{valor}</div>
-    </div>
-  )
-}
-
-function ChkResumo({ res, T, verde, vermelho }) {
-  const { total, ok, problemas } = res
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <Chip cor={verde} icon="ti-check" label={`${ok}/${total} OK`} />
-        {problemas.length > 0 && (
-          <Chip cor={vermelho} icon="ti-alert-triangle" label={`${problemas.length} prob.`} />
-        )}
-      </div>
-      {problemas.map((p, i) => (
-        <div key={i} style={{
-          display: 'flex', alignItems: 'center', gap: 5,
-          fontSize: 11.5, color: T.textSecondary,
-        }}>
-          <span style={{
-            width: 5, height: 5, borderRadius: '50%', background: vermelho, flexShrink: 0,
-          }} />
-          {p.label}{p.tipo ? ` — ${p.tipo}` : ''}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function FalhasLista({ T, falhas, vermelho, verde }) {
-  const abertas = falhas.filter(f => !f.resolvida)
-  const resolvidas = falhas.filter(f => f.resolvida)
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-      <span style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>
-        Falhas ({falhas.length})
-      </span>
-      {abertas.map(f => (
-        <div key={f.id} style={{ fontSize: 11.5, color: vermelho, display: 'flex', gap: 5, alignItems: 'center' }}>
-          <i className="ti ti-circle-dot" style={{ fontSize: 11 }} aria-hidden="true" />
-          {f.descricao}
-        </div>
-      ))}
-      {resolvidas.map(f => (
-        <div key={f.id} style={{
-          fontSize: 11.5, color: T.textMuted,
-          display: 'flex', gap: 5, alignItems: 'center', textDecoration: 'line-through',
-        }}>
-          <i className="ti ti-circle-check" style={{ fontSize: 11, color: verde }} aria-hidden="true" />
-          {f.descricao}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ObsTexto({ T, label, texto }) {
-  return (
-    <div>
-      {label && (
-        <div style={{
-          fontSize: 10, fontWeight: 700, color: T.textMuted,
-          textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 2,
-        }}>{label}</div>
-      )}
-      <div style={{
-        fontSize: 12, color: T.textSecondary, lineHeight: 1.45,
-        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-      }}>{texto}</div>
-    </div>
-  )
-}
-
-function Vazio({ T, texto = 'Sem dados registrados.' }) {
-  return (
-    <span style={{ fontSize: 11.5, color: T.textMuted, fontStyle: 'italic' }}>{texto}</span>
-  )
-}
-
-function Chip({ cor, icon, label }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
-      background: cor + '18', color: cor, border: `1px solid ${cor}33`,
-    }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 11 }} aria-hidden="true" />
-      {label}
-    </span>
-  )
-}
-
-function Banner({ T, cor, bg, icon, titulo, texto, chevron, onClick }) {
-  return (
-    <div onClick={onClick} style={{
-      padding: '10px 14px', borderRadius: 9,
-      background: bg, border: `1px solid ${cor}55`,
-      fontSize: 12, color: T.textSecondary,
-      display: 'flex', alignItems: 'center', gap: 10,
-      cursor: onClick ? 'pointer' : 'default',
-    }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 20, color: cor, flexShrink: 0 }} aria-hidden="true" />
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, color: T.textPrimary, marginBottom: 2 }}>{titulo}</div>
-        <div style={{ lineHeight: 1.4 }}>{texto}</div>
-      </div>
-      {chevron && <i className="ti ti-chevron-right" style={{ fontSize: 18, color: T.textDim }} aria-hidden="true" />}
     </div>
   )
 }
@@ -1015,4 +518,75 @@ function tipoIcone(tipo) {
   if (tipo === 'peca') return 'ti-puzzle'
   if (tipo === 'maquina') return 'ti-device-washing-machine'
   return 'ti-circle'
+}
+
+// ─── Componente principal ────────────────────────────────────────────────────
+export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onAbrirOS }) {
+  const { itens, loading: itensLoading } = useOSItens(os?.id)
+  const checkRecebido = useChecklistEtapa(os?.id, 'recebido')
+  const checkOficina  = useChecklistEtapa(os?.id, 'em_oficina')
+  const checkTeste    = useChecklistEtapa(os?.id, 'teste_final')
+  const { falhas }    = useFalhaTeste(os?.id)
+
+  const funcPorId = (id) => {
+    const u = (usuarios || []).find(x => x.id === id)
+    return u ? (u.apelido || u.nome || null) : null
+  }
+
+  const isConcluido = os.etapa === 'concluido'
+  const isRecusado = os.etapa === 'recusado'
+  const garantiaAtiva = isConcluido ? dentroGarantia(os) : false
+  const osOrigem = os.garantia && osBase ? osBase.find(o => o.numero === os.os_origem_id) : null
+
+  const azul = corEtapa('blue', dark)
+  const vermelho = corEtapa('red', dark)
+
+  return (
+    <div style={{
+      padding: `${HIG_SPACE.md}px ${HIG_SPACE.md}px ${HIG_SPACE.xxl}px`,
+      display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg,
+      fontFamily: HIG_FONT,
+    }}>
+
+      <SecaoCliente T={T} dark={dark} os={os} />
+
+      {admin && !itensLoading && (
+        <SecaoFinanceiro T={T} dark={dark} os={os} itens={itens} />
+      )}
+
+      <SecaoHistorico
+        T={T} dark={dark} os={os} admin={admin}
+        checkRecebido={checkRecebido}
+        checkOficina={checkOficina}
+        checkTeste={checkTeste}
+        falhas={falhas}
+        itens={itens}
+        funcPorId={funcPorId}
+      />
+
+      {os.garantia && osOrigem && (
+        <BannerHIG T={T} dark={dark}
+          cor={azul} icon="ti-shield-check"
+          titulo="OS em garantia"
+          texto={`Referente à OS #${osOrigem.numero} de ${osOrigem.cliente}.`}
+          onClick={() => onAbrirOS?.(osOrigem.numero)}
+        />
+      )}
+      {garantiaAtiva && !os.garantia && (
+        <BannerHIG T={T} dark={dark}
+          cor={azul} icon="ti-shield-check"
+          titulo="Garantia ativa"
+          texto="Se o cliente retornar com o mesmo defeito dentro do prazo, abra uma OS de garantia."
+        />
+      )}
+      {isRecusado && (
+        <BannerHIG T={T} dark={dark}
+          cor={vermelho} icon="ti-circle-x"
+          titulo="OS recusada pelo cliente"
+          texto="Defina o destino da máquina na aba Etapa."
+        />
+      )}
+
+    </div>
+  )
 }
