@@ -650,17 +650,39 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
           )}
         </div>
 
-        {/* Lista de grupos com accordion */}
-        {GRUPOS.map((grupo, idx) => {
-          const marcados = marcadosPorGrupo[grupo.id] || {}
-          const open = grupoAberto === grupo.id
-          const itensFiltrados = open
-            ? (busca.trim()
-                ? grupo.itens.filter(i => i.label.toLowerCase().includes(busca.toLowerCase()))
-                : grupo.itens)
-            : []
+        {/* Lista de grupos com accordion.
+            Quando há busca, todos os grupos com matches expandem automaticamente
+            e grupos sem matches somem. Sem busca, comportamento normal de
+            accordion (1 aberto por vez via grupoAberto). */}
+        {(() => {
+          const buscaAtiva = busca.trim().length > 0
+          const queryLower = busca.trim().toLowerCase()
 
-          return (
+          const gruposVisiveis = GRUPOS.map(grupo => {
+            const marcados = marcadosPorGrupo[grupo.id] || {}
+            const itensMatch = buscaAtiva
+              ? grupo.itens.filter(i => i.label.toLowerCase().includes(queryLower))
+              : grupo.itens
+            const skipPorBusca = buscaAtiva && itensMatch.length === 0
+            const open = buscaAtiva || grupoAberto === grupo.id
+            return { grupo, marcados, itensMatch, skipPorBusca, open }
+          }).filter(x => !x.skipPorBusca)
+
+          if (buscaAtiva && gruposVisiveis.length === 0) {
+            return (
+              <div style={{
+                padding: `${HIG_SPACE.md}px`,
+                display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
+              }}>
+                <TI name="search-off" size={15} color={T.textDim} />
+                <span style={{ ...higType('subheadline'), color: T.textMuted, fontStyle: 'italic' }}>
+                  Nenhum componente encontrado.
+                </span>
+              </div>
+            )
+          }
+
+          return gruposVisiveis.map(({ grupo, marcados, itensMatch, open }, idx) => (
             <React.Fragment key={grupo.id}>
               {idx > 0 && <Sep T={T} indent={HIG_SPACE.md + 32 + HIG_SPACE.sm} />}
               <GrupoRow
@@ -668,38 +690,38 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
                 grupo={grupo}
                 marcados={marcados}
                 open={open}
-                onToggle={() => setGrupoAberto(open ? null : grupo.id)}
+                onToggle={() => {
+                  // Durante busca o toggle é ignorado (todos abertos por design)
+                  if (buscaAtiva) return
+                  setGrupoAberto(open ? null : grupo.id)
+                }}
               />
               {open && (
                 <div style={{ borderTop: `0.5px solid ${T.border}` }}>
-                  {itensFiltrados.length > 0
-                    ? itensFiltrados.map((item, iIdx) => (
-                        <ItemRow
-                          key={item.id}
-                          T={T} dark={dark}
-                          item={item}
-                          acao={marcados[item.id]}
-                          onSetAcao={setAcaoItem}
-                          isLast={iIdx === itensFiltrados.length - 1}
-                        />
-                      ))
-                    : (
-                      <div style={{
-                        padding: `${HIG_SPACE.md}px`,
-                        display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
-                      }}>
-                        <TI name="search-off" size={15} color={T.textDim} />
-                        <span style={{ ...higType('subheadline'), color: T.textMuted, fontStyle: 'italic' }}>
-                          Nenhum componente encontrado.
-                        </span>
-                      </div>
-                    )
-                  }
+                  {itensMatch.map((item, iIdx) => (
+                    <ItemRow
+                      key={item.id}
+                      T={T} dark={dark}
+                      item={item}
+                      acao={marcados[item.id]}
+                      onSetAcao={(itemId, acao) => {
+                        // setAcaoItem usa grupoAberto, que pode ser null durante busca.
+                        // Aqui sabemos o grupo certo — escreve direto.
+                        setMarcados(prev => {
+                          const atual = { ...(prev[grupo.id] || {}) }
+                          if (!acao) delete atual[itemId]
+                          else atual[itemId] = acao
+                          return { ...prev, [grupo.id]: atual }
+                        })
+                      }}
+                      isLast={iIdx === itensMatch.length - 1}
+                    />
+                  ))}
                 </div>
               )}
             </React.Fragment>
-          )
-        })}
+          ))
+        })()}
       </HIGSection>
 
       {/* ── CTA: Concluir diagnóstico ─────────────────────────────────────── */}
