@@ -1,12 +1,7 @@
 // idemaq-src/pages/mobile/EstoqueMobile.jsx
-// Versão mobile do Estoque — reescrita sobre a base do desktop (Estoque.jsx).
-//
-// Estrutura:
-//   Header   — título + KPIs 2×2 + tabs Peças/Máquinas (scrolla com conteúdo)
-//   StickyBar — busca + chips de categoria (gruda no topo ao rolar)
-//   Lista     — PecaCardMobile | MaquinaCardMobile + paginação
-//   FAB       — cadastro de peça (admin only)
-//   Modais    — PecaDetalheModal / MaquinaDetalheModal / NovaPecaModal
+// Estoque mobile — Apple HIG.
+// Seções: Large title + subtítulo · KPIs (inset card) · Tabs (segmented) ·
+//          Sticky search+chips · Lista · FAB · Modais
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../supabase'
@@ -25,6 +20,11 @@ import MobileEmptyState  from '../../components/mobile/MobileEmptyState'
 import PecaDetalheModal    from '../../components/estoque/PecaDetalheModal'
 import MaquinaDetalheModal from '../../components/estoque/MaquinaDetalheModal'
 import NovaPecaModal       from '../../components/estoque/NovaPecaModal'
+
+import {
+  HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT,
+  higType, higInsetCard,
+} from '../../theme-hig'
 
 const PAGE_SIZE = 20
 
@@ -64,13 +64,11 @@ export default function EstoqueMobile({ T, dark, user }) {
   const [maquinaAberta, setMaquinaAberta] = useState(null)
   const [novaPecaAberta, setNovaPeca]   = useState(false)
 
-  // Debounce 300ms
   useEffect(() => {
     const t = setTimeout(() => setBD(busca), 300)
     return () => clearTimeout(t)
   }, [busca])
 
-  // Reset paginação quando filtro/busca mudam
   useEffect(() => { setPaginaAtual(1) }, [categoriaSel, buscaDebounced])
 
   const {
@@ -78,7 +76,6 @@ export default function EstoqueMobile({ T, dark, user }) {
     criar, atualizar, ajustarEstoque,
   } = usePecas({ categoria: categoriaSel, busca: buscaDebounced, page: paginaAtual, pageSize: PAGE_SIZE })
 
-  // Stats globais (KPIs do header + contagem por categoria)
   const [statsRaw, setStatsRaw] = useState([])
   useEffect(() => {
     let alive = true
@@ -107,7 +104,6 @@ export default function EstoqueMobile({ T, dark, user }) {
     return { data, error }
   }
 
-  // ─── Stats derivados ─────────────────────────────────────────────────────
   const totalGlobal = statsRaw.length
   const emEstoque   = statsRaw.reduce((s, p) => s + (p.qtd_atual || 0), 0)
   const reposicao   = statsRaw.filter(p => {
@@ -136,15 +132,14 @@ export default function EstoqueMobile({ T, dark, user }) {
     .filter(m => ['disponivel', 'em_revisao'].includes(m.estado))
     .reduce((s, m) => s + m.custoCompra + m.custoItens + m.custoServico, 0)
 
-  const onPecas     = aba === 'pecas'
-  const buscando    = !!buscaDebounced.trim()
+  const onPecas      = aba === 'pecas'
+  const buscando     = !!buscaDebounced.trim()
   const totalPaginas = Math.max(1, Math.ceil(totalFiltrado / PAGE_SIZE))
 
-  const azul    = corEtapa('blue', dark)
-  const amarelo = corEtapa('yellow', dark)
-  const verde   = corEtapa('green', dark)
+  const azul    = HIG_COLOR.tintIdemaq
+  const amarelo = HIG_COLOR.orange
+  const verde   = HIG_COLOR.green
 
-  // KPIs
   const kpis = onPecas
     ? [
         { label: 'Em estoque', value: emEstoque,              color: azul },
@@ -158,7 +153,6 @@ export default function EstoqueMobile({ T, dark, user }) {
         mostraValores && { label: 'Capital', value: fmtCompact(valorMaquinas), color: corHero(dark) },
       ].filter(Boolean)
 
-  // Chips de categoria
   const chipsCat = useMemo(() => {
     const out = [{ id: 'todas', label: 'Todas', badge: totalGlobal || null }]
     for (const cat of CATEGORIAS_PECA) {
@@ -180,48 +174,61 @@ export default function EstoqueMobile({ T, dark, user }) {
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
-      overflowY: 'auto', background: T.bg,
+      overflowY: 'auto',
+      background: dark ? T.bg : HIG_COLOR.bgGrouped,
       paddingBottom: 140,
+      fontFamily: HIG_FONT,
     }}>
 
-      {/* ── HEADER: título + KPIs + tabs ──────────────────────────────── */}
-      <div style={{ padding: '12px 14px 0' }}>
-        {/* Título */}
-        <div style={{ marginBottom: 10 }}>
-          <div style={{
-            fontSize: 22, fontWeight: 700, color: T.textPrimary,
-            letterSpacing: '-0.02em', lineHeight: 1.1,
-          }}>Estoque</div>
-          <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 3 }}>{subtitle}</div>
+      {/* ── HEADER: large title + subtítulo ───────────────────────────── */}
+      <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px ${HIG_SPACE.xs}px` }}>
+        <div style={{ ...higType('largeTitle'), color: T.textPrimary }}>Estoque</div>
+        <div style={{ ...higType('footnote'), color: T.textMuted, marginTop: 2 }}>
+          {subtitle}
         </div>
+      </div>
 
-        {/* KPI grid 2×2 */}
+      {/* ── KPIs: inset grouped card 2 colunas ─────────────────────────── */}
+      <div style={{ padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.sm}px` }}>
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
-          gap: 8, marginBottom: 12,
+          ...higInsetCard(T, dark),
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
         }}>
-          {kpis.map((k, i) => (
-            <div key={i} style={{
-              background: T.cardAlt, border: `1px solid ${T.border}`,
-              borderRadius: 10, padding: '10px 12px',
-            }}>
-              <div style={{
-                fontSize: 9.5, color: T.textMuted, fontWeight: 600,
-                textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3,
-              }}>{k.label}</div>
-              <div style={{
-                fontSize: 20, fontWeight: 700, color: k.color,
-                fontVariantNumeric: 'tabular-nums', letterSpacing: '-.01em',
-              }}>{k.value}</div>
-            </div>
-          ))}
+          {kpis.map((k, i) => {
+            const lastRow = i >= kpis.length - (kpis.length % 2 === 0 ? 2 : 1)
+            const isRight = i % 2 === 1
+            return (
+              <div key={i} style={{
+                padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
+                borderBottom: !lastRow ? `0.5px solid ${T.border}` : 'none',
+                borderLeft: isRight ? `0.5px solid ${T.border}` : 'none',
+              }}>
+                <div style={{
+                  ...higType('caption2'),
+                  color: T.textMuted,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  marginBottom: 2,
+                }}>{k.label}</div>
+                <div style={{
+                  ...higType('title2'),
+                  fontWeight: 600,
+                  color: k.color,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>{k.value}</div>
+              </div>
+            )
+          })}
         </div>
+      </div>
 
-        {/* Tabs Peças / Máquinas */}
-        <TabsMobile T={T} dark={dark}
+      {/* ── Segmented control (Peças/Máquinas) ─────────────────────────── */}
+      <div style={{ padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xs}px` }}>
+        <SegmentedHIG T={T} dark={dark}
           opcoes={[
-            { id: 'pecas',    label: 'Peças',    icon: 'ti-puzzle' },
-            { id: 'maquinas', label: 'Máquinas', icon: 'ti-device-washing-machine' },
+            { id: 'pecas',    label: 'Peças' },
+            { id: 'maquinas', label: 'Máquinas' },
           ]}
           ativo={aba}
           onChange={(v) => {
@@ -230,17 +237,21 @@ export default function EstoqueMobile({ T, dark, user }) {
         />
       </div>
 
-      {/* ── BARRA STICKY: busca + chips (agrupados pra grudar juntos) ──── */}
+      {/* ── STICKY: busca + chips ──────────────────────────────────────── */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
-        background: T.bg,
-        borderBottom: `1px solid ${T.border}`,
-        paddingTop: 8,
+        background: dark ? T.bg : HIG_COLOR.bgGrouped,
+        paddingTop: HIG_SPACE.xs,
+        backdropFilter: 'saturate(180%) blur(20px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
       }}>
-        {/* Campo de busca */}
-        <div style={{ padding: '0 14px', position: 'relative', marginBottom: 6 }}>
+        {/* Search field HIG */}
+        <div style={{
+          padding: `0 ${HIG_SPACE.md}px`, position: 'relative',
+          marginBottom: HIG_SPACE.xs,
+        }}>
           <i className="ti ti-search" aria-hidden="true" style={{
-            position: 'absolute', left: 26, top: '50%', transform: 'translateY(-50%)',
+            position: 'absolute', left: HIG_SPACE.md + 10, top: '50%', transform: 'translateY(-50%)',
             fontSize: 15, color: T.textDim, pointerEvents: 'none',
           }} />
           <input
@@ -250,34 +261,34 @@ export default function EstoqueMobile({ T, dark, user }) {
             placeholder={onPecas ? 'Buscar peça por nome, SKU…' : 'Buscar máquina…'}
             style={{
               width: '100%', boxSizing: 'border-box',
-              padding: '10px 36px 10px 38px',
-              borderRadius: 10,
-              border: `1px solid ${T.border}`,
-              background: T.cardAlt,
+              minHeight: 36,
+              padding: `0 ${HIG_SPACE.md + 18}px 0 ${HIG_SPACE.md + 18}px`,
+              borderRadius: HIG_RADIUS.card,
+              border: 'none',
+              background: dark ? T.cardAlt : HIG_COLOR.gray6,
               color: T.textPrimary,
-              fontSize: 13.5, outline: 'none',
-              fontFamily: 'inherit',
+              ...higType('body'),
+              outline: 'none',
             }}
           />
           {busca && (
-            <button onClick={() => setBusca('')} aria-label="Limpar busca" style={{
-              position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)',
-              width: 22, height: 22, borderRadius: 11,
-              background: T.border, color: T.card,
+            <button onClick={() => setBusca('')} aria-label="Limpar" style={{
+              position: 'absolute', right: HIG_SPACE.md + 6, top: '50%', transform: 'translateY(-50%)',
+              width: 18, height: 18, borderRadius: 9,
+              background: HIG_COLOR.gray3, color: '#fff',
               border: 'none', cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'inherit',
             }}>
               <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
             </button>
           )}
         </div>
 
-        {/* Chips de categoria (só na aba Peças) */}
+        {/* Chips de categoria (pills HIG) */}
         {onPecas && chipsCat.length > 1 && (
           <div style={{
             display: 'flex', gap: 6,
-            padding: '0 14px 8px',
+            padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xs}px`,
             overflowX: 'auto', scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
           }}>
@@ -287,20 +298,25 @@ export default function EstoqueMobile({ T, dark, user }) {
                 <button key={cat.id} onClick={() => setCategoriaSel(cat.id)} style={{
                   flexShrink: 0,
                   display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '7px 13px', borderRadius: 18,
-                  border: `1px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? `${azul}18` : T.card,
-                  color: ativo ? azul : T.textSecondary,
-                  fontSize: 12, fontWeight: ativo ? 700 : 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  minHeight: 34, whiteSpace: 'nowrap',
+                  padding: '6px 12px',
+                  borderRadius: HIG_RADIUS.pill,
+                  border: 'none',
+                  background: ativo ? azul : (dark ? T.cardAlt : '#fff'),
+                  color: ativo ? '#fff' : T.textSecondary,
+                  ...higType('subheadline'),
+                  fontWeight: ativo ? 600 : 400,
+                  cursor: 'pointer',
+                  minHeight: 32, whiteSpace: 'nowrap',
+                  boxShadow: ativo ? 'none' : (dark ? 'none' : '0 0.5px 0 rgba(0,0,0,0.04)'),
                 }}>
                   {cat.label}
                   {cat.badge != null && (
                     <span style={{
-                      background: ativo ? azul : T.textMuted, color: '#fff',
-                      fontSize: 9.5, fontWeight: 700,
-                      padding: '1px 5px', borderRadius: 8,
+                      background: ativo ? 'rgba(255,255,255,0.25)' : HIG_COLOR.gray4,
+                      color: ativo ? '#fff' : T.textMuted,
+                      ...higType('caption2'),
+                      fontWeight: 600,
+                      padding: '1px 6px', borderRadius: HIG_RADIUS.pill,
                     }}>{cat.badge}</span>
                   )}
                 </button>
@@ -311,12 +327,15 @@ export default function EstoqueMobile({ T, dark, user }) {
       </div>
 
       {/* ── LISTA ─────────────────────────────────────────────────────── */}
-      <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{
+        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
+        display: 'flex', flexDirection: 'column', gap: HIG_SPACE.xs,
+      }}>
         {onPecas
           ? (loadingPecas
-              ? <SkeletonMobile T={T} />
+              ? <SkeletonHIG T={T} />
               : errorPecas
-                ? <ErroMobile T={T} dark={dark} mensagem={errorPecas.message} />
+                ? <ErroHIG T={T} dark={dark} mensagem={errorPecas.message} />
                 : pecas.length === 0
                   ? <MobileEmptyState T={T} dark={dark}
                       icon={buscando ? 'ti-search-off' : 'ti-puzzle-off'}
@@ -348,9 +367,8 @@ export default function EstoqueMobile({ T, dark, user }) {
                   />
                 )))}
 
-        {/* Paginação — só Peças, fora de busca, múltiplas páginas */}
         {onPecas && !buscando && !loadingPecas && totalPaginas > 1 && (
-          <PaginacaoMobile T={T} dark={dark}
+          <PaginacaoHIG T={T} dark={dark}
             paginaAtual={paginaAtual}
             totalPaginas={totalPaginas}
             totalItens={totalFiltrado}
@@ -360,12 +378,10 @@ export default function EstoqueMobile({ T, dark, user }) {
         )}
       </div>
 
-      {/* FAB — cadastro de peça, só admin na aba Peças */}
       {onPecas && mostraValores && (
         <MobileFAB T={T} dark={dark} icon="ti-plus" onClick={() => setNovaPeca(true)} />
       )}
 
-      {/* Modais */}
       {pecaAberta && (
         <PecaDetalheModal T={T} dark={dark}
           peca={pecaAberta} mobile
@@ -390,15 +406,14 @@ export default function EstoqueMobile({ T, dark, user }) {
 }
 
 // =============================================================================
-// TABS MOBILE — segmented control compacto
+// Segmented Control HIG — iOS UISegmentedControl
 // =============================================================================
-function TabsMobile({ T, dark, opcoes, ativo, onChange }) {
-  const azul = corEtapa('blue', dark)
+function SegmentedHIG({ T, dark, opcoes, ativo, onChange }) {
   return (
     <div style={{
-      display: 'flex', gap: 4, padding: 3,
-      background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 10,
-      marginBottom: 4,
+      display: 'flex', gap: 2, padding: 2,
+      background: dark ? T.cardAlt : HIG_COLOR.gray5,
+      borderRadius: HIG_RADIUS.card,
     }}>
       {opcoes.map(o => {
         const on = ativo === o.id
@@ -406,15 +421,19 @@ function TabsMobile({ T, dark, opcoes, ativo, onChange }) {
           <button key={o.id} onClick={() => onChange?.(o.id)} style={{
             flex: 1,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            padding: '9px 12px', borderRadius: 8,
-            background: on ? T.card : 'transparent',
-            color: on ? azul : T.textMuted,
-            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            fontSize: 13, fontWeight: on ? 700 : 500,
-            boxShadow: on && !dark ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
-            minHeight: 38,
+            minHeight: 32,
+            padding: '0 12px',
+            borderRadius: 7,
+            background: on ? (dark ? T.card : '#fff') : 'transparent',
+            color: T.textPrimary,
+            border: 'none', cursor: 'pointer',
+            ...higType('subheadline'),
+            fontWeight: on ? 600 : 400,
+            boxShadow: on
+              ? (dark ? '0 0.5px 0 rgba(255,255,255,0.05)' : '0 3px 1px rgba(0,0,0,0.04), 0 3px 8px rgba(0,0,0,0.12)')
+              : 'none',
+            transition: 'background .15s',
           }}>
-            {o.icon && <i className={`ti ${o.icon}`} style={{ fontSize: 15 }} aria-hidden="true" />}
             {o.label}
           </button>
         )
@@ -424,9 +443,9 @@ function TabsMobile({ T, dark, opcoes, ativo, onChange }) {
 }
 
 // =============================================================================
-// PAGINAÇÃO MOBILE — botões grandes (≥44px)
+// Paginação HIG
 // =============================================================================
-function PaginacaoMobile({ T, dark, paginaAtual, totalPaginas, totalItens, pageSize, onPagina }) {
+function PaginacaoHIG({ T, dark, paginaAtual, totalPaginas, totalItens, pageSize, onPagina }) {
   const podeAnt  = paginaAtual > 1
   const podeProx = paginaAtual < totalPaginas
   const from = (paginaAtual - 1) * pageSize + 1
@@ -434,44 +453,49 @@ function PaginacaoMobile({ T, dark, paginaAtual, totalPaginas, totalItens, pageS
 
   return (
     <div style={{
-      marginTop: 4, padding: '12px 14px',
-      background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 12,
-      display: 'flex', flexDirection: 'column', gap: 10,
+      ...higInsetCard(T, dark),
+      marginTop: HIG_SPACE.xxs,
+      padding: HIG_SPACE.sm,
+      display: 'flex', flexDirection: 'column', gap: HIG_SPACE.xs,
     }}>
       <div style={{
-        fontSize: 11.5, color: T.textMuted, textAlign: 'center',
+        ...higType('footnote'), color: T.textMuted, textAlign: 'center',
         fontVariantNumeric: 'tabular-nums',
       }}>
         Exibindo <strong style={{ color: T.textSecondary }}>{from}–{to}</strong>{' '}
         de <strong style={{ color: T.textSecondary }}>{totalItens}</strong>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
-        <BotaoPag T={T} dark={dark} icone="ti-chevron-left" label="Anterior"
+        <BotaoPagHIG T={T} dark={dark} icone="ti-chevron-left" label="Anterior"
           disabled={!podeAnt} onClick={() => onPagina(Math.max(1, paginaAtual - 1))} />
         <span style={{
-          fontSize: 13, color: T.textSecondary, fontWeight: 700,
+          ...higType('subheadline'), fontWeight: 600,
+          color: T.textSecondary,
           padding: '0 8px', whiteSpace: 'nowrap',
           fontVariantNumeric: 'tabular-nums',
         }}>
           {paginaAtual} / {totalPaginas}
         </span>
-        <BotaoPag T={T} dark={dark} icone="ti-chevron-right" label="Próxima" iconeDireita
+        <BotaoPagHIG T={T} dark={dark} icone="ti-chevron-right" label="Próxima" iconeDireita
           disabled={!podeProx} onClick={() => onPagina(Math.min(totalPaginas, paginaAtual + 1))} />
       </div>
     </div>
   )
 }
 
-function BotaoPag({ T, dark, icone, label, iconeDireita, disabled, onClick }) {
+function BotaoPagHIG({ T, dark, icone, label, iconeDireita, disabled, onClick }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      minHeight: 44, padding: '0 14px',
-      background: disabled ? T.cardAlt : T.card,
-      color: disabled ? T.textDim : T.textPrimary,
-      border: `1px solid ${T.border}`, borderRadius: 10,
-      fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+      minHeight: HIG_SIZE.minTouchTarget,
+      padding: '0 14px',
+      background: disabled ? 'transparent' : (dark ? T.cardAlt : HIG_COLOR.gray6),
+      color: disabled ? T.textDim : HIG_COLOR.tintIdemaq,
+      border: 'none',
+      borderRadius: HIG_RADIUS.card,
+      ...higType('body'),
+      fontWeight: 500,
       cursor: disabled ? 'not-allowed' : 'pointer',
-      opacity: disabled ? 0.5 : 1,
+      opacity: disabled ? 0.4 : 1,
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
     }}>
       {!iconeDireita && <i className={`ti ${icone}`} style={{ fontSize: 16 }} aria-hidden="true" />}
@@ -482,17 +506,17 @@ function BotaoPag({ T, dark, icone, label, iconeDireita, disabled, onClick }) {
 }
 
 // =============================================================================
-// SKELETON — 6 cards fantasma enquanto a primeira página carrega
+// Skeleton HIG
 // =============================================================================
-function SkeletonMobile({ T }) {
+function SkeletonHIG({ T }) {
   return (
     <>
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} style={{
-          background: T.card, border: `1px solid ${T.border}`,
-          borderLeft: `3px solid ${T.border}`,
-          borderRadius: 12, padding: '12px 14px',
-          minHeight: 76, display: 'flex', flexDirection: 'column', gap: 8,
+          ...higInsetCard(T, false),
+          padding: HIG_SPACE.sm,
+          minHeight: 72,
+          display: 'flex', flexDirection: 'column', gap: 8,
           opacity: 0.55,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -511,18 +535,21 @@ function SkeletonMobile({ T }) {
   )
 }
 
-function ErroMobile({ T, dark, mensagem }) {
+function ErroHIG({ T, dark, mensagem }) {
   return (
     <div style={{
-      padding: 16,
-      background: T.cardAlt, border: `1px solid ${T.border}`,
-      borderRadius: 12, color: corEtapa('red', dark), fontSize: 13,
+      ...higInsetCard(T, dark),
+      padding: HIG_SPACE.md,
+      color: HIG_COLOR.red,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4,
+        ...higType('headline'),
+      }}>
         <i className="ti ti-alert-triangle" style={{ fontSize: 18 }} aria-hidden="true" />
-        <strong>Erro ao carregar peças</strong>
+        <span>Erro ao carregar peças</span>
       </div>
-      <div style={{ color: T.textMuted, fontSize: 11.5 }}>{mensagem}</div>
+      <div style={{ ...higType('footnote'), color: T.textMuted }}>{mensagem}</div>
     </div>
   )
 }
