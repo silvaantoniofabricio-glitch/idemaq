@@ -15,7 +15,7 @@
 //   - OSDetalhe                (modal de detalhe da OS — Resumo/Itens/Histórico/Pagamento)
 //   - DetCard, Linha, DetMini, SubBox (helpers do OSDetalhe)
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../supabase'
 import { criarClientePersist } from '../hooks/useClientes'
 import { P } from '../theme'
@@ -975,6 +975,8 @@ function FormSecao({ titulo, icon, T, children, opcional }) {
 // ─── Modal base reutilizável ───────────────────────────────────────────────
 
 function ModalBase({ T, dark, onClose, children, maxWidth=720, mobile }) {
+  const mouseDownOnBackdrop = useRef(false)
+
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handler)
@@ -984,7 +986,9 @@ function ModalBase({ T, dark, onClose, children, maxWidth=720, mobile }) {
   }, [onClose])
 
   return (
-    <div onClick={onClose}
+    <div
+      onMouseDown={e => { mouseDownOnBackdrop.current = e.target === e.currentTarget }}
+      onClick={e => { if (e.target === e.currentTarget && mouseDownOnBackdrop.current) onClose() }}
       style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', backdropFilter:'blur(2px)', zIndex:200, display:'flex', alignItems: mobile?'flex-end':'center', justifyContent:'center', padding: mobile?0:'1rem' }}>
       <div onClick={e=>e.stopPropagation()}
         style={{ background:T.card, borderRadius: mobile?'16px 16px 0 0':14, width:'100%', maxWidth: mobile?'100%':maxWidth, maxHeight: mobile?'92vh':'90vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,.5)', border:`1px solid ${T.border}`, overflow:'hidden' }}>

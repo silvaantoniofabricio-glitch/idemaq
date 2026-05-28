@@ -17,6 +17,7 @@ import {
   resolverFotoUrl, FOTO_STORAGE_MARKER,
   uploadFotoColeta, removerFotoColeta,
 } from '../../../utils/osStorage'
+import FotosColetaSection from '../FotosColetaSection'
 import {
   HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT,
   higType, higInsetCard,
@@ -608,6 +609,8 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
     }}>
 
       <SecaoCliente T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} />
+
+      <FotosColetaSection T={T} dark={dark} os={os} readOnly />
 
       {admin && !itensLoading && (
         <SecaoFinanceiro T={T} dark={dark} os={os} itens={itens} />

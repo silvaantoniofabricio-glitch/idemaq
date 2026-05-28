@@ -59,6 +59,8 @@ export default function LogisticaMobile({ T, dark }) {
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
   const [criandoRotasFalhou, setCriandoRotasFalhou] = useState(false)
+  const [arrastando, setArrastando] = useState(null)   // {os} sendo arrastado
+  const [hoverRota, setHoverRota] = useState(null)     // letra A/B/C com drag over
   const criandoRotasRef = useRef(false)
 
   const dataAtiva = HOJE
@@ -169,6 +171,12 @@ export default function LogisticaMobile({ T, dark }) {
     }
     return lista
   }, [slotsRotas, osFiltradas, coordsPorEndereco, osIdsEmRota])
+
+  // OS disponíveis (matching filtros e ainda fora de rota) — usadas pros cards arrastáveis
+  const osDisponiveis = useMemo(
+    () => osFiltradas.filter(o => !osIdsEmRota.has(o.id)),
+    [osFiltradas, osIdsEmRota]
+  )
 
   const diagnostico = useMemo(() => {
     let comCoord = 0, semEndereco = 0, geocodificando = 0
@@ -288,23 +296,56 @@ export default function LogisticaMobile({ T, dark }) {
           overflow: 'hidden',
           boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
         }}>
-          {slotsRotas.map((slot, idx) => (
-            <RotaAccordion
-              key={slot.nome}
-              T={T} dark={dark}
-              slot={slot}
-              letra={LETRA_POR_SLOT[slot.nome]}
-              primeiro={idx === 0}
-              expandida={rotaExpandida === LETRA_POR_SLOT[slot.nome]}
-              onToggle={() => setRotaExpandida(
-                rotaExpandida === LETRA_POR_SLOT[slot.nome] ? null : LETRA_POR_SLOT[slot.nome]
-              )}
-              onRemoverParada={(paradaId) => removerParada(slot.rota, paradaId)}
-              onAdicionarAvulsa={(nome, end) => adicionarParadaAvulsa(slot.rota, nome, end)}
-              onAbrirOSDetalhe={abrirOSPorId}
-            />
-          ))}
+          {slotsRotas.map((slot, idx) => {
+            const letra = LETRA_POR_SLOT[slot.nome]
+            return (
+              <RotaAccordion
+                key={slot.nome}
+                T={T} dark={dark}
+                slot={slot}
+                letra={letra}
+                primeiro={idx === 0}
+                expandida={rotaExpandida === letra}
+                arrastando={arrastando}
+                hoverAtiva={hoverRota === letra}
+                onToggle={() => setRotaExpandida(rotaExpandida === letra ? null : letra)}
+                onRemoverParada={(paradaId) => removerParada(slot.rota, paradaId)}
+                onAdicionarAvulsa={(nome, end) => adicionarParadaAvulsa(slot.rota, nome, end)}
+                onAbrirOSDetalhe={abrirOSPorId}
+                onDragOverRota={(e) => {
+                  if (!arrastando) return
+                  e.preventDefault()
+                  setHoverRota(letra)
+                }}
+                onDragLeaveRota={() => setHoverRota(null)}
+                onDropRota={(e) => {
+                  e.preventDefault()
+                  if (arrastando?.os) {
+                    adicionarOSemRota(arrastando.os, letra)
+                  }
+                  setArrastando(null)
+                  setHoverRota(null)
+                }}
+              />
+            )
+          })}
         </div>
+
+        {osDisponiveis.length > 0 && (
+          <>
+            <SectionLabel T={T}>
+              OS disponíveis ({osDisponiveis.length})
+            </SectionLabel>
+            <OSDisponiveisList
+              T={T} dark={dark}
+              osList={osDisponiveis}
+              arrastando={arrastando}
+              onDragStart={(os) => setArrastando({ os })}
+              onDragEnd={() => { setArrastando(null); setHoverRota(null) }}
+              onTap={(os) => setOsPopup({ ...os })}
+            />
+          </>
+        )}
       </div>
 
       {osDetalheProps && <OSDetalhe T={T} dark={dark} {...osDetalheProps} />}
@@ -545,10 +586,93 @@ export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDeta
   )
 }
 
-// Accordion item de cada rota A/B/C — hairline separators
+// Lista de OS disponíveis pra arrastar/tocar — abaixo das rotas
+function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd, onTap }) {
+  return (
+    <div style={{
+      background: T.card,
+      borderRadius: 16,
+      overflow: 'hidden',
+      boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
+    }}>
+      {osList.map((os, idx) => {
+        const tipoUi = tipoUiPorEtapa(os.etapa_db)
+        const visual = VISUAL_TIPO[tipoUi]
+        const corT = corEtapa(visual.corKey, dark)
+        const sendoArrastado = arrastando?.os?.id === os.id
+
+        return (
+          <div
+            key={os.id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = 'move'
+              e.dataTransfer.setData('text/plain', String(os.id))
+              onDragStart(os)
+            }}
+            onDragEnd={onDragEnd}
+            onClick={() => onTap(os)}
+            style={{
+              display: 'grid', gridTemplateColumns: 'auto 1fr auto',
+              gap: 11, alignItems: 'center',
+              padding: '11px 14px',
+              minHeight: 60,
+              borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+              cursor: 'grab',
+              opacity: sendoArrastado ? 0.4 : 1,
+              transition: 'opacity .15s',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+              touchAction: 'none',
+            }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10,
+              background: corT + '22', color: corT,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <i className={`ti ${visual.icon}`} style={{ fontSize: 17 }} aria-hidden="true" />
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <div style={{
+                fontSize: 14, color: corHero(dark), fontWeight: 600,
+                letterSpacing: '-0.005em', lineHeight: 1.25,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{os.cliente_nome || 'Sem cliente'}</div>
+              <div style={{
+                fontSize: 11.5, color: T.textMuted,
+                display: 'flex', gap: 5, marginTop: 1, alignItems: 'center',
+              }}>
+                <span style={{ color: corT, fontWeight: 600 }}>{visual.label}</span>
+                <span style={{ opacity: 0.5 }}>·</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>OS #{os.numero}</span>
+                {os.data_agendamento && (
+                  <>
+                    <span style={{ opacity: 0.5 }}>·</span>
+                    <i className="ti ti-calendar-event" style={{
+                      fontSize: 11, color: corEtapa('yellow', dark),
+                    }} aria-hidden="true" />
+                  </>
+                )}
+              </div>
+            </div>
+
+            <i className="ti ti-grip-vertical" style={{
+              fontSize: 16, color: T.textDim, flexShrink: 0,
+            }} aria-hidden="true" />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Accordion item de cada rota A/B/C — hairline separators + drop target
 export function RotaAccordion({
   T, dark, slot, letra, primeiro, expandida, onToggle,
   onRemoverParada, onAdicionarAvulsa, onAbrirOSDetalhe,
+  arrastando, hoverAtiva, onDragOverRota, onDragLeaveRota, onDropRota,
 }) {
   const azul = corEtapa('blue', dark)
   const paradas = slot.rota?.paradas || []
@@ -557,11 +681,22 @@ export function RotaAccordion({
   const [avulsaNome, setAvulsaNome] = useState('')
   const [avulsaEnd, setAvulsaEnd] = useState('')
 
+  const dropAtivo = !!arrastando && !indisponivel
+  const bgHover = hoverAtiva
+    ? (dark ? 'rgba(91,155,213,0.16)' : '#E6F1FB')
+    : 'transparent'
+
   return (
-    <div style={{
-      borderTop: primeiro ? 'none' : `1px solid ${T.border}`,
-      opacity: indisponivel ? 0.55 : 1,
-    }}>
+    <div
+      onDragOver={dropAtivo ? onDragOverRota : undefined}
+      onDragLeave={dropAtivo ? onDragLeaveRota : undefined}
+      onDrop={dropAtivo ? onDropRota : undefined}
+      style={{
+        borderTop: primeiro ? 'none' : `1px solid ${T.border}`,
+        opacity: indisponivel ? 0.55 : 1,
+        background: bgHover,
+        transition: 'background .12s',
+      }}>
       <button
         onClick={indisponivel ? undefined : onToggle}
         disabled={indisponivel}

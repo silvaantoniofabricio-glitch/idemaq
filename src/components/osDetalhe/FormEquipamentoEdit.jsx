@@ -16,6 +16,7 @@ import {
 import {
   uploadFotoColeta, removerFotoColeta, resolverFotoUrl, FOTO_STORAGE_MARKER,
 } from '../../utils/osStorage'
+import FotosColetaSection from './FotosColetaSection'
 
 export default function FormEquipamentoEdit({
   T, dark, mobile,
@@ -233,6 +234,22 @@ export default function FormEquipamentoEdit({
             Dados do equipamento são <strong style={{ color: corHero(dark) }}>desta OS</strong> — alterar aqui não muda OS anteriores do mesmo cliente.
           </span>
         </div>
+
+        <FotosColetaSection
+          T={T} dark={dark}
+          os={os}
+          onUpdateOS={onUpdateOS}
+          onCamposExtraidos={(campos) => {
+            // Auto-fill IA: preenche só campos vazios; nao sobrescreve o que
+            // o usuario ja digitou. Usuario revisa e clica Salvar.
+            setForm(f => ({
+              ...f,
+              marca:  f.marca  || campos.marca  || '',
+              modelo: f.modelo || campos.modelo || '',
+              serie:  f.serie  || campos.serie  || '',
+            }))
+          }}
+        />
       </div>
 
       <div style={{
