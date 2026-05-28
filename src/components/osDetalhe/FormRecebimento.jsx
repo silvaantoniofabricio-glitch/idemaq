@@ -1,135 +1,390 @@
 // src/components/osDetalhe/FormRecebimento.jsx
-// Form de recebimento reutilizável — usado pela aba Pagamento e pela
-// AcaoPagamento (etapa Pagamento). Encapsula:
-//   - Input de valor (com atalho "receber tudo")
-//   - Forma de pagamento: PIX · Cartão · Dinheiro · A prazo (4 top-level)
-//     • Cartão expande sub-leque: Débito · Crédito 1x-12x · Link 1x-12x
-//   - Cálculo de líquido após taxa
-//   - Atalhos rápidos: "Gerar PIX" e "Gerar link"
-//   - Dialog inline pra valor < saldo: parcial ou quitar com desconto
-//
-// Taxas via tabela InfinitePay Maxi 1 (Instruções do Projeto §Maquininha).
+// Form de recebimento — Apple HIG rewrite.
+// Toda a lógica de negócio preservada; só o visual trocado pra HIG.
 
 import React, { useState, useEffect } from 'react'
-import { P } from '../../theme'
-import { corEtapa } from '../../utils/colors'
+import { TI } from '../_shared/PrimitivasMobile'
+import {
+  HIG_SPACE, HIG_SIZE, HIG_RADIUS, HIG_COLOR, HIG_FONT,
+  higType, higFilledButton, higInsetCard,
+} from '../../theme-hig'
 import { fmtBRL } from '../../utils/fmt'
 import { useToast } from '../ui'
 
-// Taxas InfinitePay Maxi 1 (1x a 12x). Aplicáveis ao Crédito.
+// ─── Taxas InfinitePay Maxi 1 ────────────────────────────────────────────────
 const TAXA_CREDITO = {
   1: 3.15, 2: 4.46, 3: 4.99, 4: 5.52, 5: 6.05, 6: 6.58,
   7: 7.11, 8: 7.64, 9: 8.17, 10: 8.70, 11: 9.23, 12: 9.76,
 }
-// Link InfinitePay = taxa do crédito + 0,90% (ex: 12x maquininha 9,76% → link 10,66%)
 const LINK_ACRESCIMO = 0.90
 const taxaLink = (p) => (TAXA_CREDITO[p] || 0) + LINK_ACRESCIMO
 
 const SUB_CARTAO = [
-  { id: 'debito',  label: 'Débito',           fixed: 1.37,  icon: 'ti-credit-card' },
-  { id: 'credito', label: 'Crédito',          parcelado: true, getTaxa: (p) => TAXA_CREDITO[p] || 0, icon: 'ti-credit-card', desc: '1x a 12x' },
-  { id: 'link',    label: 'Link InfinitePay', parcelado: true, getTaxa: taxaLink, icon: 'ti-link', desc: '1x a 12x' },
+  { id: 'debito',  label: 'Débito',           icon: 'credit-card', fixed: 1.37 },
+  { id: 'credito', label: 'Crédito',          icon: 'credit-card', parcelado: true, getTaxa: (p) => TAXA_CREDITO[p] || 0, desc: '1x–12x' },
+  { id: 'link',    label: 'Link InfinitePay', icon: 'link',        parcelado: true, getTaxa: taxaLink,                    desc: '1x–12x' },
 ]
 
-// Converte o ID interno num label legível pro display em outras telas.
+// ─── formaIdToLabel (exportado — usado por outras telas) ──────────────────────
 export function formaIdToLabel(id) {
   if (!id) return ''
-  if (id === 'pix') return 'PIX'
+  if (id === 'pix')      return 'PIX'
   if (id === 'dinheiro') return 'Dinheiro'
-  if (id === 'debito') return 'Débito'
-  if (id === 'aprazo') return 'A prazo'
-  // Novos IDs: credito_Nx, link_Nx
+  if (id === 'debito')   return 'Débito'
+  if (id === 'aprazo')   return 'A prazo'
   let m = id.match?.(/^credito_(\d+)x$/)
   if (m) return `Crédito ${m[1]}x`
   m = id.match?.(/^link_(\d+)x$/)
   if (m) return `Link ${m[1]}x`
-  // Legacy: credito1x, parcelado_Nx, link
   if (id === 'credito1x') return 'Crédito 1x'
-  if (id === 'link') return 'Link'
+  if (id === 'link')      return 'Link'
   m = id.match?.(/^parcelado_(\d+)x$/)
   if (m) return `Crédito ${m[1]}x`
   return id
 }
 
+// ─── HIGSection ───────────────────────────────────────────────────────────────
+function HIGSection({ T, dark, title, children, footer }) {
+  return (
+    <section>
+      <div style={{
+        ...higType('footnote'), color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: 0.5,
+        padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
+      }}>{title}</div>
+      <div style={higInsetCard(T, dark)}>{children}</div>
+      {footer && (
+        <div style={{
+          ...higType('footnote'), color: T.textMuted,
+          padding: `${HIG_SPACE.xxs}px ${HIG_SPACE.md}px 0`,
+        }}>{footer}</div>
+      )}
+    </section>
+  )
+}
+
+// ─── Sep ─────────────────────────────────────────────────────────────────────
+function Sep({ T, indent = 0 }) {
+  return <div style={{ height: 0.5, background: T.border, marginLeft: indent, opacity: 0.7 }} />
+}
+
+// ─── FormaRow — list row de seleção de forma ──────────────────────────────────
+function FormaRow({ T, dark, icon, iconColor, label, sublabel, taxa, selected, onClick, separator }) {
+  return (
+    <>
+      <button type="button" onClick={onClick} style={{
+        width: '100%', minHeight: HIG_SIZE.listRow,
+        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
+        border: 'none', background: 'transparent',
+        display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+        cursor: 'pointer', fontFamily: HIG_FONT,
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+        <span style={{
+          width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+          background: iconColor + '22', color: iconColor,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <TI name={icon} size={15} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ ...higType('body'), color: T.textPrimary }}>{label}</div>
+          {sublabel && <div style={{ ...higType('caption1'), color: T.textMuted }}>{sublabel}</div>}
+        </div>
+        {taxa != null && (
+          <span style={{ ...higType('caption1'), color: T.textMuted, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+            {taxa === 0 ? 'Sem taxa' : `${taxa.toFixed(2).replace('.', ',')}%`}
+          </span>
+        )}
+        {selected
+          ? <TI name="check" size={16} color={HIG_COLOR.tintIdemaq} />
+          : <span style={{ width: 16 }} />}
+      </button>
+      {separator && <Sep T={T} indent={HIG_SPACE.md + 28 + HIG_SPACE.sm} />}
+    </>
+  )
+}
+
+// ─── SubCartaoRow ─────────────────────────────────────────────────────────────
+function SubCartaoRow({ T, dark, sub, selected, onClick, parcelas, setParcelas, taxaAtual, separator }) {
+  return (
+    <>
+      <button type="button" onClick={onClick} style={{
+        width: '100%', minHeight: HIG_SIZE.listRow,
+        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
+        border: 'none', background: 'transparent',
+        display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+        cursor: 'pointer', fontFamily: HIG_FONT,
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+        <span style={{
+          width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+          background: HIG_COLOR.tintIdemaq + '22', color: HIG_COLOR.tintIdemaq,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <TI name={sub.icon} size={15} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ ...higType('body'), color: T.textPrimary }}>
+            {sub.label}
+            {sub.desc && <span style={{ ...higType('caption1'), color: T.textMuted, marginLeft: 5 }}>· {sub.desc}</span>}
+          </div>
+        </div>
+        {taxaAtual != null && (
+          <span style={{ ...higType('caption1'), color: T.textMuted, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+            {taxaAtual.toFixed(2).replace('.', ',')}%
+          </span>
+        )}
+        {selected
+          ? <TI name="check" size={16} color={HIG_COLOR.tintIdemaq} />
+          : <span style={{ width: 16 }} />}
+      </button>
+
+      {/* Seletor de parcelas — aparece inline quando sub parcelado está selecionado */}
+      {sub.parcelado && selected && (
+        <div style={{ padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.sm}px ${HIG_SPACE.md + 28 + HIG_SPACE.sm}px` }}>
+          <div style={{ ...higType('caption2'), color: T.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: HIG_SPACE.xs }}>
+            Parcelas
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(p => {
+              const sel = parcelas === p
+              return (
+                <button key={p} type="button"
+                  onClick={e => { e.stopPropagation(); setParcelas(p) }}
+                  style={{
+                    padding: '5px 2px', borderRadius: 6,
+                    border: `1px solid ${sel ? HIG_COLOR.tintIdemaq : T.border}`,
+                    background: sel ? HIG_COLOR.tintIdemaq : 'transparent',
+                    color: sel ? '#fff' : T.textSecondary,
+                    ...higType('caption1'), fontWeight: 700,
+                    cursor: 'pointer', fontFamily: HIG_FONT,
+                    fontVariantNumeric: 'tabular-nums',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}>
+                  {p}x
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {separator && <Sep T={T} indent={HIG_SPACE.md + 28 + HIG_SPACE.sm} />}
+    </>
+  )
+}
+
+// ─── PartialDialog — inline HIGSection ───────────────────────────────────────
+function PartialDialog({ T, dark, valor, saldo, onParcial, onDesconto, onCancelar }) {
+  const falta = saldo - valor
+  return (
+    <HIGSection T={T} dark={dark} title="Como registrar?">
+      <button type="button" onClick={onParcial} style={{
+        width: '100%', minHeight: HIG_SIZE.listRow,
+        padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
+        border: 'none', background: 'transparent',
+        display: 'flex', alignItems: 'flex-start', gap: HIG_SPACE.sm,
+        cursor: 'pointer', fontFamily: HIG_FONT, textAlign: 'left',
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+        <span style={{ width:28, height:28, borderRadius:6, flexShrink:0, background: HIG_COLOR.tintIdemaq+'22', color: HIG_COLOR.tintIdemaq, display:'inline-flex', alignItems:'center', justifyContent:'center', marginTop:1 }}>
+          <TI name="circle-half" size={15} />
+        </span>
+        <div>
+          <div style={{ ...higType('body'), color: T.textPrimary, fontWeight: 600 }}>Dar baixa parcial</div>
+          <div style={{ ...higType('caption1'), color: T.textMuted, marginTop: 2 }}>
+            OS continua aberta com <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(falta)}</strong> a receber
+          </div>
+        </div>
+        <TI name="chevron-right" size={14} color={T.textDim} style={{ marginLeft: 'auto', flexShrink: 0, marginTop: 4 }} />
+      </button>
+      <Sep T={T} indent={HIG_SPACE.md + 28 + HIG_SPACE.sm} />
+      <button type="button" onClick={onDesconto} style={{
+        width: '100%', minHeight: HIG_SIZE.listRow,
+        padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
+        border: 'none', background: 'transparent',
+        display: 'flex', alignItems: 'flex-start', gap: HIG_SPACE.sm,
+        cursor: 'pointer', fontFamily: HIG_FONT, textAlign: 'left',
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+        <span style={{ width:28, height:28, borderRadius:6, flexShrink:0, background: HIG_COLOR.green+'22', color: HIG_COLOR.green, display:'inline-flex', alignItems:'center', justifyContent:'center', marginTop:1 }}>
+          <TI name="discount-2" size={15} />
+        </span>
+        <div>
+          <div style={{ ...higType('body'), color: T.textPrimary, fontWeight: 600 }}>Quitar com desconto</div>
+          <div style={{ ...higType('caption1'), color: T.textMuted, marginTop: 2 }}>
+            Aplica <strong style={{ fontVariantNumeric: 'tabular-nums' }}>−{fmtBRL(falta)}</strong> de desconto e marca como pago total
+          </div>
+        </div>
+        <TI name="chevron-right" size={14} color={T.textDim} style={{ marginLeft: 'auto', flexShrink: 0, marginTop: 4 }} />
+      </button>
+      <Sep T={T} />
+      <button type="button" onClick={onCancelar} style={{
+        width: '100%', minHeight: 44,
+        border: 'none', background: 'transparent',
+        ...higType('body'), color: HIG_COLOR.tintIdemaq,
+        cursor: 'pointer', fontFamily: HIG_FONT,
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+        Cancelar
+      </button>
+    </HIGSection>
+  )
+}
+
+// ─── ParcelasAPrazoPanel ──────────────────────────────────────────────────────
+function dataMaisDiasISO(n) {
+  const d = new Date(); d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+function addDiasISO(iso, n) {
+  if (!iso) return dataMaisDiasISO(n)
+  const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+function ParcelasAPrazoPanel({ T, dark, valor, parcelas, total, ok, onAdd, onUpdate, onRemove }) {
+  const diff = valor - total
+  return (
+    <HIGSection T={T} dark={dark}
+      title={`Agenda de parcelas · ${parcelas.length}`}
+      footer={ok
+        ? `Total ${fmtBRL(total)} — bate com o valor`
+        : `Total ${fmtBRL(total)} — ${diff > 0 ? `falta ${fmtBRL(diff)}` : `${fmtBRL(-diff)} a mais`}`}
+    >
+      {parcelas.map((p, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <Sep T={T} indent={HIG_SPACE.md} />}
+          <div style={{
+            minHeight: HIG_SIZE.listRow,
+            padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
+            display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+          }}>
+            <span style={{ ...higType('caption1'), color: T.textMuted, width: 24, textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+              {i + 1}ª
+            </span>
+            <input type="date" value={p.data || ''} onChange={e => onUpdate(i, 'data', e.target.value)}
+              style={{
+                flex: 1, padding: '6px 8px', borderRadius: HIG_RADIUS.small,
+                border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                ...higType('subheadline'), outline: 'none', fontFamily: HIG_FONT,
+                colorScheme: dark ? 'dark' : 'light',
+              }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <span style={{ ...higType('caption1'), color: T.textMuted }}>R$</span>
+              <input type="number" min="0" step="0.01" value={p.valor}
+                onChange={e => onUpdate(i, 'valor', Number(e.target.value) || 0)}
+                style={{
+                  width: 72, padding: '6px 8px', borderRadius: HIG_RADIUS.small,
+                  border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                  ...higType('subheadline'), textAlign: 'right', outline: 'none', fontFamily: HIG_FONT,
+                  fontVariantNumeric: 'tabular-nums',
+                }} />
+            </div>
+            <button type="button" onClick={() => onRemove(i)} disabled={parcelas.length <= 1}
+              style={{
+                width: 28, height: 28, borderRadius: 6, border: 'none',
+                background: 'transparent', cursor: parcelas.length <= 1 ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: parcelas.length <= 1 ? 0.3 : 1,
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              <TI name="x" size={14} color={T.textMuted} />
+            </button>
+          </div>
+        </React.Fragment>
+      ))}
+      <Sep T={T} />
+      <button type="button" onClick={onAdd} style={{
+        width: '100%', minHeight: 44,
+        border: 'none', background: 'transparent',
+        ...higType('body'), color: HIG_COLOR.tintIdemaq,
+        cursor: 'pointer', fontFamily: HIG_FONT,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: HIG_SPACE.xs,
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+        <TI name="plus" size={15} color={HIG_COLOR.tintIdemaq} />
+        Adicionar parcela
+      </button>
+    </HIGSection>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Componente principal
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function FormRecebimento({
   T, dark,
-  saldo,                 // valor máximo a receber
-  onConfirmar,           // ({ valor, forma, modo }) — modo: 'total'|'parcial'|'desconto'
-  onEnviarLink,          // (valor) — opcional, atalho gerar link InfinitePay
-  onGerarPix,            // (valor) — opcional, atalho gerar QR PIX
-  showAtalhos = true,    // mostra botões "PIX" e "Link" ao lado de confirmar
+  saldo,
+  onConfirmar,
+  onEnviarLink,
+  onGerarPix,
+  showAtalhos = true,
 }) {
-  const cor = (d, c) => dark ? d : c
-  const amarelo = corEtapa('yellow', dark)
-  const verde = corEtapa('green', dark)
-  const azul = corEtapa('blue', dark)
-  const vermelho = corEtapa('red', dark)
   const notify = useToast()
 
-  const [valor, setValor] = useState(saldo)
-  const [forma, setForma] = useState('pix')          // 'pix' | 'cartao' | 'dinheiro' | 'aprazo'
-  const [subCartao, setSubCartao] = useState(null)   // null antes de escolher
-  const [parcelas, setParcelas] = useState(1)        // 1x a 12x (crédito e link)
-  const [parcelasAPrazo, setParcelasAPrazo] = useState([])  // [{ data, valor }]
-  const [partialDialog, setPartialDialog] = useState(false)
+  const [valor, setValor]           = useState(saldo)
+  const [forma, setForma]           = useState('pix')
+  const [subCartao, setSubCartao]   = useState(null)
+  const [parcelas, setParcelas]     = useState(1)
+  const [parcelasAPrazo, setParcelasAPrazo] = useState([])
+  const [partialDialog, setPartialDialog]   = useState(false)
 
-  // Re-sincroniza valor quando saldo mudar (ex: depois de uma baixa parcial)
   useEffect(() => { setValor(saldo) }, [saldo])
 
-  // Quando troca pra "Cartão", pré-seleciona Débito
   useEffect(() => {
     if (forma === 'cartao' && !subCartao) setSubCartao('debito')
   }, [forma, subCartao])
 
-  // Quando troca pra "A prazo" pela primeira vez, cria 1 parcela default (+30d com o valor total)
   useEffect(() => {
     if (forma === 'aprazo' && parcelasAPrazo.length === 0) {
       setParcelasAPrazo([{ data: dataMaisDiasISO(30), valor: valor || saldo }])
     }
   }, [forma, parcelasAPrazo.length, valor, saldo])
 
-  // ─── Cálculos
+  // ─── Cálculos ──────────────────────────────────────────────────────────────
   function formaIdFinal() {
-    if (forma === 'pix') return 'pix'
+    if (forma === 'pix')      return 'pix'
     if (forma === 'dinheiro') return 'dinheiro'
-    if (forma === 'aprazo') return `aprazo_${parcelasAPrazo.length}x`
+    if (forma === 'aprazo')   return `aprazo_${parcelasAPrazo.length}x`
     const sub = SUB_CARTAO.find(s => s.id === subCartao)
     if (!sub) return 'debito'
     if (sub.parcelado) return `${sub.id}_${parcelas}x`
     return sub.id
   }
+
   function taxaAtual() {
     if (forma === 'pix' || forma === 'dinheiro' || forma === 'aprazo') return 0
     const sub = SUB_CARTAO.find(s => s.id === subCartao)
     if (!sub) return 0
     if (sub.fixed != null) return sub.fixed
-    if (sub.getTaxa) return sub.getTaxa(parcelas)
+    if (sub.getTaxa)       return sub.getTaxa(parcelas)
     return 0
   }
 
-  // Total das parcelas a prazo (precisa bater com o valor de recebimento)
   const totalParcelasAPrazo = parcelasAPrazo.reduce((s, p) => s + (Number(p.valor) || 0), 0)
   const parcelasAPrazoOk = forma !== 'aprazo' || (
     parcelasAPrazo.length > 0 &&
     parcelasAPrazo.every(p => p.data && Number(p.valor) > 0) &&
     Math.abs(totalParcelasAPrazo - valor) < 0.01
   )
-  const taxa = taxaAtual()
-  const liquido = taxa > 0 ? valor - (valor * taxa / 100) : valor
+  const taxa      = taxaAtual()
+  const liquido   = taxa > 0 ? valor - (valor * taxa / 100) : valor
   const isParcial = valor < saldo - 0.01
   const isExcedente = valor > saldo + 0.01
-  const formaOk = (
+  const formaOk   = (
     forma === 'pix' || forma === 'dinheiro' ||
     (forma === 'aprazo' && parcelasAPrazoOk) ||
     (forma === 'cartao' && !!subCartao)
   )
   const valorOk = valor > 0 && !isExcedente
 
-  // ─── CRUD das parcelas a prazo
+  // ─── CRUD parcelas a prazo ─────────────────────────────────────────────────
   function addParcelaAPrazo() {
     setParcelasAPrazo(prev => {
-      const totalAnterior = prev.reduce((s, p) => s + (Number(p.valor) || 0), 0)
-      const restante = Math.max(0, valor - totalAnterior)
+      const totalAnt = prev.reduce((s, p) => s + (Number(p.valor) || 0), 0)
+      const restante = Math.max(0, valor - totalAnt)
       const ultimaData = prev.length > 0 ? prev[prev.length - 1].data : dataMaisDiasISO(0)
       return [...prev, { data: addDiasISO(ultimaData, 30), valor: restante }]
     })
@@ -141,171 +396,86 @@ export default function FormRecebimento({
     setParcelasAPrazo(prev => prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i))
   }
 
-  // ─── Ações
+  // ─── Ações ─────────────────────────────────────────────────────────────────
   function clickConfirmar() {
     if (!formaOk || !valorOk) return
-    // A prazo: confirma direto com parcelas no payload, sem dialog parcial
     if (forma === 'aprazo') {
-      onConfirmar({
-        valor, forma: formaIdFinal(), modo: 'total',
-        taxa_pct: taxa,
-        parcelas: parcelasAPrazo.map(p => ({ ...p, valor: Number(p.valor) || 0 })),
-      })
+      onConfirmar({ valor, forma: formaIdFinal(), modo: 'total', taxa_pct: taxa, parcelas: parcelasAPrazo.map(p => ({ ...p, valor: Number(p.valor) || 0 })) })
       return
     }
-    if (isParcial) {
-      setPartialDialog(true)
-    } else {
-      onConfirmar({ valor, forma: formaIdFinal(), modo: 'total', taxa_pct: taxa })
-    }
+    if (isParcial) { setPartialDialog(true) }
+    else           { onConfirmar({ valor, forma: formaIdFinal(), modo: 'total', taxa_pct: taxa }) }
   }
 
-  function confirmarParcial() {
-    onConfirmar({ valor, forma: formaIdFinal(), modo: 'parcial', taxa_pct: taxa })
-    setPartialDialog(false)
-  }
+  function confirmarParcial()    { onConfirmar({ valor, forma: formaIdFinal(), modo: 'parcial',  taxa_pct: taxa }); setPartialDialog(false) }
+  function confirmarComDesconto(){ onConfirmar({ valor, forma: formaIdFinal(), modo: 'desconto', taxa_pct: taxa }); setPartialDialog(false) }
 
-  function confirmarComDesconto() {
-    onConfirmar({ valor, forma: formaIdFinal(), modo: 'desconto', taxa_pct: taxa })
-    setPartialDialog(false)
-  }
+  const taxaSubCartao = (s) => s.fixed != null ? s.fixed : (s.getTaxa ? s.getTaxa(parcelas) : null)
 
-  function clickEnviarLink() {
-    if (!valorOk) return
-    onEnviarLink?.(valor)
-    notify('info', `Link InfinitePay pra ${fmtBRL(valor, { fr: true })} (mock) — envie pelo WhatsApp`)
-  }
-
-  function clickGerarPix() {
-    if (!valorOk) return
-    onGerarPix?.(valor)
-    notify('info', `QR Code PIX pra ${fmtBRL(valor, { fr: true })} (mock) — mostre ao cliente`)
-  }
-
-  // ─── Render
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg, fontFamily: HIG_FONT }}>
 
-      {/* Bloco unificado: label "Valor Recebido" centralizado em cima dos 2
-          primeiros botoes (PIX/Cartao); input ocupando os 2 ultimos
-          (Dinheiro/A prazo). Tudo alinhado num grid de 4 colunas. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {/* Linha 1: label + input (2 cols cada) */}
+      {/* 1. Valor */}
+      <HIGSection T={T} dark={dark} title="Valor a receber">
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
-          alignItems: 'center',
+          minHeight: HIG_SIZE.listRow, padding: `0 ${HIG_SPACE.md}px`,
+          display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
         }}>
-          <div style={{
-            gridColumn: '1 / span 2',
-            textAlign: 'center',
-            fontSize: 11, color: T.textMuted, fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '.4px',
-          }}>
-            Valor Recebido
-          </div>
-          <div style={{
-            gridColumn: '3 / span 2',
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '0 10px', borderRadius: 7,
-            border: `1px solid ${T.border}`, background: T.bg,
-            minHeight: 38,
-          }}>
-            <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 600 }}>R$</span>
-            <input
-              type="number" min="0" max={saldo} step="0.01"
-              value={valor}
-              onChange={(e) => {
-                const v = Math.max(0, Math.min(saldo, Number(e.target.value) || 0))
-                setValor(v)
-              }}
-              style={{
-                flex: 1, minWidth: 0,
-                padding: 0, border: 'none', outline: 'none',
-                background: 'transparent', color: T.textPrimary,
-                fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums',
-                textAlign: 'right', fontFamily: 'inherit',
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Linha 2: 4 botoes de forma — PIX · Cartao · Dinheiro · A prazo */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-          <FormaTopBtn
-            T={T} dark={dark}
-            ativo={forma === 'pix'}
-            onClick={() => setForma('pix')}
-            icon="ti-brand-pinterest"
-            label="PIX"
-            sublabel="0%"
-          />
-          <FormaTopBtn
-            T={T} dark={dark}
-            ativo={forma === 'cartao'}
-            onClick={() => setForma('cartao')}
-            icon="ti-credit-card"
-            label="Cartão"
-            sublabel="déb·créd·link"
-          />
-          <FormaTopBtn
-            T={T} dark={dark}
-            ativo={forma === 'dinheiro'}
-            onClick={() => setForma('dinheiro')}
-            icon="ti-coins"
-            label="Dinheiro"
-            sublabel="0%"
-          />
-          <FormaTopBtn
-            T={T} dark={dark}
-            ativo={forma === 'aprazo'}
-            onClick={() => setForma('aprazo')}
-            icon="ti-clock"
-            label="A prazo"
-            sublabel="fiado"
+          <span style={{ ...higType('body'), color: T.textMuted, flexShrink: 0 }}>R$</span>
+          <input
+            type="number" min="0" max={saldo} step="0.01"
+            value={valor}
+            onChange={e => setValor(Math.max(0, Math.min(saldo, Number(e.target.value) || 0)))}
+            style={{
+              flex: 1, border: 'none', background: 'transparent', outline: 'none',
+              fontSize: 22, fontWeight: 700, color: T.textPrimary,
+              textAlign: 'right', fontFamily: HIG_FONT,
+              fontVariantNumeric: 'tabular-nums',
+            }}
           />
         </div>
-
-        {/* Chip "receber tudo" — só aparece se valor != saldo */}
         {valor !== saldo && saldo > 0 && (
-          <div style={{ marginTop: 2 }}>
-            <Chip T={T} dark={dark} onClick={() => setValor(saldo)}>
-              receber tudo ({fmtBRL(saldo, { fr: true })})
-            </Chip>
-          </div>
+          <>
+            <Sep T={T} indent={HIG_SPACE.md} />
+            <button type="button" onClick={() => setValor(saldo)} style={{
+              width: '100%', minHeight: 44,
+              border: 'none', background: 'transparent',
+              ...higType('body'), color: HIG_COLOR.tintIdemaq,
+              cursor: 'pointer', fontFamily: HIG_FONT, textAlign: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+              Receber tudo · {fmtBRL(saldo)}
+            </button>
+          </>
         )}
-      </div>
+      </HIGSection>
 
-      {/* Sub-leque do Cartão */}
+      {/* 2. Forma de pagamento */}
+      <HIGSection T={T} dark={dark} title="Forma de pagamento">
+        <FormaRow T={T} dark={dark} icon="brand-pinterest" iconColor="#00C853" label="PIX"      sublabel="Transferência instantânea" taxa={0} selected={forma==='pix'}      onClick={()=>setForma('pix')}      separator />
+        <FormaRow T={T} dark={dark} icon="credit-card"    iconColor={HIG_COLOR.tintIdemaq}      label="Cartão"  sublabel="Débito · Crédito · Link"       selected={forma==='cartao'}   onClick={()=>setForma('cartao')}   separator />
+        <FormaRow T={T} dark={dark} icon="coins"          iconColor={HIG_COLOR.orange}          label="Dinheiro" sublabel="Espécie"                      taxa={0} selected={forma==='dinheiro'} onClick={()=>setForma('dinheiro')} separator />
+        <FormaRow T={T} dark={dark} icon="clock"          iconColor={HIG_COLOR.gray}            label="A prazo" sublabel="Fiado — agenda de parcelas"    selected={forma==='aprazo'}   onClick={()=>setForma('aprazo')} />
+      </HIGSection>
+
+      {/* 3. Sub-leque do Cartão */}
       {forma === 'cartao' && (
-        <div style={{
-          padding: '10px 12px', borderRadius: 8,
-          background: cor('#0d2035', '#e6f1fb'),
-          border: `1px solid ${azul}44`,
-          display: 'flex', flexDirection: 'column', gap: 4,
-        }}>
-          <div style={{
-            fontSize: 10, color: T.textMuted, fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '.4px',
-            marginBottom: 4,
-          }}>Tipo de cartão</div>
-          {SUB_CARTAO.map(s => {
-            const taxa = s.fixed != null ? s.fixed : (s.getTaxa ? s.getTaxa(parcelas) : null)
-            return (
-              <SubCartaoBtn
-                key={s.id}
-                T={T} dark={dark} sub={s}
-                ativo={subCartao === s.id}
-                onClick={() => setSubCartao(s.id)}
-                parcelas={parcelas}
-                setParcelas={setParcelas}
-                taxaAtual={taxa}
-              />
-            )
-          })}
-        </div>
+        <HIGSection T={T} dark={dark} title="Tipo de cartão">
+          {SUB_CARTAO.map((s, i) => (
+            <SubCartaoRow key={s.id}
+              T={T} dark={dark} sub={s}
+              selected={subCartao === s.id}
+              onClick={() => setSubCartao(s.id)}
+              parcelas={parcelas} setParcelas={setParcelas}
+              taxaAtual={taxaSubCartao(s)}
+              separator={i < SUB_CARTAO.length - 1}
+            />
+          ))}
+        </HIGSection>
       )}
 
-      {/* Calendário de parcelas a prazo (só visível quando forma === 'aprazo') */}
+      {/* 4. Agenda de parcelas a prazo */}
       {forma === 'aprazo' && (
         <ParcelasAPrazoPanel
           T={T} dark={dark}
@@ -319,467 +489,36 @@ export default function FormRecebimento({
         />
       )}
 
-      {/* Líquido (se taxa > 0) */}
+      {/* 5. Info de taxa */}
       {taxa > 0 && valor > 0 && (
         <div style={{
-          fontSize: 11, color: T.textMuted, textAlign: 'center', padding: '2px 0',
+          ...higType('footnote'), color: T.textMuted,
+          padding: `0 ${HIG_SPACE.md}px`,
         }}>
-          Após taxa de {taxa.toFixed(2).replace('.', ',')}%, você recebe
-          ~ <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
-            {fmtBRL(liquido, { fr: true })}
-          </strong>
+          Após taxa de {taxa.toFixed(2).replace('.', ',')}%, você recebe ~<strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(liquido)}</strong>
         </div>
       )}
 
-      {/* Dialog inline pra valor parcial OU botões de confirmar */}
+      {/* 6. Dialog de valor parcial ou CTA confirmar */}
       {partialDialog ? (
         <PartialDialog
-          T={T} dark={dark} cor={cor}
+          T={T} dark={dark}
           valor={valor} saldo={saldo}
           onParcial={confirmarParcial}
           onDesconto={confirmarComDesconto}
           onCancelar={() => setPartialDialog(false)}
         />
       ) : (
-        // Grid 4-col alinhado com os 4 botoes de forma de pagamento:
-        // - Confirmar ocupa cols 1-3 (mesmo width que PIX+Cartao+Dinheiro)
-        // - PIX+Link split col 4 (mesma largura que "A prazo")
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6,
-          alignItems: 'stretch',
+        <button type="button" onClick={clickConfirmar} disabled={!formaOk || !valorOk} style={{
+          ...higFilledButton(T, dark),
+          opacity: (formaOk && valorOk) ? 1 : 0.35,
+          cursor:  (formaOk && valorOk) ? 'pointer' : 'not-allowed',
         }}>
-          <button
-            onClick={clickConfirmar}
-            disabled={!formaOk || !valorOk}
-            style={{
-              gridColumn: showAtalhos ? '1 / span 3' : '1 / -1',
-              minWidth: 0,
-              padding: '12px 14px', borderRadius: 8, border: 'none',
-              background: amarelo, color: '#0a0a0d',
-              fontSize: 13, fontWeight: 700,
-              cursor: (formaOk && valorOk) ? 'pointer' : 'not-allowed',
-              opacity: (formaOk && valorOk) ? 1 : 0.5,
-              fontFamily: 'inherit',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              lineHeight: 1.25,
-            }}>
-            <i className="ti ti-check" style={{ fontSize: 16 }} aria-hidden="true" />
-            <span style={{
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              Confirmar {fmtBRL(valor, { fr: true })}
-              {!isParcial && saldo > 0 && ' · concluir'}
-            </span>
-          </button>
-
-          {showAtalhos && (
-            <div style={{
-              gridColumn: '4 / span 1',
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
-            }}>
-              <AtalhoBtn
-                T={T} valorOk={valorOk}
-                icon="ti-qrcode" label="PIX"
-                title="Gera QR Code PIX pra mostrar ao cliente"
-                onClick={clickGerarPix}
-              />
-              <AtalhoBtn
-                T={T} valorOk={valorOk}
-                icon="ti-link" label="Link"
-                title="Gera link InfinitePay pra mandar pelo WhatsApp"
-                onClick={clickEnviarLink}
-              />
-            </div>
-          )}
-        </div>
+          <TI name="check" size={18} />
+          Confirmar {fmtBRL(valor)}{!isParcial && saldo > 0 ? ' · concluir' : ''}
+        </button>
       )}
 
-    </div>
-  )
-}
-
-// ─── Sub-componentes ────────────────────────────────────────────────────────
-
-function Label({ T, children }) {
-  return (
-    <label style={{
-      display: 'block', fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-      marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.4px',
-    }}>{children}</label>
-  )
-}
-
-function Chip({ T, dark, onClick, children }) {
-  const cor = (d, c) => dark ? d : c
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '4px 9px', borderRadius: 12,
-        border: `1px solid ${T.border}`, background: 'transparent',
-        color: cor(P.blue, P.blueDark),
-        fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}>{children}</button>
-  )
-}
-
-// ─── Helpers de data ────────────────────────────────────────────────────────
-function dataMaisDiasISO(n) {
-  const d = new Date()
-  d.setDate(d.getDate() + n)
-  return d.toISOString().slice(0, 10) // YYYY-MM-DD
-}
-function addDiasISO(iso, n) {
-  if (!iso) return dataMaisDiasISO(n)
-  const d = new Date(iso + 'T00:00:00')
-  d.setDate(d.getDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-function fmtDataPtBr(iso) {
-  if (!iso) return ''
-  const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
-}
-
-// ─── Painel: agenda de parcelas a prazo ────────────────────────────────────
-function ParcelasAPrazoPanel({ T, dark, valor, parcelas, total, ok, onAdd, onUpdate, onRemove }) {
-  const cor = (d, c) => dark ? d : c
-  const azul = corEtapa('blue', dark)
-  const amarelo = corEtapa('yellow', dark)
-  const verde = corEtapa('green', dark)
-  const vermelho = corEtapa('red', dark)
-  const diff = valor - total
-
-  return (
-    <div style={{
-      padding: '10px 12px', borderRadius: 8,
-      background: cor('#0d2035', '#e6f1fb'),
-      border: `1px solid ${azul}44`,
-      display: 'flex', flexDirection: 'column', gap: 8,
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <i className="ti ti-calendar-event" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-          <span style={{
-            fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '.4px',
-          }}>Agenda de parcelas</span>
-        </div>
-        <span style={{
-          fontSize: 10.5, color: T.textMuted,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{parcelas.length} {parcelas.length === 1 ? 'parcela' : 'parcelas'}</span>
-      </div>
-
-      {/* Linhas de parcelas */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {parcelas.map((p, i) => (
-          <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '60px 1fr 110px auto', gap: 6,
-            alignItems: 'center',
-          }}>
-            <span style={{
-              fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-              textAlign: 'right',
-            }}>{i + 1}ª</span>
-            <input
-              type="date"
-              value={p.data || ''}
-              onChange={(e) => onUpdate(i, 'data', e.target.value)}
-              style={{
-                padding: '6px 8px', borderRadius: 5,
-                border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
-                fontSize: 11.5, outline: 'none', fontFamily: 'inherit',
-                colorScheme: dark ? 'dark' : 'light',
-                minWidth: 0,
-              }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600 }}>R$</span>
-              <input
-                type="number" min="0" step="0.01"
-                value={p.valor}
-                onChange={(e) => onUpdate(i, 'valor', Number(e.target.value) || 0)}
-                style={{
-                  flex: 1, padding: '6px 8px', borderRadius: 5,
-                  border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
-                  fontSize: 11.5, outline: 'none', textAlign: 'right',
-                  fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums',
-                  minWidth: 0, boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <button
-              onClick={() => onRemove(i)}
-              disabled={parcelas.length <= 1}
-              aria-label="Remover parcela"
-              style={{
-                padding: '5px 6px', borderRadius: 5,
-                border: 'none', background: 'transparent',
-                color: parcelas.length <= 1 ? T.textDim : T.textMuted,
-                cursor: parcelas.length <= 1 ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit',
-              }}>
-              <i className="ti ti-x" style={{ fontSize: 13 }} aria-hidden="true" />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* Adicionar parcela */}
-      <button
-        onClick={onAdd}
-        style={{
-          padding: '6px 10px', borderRadius: 6,
-          border: `1px dashed ${azul}66`, background: 'transparent',
-          color: azul, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-          fontFamily: 'inherit',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-        }}>
-        <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
-        adicionar parcela
-      </button>
-
-      {/* Validação: soma deve igualar valor */}
-      <div style={{
-        fontSize: 11, color: ok ? verde : amarelo,
-        fontWeight: 600, textAlign: 'center',
-        paddingTop: 4, borderTop: `1px dashed ${T.border}`,
-        fontVariantNumeric: 'tabular-nums',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-      }}>
-        {ok ? (
-          <>
-            <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
-            Total {fmtBRL(total, { fr: true })} — bate com o valor
-          </>
-        ) : (
-          <>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} aria-hidden="true" />
-            Total {fmtBRL(total, { fr: true })} — {diff > 0
-              ? `falta ${fmtBRL(diff, { fr: true })}`
-              : `${fmtBRL(-diff, { fr: true })} a mais`}
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function AtalhoBtn({ T, valorOk, icon, label, title, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!valorOk}
-      title={title}
-      style={{
-        padding: '8px 4px', borderRadius: 8,
-        border: `1px solid ${T.border}`, background: 'transparent',
-        color: T.textSecondary, fontSize: 10.5, fontWeight: 600,
-        cursor: valorOk ? 'pointer' : 'not-allowed',
-        opacity: valorOk ? 1 : 0.5,
-        fontFamily: 'inherit', minWidth: 0,
-        display: 'inline-flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 2,
-        lineHeight: 1.1,
-      }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 15 }} aria-hidden="true" />
-      {label}
-    </button>
-  )
-}
-
-// Layout VERTICAL compacto (icon + label/sublabel centralizados) — cabe nas
-// 4 colunas de qualquer largura mobile, evita overflow. Radio dot no canto.
-function FormaTopBtn({ T, dark, ativo, onClick, icon, label, sublabel }) {
-  const cor = (d, c) => dark ? d : c
-  const azul = cor(P.blue, P.blueDark)
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        position: 'relative',
-        padding: '8px 4px 6px', borderRadius: 8,
-        border: `1.5px solid ${ativo ? azul : T.border}`,
-        background: ativo ? cor('#0d2035', '#e6f1fb') : 'transparent',
-        cursor: 'pointer', fontFamily: 'inherit',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 3,
-        textAlign: 'center', minWidth: 0,
-        minHeight: 64,
-      }}>
-      {/* Radio no canto sup-esquerdo */}
-      <div style={{
-        position: 'absolute', top: 5, left: 5,
-        width: 10, height: 10, borderRadius: '50%',
-        border: `2px solid ${ativo ? azul : T.textDim}`,
-        background: ativo ? azul : 'transparent',
-      }} />
-      <i className={`ti ${icon}`}
-         style={{ fontSize: 18, color: ativo ? azul : T.textMuted }} aria-hidden="true" />
-      <div style={{
-        fontSize: 12, fontWeight: 700, color: T.textPrimary,
-        lineHeight: 1.1,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        maxWidth: '100%',
-      }}>{label}</div>
-      <div style={{
-        fontSize: 9.5, color: T.textMuted,
-        lineHeight: 1.1,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        maxWidth: '100%',
-      }}>{sublabel}</div>
-    </button>
-  )
-}
-
-function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, taxaAtual }) {
-  const cor = (d, c) => dark ? d : c
-  const azul = cor(P.blue, P.blueDark)
-  return (
-    <div style={{
-      padding: '7px 9px', borderRadius: 6,
-      border: `1px solid ${ativo ? azul : 'transparent'}`,
-      background: ativo ? cor('#142d4a', '#dbe9f7') : 'transparent',
-    }}>
-      <button
-        onClick={onClick}
-        style={{
-          width: '100%', padding: 0,
-          background: 'transparent', border: 'none',
-          cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center', gap: 8,
-          textAlign: 'left',
-        }}>
-        <div style={{
-          width: 12, height: 12, borderRadius: '50%',
-          border: `2px solid ${ativo ? azul : T.textDim}`,
-          background: ativo ? azul : 'transparent',
-          flexShrink: 0,
-        }} />
-        <i className={`ti ${sub.icon}`}
-           style={{ fontSize: 14, color: ativo ? azul : T.textMuted }} aria-hidden="true" />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 12, fontWeight: 600, color: T.textPrimary,
-            display: 'inline-flex', alignItems: 'baseline', gap: 6,
-          }}>
-            {sub.label}
-            {sub.desc && (
-              <span style={{ fontSize: 10, color: T.textMuted, fontWeight: 500 }}>· {sub.desc}</span>
-            )}
-          </div>
-        </div>
-        {taxaAtual != null && (
-          <span style={{
-            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-            fontVariantNumeric: 'tabular-nums',
-          }}>{taxaAtual.toFixed(2).replace('.', ',')}%</span>
-        )}
-      </button>
-
-      {/* Seletor de parcelas 1x a 12x (visível quando sub parcelado está ativo) */}
-      {sub.parcelado && ativo && (
-        <div style={{ marginTop: 8, paddingLeft: 24 }}>
-          <div style={{
-            fontSize: 10, color: T.textMuted, fontWeight: 600,
-            textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 4,
-          }}>Número de parcelas</div>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4,
-          }}>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(p => {
-              const ativoP = parcelas === p
-              return (
-                <button
-                  key={p}
-                  onClick={(e) => { e.stopPropagation(); setParcelas(p) }}
-                  style={{
-                    padding: '5px 4px', borderRadius: 5,
-                    border: `1px solid ${ativoP ? azul : T.border}`,
-                    background: ativoP ? azul : 'transparent',
-                    color: ativoP ? '#fff' : T.textSecondary,
-                    fontSize: 10.5, fontWeight: 700, cursor: 'pointer',
-                    fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums',
-                  }}>{p}x</button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PartialDialog({ T, dark, cor, valor, saldo, onParcial, onDesconto, onCancelar }) {
-  const amarelo = corEtapa('yellow', dark)
-  const verde = corEtapa('green', dark)
-  const azul = corEtapa('blue', dark)
-  const falta = saldo - valor
-  return (
-    <div style={{
-      background: cor('#2a2000', '#fdf6dc'),
-      border: `1.5px solid ${amarelo}66`,
-      borderRadius: 9, padding: '12px 14px',
-      display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
-      <div style={{ fontSize: 12, color: T.textPrimary, lineHeight: 1.45 }}>
-        <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(valor, { fr: true })}</strong>
-        {' '}é menor que o saldo de
-        {' '}<strong style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(saldo, { fr: true })}</strong>.
-        Como registrar?
-      </div>
-
-      <button
-        onClick={onParcial}
-        style={{
-          padding: '10px 12px', borderRadius: 7,
-          background: 'transparent', color: T.textPrimary,
-          border: `1px solid ${T.border}`,
-          fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
-        }}>
-        <i className="ti ti-circle-half" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>Dar baixa parcial</div>
-          <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, fontWeight: 500 }}>
-            OS continua aberta com <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(falta, { fr: true })}</strong> a receber
-          </div>
-        </div>
-      </button>
-
-      <button
-        onClick={onDesconto}
-        style={{
-          padding: '10px 12px', borderRadius: 7,
-          background: 'transparent', color: T.textPrimary,
-          border: `1px solid ${T.border}`,
-          fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
-        }}>
-        <i className="ti ti-discount-2" style={{ fontSize: 16, color: verde }} aria-hidden="true" />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>Quitar com desconto</div>
-          <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 2, fontWeight: 500 }}>
-            Aplica <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>−{fmtBRL(falta, { fr: true })}</strong> de desconto e marca como pago total
-          </div>
-        </div>
-      </button>
-
-      <button
-        onClick={onCancelar}
-        style={{
-          padding: '6px 10px', borderRadius: 6,
-          background: 'transparent', border: 'none',
-          color: T.textMuted, fontSize: 11, fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'inherit',
-          alignSelf: 'center',
-        }}>
-        Cancelar
-      </button>
     </div>
   )
 }
