@@ -1,40 +1,48 @@
 // src/components/paineis/PainelFuncionario.jsx
 // Painel inicial do funcionário (Alessandro/Guilherme) — substitui o painel do dono
-// quando o usuário não é admin. Layout mobile-first.
+// quando o usuário não é admin. Layout mobile-first no padrão Apple HIG:
+//   - Large title (28pt bold, tight letter-spacing)
+//   - Inset grouped lists com hairlines internas (estilo iOS Settings)
+//   - Tap targets ≥ 44pt
+//   - System font stack (SF Pro no iOS, system-ui no resto)
+//   - Spacing scale 8/12/16/20/24
 // REGRA: nunca mostrar financeiro (R$, faturamento, lucro, etc.) — Toni decidiu.
 
 import React, { useState } from 'react'
-import { P } from '../../theme'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
-import { Card, Badge, Button, SectionHeader } from '../ui'
+import { Card, Button, SectionHeader } from '../ui'
 import CardPontoFuncionario from '../ponto/CardPontoFuncionario'
 import EspelhoPonto from '../ponto/EspelhoPonto'
 import { FUNCIONARIOS_PONTO } from '../ponto/_mocks'
 import { usePainelFuncionario } from '../../hooks/usePainelFuncionario'
 
+// Stack de fonte estilo Apple — SF Pro no iOS/macOS, fallback system-ui.
+const SYS_FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif'
+
 export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
-  const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const [verEspelho, setVerEspelho] = useState(false)
 
   const funcionario = FUNCIONARIOS_PONTO.find(f => f.id === funcId) || FUNCIONARIOS_PONTO[0]
 
-  // Dados reais (OS ativas + KPIs do mês + pontualidade do funcionário)
-  // escopo = 'funcionario' (filtrado via os_historico) | 'global' (fallback)
   const { osDoDia, desempenho, escopo, loading: loadingPainel } = usePainelFuncionario(funcId)
 
-  // Data formatada pro header
   const hoje = new Date()
   const diaSemana = hoje.toLocaleDateString('pt-BR', { weekday: 'long' })
   const dia = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })
   const dataFormatada = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1) + ', ' + dia
+
+  // Background levemente acinzentado (estilo iOS Settings) — separa "fundo do app"
+  // dos cards brancos por cima. No dark mode mantemos o T.bg padrão.
+  const bgApp = dark ? T.bg : '#F2F2F7'
 
   if (verEspelho) {
     return (
       <div style={{
         padding: '16px 16px 24px', overflowY: 'auto', flex: 1,
         display: 'flex', flexDirection: 'column', gap: 12,
+        fontFamily: SYS_FONT, background: bgApp,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Button variant="ghost" size="sm" T={T} dark={dark}
@@ -50,141 +58,223 @@ export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
 
   return (
     <div style={{
-      padding: '16px 16px 24px',
+      padding: '8px 16px 32px',
       overflowY: 'auto', flex: 1,
-      display: 'flex', flexDirection: 'column', gap: 14,
+      display: 'flex', flexDirection: 'column', gap: 24,
       maxWidth: 720, margin: '0 auto', width: '100%', boxSizing: 'border-box',
+      fontFamily: SYS_FONT, background: bgApp,
     }}>
-      {/* Header pessoal */}
-      <div>
-        <div style={{
-          fontSize: 22, fontWeight: 700, color: corHero(dark),
-          letterSpacing: '-0.02em', marginBottom: 3,
+      {/* ─── LARGE TITLE (estilo iOS) ─────────────────────────────────────── */}
+      <header style={{ paddingTop: 12, paddingBottom: 4 }}>
+        <h1 style={{
+          margin: 0,
+          fontSize: 30, fontWeight: 700,
+          color: corHero(dark),
+          letterSpacing: '-0.022em',
+          lineHeight: 1.15,
+          display: 'inline-flex', alignItems: 'center', gap: 8,
         }}>
-          Olá, {funcionario.nome} <span style={{ display: 'inline-block', transform: 'rotate(15deg)' }}>
-            <i className="ti ti-hand-stop" style={{ fontSize: 22, color: amarelo }} aria-hidden="true" />
+          Olá, {funcionario.nome}
+          <span style={{ display: 'inline-block', transform: 'rotate(15deg)' }}>
+            <i className="ti ti-hand-stop" style={{
+              fontSize: 26, color: amarelo,
+            }} aria-hidden="true" />
           </span>
-        </div>
-        <div style={{ fontSize: 12, color: T.textMuted }}>
+        </h1>
+        <div style={{
+          marginTop: 4, fontSize: 14, color: T.textMuted,
+          letterSpacing: '-0.01em',
+        }}>
           Naviraí · {dataFormatada}
         </div>
-      </div>
+      </header>
 
-      {/* Card de ponto em destaque */}
+      {/* ─── CARD DE PONTO EM DESTAQUE ────────────────────────────────────── */}
       <CardPontoFuncionario T={T} dark={dark} funcionario={funcionario}
         onAbrirEspelho={() => setVerEspelho(true)} />
 
-      {/* OS ativas no Kanban (não concluídas/recusadas) — filtradas via histórico
-          do funcionário quando houver, ou globais como fallback no início. */}
-      <Card T={T} dark={dark} padding={0}>
-        <div style={{ padding: '12px 14px 8px' }}>
-          <SectionHeader T={T} dark={dark} icon="ti-clipboard-list" mb={0}
-            action={
-              <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                {loadingPainel ? '…' : `${osDoDia.length} OS`}
-              </span>
-            }
-          >{escopo === 'funcionario' ? 'Minhas OS' : 'OS abertas'}</SectionHeader>
+      {/* ─── GROUPED LIST: OS ABERTAS (estilo iOS Settings) ───────────────── */}
+      <section>
+        <SectionHIG T={T} dark={dark}
+          titulo={escopo === 'funcionario' ? 'Minhas OS' : 'OS abertas'}
+          contagem={loadingPainel ? null : `${osDoDia.length}`}
+        />
+        <Card T={T} dark={dark} padding={0}>
           {!loadingPainel && escopo === 'global' && (
             <div style={{
-              fontSize: 10.5, color: T.textMuted, marginTop: 4,
-              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '10px 16px',
+              fontSize: 12, color: T.textMuted,
+              display: 'flex', alignItems: 'center', gap: 6,
+              borderBottom: `0.5px solid ${T.border}`,
             }}>
-              <i className="ti ti-info-circle" style={{ fontSize: 12 }} aria-hidden="true" />
-              Sem histórico no seu nome ainda — mostrando OS gerais
+              <i className="ti ti-info-circle" style={{ fontSize: 13 }} aria-hidden="true" />
+              Sem histórico no seu nome — mostrando OS gerais
             </div>
           )}
-        </div>
-        {loadingPainel && (
-          <div style={{ padding: '14px', fontSize: 12, color: T.textMuted }}>
-            Carregando…
-          </div>
-        )}
-        {!loadingPainel && osDoDia.length === 0 && (
-          <div style={{ padding: '14px', fontSize: 12, color: T.textMuted, textAlign: 'center' }}>
-            <i className="ti ti-circle-check" style={{ fontSize: 16, color: corEtapa('green', dark), marginRight: 6 }} aria-hidden="true" />
-            Nenhuma OS aberta no momento
-          </div>
-        )}
-        {!loadingPainel && osDoDia.map((os) => (
-          <div key={os.numero} style={{
-            display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
-            gap: 10, alignItems: 'center',
-            padding: '11px 14px',
-            borderTop: `1px solid ${T.border}`,
-          }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 8,
-              background: bgEtapa('blue', dark),
-              border: `1px solid ${azul}33`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: azul,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {os.numero.toString().slice(-3)}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize: 13, fontWeight: 600, color: corHero(dark),
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                OS #{os.numero} — {os.cliente}
-              </div>
-              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-                Etapa: {os.etapa}
-              </div>
-            </div>
-            {os.hora && (
-              <span style={{
-                fontSize: 12, color: T.textSecondary, fontWeight: 600,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                <i className="ti ti-clock" style={{ fontSize: 12, marginRight: 3 }} aria-hidden="true" />
-                {os.hora}
-              </span>
-            )}
-            <i className="ti ti-chevron-right" style={{ fontSize: 16, color: T.textDim }} aria-hidden="true" />
-          </div>
-        ))}
-      </Card>
+          {loadingPainel && (
+            <EmptyRow T={T} icon="loader-2" texto="Carregando…" />
+          )}
+          {!loadingPainel && osDoDia.length === 0 && (
+            <EmptyRow T={T} icon="circle-check"
+              cor={corEtapa('green', dark)}
+              texto="Nenhuma OS aberta no momento" />
+          )}
+          {!loadingPainel && osDoDia.map((os, i) => (
+            <OSRow key={os.numero} T={T} dark={dark} os={os}
+              azul={azul} primeiro={i === 0} />
+          ))}
+        </Card>
+      </section>
 
-      {/* Desempenho — números operacionais reais do mês, ZERO financeiro.
-          osConcluidas + tempoMedio são GLOBAIS (todos funcionários) por ora —
-          quando os_historico.funcionario_id estiver populado pra todos, dá pra
-          filtrar por funcionário. Pontualidade já é específica via jornada_funcionario. */}
-      <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-chart-line" mb={12}>
-          Desempenho no mês
-        </SectionHeader>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <KPI T={T} dark={dark} label="OS concluídas" valor={loadingPainel ? '—' : desempenho.osConcluidas} cor={azul} />
-          <KPI T={T} dark={dark} label="Tempo médio" valor={loadingPainel ? '—' : desempenho.tempoMedio} cor={corHero(dark)} />
-          <KPI T={T} dark={dark} label="Pontualidade" valor={loadingPainel ? '—' : desempenho.pontualidade} cor={azul} />
-        </div>
-      </Card>
+      {/* ─── DESEMPENHO (KPIs num único card com hairlines) ──────────────── */}
+      <section>
+        <SectionHIG T={T} dark={dark} titulo="Desempenho no mês" />
+        <Card T={T} dark={dark} padding={0}>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+          }}>
+            <KPI T={T} dark={dark}
+              label="OS concluídas"
+              valor={loadingPainel ? '—' : desempenho.osConcluidas}
+              cor={azul}
+              separadorDireita
+            />
+            <KPI T={T} dark={dark}
+              label="Tempo médio"
+              valor={loadingPainel ? '—' : desempenho.tempoMedio}
+              cor={corHero(dark)}
+              separadorDireita
+            />
+            <KPI T={T} dark={dark}
+              label="Pontualidade"
+              valor={loadingPainel ? '—' : desempenho.pontualidade}
+              cor={azul}
+            />
+          </div>
+        </Card>
+      </section>
     </div>
   )
 }
 
-function KPI({ T, dark, label, valor, cor }) {
+// ─── Section header estilo iOS ─────────────────────────────────────────────
+// Texto pequeno, todo em maiúsculas, cinza, com padding lateral 16px.
+// (Equivalente ao <SectionHeader> da apple Settings.app.)
+function SectionHIG({ T, titulo, contagem }) {
   return (
     <div style={{
-      padding: '10px 12px',
-      background: T.cardAlt, borderRadius: 8,
-      border: `1px solid ${T.border}`,
-      textAlign: 'center',
+      padding: '0 16px 6px',
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+    }}>
+      <span style={{
+        fontSize: 12, fontWeight: 600,
+        color: T.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: '.06em',
+      }}>
+        {titulo}
+      </span>
+      {contagem != null && (
+        <span style={{
+          fontSize: 12, color: T.textMuted,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {contagem}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── Linha de OS (estilo cell do iOS) ──────────────────────────────────────
+// Tap target ≥ 44pt, hairline 0.5pt entre rows, chevron à direita.
+function OSRow({ T, dark, os, azul, primeiro }) {
+  return (
+    <div style={{
+      minHeight: 56,
+      display: 'grid', gridTemplateColumns: 'auto 1fr auto auto',
+      gap: 12, alignItems: 'center',
+      padding: '10px 16px',
+      borderTop: primeiro ? 'none' : `0.5px solid ${T.border}`,
+      cursor: 'pointer',
+      WebkitTapHighlightColor: 'transparent',
     }}>
       <div style={{
-        fontSize: 10, color: T.textMuted, fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '.3px', marginBottom: 4,
+        width: 36, height: 36, borderRadius: 10,
+        background: bgEtapa('blue', dark),
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, fontWeight: 700, color: azul,
+        fontVariantNumeric: 'tabular-nums',
+        letterSpacing: '-0.01em',
       }}>
-        {label}
+        {os.numero.toString().slice(-3)}
       </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{
+          fontSize: 15, fontWeight: 600, color: corHero(dark),
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          letterSpacing: '-0.01em',
+        }}>
+          OS #{os.numero}
+        </div>
+        <div style={{
+          fontSize: 13, color: T.textMuted, marginTop: 1,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {os.cliente} · {os.etapa}
+        </div>
+      </div>
+      {os.hora && (
+        <span style={{
+          fontSize: 13, color: T.textSecondary, fontWeight: 500,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {os.hora}
+        </span>
+      )}
+      <i className="ti ti-chevron-right" style={{
+        fontSize: 16, color: T.textDim, marginLeft: 2,
+      }} aria-hidden="true" />
+    </div>
+  )
+}
+
+// ─── Linha "vazio" estilo iOS ─────────────────────────────────────────────
+function EmptyRow({ T, icon, texto, cor }) {
+  return (
+    <div style={{
+      padding: '20px 16px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+      fontSize: 14, color: T.textMuted,
+    }}>
+      <i className={`ti ti-${icon}`} style={{
+        fontSize: 16, color: cor || T.textMuted,
+      }} aria-hidden="true" />
+      {texto}
+    </div>
+  )
+}
+
+// ─── KPI individual (1/3 da largura, separador vertical hairline) ─────────
+function KPI({ T, label, valor, cor, separadorDireita }) {
+  return (
+    <div style={{
+      padding: '14px 12px',
+      textAlign: 'center',
+      borderRight: separadorDireita ? `0.5px solid ${T.border}` : 'none',
+    }}>
       <div style={{
-        fontSize: 18, fontWeight: 700, color: cor,
-        fontVariantNumeric: 'tabular-nums', letterSpacing: '-.02em',
+        fontSize: 22, fontWeight: 700, color: cor,
+        fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
+        marginBottom: 2, lineHeight: 1.1,
       }}>
         {valor}
+      </div>
+      <div style={{
+        fontSize: 11, color: T.textMuted, fontWeight: 500,
+        letterSpacing: '-0.005em',
+      }}>
+        {label}
       </div>
     </div>
   )
