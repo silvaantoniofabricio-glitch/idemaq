@@ -274,13 +274,11 @@ export default function LogisticaMobile({ T, dark }) {
   // ─── Render ───────────────────────────────────────────────────────────
   return (
     <div style={{
-      padding: '8px 16px 96px',
+      padding: '12px 14px 96px',
       flex: 1, overflowY: 'auto',
-      display: 'flex', flexDirection: 'column', gap: 16,
+      display: 'flex', flexDirection: 'column', gap: 12,
       fontFamily: SF_STACK,
     }}>
-      <LargeTitle T={T} dark={dark} />
-
       <FiltroEtapas
         T={T} dark={dark}
         ativas={etapasAtivas}
@@ -407,13 +405,9 @@ export function FiltroEtapas({ T, dark, ativas, onToggle }) {
   return (
     <div style={{
       display: 'flex',
-      gap: 6,
-      overflowX: 'auto',
-      paddingBottom: 2,
-      scrollbarWidth: 'none',
-      msOverflowStyle: 'none',
+      gap: 5,
+      flexWrap: 'wrap',
     }}>
-      <style>{`div::-webkit-scrollbar{display:none}`}</style>
       {FILTROS_ETAPA_LOGISTICA.map(f => {
         const ativo = ativas.has(f.id)
         return (
@@ -422,23 +416,23 @@ export function FiltroEtapas({ T, dark, ativas, onToggle }) {
             onClick={() => onToggle(f.id)}
             style={{
               flexShrink: 0,
-              padding: '8px 14px',
+              padding: '6px 10px',
               borderRadius: 999,
               border: 'none',
               background: ativo ? azul : bgInativo,
               color: ativo ? '#fff' : T.textPrimary,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: ativo ? 600 : 500,
               cursor: 'pointer',
               fontFamily: 'inherit',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 5,
-              minHeight: 32,
+              gap: 4,
+              minHeight: 28,
               transition: 'background .15s, color .15s',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className={`ti ${f.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
+            <i className={`ti ${f.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
             {f.label}
           </button>
         )
