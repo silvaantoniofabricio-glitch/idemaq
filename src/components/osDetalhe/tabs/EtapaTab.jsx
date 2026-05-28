@@ -28,6 +28,7 @@ import AcaoColetaHIG from '../acoes/AcaoColetaHIG'
 import AcaoRecebidoHIG from '../acoes/AcaoRecebidoHIG'
 import AcaoDiagnosticoHIG from '../acoes/AcaoDiagnosticoHIG'
 import AcaoOrcamentoHIG from '../acoes/AcaoOrcamentoHIG'
+import AcaoOficinaHIG from '../acoes/AcaoOficinaHIG'
 
 const MAP = {
   // HIG aplicado em TODAS as etapas — cada uma com arquivo dedicado.
@@ -36,7 +37,7 @@ const MAP = {
   recebido: AcaoRecebidoHIG,           // Avaliação (testes de funcionamento)
   diagnostico: AcaoDiagnosticoHIG,    // Diagnóstico (causa + componentes)
   orcamento: AcaoOrcamentoHIG,        // Orçamento (itens + total + aprovação)
-  oficina: AcaoOficina,
+  oficina: AcaoOficinaHIG,            // Conserto  (Limpeza + Manutenção)
   teste_final: AcaoTeste,
   entrega: AcaoEntrega,
   pagamento: AcaoPagamento,
