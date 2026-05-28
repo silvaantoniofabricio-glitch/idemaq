@@ -1,13 +1,8 @@
 // idemaq-src/components/layout/BottomNav.jsx
-//
-// Bottom Navigation (21/05/2026 — refator pra acomodar TODAS as páginas).
-// - 4 botões fixos + 1 botão "Mais" (5º slot) que abre bottom sheet com EXTRAS
-// - Sair vive dentro do "Mais" pra liberar slot pra navegação real
-// - Touch target 56px+
-// - Active state com pill background azul/light
-//
-// Antes: 5 slots fixos, 4 páginas do dono ficavam escondidas (Clientes,
-// Logística, Relatórios, Configurações). Agora todas são acessíveis.
+// Bottom Navigation — Apple HIG (iOS tab bar style):
+//   - Pill indicator proporcional atrás do ícone (sem scale, só tinta)
+//   - 4 slots fixos + "Mais" (bottom sheet com grid 3-col iOS App Library)
+//   - Touch target 52px · glass blur · safe-area-inset-bottom
 
 import React, { useState, useEffect } from 'react'
 import { P } from '../../theme'
@@ -28,15 +23,15 @@ export default function BottomNav({ pagina, setPagina, sair, user, T, dark, togg
   const itemsExtras = idsExtras.map(id => MENUS.find(m => m.id === id)).filter(Boolean)
 
   const activeClr = dark ? P.blue : P.blueDark
-  const activeBg  = dark ? '#1a3a5c' : '#e6f1fb'
+  const activeBg  = dark ? '#1a3a5c' : '#ddeaf8'
 
   const [maisAberto, setMaisAberto] = useState(false)
-  // Quando o user navega via Mais, fecha o sheet
+
   function navegar(id) {
     setPagina(id)
     setMaisAberto(false)
   }
-  // Se "Mais" contém a página ativa, o botão Mais fica destacado
+
   const paginaAtivaNoMais = itemsExtras.some(m => m.id === pagina)
 
   return (
@@ -53,16 +48,13 @@ export default function BottomNav({ pagina, setPagina, sair, user, T, dark, togg
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         boxShadow: dark ? '0 -2px 16px rgba(0,0,0,0.35)' : '0 -1px 12px rgba(0,0,0,0.06)',
       }}>
-        {itemsFixos.map(m => {
-          const ativo = pagina === m.id
-          return (
-            <BotaoNav key={m.id}
-              m={m} ativo={ativo}
-              T={T} activeClr={activeClr} activeBg={activeBg}
-              onClick={() => setPagina(m.id)}
-            />
-          )
-        })}
+        {itemsFixos.map(m => (
+          <BotaoNav key={m.id}
+            m={m} ativo={pagina === m.id}
+            T={T} activeClr={activeClr} activeBg={activeBg}
+            onClick={() => setPagina(m.id)}
+          />
+        ))}
         <BotaoNav
           m={{ id: 'mais', label: 'Mais', icon: 'ti-dots' }}
           ativo={maisAberto || paginaAtivaNoMais}
@@ -94,30 +86,34 @@ function BotaoNav({ m, ativo, T, activeClr, activeBg, onClick }) {
         flex: 1, position: 'relative',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        gap: 1, padding: '4px 2px',
+        gap: 2, padding: '4px 2px',
         background: 'transparent', border: 'none', cursor: 'pointer',
         color: ativo ? activeClr : T.textMuted,
         fontFamily: 'inherit',
         transition: 'color .15s',
       }}>
+      {/* Pill indicator atrás do ícone */}
       {ativo && (
         <div style={{
-          position: 'absolute', top: 5,
-          width: 38, height: 24, borderRadius: 12,
+          position: 'absolute', top: 6,
+          left: '50%', transform: 'translateX(-50%)',
+          width: '60%', minWidth: 40, maxWidth: 56,
+          height: 26, borderRadius: 13,
           background: activeBg,
           zIndex: 0,
+          transition: 'opacity .15s',
         }} />
       )}
       <i className={`ti ${m.icon}`}
          style={{
            fontSize: 18, position: 'relative', zIndex: 1,
-           transition: 'transform .15s',
-           transform: ativo ? 'translateY(-1px) scale(1.08)' : 'none',
+           transition: 'color .15s',
          }} aria-hidden="true" />
       <span style={{
         fontSize: 9.5, fontWeight: ativo ? 700 : 500,
         position: 'relative', zIndex: 1,
         letterSpacing: '0.01em',
+        transition: 'font-weight .15s',
       }}>{m.label}</span>
     </button>
   )
@@ -125,10 +121,9 @@ function BotaoNav({ m, ativo, T, activeClr, activeBg, onClick }) {
 
 // ─── Bottom sheet "Mais" ───────────────────────────────────────────────────
 function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClose, onToggleTheme }) {
-  const azul = dark ? P.blue : P.blueDark
-  const vermelho = dark ? P.red : P.redDark
+  const azul    = dark ? P.blue    : P.blueDark
+  const vermelho = dark ? P.red    : P.redDark
 
-  // Animação enter/exit
   const [montado, setMontado] = useState(false)
   useEffect(() => {
     requestAnimationFrame(() => setMontado(true))
@@ -142,6 +137,7 @@ function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClo
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
   function fechar() {
     setMontado(false)
     setTimeout(onClose, 180)
@@ -168,6 +164,7 @@ function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClo
           transform: montado ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .24s cubic-bezier(.2,.8,.2,1)',
         }}>
+
         {/* Drag handle */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px' }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: T.border }} />
@@ -183,16 +180,16 @@ function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClo
           </div>
           <button onClick={fechar} aria-label="Fechar"
             style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: T.cardAlt, border: `1px solid ${T.border}`,
-              color: T.textPrimary, cursor: 'pointer',
+              width: 32, height: 32, borderRadius: 16,
+              background: T.cardAlt, border: 'none',
+              color: T.textMuted, cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             }}>
-            <i className="ti ti-x" style={{ fontSize: 18 }} aria-hidden="true" />
+            <i className="ti ti-x" style={{ fontSize: 16 }} aria-hidden="true" />
           </button>
         </div>
 
-        {/* Grid de páginas */}
+        {/* Grid de páginas — iOS App Library style */}
         <div style={{
           padding: '4px 12px 12px',
           display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
@@ -203,16 +200,19 @@ function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClo
               <button key={m.id} onClick={() => onNavegar(m.id)}
                 style={{
                   display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '14px 8px', minHeight: 84,
-                  borderRadius: 14,
-                  background: ativo ? `${azul}18` : T.cardAlt,
-                  border: `1px solid ${ativo ? azul : T.border}`,
-                  color: ativo ? azul : T.textPrimary,
+                  alignItems: 'center', justifyContent: 'center', gap: 7,
+                  padding: '16px 8px', minHeight: 88,
+                  borderRadius: 16,
+                  background: ativo
+                    ? (dark ? '#1a3a5c' : '#ddeaf8')
+                    : T.cardAlt,
+                  border: 'none',
+                  color: ativo ? (dark ? P.blue : P.blueDark) : T.textPrimary,
                   cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'background .1s',
                 }}>
-                <i className={`ti ${m.icon}`} style={{ fontSize: 24 }} aria-hidden="true" />
-                <span style={{ fontSize: 12, fontWeight: 600, textAlign: 'center', lineHeight: 1.15 }}>
+                <i className={`ti ${m.icon}`} style={{ fontSize: 26 }} aria-hidden="true" />
+                <span style={{ fontSize: 12, fontWeight: ativo ? 700 : 500, textAlign: 'center', lineHeight: 1.15 }}>
                   {m.label}
                 </span>
               </button>
@@ -220,7 +220,7 @@ function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClo
           })}
         </div>
 
-        {/* Tema + Sair — separado abaixo */}
+        {/* Tema + Sair */}
         <div style={{
           borderTop: `1px solid ${T.border}`,
           padding: '12px 12px 4px',
@@ -229,7 +229,6 @@ function MaisSheet({ T, dark, itensExtras, paginaAtiva, onNavegar, onSair, onClo
           {onToggleTheme && (
             <button onClick={onToggleTheme}
               aria-label={dark ? 'Modo claro' : 'Modo escuro'}
-              title={dark ? 'Modo claro' : 'Modo escuro'}
               style={{
                 flex: '0 0 48px', padding: '12px',
                 borderRadius: 12, minHeight: 48,
