@@ -29,6 +29,7 @@ import AcaoRecebidoHIG from '../acoes/AcaoRecebidoHIG'
 import AcaoDiagnosticoHIG from '../acoes/AcaoDiagnosticoHIG'
 import AcaoOrcamentoHIG from '../acoes/AcaoOrcamentoHIG'
 import AcaoOficinaHIG from '../acoes/AcaoOficinaHIG'
+import AcaoTesteHIG from '../acoes/AcaoTesteHIG'
 
 const MAP = {
   // HIG aplicado em TODAS as etapas — cada uma com arquivo dedicado.
@@ -38,7 +39,7 @@ const MAP = {
   diagnostico: AcaoDiagnosticoHIG,    // Diagnóstico (causa + componentes)
   orcamento: AcaoOrcamentoHIG,        // Orçamento (itens + total + aprovação)
   oficina: AcaoOficinaHIG,            // Conserto  (Limpeza + Manutenção)
-  teste_final: AcaoTeste,
+  teste_final: AcaoTesteHIG,          // Teste final (4 testes + acabamento)
   entrega: AcaoEntrega,
   pagamento: AcaoPagamento,
   concluido: AcaoConcluido,
