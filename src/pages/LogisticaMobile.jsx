@@ -1,5 +1,5 @@
 // src/pages/LogisticaMobile.jsx
-// Reescrita Apple HIG (27/05/2026) — mantém toda a lógica de useRotas/useOSLogistica
+// Reescrita Apple HIG (27/05/2026 r2) — mantém toda a lógica de useRotas/useOSLogistica
 // mas aplica o mesmo design system de PainelMobile/KPIGridMobile:
 //   - Cards via T.card + elevation no light (sem border)
 //   - Pills compactos (filtros) wrap em vez de scroll horizontal
