@@ -308,28 +308,52 @@ export default function Kanban({ T, dark, user }) {
           )
         })()}
 
-        {/* Barra única: zonas (tabs) + busca + dropdowns de filtro + Nova OS */}
+        {/* Barra: zonas (segmented control) + busca + filtros + Nova OS */}
         {(() => {
           const azul = cor(P.blue, P.blueDark)
           const azulBg = cor('#0d2035', '#e6f1fb')
           const totalTipos = Object.keys(TIPOS_OS).length
-          // Labels dinâmicos dos chip-dropdowns
           const lblPrazo = statusF === 'todos' ? 'Todos' : statusF === 'vencido' ? 'Vencidas' : statusF === 'hoje' ? 'Hoje/amanhã' : 'Em dia'
           const tiposCount = tiposAtivos.size
-          // Estilo chip dropdown
-          const chipBase = { padding:'5px 9px', borderRadius:6, fontSize:11.5, cursor:'pointer', fontWeight:500, display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap', transition:'all .12s', position:'relative' }
-          const chipAtivo = { border:`1px solid ${azul}`, background:azulBg, color:azul, fontWeight:600 }
-          const chipNormal = { border:`1px solid ${T.border}`, background:'transparent', color:T.textMuted }
-          // Popup
-          const popupStyle = { position:'absolute', top:'calc(100% + 6px)', left:0, minWidth:160, padding:6, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, boxShadow:dark?'0 8px 24px rgba(0,0,0,.4)':'0 8px 24px rgba(0,0,0,.12)', zIndex:30 }
-          const itemStyle = (ativo) => ({ padding:'7px 10px', borderRadius:5, fontSize:12, cursor:'pointer', background: ativo?azulBg:'transparent', color: ativo?azul:T.textPrimary, fontWeight: ativo?600:500, display:'flex', alignItems:'center', gap:7 })
-          // Divider visual
-          const div = <div style={{ width:1, height:20, background:T.border, margin:'0 4px' }} />
+
+          // Segmented control para zonas
+          const segBg = dark ? 'rgba(255,255,255,0.07)' : '#e4e4e9'
+          const segActive = dark
+            ? { background: T.card, color: T.textPrimary, boxShadow: '0 1px 3px rgba(0,0,0,.4)', fontWeight: 600 }
+            : { background: '#ffffff', color: T.textPrimary, boxShadow: '0 1px 3px rgba(0,0,0,.12)', fontWeight: 600 }
+          const segInactive = { background: 'transparent', color: T.textMuted, boxShadow: 'none', fontWeight: 500 }
+
+          // Chip pill base
+          const chipBase = {
+            padding: '5px 11px', borderRadius: 100, fontSize: 11.5, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
+            transition: 'all .12s', position: 'relative', border: 'none', fontFamily: 'inherit',
+          }
+          const chipAtivo  = { ...chipBase, background: azulBg, color: azul, fontWeight: 600 }
+          const chipNormal = { ...chipBase, background: dark ? 'rgba(255,255,255,0.06)' : T.bg, color: T.textMuted, fontWeight: 500 }
+
+          // Dropdown popup
+          const popupStyle = {
+            position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 160,
+            padding: 6, background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 10, boxShadow: dark ? '0 8px 24px rgba(0,0,0,.5)' : '0 8px 24px rgba(0,0,0,.13)', zIndex: 30,
+          }
+          const itemStyle = (ativo) => ({
+            padding: '7px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer',
+            background: ativo ? azulBg : 'transparent', color: ativo ? azul : T.textPrimary,
+            fontWeight: ativo ? 600 : 500, display: 'flex', alignItems: 'center', gap: 7,
+          })
+
+          const div = <div style={{ width: 1, height: 18, background: dark ? 'rgba(255,255,255,0.1)' : T.border, margin: '0 2px', flexShrink: 0 }} />
 
           return (
-            <div ref={barraRef} style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:9, padding:'7px 10px', display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', position:'relative' }}>
-              {/* Tabs de zona */}
-              <div style={{ display:'flex', gap:3 }}>
+            <div ref={barraRef} style={{
+              background: T.card, border: `1px solid ${T.border}`,
+              borderRadius: 11, padding: '6px 10px',
+              display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', position: 'relative',
+            }}>
+              {/* Segmented control de zonas */}
+              <div style={{ display: 'flex', background: segBg, borderRadius: 9, padding: 3, gap: 1, flexShrink: 0 }}>
                 {abas.map(a => {
                   const ativo = a.id === zona
                   const zonaA = ZONAS.find(z => z.id === a.id)
@@ -340,11 +364,16 @@ export default function Kanban({ T, dark, user }) {
                     return etapasZona.some(e => e.match && e.match[o.tipo] === o.etapa)
                   }).length
                   return (
-                    <button key={a.id} onClick={()=>setZona(a.id)}
-                      style={{ padding:'6px 11px', borderRadius:6, border:'1px solid transparent', cursor:'pointer', background:ativo?azulBg:'transparent', color:ativo?azul:T.textMuted, fontSize:12, fontWeight:ativo?700:500, display:'flex', alignItems:'center', gap:5, transition:'all .12s' }}>
-                      <i className={`ti ${a.icon}`} style={{ fontSize:13 }} aria-hidden="true" />
+                    <button key={a.id} onClick={() => setZona(a.id)}
+                      style={{
+                        padding: '5px 11px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                        fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5,
+                        transition: 'all .12s', fontFamily: 'inherit',
+                        ...(ativo ? segActive : segInactive),
+                      }}>
+                      <i className={`ti ${a.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
                       <span>{a.label}</span>
-                      <span style={{ fontSize:10, fontWeight:700, opacity:.8 }}>{n}</span>
+                      {n > 0 && <span style={{ fontSize: 10, fontWeight: 700, opacity: .75 }}>{n}</span>}
                     </button>
                   )
                 })}
@@ -353,33 +382,40 @@ export default function Kanban({ T, dark, user }) {
               {div}
 
               {/* Busca */}
-              <div style={{ position:'relative', flex:'1 1 180px', minWidth:160, maxWidth:280 }}>
-                <i className="ti ti-search" style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', fontSize:13, color:T.textDim }} aria-hidden="true" />
-                <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar nº, cliente, marca, modelo, série…"
-                  style={{ width:'100%', padding:'6px 9px 6px 27px', borderRadius:6, border:`1px solid ${T.border}`, background:T.bg, color:T.textPrimary, fontSize:12, outline:'none', boxSizing:'border-box' }} />
+              <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 160, maxWidth: 280 }}>
+                <i className="ti ti-search" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: T.textDim }} aria-hidden="true" />
+                <input value={busca} onChange={e => setBusca(e.target.value)}
+                  placeholder="Buscar nº, cliente, marca, modelo, série…"
+                  style={{
+                    width: '100%', padding: '6px 10px 6px 28px',
+                    borderRadius: 100, border: `1px solid ${T.border}`,
+                    background: dark ? 'rgba(255,255,255,0.05)' : T.bg,
+                    color: T.textPrimary, fontSize: 12, outline: 'none',
+                    boxSizing: 'border-box', fontFamily: 'inherit',
+                  }} />
               </div>
 
-              {/* Atalho rápido: + Nova OS colado na busca (só ícone) */}
-              <button onClick={()=>setModalNova(true)}
+              {/* + Nova OS compacto */}
+              <button onClick={() => setModalNova(true)}
                 aria-label="Nova OS" title="Nova OS"
-                style={{ width:28, height:28, borderRadius:6, border:'none', cursor:'pointer', background:azul, color: dark ? '#0b1220' : '#ffffff', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'inherit' }}>
-                <i className="ti ti-plus" style={{ fontSize:15 }} aria-hidden="true" />
+                style={{ width: 28, height: 28, borderRadius: 100, border: 'none', cursor: 'pointer', background: azul, color: dark ? '#0b1220' : '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
               </button>
 
               {div}
 
               {/* Dropdown Prazo */}
-              <div style={{ position:'relative' }}>
-                <button onClick={()=>setMenuAberto(m => m === 'prazo' ? null : 'prazo')}
-                  style={{ ...chipBase, ...(statusF !== 'todos' ? chipAtivo : chipNormal) }}>
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setMenuAberto(m => m === 'prazo' ? null : 'prazo')}
+                  style={statusF !== 'todos' ? chipAtivo : chipNormal}>
                   Prazo: {lblPrazo}
-                  <i className="ti ti-chevron-down" style={{ fontSize:11, opacity:.7 }} aria-hidden="true" />
+                  <i className="ti ti-chevron-down" style={{ fontSize: 11, opacity: .7 }} aria-hidden="true" />
                 </button>
                 {menuAberto === 'prazo' && (
                   <div style={popupStyle}>
-                    {[['todos','Todos'],['vencido','Vencidas'],['hoje','Hoje/amanhã'],['ok','Em dia']].map(([v, l]) => (
-                      <div key={v} onClick={()=>{ setStatusF(v); setMenuAberto(null) }} style={itemStyle(statusF === v)}>
-                        {statusF === v && <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" />}
+                    {[['todos', 'Todos'], ['vencido', 'Vencidas'], ['hoje', 'Hoje/amanhã'], ['ok', 'Em dia']].map(([v, l]) => (
+                      <div key={v} onClick={() => { setStatusF(v); setMenuAberto(null) }} style={itemStyle(statusF === v)}>
+                        {statusF === v && <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />}
                         <span style={{ marginLeft: statusF === v ? 0 : 20 }}>{l}</span>
                       </div>
                     ))}
@@ -387,21 +423,21 @@ export default function Kanban({ T, dark, user }) {
                 )}
               </div>
 
-              {/* Dropdown Tipos (multi-select) */}
-              <div style={{ position:'relative' }}>
-                <button onClick={()=>setMenuAberto(m => m === 'tipos' ? null : 'tipos')}
-                  style={{ ...chipBase, ...(tiposCount < totalTipos ? chipAtivo : chipNormal) }}>
+              {/* Dropdown Tipos */}
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setMenuAberto(m => m === 'tipos' ? null : 'tipos')}
+                  style={tiposCount < totalTipos ? chipAtivo : chipNormal}>
                   Tipos: {tiposCount}/{totalTipos}
-                  <i className="ti ti-chevron-down" style={{ fontSize:11, opacity:.7 }} aria-hidden="true" />
+                  <i className="ti ti-chevron-down" style={{ fontSize: 11, opacity: .7 }} aria-hidden="true" />
                 </button>
                 {menuAberto === 'tipos' && (
                   <div style={popupStyle}>
                     {Object.entries(TIPOS_OS).map(([id, cfg]) => {
                       const ativo = tiposAtivos.has(id)
                       return (
-                        <div key={id} onClick={()=>toggleTipo(id)} style={itemStyle(ativo)}>
-                          <i className={`ti ${ativo ? 'ti-check' : 'ti-square'}`} style={{ fontSize:13 }} aria-hidden="true" />
-                          <i className={`ti ${cfg.icon}`} style={{ fontSize:13, opacity:.85 }} aria-hidden="true" />
+                        <div key={id} onClick={() => toggleTipo(id)} style={itemStyle(ativo)}>
+                          <i className={`ti ${ativo ? 'ti-check' : 'ti-square'}`} style={{ fontSize: 13 }} aria-hidden="true" />
+                          <i className={`ti ${cfg.icon}`} style={{ fontSize: 13, opacity: .85 }} aria-hidden="true" />
                           {cfg.label}
                         </div>
                       )
@@ -410,26 +446,28 @@ export default function Kanban({ T, dark, user }) {
                 )}
               </div>
 
-              {/* Toggles diretos: Aguard. peça e Recusadas */}
-              <button onClick={()=>setVerAgPeca(v=>!v)}
-                title={verAgPeca ? 'Ocultar filtro de aguardando peça' : 'Mostrar só OS aguardando peça'}
-                style={{ ...chipBase, ...(verAgPeca ? chipAtivo : chipNormal) }}>
-                <i className={`ti ${verAgPeca?'ti-package':'ti-package-off'}`} style={{ fontSize:12 }} aria-hidden="true" />
+              {/* Toggle Peça */}
+              <button onClick={() => setVerAgPeca(v => !v)}
+                title={verAgPeca ? 'Ocultar filtro aguardando peça' : 'Mostrar só OS aguardando peça'}
+                style={verAgPeca ? chipAtivo : chipNormal}>
+                <i className={`ti ${verAgPeca ? 'ti-package' : 'ti-package-off'}`} style={{ fontSize: 12 }} aria-hidden="true" />
                 Peça ({totalAgPeca})
               </button>
+
+              {/* Toggle Recusadas */}
               {(zona === 'todos' || zona === 'financeiro') && (
-                <button onClick={()=>setVerRecusados(v=>!v)}
+                <button onClick={() => setVerRecusados(v => !v)}
                   title={verRecusados ? 'Ocultar recusadas' : 'Mostrar recusadas'}
-                  style={{ ...chipBase, ...(verRecusados ? chipAtivo : chipNormal) }}>
-                  <i className={`ti ${verRecusados?'ti-eye':'ti-eye-off'}`} style={{ fontSize:12 }} aria-hidden="true" />
+                  style={verRecusados ? chipAtivo : chipNormal}>
+                  <i className={`ti ${verRecusados ? 'ti-eye' : 'ti-eye-off'}`} style={{ fontSize: 12 }} aria-hidden="true" />
                   Recusadas ({totalRecusados})
                 </button>
               )}
 
-              {/* Nova OS — sólido azul, alinhado à direita */}
-              <button onClick={()=>setModalNova(true)}
-                style={{ marginLeft:'auto', padding:'0 12px', height:28, borderRadius:6, border:'none', cursor:'pointer', background:azul, color: dark ? '#0b1220' : '#ffffff', fontSize:11.5, fontWeight:700, display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
-                <i className="ti ti-plus" style={{ fontSize:13 }} aria-hidden="true" />
+              {/* Nova OS — alinhado à direita */}
+              <button onClick={() => setModalNova(true)}
+                style={{ marginLeft: 'auto', padding: '0 14px', height: 30, borderRadius: 100, border: 'none', cursor: 'pointer', background: azul, color: dark ? '#0b1220' : '#ffffff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
                 Nova OS
               </button>
             </div>
