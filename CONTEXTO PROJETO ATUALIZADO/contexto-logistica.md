@@ -7,7 +7,7 @@
 
 ## 0. Decisões técnicas da Logística
 
-- **Slots Rota A/B/C**: `dataAtiva = HOJE` fixo. Auto-cria 3 rotas ao abrir o dia via guard `useRef(criandoRotasRef)`. `sql/17-rota-nome.sql` + `sql/18-rota-constraint-fix.sql` + `sql/19-rota-duplicatas-cleanup.sql` — ✅ **aplicados em 2026-05-27** (coluna `nome`, UNIQUE `(data, motorista_id, nome) NULLS NOT DISTINCT`, duplicatas limpas).
+- **Slots Rota A/B/C**: `dataAtiva = HOJE` fixo. Auto-cria 3 rotas ao abrir o dia via guard `useRef(criandoRotasRef)`. `sql/17-rota-nome.sql` + `sql/18-rota-constraint-fix.sql` + `sql/19-rota-duplicatas-cleanup.sql` + `sql/20-rota-rls-fix.sql` — ✅ **aplicados em 2026-05-27** (coluna `nome`, UNIQUE `(data, motorista_id, nome) NULLS NOT DISTINCT`, duplicatas limpas, RLS permissiva pra `authenticated`).
 - **Componentes compartilhados**: `LogisticaMobile.jsx` é home dos subcomponentes (`CardFlutuanteOS`, `RotaAccordion`, `FiltroEtapas`, `DiagnosticoMapa`, etc.). Desktop importa de lá — evita módulo separado.
 - **DnD**: HTML5 nativo (não `@dnd-kit` — não está instalado). `RotaDetalheModal` mantém draft local e persiste tudo no "Salvar alterações"; "Concluir parada" individual dispara `useRotas.concluirParada` direto (optimistic).
 - **Motoristas**: usar `apelido` (tabela `usuarios` não tem `nome`).
