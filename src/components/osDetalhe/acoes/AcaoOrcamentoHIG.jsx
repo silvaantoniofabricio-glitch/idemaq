@@ -20,6 +20,7 @@ import {
   higType, higFilledButton, higTintedButton, higInsetCard,
 } from '../../../theme-hig'
 import { fmtBRL } from '../../../utils/fmt'
+import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { usePecas } from '../../../hooks/usePecas'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
@@ -626,6 +627,307 @@ function ItemRowEditando({ item, tipo, T, dark, onConfirm }) {
   )
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Estilo Atlassian Design — substitui HIGSection no orçamento
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ATL_RADIUS = 4
+const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
+
+function atlSurfaceSunken(dark) {
+  return dark ? 'rgba(255,255,255,0.025)' : '#F7F8F9'
+}
+function atlHover(dark) {
+  return dark ? 'rgba(255,255,255,0.04)' : 'rgba(9,30,66,0.04)'
+}
+
+// Card/panel Atlassian — borda + sombra sutil, radius 4, header com hairline
+function AtlPanel({ T, dark, title, action, count, footer, children, accent }) {
+  return (
+    <div style={{
+      background: T.card,
+      border: `1px solid ${T.border}`,
+      borderRadius: ATL_RADIUS,
+      overflow: 'hidden',
+      fontFamily: ATL_FONT,
+      boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
+    }}>
+      {(title || action) && (
+        <div style={{
+          padding: '10px 14px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
+        }}>
+          {accent && (
+            <div style={{
+              width: 3, alignSelf: 'stretch', borderRadius: 99,
+              background: accent, minHeight: 14, flexShrink: 0,
+            }} />
+          )}
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: T.textPrimary,
+            letterSpacing: '-0.005em', flex: 1,
+          }}>
+            {title}
+          </div>
+          {count != null && (
+            <span style={{
+              fontSize: 11, fontWeight: 600,
+              color: T.textMuted,
+              background: dark ? 'rgba(255,255,255,0.07)' : '#DFE1E6',
+              padding: '2px 7px', borderRadius: 99,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {count}
+            </span>
+          )}
+          {action}
+        </div>
+      )}
+      <div>{children}</div>
+      {footer && (
+        <div style={{
+          padding: '8px 14px',
+          borderTop: `1px solid ${T.border}`,
+          background: atlSurfaceSunken(dark),
+          fontSize: 12, color: T.textMuted,
+        }}>
+          {footer}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Botão de texto Atlassian (link primário)
+function AtlTextButton({ T, dark, onClick, icon, children, disabled }) {
+  const azul = corEtapa('blue', dark)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        background: 'transparent', border: 'none',
+        padding: '4px 6px', borderRadius: 3,
+        fontSize: 12.5, fontWeight: 500,
+        color: disabled ? T.textDim : azul,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        fontFamily: 'inherit',
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+      {icon && <i className={`ti ti-${icon}`} style={{ fontSize: 13 }} aria-hidden="true" />}
+      {children}
+    </button>
+  )
+}
+
+// Sub-header dentro do panel (separa Serviços/Peças/Deslocamento)
+function AtlSubHeader({ T, dark, label, valor, first }) {
+  return (
+    <div style={{
+      padding: '10px 14px 6px',
+      borderTop: first ? 'none' : `1px solid ${T.border}`,
+      display: 'flex', alignItems: 'center', gap: 8,
+      background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
+    }}>
+      <span style={{
+        fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '0.06em',
+        flex: 1,
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: 12, fontWeight: 600, color: T.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {fmtBRL(valor || 0)}
+      </span>
+    </div>
+  )
+}
+
+// Row de item (modo display) — hover sutil + remover só no hover
+function AtlItemRow({ T, dark, item, tipo, onRemove }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        padding: '8px 14px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: hover ? atlHover(dark) : 'transparent',
+        transition: 'background .12s',
+      }}>
+      <div style={{
+        width: 24, height: 24, borderRadius: 4,
+        background: bgFor(tipo.color, dark),
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <TI name={tipo.icon} size={12} color={tipo.color} />
+      </div>
+      <div style={{
+        flex: 1, minWidth: 0,
+        fontSize: 13, color: T.textPrimary,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        letterSpacing: '-0.005em',
+      }}>
+        {item.nome || <span style={{ color: T.textDim, fontStyle: 'italic' }}>Sem nome</span>}
+      </div>
+      <div style={{
+        fontSize: 12, color: T.textMuted,
+        fontVariantNumeric: 'tabular-nums',
+        flexShrink: 0, minWidth: 24, textAlign: 'right',
+      }}>
+        {item.qtd || 1}×
+      </div>
+      <div style={{
+        fontSize: 13, fontWeight: 600, color: T.textPrimary,
+        fontVariantNumeric: 'tabular-nums',
+        flexShrink: 0, minWidth: 76, textAlign: 'right',
+      }}>
+        {fmtBRL((item.qtd || 1) * (item.valor_unitario || 0))}
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remover item"
+        style={{
+          width: 24, height: 24, borderRadius: 3,
+          border: 'none', background: 'transparent',
+          color: T.textMuted, cursor: 'pointer',
+          opacity: hover ? 1 : 0,
+          transition: 'opacity .12s, background .12s',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+        <TI name="trash" size={13} color={T.textMuted} />
+      </button>
+    </div>
+  )
+}
+
+// Row sempre presente pra adicionar novo item (estilo Atlassian inline)
+function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
+  const [nome, setNome] = useState('')
+  const [qtd, setQtd] = useState('1')
+  const [valor, setValor] = useState('')
+  const [focusado, setFocusado] = useState(false)
+  const containerRef = useRef(null)
+  const flushedRef = useRef(false)
+
+  const valido = nome.trim().length > 0
+  const azul = corEtapa('blue', dark)
+
+  async function flush() {
+    if (flushedRef.current) return
+    if (!valido) return
+    flushedRef.current = true
+    await onAdd({
+      nome: nome.trim(),
+      qtd: Number(qtd) || 1,
+      valor_unitario: Number(String(valor).replace(',', '.')) || 0,
+    })
+    setNome(''); setQtd('1'); setValor('')
+    flushedRef.current = false
+  }
+
+  function handleBlur(e) {
+    const next = e.relatedTarget
+    if (next && containerRef.current?.contains(next)) return
+    setFocusado(false)
+    flush()
+  }
+
+  const inStyle = {
+    border: 'none', background: 'transparent', outline: 'none',
+    fontSize: 13, color: T.textPrimary,
+    fontVariantNumeric: 'tabular-nums',
+    fontFamily: 'inherit',
+  }
+
+  const placeholder = tipo.id === 'peca'
+    ? 'Adicionar peça…'
+    : tipo.id === 'desloc'
+      ? 'Adicionar deslocamento…'
+      : 'Adicionar serviço…'
+
+  return (
+    <div
+      ref={containerRef}
+      onFocus={() => setFocusado(true)}
+      onBlur={handleBlur}
+      style={{
+        padding: '8px 14px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: focusado
+          ? (dark ? 'rgba(91,155,213,0.06)' : 'rgba(91,155,213,0.04)')
+          : 'transparent',
+        borderTop: `1px dashed ${T.border}`,
+        transition: 'background .12s',
+      }}>
+      <div style={{
+        width: 24, height: 24, borderRadius: 4,
+        background: focusado ? bgFor(tipo.color, dark) : 'transparent',
+        border: `1px dashed ${focusado ? 'transparent' : T.border}`,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+        transition: 'background .12s, border-color .12s',
+      }}>
+        <TI name="plus" size={11} color={focusado ? tipo.color : T.textDim} />
+      </div>
+
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={nome}
+        onChange={e => setNome(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.preventDefault(); flush() }
+          if (e.key === 'Escape') { setNome(''); setValor(''); e.currentTarget.blur() }
+        }}
+        style={{ ...inStyle, flex: 1, minWidth: 0, textOverflow: 'ellipsis' }}
+      />
+
+      {/* Qtd/Valor so aparecem depois que comecou a digitar — assim o
+          placeholder do nome usa toda a largura disponivel. */}
+      {valido && (
+        <>
+          <input
+            type="number" min="1"
+            value={qtd}
+            onChange={e => setQtd(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); flush() } }}
+            style={{ ...inStyle, width: 30, textAlign: 'right' }}
+          />
+          <span style={{ fontSize: 11, color: T.textMuted, marginLeft: -4, opacity: 0.7 }}>×</span>
+
+          <div style={{
+            display: 'inline-flex', alignItems: 'baseline', gap: 2,
+            minWidth: 76, justifyContent: 'flex-end',
+          }}>
+            <span style={{ fontSize: 11, color: T.textMuted }}>R$</span>
+            <input
+              type="number" min="0" step="0.01" placeholder="0"
+              value={valor}
+              onChange={e => setValor(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); flush() } }}
+              style={{ ...inStyle, width: 60, textAlign: 'right' }}
+            />
+          </div>
+        </>
+      )}
+
+      <span style={{ width: 24, flexShrink: 0 }} aria-hidden="true" />
+    </div>
+  )
+}
+
 // ─── Row pra adicionar item novo (sempre visivel no final do grupo) ──────
 // Estilo Bling: a row em si ja tem os inputs com placeholder ("Servico…"
 // etc) e fica permanentemente disponivel. Sem botao "+ Adicionar" header,
@@ -732,6 +1034,159 @@ function NovaItemRow({ tipo, T, dark, onAdd }) {
         width: 30, height: 30, flexShrink: 0,
       }} aria-hidden="true" />
     </div>
+  )
+}
+
+// ─── Diagnóstico em panel Atlassian ───────────────────────────────────────
+function AtlDiagnosticoCard({ T, dark, os }) {
+  const relato = (os?.observacoes || '').trim()
+  if (!relato) return null
+  return (
+    <AtlPanel T={T} dark={dark} title="Diagnóstico" accent="#FFCC00">
+      <div style={{ padding: '12px 14px' }}>
+        <div style={{
+          fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+          marginBottom: 5,
+        }}>
+          Relato do cliente
+        </div>
+        <p style={{
+          fontSize: 13.5, color: T.textPrimary, margin: 0,
+          lineHeight: 1.5, whiteSpace: 'pre-wrap',
+          letterSpacing: '-0.005em',
+        }}>{relato}</p>
+      </div>
+    </AtlPanel>
+  )
+}
+
+// ─── Itens do orçamento em panel Atlassian (3 sub-grupos) ────────────────
+function AtlItensCard({ T, dark, itens, porTipo, subtotais, onAddNovo, onRemove }) {
+  const totalItens = itens.length
+
+  return (
+    <AtlPanel T={T} dark={dark}
+      title="Itens do orçamento"
+      count={totalItens > 0 ? totalItens : undefined}
+    >
+      {TIPOS.map((tipo, idxTipo) => {
+        const arr = porTipo[tipo.id] || []
+        return (
+          <React.Fragment key={tipo.id}>
+            <AtlSubHeader
+              T={T} dark={dark}
+              label={tipo.label}
+              valor={subtotais[tipo.id]}
+              first={idxTipo === 0}
+            />
+            {arr.map(it => (
+              <AtlItemRow
+                key={it.id}
+                T={T} dark={dark} tipo={tipo}
+                item={it}
+                onRemove={() => onRemove(it.id)}
+              />
+            ))}
+            <AtlNovoItemRow
+              T={T} dark={dark} tipo={tipo}
+              onAdd={(dados) => onAddNovo(tipo.id, dados)}
+            />
+          </React.Fragment>
+        )
+      })}
+    </AtlPanel>
+  )
+}
+
+// ─── Desconto em panel Atlassian ──────────────────────────────────────────
+function AtlDescontoCard({ T, dark, subtotalBruto, descontoRS, onChangeRS, onChangePct, onCommit, onRemove }) {
+  const podeAplicar = subtotalBruto > 0
+  const ativo = descontoRS > 0
+  const [editando, setEditando] = useState(ativo)
+  const pct = podeAplicar ? (descontoRS / subtotalBruto * 100) : 0
+  const azul = corEtapa('blue', dark)
+
+  const action = !editando ? (
+    <AtlTextButton
+      T={T} dark={dark}
+      onClick={() => podeAplicar && setEditando(true)}
+      disabled={!podeAplicar}
+      icon="plus">
+      Aplicar
+    </AtlTextButton>
+  ) : ativo ? (
+    <AtlTextButton
+      T={T} dark={dark}
+      onClick={() => { onRemove(); setEditando(false) }}
+      icon="x">
+      Remover
+    </AtlTextButton>
+  ) : null
+
+  return (
+    <AtlPanel T={T} dark={dark} title="Desconto" action={action}>
+      {editando ? (
+        <div style={{
+          padding: '10px 14px',
+          display: 'flex', gap: 8, alignItems: 'center',
+        }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>R$</span>
+            <input
+              type="number" min="0" step="0.01"
+              value={descontoRS || ''}
+              onChange={e => onChangeRS(e.target.value)}
+              onBlur={onCommit}
+              placeholder="0,00"
+              style={{
+                flex: 1, padding: '4px 6px',
+                border: `1px solid ${T.border}`, borderRadius: 3,
+                background: T.card, color: T.textPrimary,
+                fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <input
+              type="number" min="0" max="100" step="0.1"
+              value={pct ? pct.toFixed(1) : ''}
+              onChange={e => onChangePct(e.target.value)}
+              onBlur={onCommit}
+              placeholder="0"
+              style={{
+                width: 48, padding: '4px 6px',
+                border: `1px solid ${T.border}`, borderRadius: 3,
+                background: T.card, color: T.textPrimary,
+                fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                fontVariantNumeric: 'tabular-nums', textAlign: 'right',
+              }}
+            />
+            <span style={{ fontSize: 12, color: T.textMuted }}>%</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          padding: '12px 14px',
+          fontSize: 13, color: ativo ? T.textPrimary : T.textMuted,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          {ativo
+            ? (
+              <>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  −{fmtBRL(descontoRS)}
+                </span>
+                <span style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                  {pct.toFixed(1)}%
+                </span>
+              </>
+            )
+            : <span style={{ fontStyle: 'italic' }}>Nenhum desconto aplicado</span>}
+        </div>
+      )}
+    </AtlPanel>
   )
 }
 
@@ -1125,25 +1580,23 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
       padding: `0 0 ${HIG_SPACE.md}px`,
     }}>
 
-      {/* 1. Diagnóstico */}
-      <ResumoDiagnostico T={T} dark={dark} os={os} />
+      {/* 1. Diagnóstico — Atlassian panel */}
+      <AtlDiagnosticoCard T={T} dark={dark} os={os} />
 
-      {/* 2. Grupos de itens — cada grupo ja tem uma row 'adicionar' sempre
-            no final (estilo Bling). Sem botao header, sem placeholder vazio. */}
-      {TIPOS.map(tipo => (
-        <GrupoItens
-          key={tipo.id}
-          tipo={tipo}
-          itens={porTipo[tipo.id]}
-          subtotal={subtotais[tipo.id]}
-          T={T} dark={dark}
-          onAddNovo={(dados) => handleAddNovo(tipo.id, dados)}
-          onRemove={removeItem}
-        />
-      ))}
+      {/* 2. Itens — Atlassian panel com 3 sub-grupos (Servicos/Pecas/Desloc),
+            cada um com sub-header (label + subtotal) e row sempre-presente
+            pra adicionar. */}
+      <AtlItensCard
+        T={T} dark={dark}
+        itens={itens}
+        porTipo={porTipo}
+        subtotais={subtotais}
+        onAddNovo={handleAddNovo}
+        onRemove={removeItem}
+      />
 
-      {/* 3. Desconto */}
-      <DescontoSection
+      {/* 3. Desconto — Atlassian panel */}
+      <AtlDescontoCard
         T={T} dark={dark}
         subtotalBruto={subtotalBruto}
         descontoRS={descontoRS}
