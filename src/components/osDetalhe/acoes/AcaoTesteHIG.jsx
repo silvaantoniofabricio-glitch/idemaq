@@ -112,98 +112,69 @@ function ResultBadge({ valor, dark }) {
   )
 }
 
-// ─── TesteAccordion — idêntico ao Avaliação ──────────────────────────────────
-function TesteAccordion({ T, dark, teste, value, onChange, open, onToggle }) {
+// ─── Linha de teste inline ────────────────────────────────────────────────
+// Ícone + label + 3 botões (OK/Defeito/Barulho) na mesma linha.
+function TesteAccordion({ T, dark, teste, value, onChange }) {
   return (
-    <div>
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          width: '100%', minHeight: HIG_SIZE.listRow,
-          padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-          border: 'none', background: open
-            ? (dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)')
-            : 'transparent',
-          display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-          cursor: 'pointer', textAlign: 'left', fontFamily: HIG_FONT,
-          WebkitTapHighlightColor: 'transparent',
-          transition: 'background .12s',
-        }}
-      >
-        {/* Ícone em badge colorido */}
-        <span style={{
-          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-          background: value
-            ? (dark ? OPCOES.find(o => o.id === value)?.bgDark : OPCOES.find(o => o.id === value)?.bgLight)
-            : (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.055)'),
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'background .15s',
-        }}>
-          <TI
-            name={teste.icon}
-            size={16}
-            color={value ? OPCOES.find(o => o.id === value)?.color : HIG_COLOR.gray}
-          />
-        </span>
+    <div style={{
+      minHeight: HIG_SIZE.listRow,
+      padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
+      display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+    }}>
+      {/* Ícone em badge colorido */}
+      <span style={{
+        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+        background: value
+          ? (dark ? OPCOES.find(o => o.id === value)?.bgDark : OPCOES.find(o => o.id === value)?.bgLight)
+          : (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.055)'),
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background .15s',
+      }}>
+        <TI name={teste.icon} size={16} color={value ? OPCOES.find(o => o.id === value)?.color : HIG_COLOR.gray} />
+      </span>
 
-        {/* Label */}
-        <span style={{
-          flex: 1, minWidth: 0,
-          ...higType('body'),
-          color: T.textPrimary,
-          textAlign: 'left',
-        }}>
-          {teste.label}
-        </span>
+      {/* Label */}
+      <span style={{
+        flex: 1, minWidth: 0,
+        ...higType('body'),
+        color: T.textPrimary,
+      }}>
+        {teste.label}
+      </span>
 
-        <ResultBadge valor={value} dark={dark} />
-      </button>
-
-      {/* Painel expandido — 3 opções em grid */}
-      {open && (
-        <div style={{
-          padding: `${HIG_SPACE.xs}px ${HIG_SPACE.sm}px ${HIG_SPACE.sm}px`,
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          gap: HIG_SPACE.xs,
-          borderTop: `0.5px solid ${T.border}`,
-          background: dark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.015)',
-        }}>
-          {OPCOES.map(op => {
-            const sel = value === op.id
-            return (
-              <button
-                key={op.id}
-                type="button"
-                onClick={() => { onChange(sel ? null : op.id); onToggle() }}
-                style={{
-                  minHeight: 56,
-                  borderRadius: HIG_RADIUS.card,
-                  border: `1.5px solid ${sel ? op.color : T.border}`,
-                  background: sel
-                    ? (dark ? op.bgDark : op.bgLight)
-                    : (dark ? 'rgba(255,255,255,0.04)' : T.card),
-                  cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 5,
-                  WebkitTapHighlightColor: 'transparent',
-                  transition: 'background .12s, border-color .12s',
-                  fontFamily: HIG_FONT,
-                }}
-              >
-                <TI name={op.icon} size={20} color={sel ? op.color : T.textMuted} />
-                <span style={{
-                  ...higType('caption1'),
-                  color: sel ? op.color : T.textMuted,
-                  fontWeight: sel ? 700 : 500,
-                }}>
-                  {op.label}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {/* 3 botões inline */}
+      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        {OPCOES.map(op => {
+          const sel = value === op.id
+          return (
+            <button key={op.id} type="button"
+              onClick={() => onChange(sel ? null : op.id)}
+              style={{
+                height: 30, padding: '0 7px',
+                borderRadius: 8,
+                border: `1.5px solid ${sel ? op.color : T.border}`,
+                background: sel
+                  ? (dark ? op.bgDark : op.bgLight)
+                  : (dark ? 'rgba(255,255,255,0.04)' : T.card),
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'background .12s, border-color .12s',
+                fontFamily: HIG_FONT,
+              }}
+            >
+              <TI name={op.icon} size={13} color={sel ? op.color : T.textMuted} />
+              <span style={{
+                ...higType('caption2'),
+                color: sel ? op.color : T.textMuted,
+                fontWeight: sel ? 700 : 500,
+              }}>
+                {op.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -229,7 +200,7 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     () => ACABAMENTO.reduce((acc, a) => ({ ...acc, [a.id]: false }), {})
   )
   const [obs, setObs] = useState(os?.observacoes || '')
-  const [openRow, setOpenRow] = useState(null)
+
   const [hidratado, setHidratado] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
@@ -326,7 +297,7 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
         footer={
           preenchidos > 0
             ? `${preenchidos} de ${TESTES.length} avaliados`
-            : 'Toque em cada teste para avaliar'
+            : `0 de ${TESTES.length} avaliados`
         }
       >
         {TESTES.map((teste) => (
@@ -337,8 +308,6 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
               teste={teste}
               value={testes[teste.id]}
               onChange={v => setTestes(prev => ({ ...prev, [teste.id]: v }))}
-              open={openRow === teste.id}
-              onToggle={() => setOpenRow(prev => prev === teste.id ? null : teste.id)}
             />
           </React.Fragment>
         ))}
