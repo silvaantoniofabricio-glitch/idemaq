@@ -1,6 +1,5 @@
 // src/components/kanban/KanbanCard.jsx
-// Card do kanban — layout v3 (denso): grid 2-col, cliente+valor lado a lado,
-// equipamento e endereço em linha simples, telefone/SN só no detalhe.
+// Card do Kanban — Apple HIG: elevação, tipografia SF, tags em pill.
 
 import React from 'react'
 import { P } from '../../theme'
@@ -38,13 +37,13 @@ export default function KanbanCard({
     onDragStart?.()
   }
 
-  // Pill do prazo — cor por status, "ok" fica discreto (sem fundo)
+  // Prazo pill
   let prazoPillText = null
   let prazoPillStyle = null
   if (!semPrazo) {
     if (status === 'vencido') {
-      prazoPillStyle = { background: cor('#2e0e0e', '#fde8e8'), color: cor(P.red, P.redDark) }
-      prazoPillText = `${Math.abs(dias)}d atras.`
+      prazoPillStyle = { background: cor('#3a0e0e', '#fff0f0'), color: cor('#ff7070', P.redDark) }
+      prazoPillText = `${Math.abs(dias)}d atr.`
     } else if (status === 'hoje') {
       prazoPillStyle = { background: cor('#2e2204', '#fff8d8'), color: cor(P.yellow, P.yellowDark) }
       prazoPillText = 'Hoje'
@@ -57,17 +56,17 @@ export default function KanbanCard({
     }
   }
 
-  // Badge base (tags do rodapé)
-  const tagStyle = (bg, fg) => ({
-    padding: '1px 5px', borderRadius: 3,
-    fontSize: 9.5, fontWeight: 700,
+  const pill = (bg, fg) => ({
+    padding: '2px 7px', borderRadius: 100,
+    fontSize: 10, fontWeight: 600,
     background: bg, color: fg,
     display: 'inline-flex', alignItems: 'center', gap: 3,
+    letterSpacing: '0.01em',
   })
 
-  const baseStyle = dark
-    ? { background: T.card, border: `1px solid ${T.border}`, borderLeft: `3px solid ${corLinha}` }
-    : { background: T.card, border: 'none', borderLeft: `3px solid ${corLinha}`, boxShadow: T.shadow }
+  const cardStyle = dark
+    ? { background: '#2a2a2d', borderLeft: `3px solid ${corLinha}` }
+    : { background: '#ffffff', borderLeft: `3px solid ${corLinha}`, boxShadow: '0 1px 4px rgba(0,0,0,.07), 0 0 0 .5px rgba(0,0,0,.04)' }
 
   const temTags = os.garantia || pagoTotal || pagoParcial || os.aguardando_peca || (os.horasNaEtapa && os.horasNaEtapa > 24)
 
@@ -77,19 +76,26 @@ export default function KanbanCard({
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
       className={shaking ? 'idemaq-shake' : undefined}
-      style={{ ...baseStyle, borderRadius: 10, padding: '9px 11px', cursor: 'grab', transition: 'box-shadow .15s, border-color .15s, transform .15s' }}
+      style={{
+        ...cardStyle,
+        borderRadius: 11,
+        padding: '10px 12px',
+        cursor: 'grab',
+        transition: 'box-shadow .18s, transform .15s',
+        userSelect: 'none',
+      }}
       onMouseEnter={e => {
-        if (dark) { e.currentTarget.style.borderColor = '#3a3a3e'; e.currentTarget.style.borderLeftColor = corLinha }
-        else { e.currentTarget.style.boxShadow = T.shadowHover; e.currentTarget.style.transform = 'translateY(-1px)' }
+        if (!dark) e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.1), 0 0 0 .5px rgba(0,0,0,.05)'
+        e.currentTarget.style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={e => {
-        if (dark) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.borderLeftColor = corLinha }
-        else { e.currentTarget.style.boxShadow = T.shadow; e.currentTarget.style.transform = 'translateY(0)' }
+        if (!dark) e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.07), 0 0 0 .5px rgba(0,0,0,.04)'
+        e.currentTarget.style.transform = 'translateY(0)'
       }}
       onMouseDown={e => { e.currentTarget.style.cursor = 'grabbing' }}
       onMouseUp={e => { e.currentTarget.style.cursor = 'grab' }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 2, alignItems: 'baseline' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
 
         {/* Linha 1: tipo + número | prazo pill */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
@@ -99,16 +105,16 @@ export default function KanbanCard({
                aria-hidden="true" title={tipoCfg.label} />
           )}
           <span style={{
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-            fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-            fontVariantNumeric: 'tabular-nums',
+            fontSize: 10.5, fontWeight: 500, color: T.textMuted,
+            fontFamily: '"SF Mono", ui-monospace, Menlo, monospace',
+            fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em',
           }}>#{os.numero}</span>
         </div>
         {prazoPillText ? (
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 3,
-            padding: '1px 6px', borderRadius: 3,
-            fontSize: 10, fontWeight: 700,
+            padding: '1.5px 7px', borderRadius: 100,
+            fontSize: 10, fontWeight: 600,
             fontVariantNumeric: 'tabular-nums',
             justifySelf: 'end',
             ...prazoPillStyle,
@@ -117,59 +123,56 @@ export default function KanbanCard({
 
         {/* Linha 2: cliente | valor */}
         <div style={{
-          fontSize: 13, fontWeight: 600, color: T.textPrimary,
+          fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          minWidth: 0,
+          minWidth: 0, letterSpacing: '-0.01em',
         }}>{os.cliente}</div>
         {mostrarValor ? (
           <span style={{
             fontSize: 12.5, color: cor(P.blue, P.blueDark), fontWeight: 700,
-            fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+            fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
             justifySelf: 'end',
           }}>R$ {(os.valor - (os.desconto || 0)).toLocaleString('pt-BR')}</span>
         ) : (
-          <span style={{
-            fontSize: 11, color: T.textMuted, fontWeight: 600,
-            justifySelf: 'end',
-          }}>—</span>
+          <span style={{ fontSize: 11, color: T.textDim, fontWeight: 400, justifySelf: 'end' }}>—</span>
         )}
 
-        {/* Linha 3: equipamento + S/N (span 2) */}
-        <div style={{
-          gridColumn: '1 / -1',
-          fontSize: 11.5, color: T.textSecondary,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {linhaEquip}
-          {os.serie && (
-            <span style={{
-              color: T.textMuted,
-              fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-              fontSize: 10.5,
-              marginLeft: 6,
-            }}>· S/N {os.serie}</span>
-          )}
-        </div>
+        {/* Linha 3: equipamento */}
+        {linhaEquip && (
+          <div style={{
+            gridColumn: '1 / -1',
+            fontSize: 12, color: T.textSecondary,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {linhaEquip}
+            {os.serie && (
+              <span style={{
+                color: T.textMuted,
+                fontFamily: '"SF Mono", ui-monospace, Menlo, monospace',
+                fontSize: 10.5, marginLeft: 6,
+              }}>· {os.serie}</span>
+            )}
+          </div>
+        )}
 
-        {/* Linha 4: endereço (span 2, sem ícone) */}
+        {/* Linha 4: endereço */}
         {endResumido && (
           <div style={{
             gridColumn: '1 / -1',
             fontSize: 11, color: T.textMuted,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            marginTop: 1,
           }}>{endResumido}</div>
         )}
 
-        {/* Linha 5: dual status oficina (span 2) */}
+        {/* Linha 5: dual status oficina */}
         {dual && (
-          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 6 }}>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
             <SubStatus label="Limp."  status={os.limpeza}    T={T} dark={dark} />
             <SubStatus label="Manut." status={os.manutencao} T={T} dark={dark} />
           </div>
         )}
 
-        {/* Linha 6: tags (span 2) */}
+        {/* Linha 6: tags */}
         {temTags && (
           <div style={{
             gridColumn: '1 / -1',
@@ -178,36 +181,32 @@ export default function KanbanCard({
           }}>
             {os.garantia && (
               <span title={`Garantia da OS #${os.os_origem_id}`}
-                    style={tagStyle(cor('#0d2035', '#e6f1fb'), cor(P.blue, P.blueDark))}>
+                    style={pill(cor('#0d2035', '#e6f1fb'), cor(P.blue, P.blueDark))}>
                 <i className="ti ti-shield-check" style={{ fontSize: 10 }} aria-hidden="true" />Garantia
               </span>
             )}
             {pagoTotal && (
-              <span style={tagStyle(cor('#0e2818', '#e6f7ed'), cor(P.green, P.greenDark))}>
+              <span style={pill(cor('#0e2818', '#e6f7ed'), cor(P.green, P.greenDark))}>
                 <i className="ti ti-check" style={{ fontSize: 10 }} aria-hidden="true" />Pago
               </span>
             )}
             {pagoParcial && (
-              <span style={{
-                ...tagStyle(cor('#2e2204', '#fff8d8'), cor(P.yellow, P.yellowDark)),
-                fontVariantNumeric: 'tabular-nums',
-              }}>
+              <span style={{ ...pill(cor('#2e2204', '#fff8d8'), cor(P.yellow, P.yellowDark)), fontVariantNumeric: 'tabular-nums' }}>
                 R$ {(os.valor_pago || 0).toLocaleString('pt-BR')}/{(totalAPagar(os)).toLocaleString('pt-BR')}
               </span>
             )}
             {os.aguardando_peca && (
-              <span style={tagStyle(cor('#3a2200', '#fff4e0'), '#ff9800')}>
+              <span style={pill(cor('#3a2200', '#fff4e0'), '#ff9800')}>
                 <i className="ti ti-package" style={{ fontSize: 10 }} aria-hidden="true" />peça
               </span>
             )}
             {os.horasNaEtapa && os.horasNaEtapa > 24 && (
-              <span style={tagStyle(cor('#2a1515', '#fde8e8'), cor(P.red, P.redDark))}>
+              <span style={pill(cor('#2a1515', '#fde8e8'), cor(P.red, P.redDark))}>
                 <i className="ti ti-alert-triangle" style={{ fontSize: 10 }} aria-hidden="true" />{os.horasNaEtapa}h
               </span>
             )}
           </div>
         )}
-
       </div>
     </div>
   )

@@ -15,6 +15,7 @@
 - ✅ Filtra `cliente.deleted_at` em JS pós-fetch (outer join — fabricação tem `cliente_id NULL` e precisa aparecer)
 - ✅ Skeleton de 3 cards/coluna enquanto loading
 - ✅ **Scroll inteligente (21/05/2026)**: `handleWheel` rola horizontal o Kanban por padrão, mas se o cursor está sobre uma coluna lotada com barra própria e ainda dá pra rolar na direção do gesto, deixa a coluna rolar nativamente. Detalhe em §17.
+- ✅ **Reescrita Apple HIG (27/05/2026)**: `KanbanCard` usa elevação (shadow) no light mode, `background: #2a2a2d` no dark, accent stripe 3px na esquerda, tags em pill (borderRadius 100), tipografia cliente 13.5px. `KanbanColumn` tem stripe colorida no topo, header limpo com badge pill, borda transparente no dark. Barra de filtros: abas de zona viram segmented control estilo macOS (container acinzentado, aba ativa = branco/card com sombra); chips e campo de busca em pill-shape.
 
 ### Nova OS (`src/_legacy/desktopKanbanModals.jsx`)
 - ✅ **Salva real** (19/05/2026 → commit em 20/05): busca cliente do Supabase com debounce **250ms** + ILIKE em nome/telefone + **mínimo 2 chars** + LIMIT 20
