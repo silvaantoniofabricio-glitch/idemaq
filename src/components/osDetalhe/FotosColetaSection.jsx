@@ -16,6 +16,8 @@ import {
   uploadFotoOS, resolverFotoUrl, removerFotoOS, FOTO_STORAGE_MARKER,
 } from '../../utils/osStorage'
 import { corEtapa } from '../../utils/colors'
+import { supabase } from '../../supabase'
+import { useToast } from '../ui'
 import FotoAmpliadaModal from './FotoAmpliadaModal'
 
 const SLOTS = [
@@ -23,11 +25,19 @@ const SLOTS = [
   { idx: 2, key: 'foto_coleta_2', label: 'Estado geral', tipo: 'coleta_2' },
 ]
 
-export default function FotosColetaSection({ T, dark, os, onUpdateOS, readOnly = false }) {
+export default function FotosColetaSection({
+  T, dark, os, onUpdateOS,
+  readOnly = false,
+  onCamposExtraidos,  // (campos) => void — opcional. Se passado, recebe { marca, modelo, serie }
+                      // detectados na etiqueta. Quando ausente, FotosColetaSection persiste
+                      // direto via onUpdateOS (preenchendo só campos vazios).
+}) {
   const azul = corEtapa('blue', dark)
+  const notify = useToast()
 
   const [urls, setUrls] = useState({ 1: null, 2: null })
   const [uploading, setUploading] = useState({ 1: false, 2: false })
+  const [lendoEtiqueta, setLendoEtiqueta] = useState(false)
   const [escolhaSlot, setEscolhaSlot] = useState(null) // slot do action sheet (1|2|null)
   const [ampliada, setAmpliada] = useState(null)
 
@@ -62,6 +72,56 @@ export default function FotosColetaSection({ T, dark, os, onUpdateOS, readOnly =
         [`foto_coleta_${slot}`]: FOTO_STORAGE_MARKER,
       },
     })
+
+    // Auto-OCR: se foi a etiqueta (slot 1), chama Claude pra extrair marca/modelo/série.
+    // Falha silenciosa se a edge function não estiver deployada (não atrapalha o fluxo).
+    if (slot === 1 && res.url) {
+      lerEtiqueta(res.url)
+    }
+  }
+
+  async function lerEtiqueta(imageUrl) {
+    setLendoEtiqueta(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('extrair-etiqueta', {
+        body: { imageUrl },
+      })
+      if (error || !data?.ok) {
+        // Falha silenciosa — usuário preenche manual
+        if (error) console.warn('[extrair-etiqueta] falha:', error)
+        return
+      }
+      const campos = {
+        marca:  data.marca  || null,
+        modelo: data.modelo || null,
+        serie:  data.serie  || null,
+      }
+      const detectados = Object.entries(campos).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`)
+      if (detectados.length === 0) {
+        notify('info', 'Etiqueta ilegível — preencha manual')
+        return
+      }
+
+      // Quem aplica: callback do parent (se passado) ou onUpdateOS direto.
+      if (onCamposExtraidos) {
+        onCamposExtraidos(campos)
+      } else {
+        // Persiste só os campos vazios (não sobrescreve o que usuário já digitou)
+        const patch = {}
+        if (campos.marca  && !(os?.marca   || os?.marca_equipamento))   patch.marca  = campos.marca
+        if (campos.modelo && !(os?.modelo  || os?.modelo_equipamento))  patch.modelo = campos.modelo
+        if (campos.serie  && !(os?.serie   || os?.numero_serie))        patch.serie  = campos.serie
+        if (Object.keys(patch).length) {
+          onUpdateOS?.(os.numero, patch)
+        }
+      }
+
+      notify('ok', `Etiqueta lida: ${detectados.join(' · ')}`)
+    } catch (e) {
+      console.warn('[extrair-etiqueta] exception:', e)
+    } finally {
+      setLendoEtiqueta(false)
+    }
   }
 
   async function removerFoto(slot) {
@@ -112,6 +172,7 @@ export default function FotosColetaSection({ T, dark, os, onUpdateOS, readOnly =
               label={s.label}
               url={urls[s.idx]}
               uploading={uploading[s.idx]}
+              processandoIA={s.idx === 1 && lendoEtiqueta}
               readOnly={readOnly}
               onTap={() => {
                 if (urls[s.idx]) setAmpliada({ url: urls[s.idx], alt: s.label })
@@ -186,7 +247,7 @@ export default function FotosColetaSection({ T, dark, os, onUpdateOS, readOnly =
 }
 
 // ─── Slot de foto ─────────────────────────────────────────────────────────
-function FotoSlot({ T, dark, azul, label, url, uploading, readOnly, onTap, onRemove }) {
+function FotoSlot({ T, dark, azul, label, url, uploading, processandoIA, readOnly, onTap, onRemove }) {
   const Tag = url ? 'div' : 'button'
   return (
     <div style={{
@@ -226,6 +287,22 @@ function FotoSlot({ T, dark, azul, label, url, uploading, readOnly, onTap, onRem
           }}>
             {label}
           </span>
+
+          {processandoIA && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'rgba(0,0,0,0.55)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 6,
+              color: '#fff', fontFamily: 'inherit',
+              backdropFilter: 'blur(2px)',
+            }}>
+              <i className="ti ti-sparkles" style={{ fontSize: 22 }} aria-hidden="true" />
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '-0.005em' }}>
+                Lendo etiqueta…
+              </span>
+            </div>
+          )}
         </>
       ) : (
         <button type="button" onClick={onTap} disabled={uploading || readOnly}

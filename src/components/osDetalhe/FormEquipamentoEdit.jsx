@@ -125,6 +125,16 @@ export default function FormEquipamentoEdit({
           T={T} dark={dark}
           os={os}
           onUpdateOS={onUpdateOS}
+          onCamposExtraidos={(campos) => {
+            // Auto-fill IA: preenche só campos vazios; nao sobrescreve o que
+            // o usuario ja digitou. Usuario revisa e clica Salvar.
+            setForm(f => ({
+              ...f,
+              marca:  f.marca  || campos.marca  || '',
+              modelo: f.modelo || campos.modelo || '',
+              serie:  f.serie  || campos.serie  || '',
+            }))
+          }}
         />
       </div>
 
