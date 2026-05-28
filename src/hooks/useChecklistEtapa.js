@@ -58,7 +58,11 @@ export function useChecklistEtapa(osId, etapaDb) {
   // Lê o pre_diagnostico atual (otimisticamente do estado, fallback no DB)
   // e merge com o novo valor, preservando outros campos.
   const salvar = useCallback(async (novosItens, novasObs) => {
-    if (!isUUID(osId) || !etapaDb) return { data: null, error: new Error('osId/etapa inválido') }
+    if (!isUUID(osId) || !etapaDb) {
+      console.warn('[useChecklistEtapa] osId/etapa inválido', { osId, etapaDb })
+      return { data: null, error: new Error('osId/etapa inválido') }
+    }
+    console.log('[useChecklistEtapa.salvar] iniciando', { osId, etapaDb, novosItens })
     const novoSlot = {
       itens: novosItens ?? [],
       observacoes: novasObs ?? null,
@@ -94,7 +98,9 @@ export function useChecklistEtapa(osId, etapaDb) {
       .single()
     if (err) {
       setError(err)
-      console.error('[useChecklistEtapa.salvar]', err)
+      console.error('[useChecklistEtapa.salvar] ERRO', err)
+    } else {
+      console.log('[useChecklistEtapa.salvar] OK', data?.pre_diagnostico?.checklist)
     }
     return { data, error: err }
   }, [osId, etapaDb])
