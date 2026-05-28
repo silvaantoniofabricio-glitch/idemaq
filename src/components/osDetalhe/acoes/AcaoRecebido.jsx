@@ -3,7 +3,7 @@
 // máquina antes de enviar pro diagnóstico. Persiste via checklist_etapa.
 // V2: padrão Orçamento/Agenda — HeaderFlat + SubBloco com cards compactos.
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../../theme';
 import {
   TI, NowCard, Group, TextArea, BtnMobile, MOBILE, PALETA,
@@ -111,9 +111,6 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
   const [hidratado, setHidratado] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  // Ref pra salvar no unmount caso o debounce seja cancelado pelo fechamento do modal
-  const pendingChkRef = useRef(null);
-
   // Hidrata flags do pre_diagnostico jsonb (equipamento_nao_liga + motivo + vazamentos)
   useEffect(() => {
     setNaoLiga(!!os?.pre_diagnostico?.equipamento_nao_liga);
@@ -144,7 +141,17 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
   }, [os?.observacoes]);
 
   function setResultado(testeId, valor) {
-    setTestes(prev => ({ ...prev, [testeId]: valor }));
+    const novoTestes = { ...testes, [testeId]: valor };
+    setTestes(novoTestes);
+    // Salva imediatamente — sem debounce, pra não perder ao fechar o modal
+    salvarChk(
+      TESTES.map(t => ({
+        id: t.id, label: t.label,
+        checked: naoLiga ? false : novoTestes[t.id] === 'ok',
+        valor: naoLiga ? 'na' : (novoTestes[t.id] || null),
+      })),
+      null,
+    );
   }
 
   function serializarChecklist() {
@@ -156,29 +163,6 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
     }));
   }
 
-  // Auto-save dos testes (debounce 500ms) — obs NAO vai mais pro checklist,
-  // vai pro os.observacoes via useEffect separado abaixo.
-  useEffect(() => {
-    if (!hidratado) return;
-    const chk = serializarChecklist();
-    pendingChkRef.current = chk;
-    const t = setTimeout(() => {
-      salvarChk(chk, null);
-      pendingChkRef.current = null;
-    }, 500);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [testes, naoLiga, hidratado]);
-
-  // Salva no unmount caso o modal feche antes do debounce disparar
-  useEffect(() => {
-    return () => {
-      if (pendingChkRef.current) {
-        salvarChk(pendingChkRef.current, null);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Auto-save de obs no campo global os.observacoes (debounce 500ms)
   useEffect(() => {
@@ -249,7 +233,18 @@ export default function AcaoRecebido({ os, onMoverOS, onUpdateOS }) {
       {/* SUB-BLOCO 2: Checklist de testes — com toggle "nao liga" no topo */}
       <SubBloco T={T} dark={dark} icon="clipboard-check" label="Testes de funcionamento" color="blue">
         {/* Toggle "Equipamento não liga" */}
-        <button type="button" onClick={() => setNaoLiga(v => !v)}
+        <button type="button" onClick={() => {
+          const novoNaoLiga = !naoLiga;
+          setNaoLiga(novoNaoLiga);
+          salvarChk(
+            TESTES.map(t => ({
+              id: t.id, label: t.label,
+              checked: false,
+              valor: novoNaoLiga ? 'na' : (testes[t.id] || null),
+            })),
+            null,
+          );
+        }}
           style={{
             display: 'flex', alignItems: 'center', gap: 10,
             padding: '8px 10px', borderRadius: 7, marginBottom: 8,

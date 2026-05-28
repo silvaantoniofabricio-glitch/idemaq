@@ -265,10 +265,32 @@ export default function AcaoTeste({ os, onMoverOS, onUpdateOS }) {
   }, [obs, hidratado])
 
   function setResultado(testeId, valor) {
-    setTestes(prev => ({ ...prev, [testeId]: valor }))
+    const novoTestes = { ...testes, [testeId]: valor };
+    setTestes(novoTestes);
+    // Salva imediatamente
+    const linhasTestes = TESTES.map(t => ({
+      id: `teste:${t.id}`, label: t.label,
+      checked: novoTestes[t.id] === 'ok',
+      valor: novoTestes[t.id] || null,
+    }));
+    const linhasAcab = temLimpeza
+      ? ACABAMENTO.map(a => ({ id: `acab:${a.id}`, label: a.label, checked: !!acabamento[a.id] }))
+      : [];
+    salvarChk([...linhasTestes, ...linhasAcab], null);
   }
   function toggleAcab(itemId) {
-    setAcabamento(prev => ({ ...prev, [itemId]: !prev[itemId] }))
+    const novoAcab = { ...acabamento, [itemId]: !acabamento[itemId] };
+    setAcabamento(novoAcab);
+    // Salva imediatamente
+    const linhasTestes = TESTES.map(t => ({
+      id: `teste:${t.id}`, label: t.label,
+      checked: testes[t.id] === 'ok',
+      valor: testes[t.id] || null,
+    }));
+    const linhasAcab = temLimpeza
+      ? ACABAMENTO.map(a => ({ id: `acab:${a.id}`, label: a.label, checked: !!novoAcab[a.id] }))
+      : [];
+    salvarChk([...linhasTestes, ...linhasAcab], null);
   }
 
   function serializarChecklist() {
