@@ -1958,7 +1958,10 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
       {/* 5. Status do orçamento — Atlassian panel */}
       <AtlStatusOrcamento T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
 
-      {/* 6. Recebimento antecipado */}
+      {/* 6. Recebimento antecipado — envolvido em AtlPanel pra consistencia
+            visual com os outros cards. FormRecebimento mantem layout interno
+            (compartilhado com etapa Pagamento). */}
+      <AtlPanel T={T} dark={dark} title="Recebimento antecipado">
       <FormRecebimento
         T={T} dark={dark}
         saldo={Math.max(0, total - (os?.valor_pago || 0))}
@@ -1984,6 +1987,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
         onEnviarLink={() => {}}
         onGerarPix={() => {}}
       />
+      </AtlPanel>
 
       {/* 7. Documentos — Atlassian panel */}
       <AtlDocumentosCard
