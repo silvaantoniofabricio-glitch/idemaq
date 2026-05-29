@@ -14,7 +14,7 @@
 // @ts-ignore — Deno runtime
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -140,7 +140,7 @@ serve(async (req: Request) => {
       marca:  sanitize(parsed?.marca),
       modelo: sanitize(parsed?.modelo),
       serie:  sanitize(parsed?.serie),
-      modelo_ia: 'gemini-2.0-flash',
+      modelo_ia: 'gemini-2.5-flash',
     })
   } catch (e) {
     return json({ error: 'falha ao chamar Gemini API', detail: String(e) }, 500)
