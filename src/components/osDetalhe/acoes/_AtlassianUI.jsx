@@ -210,6 +210,101 @@ export function AtlListRow({ T, dark, icon, iconCor, label, subtitle, onClick, d
   )
 }
 
+// Day chip — usado em pickers de agenda/entrega (50x58 com DOW + dia grande)
+export function AtlDayChip({ T, dark, dia, dow, selected, onClick }) {
+  const azul = corEtapa('blue', dark)
+  return (
+    <button type="button" onClick={onClick}
+      style={{
+        flex: '0 0 auto', width: 50, height: 58,
+        borderRadius: ATL_RADIUS,
+        border: `1px solid ${selected ? azul : T.border}`,
+        background: selected ? azul : (dark ? 'rgba(255,255,255,0.025)' : '#FAFBFC'),
+        color: selected ? '#fff' : T.textPrimary,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 2,
+        cursor: 'pointer', fontFamily: ATL_FONT,
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'background .12s, border-color .12s',
+      }}>
+      <span style={{
+        fontSize: 10, fontWeight: 700,
+        color: selected ? 'rgba(255,255,255,0.85)' : T.textMuted,
+        letterSpacing: '0.06em',
+      }}>{dow}</span>
+      <span style={{
+        fontSize: 20, fontWeight: 600,
+        color: selected ? '#fff' : T.textPrimary,
+        fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
+      }}>{dia}</span>
+    </button>
+  )
+}
+
+// Segmented control Atlassian (Manhã / Tarde / Noite e similares)
+export function AtlSegmented({ T, dark, options, value, onChange }) {
+  return (
+    <div style={{
+      display: 'flex',
+      background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+      borderRadius: 3, padding: 2, gap: 0,
+    }}>
+      {options.map(o => {
+        const sel = o.id === value
+        return (
+          <button key={o.id} type="button" onClick={() => onChange(o.id)}
+            style={{
+              flex: 1, minHeight: 32,
+              border: 'none', borderRadius: 3,
+              background: sel ? (dark ? '#22272B' : '#FFFFFF') : 'transparent',
+              color: sel ? (dark ? '#fff' : T.textPrimary) : T.textMuted,
+              fontSize: 13, fontWeight: sel ? 600 : 500,
+              fontFamily: ATL_FONT, cursor: 'pointer',
+              boxShadow: sel
+                ? (dark
+                    ? '0 1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,0.05)'
+                    : '0 1px 2px rgba(9,30,66,0.18), 0 0 0 1px rgba(9,30,66,0.05)')
+                : 'none',
+              letterSpacing: '-0.005em',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'background .12s, box-shadow .12s',
+            }}>
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// Chip de horário (mono, border subtil, selecionado em azul cheio)
+export function AtlTimeChip({ T, dark, label, selected, onClick }) {
+  const [hover, setHover] = useState(false)
+  const azul = corEtapa('blue', dark)
+  return (
+    <button type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        minHeight: 32, padding: '4px 8px',
+        borderRadius: 3,
+        border: `1px solid ${selected ? azul : T.border}`,
+        background: selected ? azul : (hover ? atlHover(dark) : 'transparent'),
+        color: selected ? '#fff' : T.textPrimary,
+        fontSize: 13, fontWeight: selected ? 600 : 500,
+        fontFamily: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
+        fontVariantNumeric: 'tabular-nums',
+        cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'background .12s, border-color .12s',
+      }}>
+      {label}
+    </button>
+  )
+}
+
 // Field row Atlassian — label esquerda + input direita inline
 export function AtlFieldRow({ T, dark, label, value, onChange, placeholder, mono, first, type = 'text' }) {
   const [focusado, setFocusado] = useState(false)

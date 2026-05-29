@@ -1,42 +1,60 @@
 // src/components/osDetalhe/acoes/AcaoEntregaHIG.jsx
-// Entrega — Apple HIG, padrão idêntico ao AcaoAgendamentoHIG.
+// Etapa Entrega — Atlassian Design (reescrito 28/05/2026).
 //
-// Fase 1 — Aguardando agendar:
-//   Dia (chips scroll) · Período (segmented) · Horário (grid) · Observações
-// Fase 2 — Entrega agendada:
-//   Countdown + barra · Ações (WhatsApp · Rota) · Foto da entrega · CTAs
+// Dispatcher de 2 fases:
+//
+// Fase 1 — Aguardando agendar (FormAgendarEntrega):
+//   1. Dia (chips scroll horizontal)
+//   2. Periodo (segmented Manha/Tarde/Noite)
+//   3. Horario (grid 4 cols)
+//   4. Observacoes (textarea)
+//   5. CTA Agendar dd/mm · HH:MM (com Cancelar quando reagendando)
+//
+// Fase 2 — Entrega agendada (EntregaAgendada):
+//   1. Countdown ate a entrega (accent azul + barra de progresso)
+//   2. Acoes rapidas (WhatsApp + Abrir rota)
+//   3. Foto da entrega (upload com action sheet camera/galeria)
+//   4. CTAs Reagendar + Confirmar (cor varia se ja paga -> Concluir OS,
+//      senao -> ir pra Pagamento)
+//
+// Persiste:
+//   · os.pre_diagnostico.entrega.data (ISO string)
+//   · os.pre_diagnostico.foto_entrega (FOTO_STORAGE_MARKER)
+//   · os.pre_diagnostico.entrega.realizada_em (ISO no confirmar)
+//   · os.observacoes (debounce no textarea)
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useTheme } from '../../../theme'
-import { TI } from '../../_shared/PrimitivasMobile'
-import {
-  HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT, HIG_FONT_MONO,
-  higType, higFilledButton, higInsetCard,
-} from '../../../theme-hig'
+import { corEtapa } from '../../../utils/colors'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { estaPagaTotal } from '../../../utils/osHelpers'
 import {
   uploadFotoEntrega, removerFotoEntrega, resolverFotoUrl, FOTO_STORAGE_MARKER,
 } from '../../../utils/osStorage'
 import { useToast } from '../../ui'
+import {
+  AtlPanel, AtlButton, AtlListRow, AtlDayChip, AtlSegmented, AtlTimeChip,
+  ATL_FONT, atlSurfaceSunken,
+} from './_AtlassianUI'
 
-// ─── Helpers de data/hora — idênticos ao Agenda ───────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────
 const DOW = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
 const PERIODOS = [
   { id: 'manha', label: 'Manhã', ini: 6,  fim: 12 },
   { id: 'tarde', label: 'Tarde', ini: 12, fim: 18 },
   { id: 'noite', label: 'Noite', ini: 18, fim: 22 },
 ]
-const proxNDias = (n = 14) => {
-  const dias = []
+
+function proxNDias(n = 14) {
+  const out = []
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   for (let i = 0; i < n; i++) {
     const d = new Date(hoje); d.setDate(d.getDate() + i)
-    dias.push({ iso: d.toISOString().slice(0, 10), dia: d.getDate(), dow: DOW[d.getDay()] })
+    out.push({ iso: d.toISOString().slice(0, 10), dia: d.getDate(), dow: DOW[d.getDay()] })
   }
-  return dias
+  return out
 }
-const horariosDoPeriodo = (periodoId) => {
+function horariosDoPeriodo(periodoId) {
   const p = PERIODOS.find(x => x.id === periodoId) || PERIODOS[1]
   const out = []
   for (let h = p.ini; h < p.fim; h++)
@@ -44,237 +62,27 @@ const horariosDoPeriodo = (periodoId) => {
       out.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
   return out
 }
-const fmtBR = (iso) => { if (!iso) return ''; const [, m, d] = iso.split('-'); return `${d}/${m}` }
-const fmtDataHora = (iso) => {
+function fmtBR(iso) {
+  if (!iso) return ''
+  const [, m, d] = iso.split('-')
+  return `${d}/${m}`
+}
+function fmtDataHora(iso) {
   if (!iso) return '—'
   const d = new Date(iso); if (isNaN(d)) return iso
   return d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
-const detectarPeriodo = (hora) => {
+function detectarPeriodo(hora) {
   if (!hora) return 'tarde'
   const h = parseInt(hora.split(':')[0], 10)
-  if (h < 12) return 'manha'; if (h < 18) return 'tarde'; return 'noite'
+  if (h < 12) return 'manha'
+  if (h < 18) return 'tarde'
+  return 'noite'
 }
 
-// ─── HIGSection — idêntico ao Agenda ─────────────────────────────────────────
-function HIGSection({ T, dark, title, children, footer }) {
-  return (
-    <section>
-      <div style={{
-        ...higType('footnote'), color: T.textMuted, textTransform: 'uppercase',
-        padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`, letterSpacing: 0.5,
-      }}>{title}</div>
-      <div style={higInsetCard(T, dark)}>{children}</div>
-      {footer && (
-        <div style={{
-          ...higType('footnote'), color: T.textMuted,
-          padding: `${HIG_SPACE.xxs}px ${HIG_SPACE.md}px 0`,
-        }}>{footer}</div>
-      )}
-    </section>
-  )
-}
-
-// ─── iOS Segmented Control — idêntico ao Agenda ───────────────────────────────
-function HIGSegmented({ T, dark, options, value, onChange }) {
-  return (
-    <div style={{
-      display: 'flex',
-      background: dark ? 'rgba(118,118,128,0.24)' : '#E9E9EB',
-      borderRadius: 9, padding: 2, gap: 0,
-    }}>
-      {options.map(o => {
-        const sel = o.id === value
-        return (
-          <button key={o.id} type="button" onClick={() => onChange(o.id)} style={{
-            flex: 1, minHeight: 32, border: 'none', borderRadius: 7,
-            background: sel ? (dark ? '#636366' : '#FFFFFF') : 'transparent',
-            color: T.textPrimary,
-            ...higType('subheadline'), fontWeight: sel ? 600 : 400,
-            cursor: 'pointer',
-            boxShadow: sel ? '0 3px 8px rgba(0,0,0,0.12), 0 3px 1px rgba(0,0,0,0.04)' : 'none',
-            transition: 'background .15s', WebkitTapHighlightColor: 'transparent',
-          }}>{o.label}</button>
-        )
-      })}
-    </div>
-  )
-}
-
-// ─── Chip de dia — idêntico ao Agenda ────────────────────────────────────────
-function HIGDayChip({ T, dark, dia, dow, selected, onClick }) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      flex: '0 0 auto', width: 56, height: 64,
-      borderRadius: HIG_RADIUS.card, border: 'none',
-      background: selected ? HIG_COLOR.tintIdemaq : 'transparent',
-      color: selected ? '#FFFFFF' : T.textPrimary,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 2,
-      cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-      transition: 'background .15s',
-    }}>
-      <span style={{ ...higType('caption2'), color: selected ? 'rgba(255,255,255,0.8)' : T.textMuted, textTransform: 'uppercase' }}>{dow}</span>
-      <span style={{ ...higType('title2'), color: selected ? '#FFFFFF' : T.textPrimary, fontWeight: 500 }}>{dia}</span>
-    </button>
-  )
-}
-
-// ─── Chip de horário — idêntico ao Agenda ────────────────────────────────────
-function HIGTimeChip({ T, dark, label, selected, onClick }) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      minHeight: 36, padding: '0 12px',
-      borderRadius: HIG_RADIUS.card,
-      border: selected ? 'none' : `1px solid ${T.border}`,
-      background: selected ? HIG_COLOR.tintIdemaq : 'transparent',
-      color: selected ? '#FFFFFF' : T.textPrimary,
-      ...higType('subheadline'), fontWeight: selected ? 600 : 500,
-      fontFamily: HIG_FONT_MONO,
-      cursor: 'pointer',
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      WebkitTapHighlightColor: 'transparent', transition: 'background .15s',
-    }}>{label}</button>
-  )
-}
-
-// ─── List Row — idêntico ao Agenda ───────────────────────────────────────────
-function HIGListRow({ T, dark, icon, iconColor, label, subtitle, onClick, disabled, separator }) {
-  return (
-    <>
-      <button type="button" onClick={onClick} disabled={disabled} style={{
-        width: '100%', minHeight: HIG_SIZE.listRow,
-        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-        border: 'none', background: 'transparent',
-        display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
-        textAlign: 'left', fontFamily: HIG_FONT,
-        WebkitTapHighlightColor: 'transparent',
-      }}>
-        <span style={{
-          width: 28, height: 28, borderRadius: 6,
-          background: iconColor + '22', color: iconColor,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <TI name={icon} size={16} />
-        </span>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ ...higType('body'), color: T.textPrimary }}>{label}</div>
-          {subtitle && (
-            <div style={{
-              ...higType('footnote'), color: T.textMuted,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{subtitle}</div>
-          )}
-        </div>
-        <TI name="chevron-right" size={14} color={T.textDim} />
-      </button>
-      {separator && (
-        <div style={{ height: 0.5, background: T.border, marginLeft: HIG_SPACE.md + 28 + HIG_SPACE.sm }} />
-      )}
-    </>
-  )
-}
-
-// ─── Foto slot — idêntico ao Agenda ──────────────────────────────────────────
-function FotoSlotHIG({ T, dark, label, url, uploading, onPick, onRemove }) {
-  return (
-    <div style={{
-      position: 'relative',
-      borderRadius: HIG_RADIUS.card, overflow: 'hidden',
-      border: `1px ${url ? 'solid' : 'dashed'} ${T.border}`,
-      background: url ? '#000' : T.bg,
-      aspectRatio: '4 / 3', minHeight: 80,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      {url ? (
-        <>
-          <img src={url} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-          <button type="button" onClick={onRemove} title="Remover" style={{
-            position: 'absolute', top: 6, right: 6,
-            width: 28, height: 28, borderRadius: 999,
-            background: 'rgba(0,0,0,0.6)', color: '#fff',
-            border: 'none', cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <TI name="x" size={14} />
-          </button>
-          <span style={{
-            position: 'absolute', bottom: 6, left: 8,
-            ...higType('caption2'), color: '#fff',
-            background: 'rgba(0,0,0,0.55)', padding: '2px 8px', borderRadius: 6,
-            backdropFilter: 'blur(4px)',
-          }}>{label}</span>
-        </>
-      ) : (
-        <button type="button" onClick={onPick} disabled={uploading} style={{
-          width: '100%', height: '100%',
-          background: 'transparent', border: 'none',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 4,
-          color: HIG_COLOR.tintIdemaq, fontFamily: HIG_FONT,
-          cursor: uploading ? 'wait' : 'pointer',
-        }}>
-          <TI name={uploading ? 'loader-2' : 'camera-plus'} size={22} />
-          <span style={{ ...higType('subheadline'), fontWeight: 500 }}>
-            {uploading ? 'Enviando…' : label}
-          </span>
-        </button>
-      )}
-    </div>
-  )
-}
-
-// ─── Action Sheet — idêntico ao Agenda ───────────────────────────────────────
-function ActionSheetHIG({ T, dark, onClose, actions }) {
-  const _mdb = useRef(false)
-  return (
-    <div
-      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
-      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 300,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        padding: HIG_SPACE.xs,
-        paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${HIG_SPACE.xs}px)`,
-      }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: '100%', maxWidth: 500,
-        display: 'flex', flexDirection: 'column', gap: HIG_SPACE.xs,
-      }}>
-        <div style={{ background: dark ? '#1C1C1E' : '#FFFFFF', borderRadius: HIG_RADIUS.sheet, overflow: 'hidden' }}>
-          {actions.map((a, i) => (
-            <React.Fragment key={i}>
-              <button onClick={a.onClick} style={{
-                width: '100%', minHeight: 56, padding: HIG_SPACE.sm,
-                border: 'none', background: 'transparent',
-                ...higType('body'),
-                color: a.destructive ? HIG_COLOR.red : HIG_COLOR.tintIdemaq,
-                fontWeight: 400, cursor: 'pointer', fontFamily: HIG_FONT,
-                WebkitTapHighlightColor: 'transparent',
-              }}>{a.label}</button>
-              {i < actions.length - 1 && <div style={{ height: 0.5, background: T.border }} />}
-            </React.Fragment>
-          ))}
-        </div>
-        <button onClick={onClose} style={{
-          minHeight: 56, borderRadius: HIG_RADIUS.sheet,
-          background: dark ? '#1C1C1E' : '#FFFFFF',
-          border: 'none', cursor: 'pointer',
-          ...higType('headline'), color: HIG_COLOR.tintIdemaq, fontFamily: HIG_FONT,
-          WebkitTapHighlightColor: 'transparent',
-        }}>Cancelar</button>
-      </div>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Fase 1 — Form agendar entrega
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// Fase 1 — Form de agendar
+// ═══════════════════════════════════════════════════════════════════════════
 function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
   const { T, dark } = useTheme()
   const notify = useToast()
@@ -285,15 +93,14 @@ function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
   const dataHora = dataAgendada ? dataAgendada.slice(11, 16) : null
 
   const dias = useMemo(() => proxNDias(14), [])
-  const [diaSel, setDiaSel]       = useState(dataIso || dias[1]?.iso || dias[0]?.iso)
-  const [periodoSel, setPeriodo]  = useState(detectarPeriodo(dataHora))
-  const [horaSel, setHoraSel]     = useState(dataHora || null)
-  const [obs, setObs]             = useState(os?.observacoes || '')
+  const [diaSel, setDiaSel]      = useState(dataIso || dias[1]?.iso || dias[0]?.iso)
+  const [periodoSel, setPeriodo] = useState(detectarPeriodo(dataHora))
+  const [horaSel, setHoraSel]    = useState(dataHora || null)
+  const [obs, setObs]            = useState(os?.observacoes || '')
   const horarios = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel])
   const reagendando = !!dataIso
   const podeAgendar = !!diaSel && !!horaSel
 
-  // Re-sincroniza obs quando outra etapa alterar
   useEffect(() => { setObs(os?.observacoes || '') }, [os?.observacoes])
 
   function agendar() {
@@ -314,44 +121,60 @@ function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
     : 'Escolha dia e hora'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg, fontFamily: HIG_FONT }}>
-
-      {/* DIA */}
-      <HIGSection T={T} dark={dark} title="Dia">
-        <div style={{ display: 'flex', gap: 0, overflowX: 'auto', padding: HIG_SPACE.xs, scrollbarWidth: 'none' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      gap: 12, fontFamily: ATL_FONT, padding: '0 0 12px',
+    }}>
+      {/* 1. Dia */}
+      <AtlPanel T={T} dark={dark} title="Dia" footer="Próximos 14 dias.">
+        <div style={{
+          display: 'flex', gap: 6, padding: '12px 14px',
+          overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none',
+        }}>
+          <style>{`div::-webkit-scrollbar{display:none}`}</style>
           {dias.map(d => (
-            <HIGDayChip key={d.iso} T={T} dark={dark}
+            <AtlDayChip key={d.iso} T={T} dark={dark}
               dia={d.dia} dow={d.dow}
               selected={d.iso === diaSel}
               onClick={() => setDiaSel(d.iso)} />
           ))}
         </div>
-      </HIGSection>
+      </AtlPanel>
 
-      {/* PERÍODO */}
-      <HIGSection T={T} dark={dark} title="Período">
-        <div style={{ padding: HIG_SPACE.sm }}>
-          <HIGSegmented T={T} dark={dark}
-            options={PERIODOS} value={periodoSel} onChange={setPeriodo} />
+      {/* 2. Periodo */}
+      <AtlPanel T={T} dark={dark} title="Período">
+        <div style={{ padding: 10 }}>
+          <AtlSegmented T={T} dark={dark}
+            options={PERIODOS}
+            value={periodoSel}
+            onChange={(v) => { setPeriodo(v); setHoraSel(null) }} />
         </div>
-      </HIGSection>
+      </AtlPanel>
 
-      {/* HORÁRIO */}
-      <HIGSection T={T} dark={dark} title={`Horário · ${horarios.length} opções`}
-        footer="Escolha o horário disponível">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: HIG_SPACE.xs, padding: HIG_SPACE.sm }}>
+      {/* 3. Horario */}
+      <AtlPanel
+        T={T} dark={dark}
+        title="Horário"
+        count={horarios.length}
+        footer="Escolha o horário disponível.">
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 6, padding: 12,
+        }}>
           {horarios.map(h => (
-            <HIGTimeChip key={h} T={T} dark={dark}
-              label={h} selected={h === horaSel}
+            <AtlTimeChip key={h} T={T} dark={dark}
+              label={h}
+              selected={h === horaSel}
               onClick={() => setHoraSel(h)} />
           ))}
         </div>
-      </HIGSection>
+      </AtlPanel>
 
-      {/* OBSERVAÇÕES */}
-      <HIGSection T={T} dark={dark} title="Observações"
+      {/* 4. Observacoes */}
+      <AtlPanel T={T} dark={dark}
+        title="Observações"
         footer="Visível em todas as etapas. Ex: levar a capa, entregar no portão.">
-        <div style={{ padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px` }}>
+        <div style={{ padding: '10px 14px' }}>
           <textarea
             placeholder="Ex: entregar pela manhã, prédio 2º andar…"
             value={obs}
@@ -359,51 +182,48 @@ function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
             rows={2}
             style={{
               width: '100%', boxSizing: 'border-box',
-              padding: `${HIG_SPACE.xs}px ${HIG_SPACE.sm}px`,
-              borderRadius: HIG_RADIUS.small,
+              padding: '8px 10px', borderRadius: 3,
               border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : HIG_COLOR.gray6,
-              color: T.textPrimary,
-              ...higType('subheadline'), fontFamily: HIG_FONT,
+              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+              color: T.textPrimary, fontSize: 13, fontFamily: ATL_FONT,
               outline: 'none', resize: 'vertical',
+              letterSpacing: '-0.005em', lineHeight: 1.45,
             }}
           />
         </div>
-      </HIGSection>
+      </AtlPanel>
 
       {/* CTAs */}
-      <div style={{ display: 'flex', gap: HIG_SPACE.sm }}>
+      <div style={{ display: 'flex', gap: 8 }}>
         {reagendando && onCancelar && (
-          <button onClick={onCancelar} style={{
-            minHeight: HIG_SIZE.button, padding: `0 ${HIG_SPACE.md}px`,
-            borderRadius: HIG_RADIUS.card,
-            background: dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5,
-            color: T.textPrimary, border: 'none',
-            ...higType('headline'), cursor: 'pointer', fontFamily: HIG_FONT,
-            WebkitTapHighlightColor: 'transparent',
-          }}>Cancelar</button>
+          <AtlButton T={T} dark={dark} variant="default" onClick={onCancelar}>
+            Cancelar
+          </AtlButton>
         )}
-        <button onClick={agendar} disabled={!podeAgendar} style={{
-          ...higFilledButton(T, dark),
-          flex: 1,
-          opacity: podeAgendar ? 1 : 0.3,
-          cursor: podeAgendar ? 'pointer' : 'not-allowed',
-        }}>
-          <TI name="calendar-check" size={18} />
-          {ctaLabel}
-        </button>
+        <div style={{ flex: 1 }}>
+          <AtlButton
+            T={T} dark={dark}
+            variant="primary"
+            fullWidth
+            disabled={!podeAgendar}
+            icon="calendar-check"
+            onClick={agendar}>
+            {ctaLabel}
+          </AtlButton>
+        </div>
       </div>
-
     </div>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Fase 2 — Entrega agendada (countdown + ações + foto + CTAs)
-// ═══════════════════════════════════════════════════════════════════════════════
-function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
+// ═══════════════════════════════════════════════════════════════════════════
+// Fase 2 — Entrega agendada
+// ═══════════════════════════════════════════════════════════════════════════
+function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   const { T, dark } = useTheme()
   const notify = useToast()
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
 
   const jaPaga = estaPagaTotal(os)
   const entregaSalva = os?.pre_diagnostico?.entrega || {}
@@ -422,7 +242,8 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
 
   const alvo = useMemo(() => {
     if (!entregaData) return null
-    const d = new Date(entregaData); return isNaN(d) ? null : d
+    const d = new Date(entregaData)
+    return isNaN(d) ? null : d
   }, [entregaData])
 
   const { bigLabel, unitLabel, pct } = useMemo(() => {
@@ -443,7 +264,6 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   const horaStr = alvo ? `${String(alvo.getHours()).padStart(2, '0')}:${String(alvo.getMinutes()).padStart(2, '0')}` : null
   const coletaLabel = alvo ? `${fmtBR(dataISO)} · ${horaStr}` : 'Sem horário'
 
-  // WhatsApp
   const abrirWhatsApp = () => {
     const fone = (os?.fone || '').replace(/\D/g, '')
     if (!fone) { notify('erro', 'Cliente sem telefone cadastrado'); return }
@@ -472,10 +292,9 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   const [fotoNoStorage, setNoStorage] = useState(salvoEntrega === FOTO_STORAGE_MARKER)
   const [uploading, setUploading]     = useState(false)
   const [escolha, setEscolha]         = useState(false)
+  const [confirmSheet, setConfirmSheet] = useState(null) // null | 'entrega' | 'remover'
   const inputCam = useRef(null)
   const inputGal = useRef(null)
-  // Confirmações inline (sem window.confirm — bloqueado em PWA iOS)
-  const [confirmSheet, setConfirmSheet] = useState(null) // null | 'entrega' | 'remover'
 
   useEffect(() => {
     let canc = false
@@ -521,7 +340,6 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
 
-  // Confirmar entrega — abre sheet de confirmação (sem window.confirm — bloqueado em PWA iOS)
   function confirmarEntrega() {
     if (!admin && !fotoNoStorage && !fotoUrl) {
       notify('erro', 'Tire a foto da entrega antes de confirmar.')
@@ -533,88 +351,104 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   const podeConfirmar = admin || fotoNoStorage || !!fotoUrl
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg, fontFamily: HIG_FONT }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      gap: 12, fontFamily: ATL_FONT, padding: '0 0 12px',
+    }}>
 
-      {/* Countdown — idêntico ao Coleta */}
-      <HIGSection T={T} dark={dark} title="Entrega">
-        <div style={{ padding: HIG_SPACE.md }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: HIG_SPACE.xs }}>
-            <span style={{ ...higType('largeTitle'), color: T.textPrimary, fontFamily: HIG_FONT }}>
-              {bigLabel}
-            </span>
-            {unitLabel && <span style={{ ...higType('callout'), color: T.textMuted }}>{unitLabel}</span>}
+      {/* 1. Countdown */}
+      <AtlPanel T={T} dark={dark} title="Entrega agendada" accent={azul}>
+        <div style={{ padding: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{
+              fontSize: 36, fontWeight: 700, color: azul,
+              fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.025em',
+              lineHeight: 1, fontFamily: ATL_FONT,
+            }}>{bigLabel}</span>
+            {unitLabel && (
+              <span style={{ fontSize: 14, color: T.textMuted }}>{unitLabel}</span>
+            )}
           </div>
-          <div style={{ ...higType('subheadline'), color: T.textMuted, marginTop: HIG_SPACE.xs }}>
+          <div style={{
+            fontSize: 12.5, color: T.textMuted, marginTop: 4,
+            letterSpacing: '-0.005em',
+          }}>
             <strong style={{ color: T.textPrimary, fontWeight: 600 }}>{coletaLabel}</strong>
           </div>
           <div style={{
-            height: 4, marginTop: HIG_SPACE.sm,
-            background: dark ? 'rgba(255,255,255,0.10)' : '#E5E5EA',
-            borderRadius: 999, overflow: 'hidden',
+            height: 4, marginTop: 10,
+            background: dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA',
+            borderRadius: 3, overflow: 'hidden',
           }}>
-            <span style={{
-              display: 'block', height: '100%', width: `${pct}%`,
-              background: HIG_COLOR.tintIdemaq,
-              borderRadius: 999, transition: 'width .3s',
+            <div style={{
+              height: '100%', width: `${pct}%`,
+              background: azul, borderRadius: 3,
+              transition: 'width .3s',
             }} />
           </div>
         </div>
-      </HIGSection>
+      </AtlPanel>
 
-      {/* Ações — WhatsApp + Rota */}
-      <HIGSection T={T} dark={dark} title="Ações">
-        <HIGListRow T={T} dark={dark}
-          icon="brand-whatsapp" iconColor="#34C759"
+      {/* 2. Acoes rapidas */}
+      <AtlPanel T={T} dark={dark} title="Ações rápidas">
+        <AtlListRow T={T} dark={dark}
+          first
+          icon="brand-whatsapp" iconCor={verde}
           label={`Avisar ${primeiroNome}`}
-          subtitle={os?.fone || 'Sem telefone'}
+          subtitle={os?.fone || 'Sem telefone cadastrado'}
           disabled={!os?.fone}
           onClick={abrirWhatsApp}
-          separator />
-        <HIGListRow T={T} dark={dark}
-          icon="map-pin" iconColor={HIG_COLOR.tintIdemaq}
+        />
+        <AtlListRow T={T} dark={dark}
+          icon="map-pin" iconCor={azul}
           label="Abrir rota"
-          subtitle={os?.endereco || 'Sem endereço'}
+          subtitle={os?.endereco || 'Sem endereço cadastrado'}
           disabled={!os?.endereco}
-          onClick={abrirRota} />
-      </HIGSection>
+          onClick={abrirRota}
+        />
+      </AtlPanel>
 
-      {/* Foto da entrega */}
-      <HIGSection T={T} dark={dark} title="Foto da entrega"
-        footer={admin ? 'Opcional para administrador' : 'Obrigatória — comprova devolução em bom estado'}>
-        <div style={{ padding: HIG_SPACE.sm }}>
-          <FotoSlotHIG T={T} dark={dark}
+      {/* 3. Foto da entrega */}
+      <AtlPanel
+        T={T} dark={dark}
+        title="Foto da entrega"
+        footer={admin
+          ? 'Opcional para administrador.'
+          : 'Obrigatória — comprova devolução em bom estado.'}>
+        <div style={{ padding: '10px 14px' }}>
+          <FotoSlotAtl
+            T={T} dark={dark}
             label="Entrega"
-            url={fotoUrl} uploading={uploading}
+            url={fotoUrl}
+            uploading={uploading}
             onPick={() => setEscolha(true)}
-            onRemove={() => setConfirmSheet('remover')} />
+            onRemove={() => setConfirmSheet('remover')}
+          />
         </div>
         <input ref={inputCam} type="file" accept="image/*" capture="environment"
           onChange={e => escolherFoto(e.target.files?.[0])} style={{ display: 'none' }} />
         <input ref={inputGal} type="file" accept="image/*"
           onChange={e => escolherFoto(e.target.files?.[0])} style={{ display: 'none' }} />
-      </HIGSection>
+      </AtlPanel>
 
+      {/* Action sheets */}
       {escolha && (
-        <ActionSheetHIG T={T} dark={dark}
+        <ActionSheetAtl T={T} dark={dark}
           onClose={() => setEscolha(false)}
           actions={[
             { label: 'Tirar foto', onClick: () => { inputCam.current?.click(); setEscolha(false) } },
             { label: 'Escolher dos arquivos', onClick: () => { inputGal.current?.click(); setEscolha(false) } },
           ]} />
       )}
-
-      {/* Confirmação de remover foto */}
       {confirmSheet === 'remover' && (
-        <ActionSheetHIG T={T} dark={dark}
+        <ActionSheetAtl T={T} dark={dark}
           onClose={() => setConfirmSheet(null)}
           actions={[
             { label: 'Remover foto', destructive: true, onClick: removerFotoConfirmado },
           ]} />
       )}
-
-      {/* Confirmação de entregar OS */}
       {confirmSheet === 'entrega' && (
-        <ActionSheetHIG T={T} dark={dark}
+        <ActionSheetAtl T={T} dark={dark}
           onClose={() => setConfirmSheet(null)}
           actions={[
             {
@@ -624,46 +458,154 @@ function EntregaAgendadaHIG({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
           ]} />
       )}
 
-      {/* CTAs: Reagendar + Confirmar */}
-      <div style={{ display: 'flex', gap: HIG_SPACE.sm }}>
-        <button onClick={onReagendar} style={{
-          minHeight: HIG_SIZE.button, padding: `0 ${HIG_SPACE.md}px`,
-          borderRadius: HIG_RADIUS.card,
-          background: dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5,
-          color: T.textPrimary, border: 'none',
-          ...higType('headline'), cursor: 'pointer', fontFamily: HIG_FONT,
-          WebkitTapHighlightColor: 'transparent',
-          display: 'inline-flex', alignItems: 'center', gap: HIG_SPACE.xs,
-        }}>
-          <TI name="calendar-event" size={16} />
+      {/* CTAs */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <AtlButton T={T} dark={dark}
+          variant="default"
+          icon="calendar-event"
+          onClick={onReagendar}>
           Reagendar
-        </button>
-        <button onClick={confirmarEntrega} style={{
-          ...higFilledButton(T, dark),
-          flex: 1,
-          opacity: podeConfirmar ? 1 : 0.4,
-          cursor: podeConfirmar ? 'pointer' : 'not-allowed',
-        }}>
-          <TI name="check" size={18} />
-          {jaPaga ? 'Confirmar · Concluir OS' : 'Confirmar · Pagamento'}
-        </button>
+        </AtlButton>
+        <div style={{ flex: 1 }}>
+          <AtlButton
+            T={T} dark={dark}
+            variant="primary"
+            fullWidth
+            disabled={!podeConfirmar}
+            icon="check"
+            onClick={confirmarEntrega}>
+            {jaPaga ? 'Confirmar · Concluir OS' : 'Confirmar · Pagamento'}
+          </AtlButton>
+        </div>
       </div>
-
     </div>
   )
 }
 
-// ─── Dispatcher — decide fase ─────────────────────────────────────────────────
-export default function AcaoEntregaHIG({ os, user, usuarios, admin, onUpdateOS, onMoverOS }) {
+// ─── Foto slot Atlassian ──────────────────────────────────────────────────
+function FotoSlotAtl({ T, dark, label, url, uploading, onPick, onRemove }) {
+  const azul = corEtapa('blue', dark)
+  return (
+    <div style={{
+      position: 'relative',
+      borderRadius: 4, overflow: 'hidden',
+      border: `1px ${url ? 'solid' : 'dashed'} ${T.border}`,
+      background: url ? '#000' : (dark ? 'rgba(255,255,255,0.02)' : '#FAFBFC'),
+      aspectRatio: '16 / 9',
+    }}>
+      {url ? (
+        <>
+          <img src={url} alt={label}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <button type="button" onClick={onRemove}
+            aria-label="Remover foto"
+            style={{
+              position: 'absolute', top: 6, right: 6,
+              width: 28, height: 28, borderRadius: 4,
+              background: 'rgba(0,0,0,0.6)', color: '#fff',
+              border: 'none', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          <span style={{
+            position: 'absolute', bottom: 6, left: 8,
+            fontSize: 11, fontWeight: 500,
+            color: '#fff', background: 'rgba(0,0,0,0.55)',
+            padding: '2px 8px', borderRadius: 3,
+            backdropFilter: 'blur(4px)',
+          }}>{label}</span>
+        </>
+      ) : (
+        <button type="button" onClick={onPick} disabled={uploading}
+          style={{
+            width: '100%', height: '100%',
+            background: 'transparent', border: 'none',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 4,
+            color: azul, fontFamily: ATL_FONT,
+            cursor: uploading ? 'wait' : 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <i className={`ti ${uploading ? 'ti-loader-2' : 'ti-camera-plus'}`}
+             style={{ fontSize: 22 }} aria-hidden="true" />
+          <span style={{ fontSize: 13, fontWeight: 500 }}>
+            {uploading ? 'Enviando…' : label}
+          </span>
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Action sheet Atlassian (iOS-like bottom sheet) ──────────────────────
+function ActionSheetAtl({ T, dark, onClose, actions }) {
+  const azul = corEtapa('blue', dark)
+  const vermelho = corEtapa('red', dark)
+  return (
+    <div onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        padding: 8,
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
+      }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 500,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+        <div style={{
+          background: T.card, border: `1px solid ${T.border}`,
+          borderRadius: 4, overflow: 'hidden',
+        }}>
+          {actions.map((a, i) => (
+            <React.Fragment key={i}>
+              <button onClick={a.onClick}
+                style={{
+                  width: '100%', minHeight: 48,
+                  padding: 12, border: 'none', background: 'transparent',
+                  fontSize: 14, fontFamily: ATL_FONT,
+                  color: a.destructive ? vermelho : azul,
+                  fontWeight: 500, cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                  letterSpacing: '-0.005em',
+                }}>{a.label}</button>
+              {i < actions.length - 1 && (
+                <div style={{ height: 1, background: T.border }} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+        <button onClick={onClose}
+          style={{
+            minHeight: 48, borderRadius: 4,
+            background: T.card, border: `1px solid ${T.border}`,
+            cursor: 'pointer',
+            fontSize: 14, fontWeight: 600, fontFamily: ATL_FONT,
+            color: T.textPrimary, letterSpacing: '-0.005em',
+            WebkitTapHighlightColor: 'transparent',
+          }}>Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Dispatcher
+// ═══════════════════════════════════════════════════════════════════════════
+export default function AcaoEntregaHIG({ os, admin, onUpdateOS, onMoverOS }) {
   const [editando, setEditando] = useState(false)
   const dataAgendada = os?.pre_diagnostico?.entrega?.data || null
   const emFase2 = !!dataAgendada && !editando
 
   if (emFase2) {
     return (
-      <EntregaAgendadaHIG
+      <EntregaAgendada
         os={os} admin={admin}
-        onUpdateOS={onUpdateOS} onMoverOS={onMoverOS}
+        onUpdateOS={onUpdateOS}
+        onMoverOS={onMoverOS}
         onReagendar={() => setEditando(true)}
       />
     )
