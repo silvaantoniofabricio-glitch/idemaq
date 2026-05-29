@@ -1,361 +1,282 @@
 // src/components/osDetalhe/acoes/AcaoOficinaHIG.jsx
-// Oficina (Conserto) — Apple HIG, do zero.
+// Etapa Conserto (oficina) — Atlassian Design (reescrito 28/05/2026).
 //
-// Layout Apple HIG correto:
-//   - Seção = footnote uppercase cinza + higInsetCard abaixo (nunca ícone no header)
-//   - Rows = 44pt, checkbox 22px, label, separador 0.5px
-//   - Status pill inline na linha do título da seção
-//   - Montagem bloqueada = row com cadeado dentro do card (não desabilita row)
+// Estrutura:
+//   - Gate: orcamento fechado? -> Tela de bloqueio com timeline progresso
+//   - 1. Diagnostico (relato + causa + componentes)
+//   - 2. Banner falhas do teste final (quando OS volta)
+//   - 3. Aviso diagnostico vazio (orc tem manutencao mas diag nao)
+//   - 4. Secao Limpeza (Desmontagem · Limpeza · Montagem)
+//   - 5. Secao Manutencao (Desmontagem · componentes · Montagem)
+//   - 6. CTA Concluir conserto
 //
-// Seções:
-//   1. Gate: orçamento fechado? → BloqueioOrcamento se não
-//   2. Resumo diagnóstico (relato · causa · componentes)
-//   3. Banner falhas do teste final (OS voltou da oficina)
-//   4. Aviso diagnóstico vazio
-//   5. Seção LIMPEZA (Desmontagem · Limpeza · Montagem)
-//   6. Seção MANUTENÇÃO (Desmontagem · componentes · Montagem)
-//   7. CTA azul
+// Persiste:
+//   · os.pre_diagnostico.oficina.execucao
+//   · os.pre_diagnostico.oficina.limpeza_status / manutencao_status
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTheme } from '../../../theme'
-import { TI } from '../../_shared/PrimitivasMobile'
-import {
-  HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR,
-  higType, higFilledButton, higInsetCard,
-} from '../../../theme-hig'
-import { useOSItens } from '../../../hooks/useOSItens'
+import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
+import { useOSItens } from '../../../hooks/useOSItens'
+import {
+  AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
+} from './_AtlassianUI'
 
-// ─── Separador ───────────────────────────────────────────────────────────────
-function Sep({ T }) {
-  return <div style={{ height: 0.5, background: T.border, marginLeft: 56 }} />
-}
-
-// ─── HIGSection — título uppercase footnote + card + footer opcional ─────────
-// O título aceita um `right` para colocar pill/badge alinhado à direita.
-function HIGSection({ T, dark, title, right, children, footer }) {
-  return (
-    <section>
-      {(title || right) && (
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
-        }}>
-          {title && (
-            <span style={{
-              flex: 1,
-              ...higType('footnote'),
-              color: HIG_COLOR.gray,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-            }}>{title}</span>
-          )}
-          {right}
-        </div>
-      )}
-      <div style={higInsetCard(T, dark)}>{children}</div>
-      {footer && (
-        <div style={{
-          padding: `${HIG_SPACE.xxs}px ${HIG_SPACE.md}px 0`,
-          ...higType('caption1'),
-          color: HIG_COLOR.gray,
-        }}>{footer}</div>
-      )}
-    </section>
-  )
-}
-
-// ─── Pill de status ───────────────────────────────────────────────────────────
-function StatusPill({ status }) {
+// ─── Pill de status ──────────────────────────────────────────────────────
+function StatusPill({ T, dark, status }) {
+  const verde = corEtapa('green', dark)
+  const amarelo = corEtapa('yellow', dark)
   const map = {
-    pendente:  { label: 'Pendente',      bg: HIG_COLOR.gray5,               color: HIG_COLOR.gray },
-    andamento: { label: 'Em andamento',  bg: 'rgba(255,149,0,0.14)',         color: HIG_COLOR.orange },
-    concluido: { label: 'Concluído',     bg: 'rgba(52,199,89,0.14)',         color: HIG_COLOR.green },
+    pendente:  { label: 'Pendente',     cor: T.textMuted, bg: dark ? 'rgba(255,255,255,0.07)' : '#DFE1E6' },
+    andamento: { label: 'Em andamento', cor: amarelo, bg: amarelo + '22' },
+    concluido: { label: 'Concluído',    cor: verde,   bg: verde + '22' },
   }
   const m = map[status] || map.pendente
   return (
     <span style={{
-      ...higType('caption2'),
-      fontWeight: 600,
-      padding: '2px 8px',
-      borderRadius: HIG_RADIUS.pill,
-      background: m.bg,
-      color: m.color,
+      fontSize: 11, fontWeight: 600,
+      padding: '2px 7px', borderRadius: 99,
+      background: m.bg, color: m.cor,
+      letterSpacing: '-0.005em',
     }}>{m.label}</span>
   )
 }
 
-// ─── CheckRow — linha 44pt com checkbox ──────────────────────────────────────
-// shared = mostra ↔ indicando que esse passo é compartilhado Limpeza/Manutenção
-function CheckRow({ T, dark, label, checked, onToggle, badge, shared }) {
+// ─── CheckRow Atlassian ──────────────────────────────────────────────────
+function CheckRow({ T, dark, label, checked, onToggle, badge, shared, first }) {
+  const [hover, setHover] = useState(false)
+  const verde = corEtapa('green', dark)
   return (
     <button
       type="button"
       onClick={onToggle}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
-        width: '100%', minHeight: HIG_SIZE.touch,
-        display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-        padding: `0 ${HIG_SPACE.md}px`,
-        background: 'transparent', border: 'none',
-        cursor: 'pointer',
+        width: '100%', padding: '10px 14px',
+        borderTop: first ? 'none' : `1px solid ${T.border}`,
+        background: hover ? atlHover(dark) : 'transparent',
+        border: 'none', cursor: 'pointer', fontFamily: ATL_FONT,
+        display: 'flex', alignItems: 'center', gap: 10,
+        textAlign: 'left',
         WebkitTapHighlightColor: 'transparent',
-        fontFamily: 'inherit', textAlign: 'left',
-      }}
-    >
-      {/* Checkbox iOS — 22px */}
-      <span style={{
-        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-        border: `1.5px solid ${checked ? HIG_COLOR.green : HIG_COLOR.gray3}`,
-        background: checked
-          ? HIG_COLOR.green
-          : (dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)'),
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'background .15s, border-color .15s',
+        transition: 'background .12s',
       }}>
-        {checked && <TI name="check" size={13} color="#fff" />}
+      <span style={{
+        width: 18, height: 18, borderRadius: 3, flexShrink: 0,
+        border: `1.5px solid ${checked ? verde : (dark ? 'rgba(255,255,255,0.2)' : '#C1C7D0')}`,
+        background: checked ? verde : 'transparent',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background .12s, border-color .12s',
+      }}>
+        {checked && (
+          <i className="ti ti-check" style={{ fontSize: 12, color: '#fff' }} aria-hidden="true" />
+        )}
       </span>
 
-      {/* Label */}
       <span style={{
-        flex: 1,
-        ...higType('subheadline'),
-        color: checked ? HIG_COLOR.gray : T.textPrimary,
+        flex: 1, fontSize: 13,
+        color: checked ? T.textMuted : T.textPrimary,
         textDecoration: checked ? 'line-through' : 'none',
+        letterSpacing: '-0.005em',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{label}</span>
 
-      {/* Badge Troca / Manut. */}
       {badge && (
         <span style={{
-          ...higType('caption2'), fontWeight: 700,
-          padding: '2px 7px', borderRadius: HIG_RADIUS.pill,
-          background: badge.bg, color: badge.color, flexShrink: 0,
+          fontSize: 11, fontWeight: 700,
+          padding: '2px 7px', borderRadius: 99,
+          background: badge.cor + '22', color: badge.cor,
+          flexShrink: 0, letterSpacing: '-0.005em',
         }}>{badge.label}</span>
       )}
 
-      {/* Indicador ↔ compartilhado */}
       {shared && (
-        <TI name="arrows-left-right" size={12} color={HIG_COLOR.gray3} />
+        <i className="ti ti-arrows-left-right"
+           style={{ fontSize: 12, color: T.textDim, flexShrink: 0 }}
+           aria-hidden="true" />
       )}
     </button>
   )
 }
 
-// ─── BloqueioRow — mostra por que a Montagem está travada ────────────────────
+// ─── Bloqueio row (montagem trancada) ────────────────────────────────────
 function BloqueioRow({ T, dark, msg }) {
+  const amarelo = corEtapa('yellow', dark)
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-      padding: `0 ${HIG_SPACE.md}px`,
-      minHeight: HIG_SIZE.touch,
-      background: dark ? 'rgba(255,149,0,0.06)' : 'rgba(255,149,0,0.05)',
+      padding: '10px 14px',
+      borderTop: `1px solid ${T.border}`,
+      background: amarelo + '12',
+      display: 'flex', alignItems: 'center', gap: 10,
     }}>
       <span style={{
-        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-        background: dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.10)',
+        width: 18, height: 18, borderRadius: 3, flexShrink: 0,
+        background: amarelo + '22', color: amarelo,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <TI name="lock" size={12} color={HIG_COLOR.orange} />
+        <i className="ti ti-lock" style={{ fontSize: 11 }} aria-hidden="true" />
       </span>
-      <span style={{ flex: 1, ...higType('footnote'), color: HIG_COLOR.orange }}>
+      <span style={{ flex: 1, fontSize: 12, color: amarelo, letterSpacing: '-0.005em' }}>
         {msg}
       </span>
     </div>
   )
 }
 
-// ─── SubHeader dentro do card (antes dos itens de manutenção) ────────────────
-function CardSubHeader({ T, dark, done, total }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
-      padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-      background: dark ? 'rgba(255,255,255,0.03)' : HIG_COLOR.gray6,
-      borderTop: `0.5px solid ${T.border}`,
-    }}>
-      <TI name="tool" size={11} color={HIG_COLOR.gray} />
-      <span style={{ flex: 1, ...higType('caption2'), fontWeight: 600, color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        Serviço de manutenção
-      </span>
-      <span style={{
-        ...higType('caption2'), fontWeight: 700,
-        padding: '1px 6px', borderRadius: HIG_RADIUS.pill,
-        background: done === total
-          ? 'rgba(52,199,89,0.14)'
-          : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5),
-        color: done === total ? HIG_COLOR.green : HIG_COLOR.gray,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{done}/{total}</span>
-    </div>
-  )
-}
-
-// ─── Seção Limpeza ────────────────────────────────────────────────────────────
-function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal, onToggleDesm, onToggleLimp, onToggleMont, outroServDone }) {
+// ─── Secao Limpeza ───────────────────────────────────────────────────────
+function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal,
+                       onToggleDesm, onToggleLimp, onToggleMont, outroServDone }) {
   const desmDone = !!desmVal.feito
   const limpDone = !!limpVal.feito
-
   let montBloqueio = null
   if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
   else if (!limpDone) montBloqueio = 'Conclua a limpeza primeiro'
   else if (!outroServDone) montBloqueio = 'Aguardando manutenção'
 
   return (
-    <HIGSection
+    <AtlPanel
       T={T} dark={dark}
       title="Limpeza"
-      right={<StatusPill status={status} />}
-    >
-      <CheckRow
-        T={T} dark={dark}
+      action={<StatusPill T={T} dark={dark} status={status} />}>
+      <CheckRow first T={T} dark={dark}
         label="Desmontagem"
         checked={desmDone}
         onToggle={() => onToggleDesm('feito')}
         shared
       />
-
-      <Sep T={T} />
-
-      <CheckRow
-        T={T} dark={dark}
+      <CheckRow T={T} dark={dark}
         label="Limpeza feita"
         checked={limpDone}
         onToggle={() => onToggleLimp('feito')}
       />
-
-      <Sep T={T} />
-
       {montBloqueio
         ? <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
         : (
-          <CheckRow
-            T={T} dark={dark}
+          <CheckRow T={T} dark={dark}
             label="Montagem"
             checked={!!montVal.feito}
             onToggle={() => onToggleMont('feito')}
             shared
           />
-        )
-      }
-    </HIGSection>
+        )}
+    </AtlPanel>
   )
 }
 
-// ─── Seção Manutenção ─────────────────────────────────────────────────────────
-function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChecks, onToggleDesm, onToggleManut, onToggleMont, outroServDone }) {
+// ─── Secao Manutencao ───────────────────────────────────────────────────
+function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChecks,
+                          onToggleDesm, onToggleManut, onToggleMont, outroServDone }) {
   const desmDone = !!desmVal.feito
   const servDone = manutChecks.length > 0 && manutChecks.every(c => manutVal[c.id])
-  const servFeitos = manutChecks.filter(c => manutVal[c.id]).length
-
   let montBloqueio = null
   if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
   else if (!servDone) montBloqueio = 'Conclua todos os itens de serviço'
   else if (!outroServDone) montBloqueio = 'Aguardando limpeza'
 
   return (
-    <HIGSection
+    <AtlPanel
       T={T} dark={dark}
       title="Manutenção"
-      right={<StatusPill status={status} />}
-    >
-      <CheckRow
-        T={T} dark={dark}
+      action={<StatusPill T={T} dark={dark} status={status} />}>
+      <CheckRow first T={T} dark={dark}
         label="Desmontagem"
         checked={desmDone}
         onToggle={() => onToggleDesm('feito')}
         shared
       />
-
-      {/* Sub-header + itens de serviço */}
       {manutChecks.length > 0 ? (
-        <>
-          <Sep T={T} />
-          {manutChecks.map((c, i) => (
-            <React.Fragment key={c.id}>
-              {i > 0 && <Sep T={T} />}
-              <CheckRow
-                T={T} dark={dark}
-                label={c.label}
-                checked={!!manutVal[c.id]}
-                onToggle={() => onToggleManut(c.id)}
-                badge={c.badge}
-              />
-            </React.Fragment>
-          ))}
-        </>
+        manutChecks.map(c => (
+          <CheckRow key={c.id}
+            T={T} dark={dark}
+            label={c.label}
+            checked={!!manutVal[c.id]}
+            onToggle={() => onToggleManut(c.id)}
+            badge={c.badge}
+          />
+        ))
       ) : (
-        <>
-          <Sep T={T} />
-          <div style={{ padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch, display: 'flex', alignItems: 'center' }}>
-            <span style={{ ...higType('footnote'), color: HIG_COLOR.gray, fontStyle: 'italic' }}>
-              Sem componentes marcados no diagnóstico
-            </span>
-          </div>
-        </>
+        <div style={{
+          padding: '10px 14px',
+          borderTop: `1px solid ${T.border}`,
+          fontSize: 12.5, color: T.textMuted, fontStyle: 'italic',
+        }}>
+          Sem componentes marcados no diagnóstico.
+        </div>
       )}
-
-      <Sep T={T} />
-
       {montBloqueio
         ? <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
         : (
-          <CheckRow
-            T={T} dark={dark}
+          <CheckRow T={T} dark={dark}
             label="Montagem"
             checked={!!montVal.feito}
             onToggle={() => onToggleMont('feito')}
             shared
           />
-        )
-      }
-    </HIGSection>
+        )}
+    </AtlPanel>
   )
 }
 
-// ─── Resumo diagnóstico ───────────────────────────────────────────────────────
+// ─── Diagnostico resumo ─────────────────────────────────────────────────
 function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
+  const azul = corEtapa('blue', dark)
   if (!relato && !causa && componentes.length === 0) return null
   return (
-    <HIGSection T={T} dark={dark} title="Diagnóstico">
+    <AtlPanel T={T} dark={dark} title="Diagnóstico">
       {relato && (
-        <>
-          <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px` }}>
-            <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xxs }}>
-              Relato do cliente
-            </div>
-            <div style={{ borderLeft: `3px solid ${HIG_COLOR.orange}`, paddingLeft: HIG_SPACE.sm, ...higType('footnote'), color: T.textPrimary, lineHeight: '18px' }}>
-              {relato}
-            </div>
-          </div>
-          {(causa || componentes.length > 0) && <Sep T={T} />}
-        </>
+        <div style={{ padding: '12px 14px' }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+            marginBottom: 4,
+          }}>Relato do cliente</div>
+          <div style={{
+            borderLeft: `3px solid #FFCC00`,
+            paddingLeft: 10,
+            fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
+          }}>{relato}</div>
+        </div>
       )}
       {causa && (
-        <>
-          <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px` }}>
-            <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xxs }}>
-              Causa identificada
-            </div>
-            <div style={{ borderLeft: `3px solid ${HIG_COLOR.tintIdemaq}`, paddingLeft: HIG_SPACE.sm, ...higType('footnote'), color: T.textPrimary, lineHeight: '18px' }}>
-              {causa}
-            </div>
-          </div>
-          {componentes.length > 0 && <Sep T={T} />}
-        </>
+        <div style={{
+          padding: '12px 14px',
+          borderTop: relato ? `1px solid ${T.border}` : 'none',
+        }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+            marginBottom: 4,
+          }}>Causa identificada</div>
+          <div style={{
+            borderLeft: `3px solid ${azul}`,
+            paddingLeft: 10,
+            fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
+          }}>{causa}</div>
+        </div>
       )}
       {componentes.length > 0 && (
-        <div style={{ padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px` }}>
-          <div style={{ ...higType('caption2'), color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: HIG_SPACE.xs }}>
-            Componentes · {componentes.length}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{
+          padding: '12px 14px',
+          borderTop: (relato || causa) ? `1px solid ${T.border}` : 'none',
+        }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+            marginBottom: 6,
+          }}>Componentes · {componentes.length}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {componentes.map(c => (
               <span key={c.id} style={{
-                ...higType('caption2'), fontWeight: 600,
-                padding: '3px 8px', borderRadius: HIG_RADIUS.pill,
-                background: c.badge.bg, color: c.badge.color,
-                border: `1px solid ${c.badge.color}33`,
+                fontSize: 11.5, fontWeight: 600,
+                padding: '3px 8px', borderRadius: 3,
+                background: c.badge.cor + '22',
+                color: c.badge.cor,
+                border: `1px solid ${c.badge.cor}44`,
                 display: 'inline-flex', alignItems: 'center', gap: 4,
+                letterSpacing: '-0.005em',
               }}>
                 <span style={{ fontWeight: 700, fontSize: 10 }}>{c.badge.label}</span>
                 {c.label}
@@ -364,58 +285,57 @@ function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
           </div>
         </div>
       )}
-    </HIGSection>
+    </AtlPanel>
   )
 }
 
-// ─── Banner falhas do Teste final ─────────────────────────────────────────────
+// ─── Banner falhas do teste final ────────────────────────────────────────
 function BannerFalhas({ T, dark, falhas }) {
+  const vermelho = corEtapa('red', dark)
   if (!falhas.length) return null
   return (
-    <HIGSection T={T} dark={dark}>
+    <AtlPanel T={T} dark={dark}
+      title="Falhas do teste final"
+      accent={vermelho}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-        background: dark ? 'rgba(255,59,48,0.12)' : 'rgba(255,59,48,0.07)',
-        minHeight: 40,
+        padding: '8px 14px',
+        background: vermelho + '12',
+        fontSize: 11.5, fontWeight: 700, color: vermelho,
+        textTransform: 'uppercase', letterSpacing: '0.06em',
+        borderBottom: `1px solid ${T.border}`,
       }}>
-        <TI name="alert-triangle" size={14} color={HIG_COLOR.red} />
-        <span style={{ ...higType('footnote'), fontWeight: 700, color: HIG_COLOR.red, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Falhas do teste final — corrigir
-        </span>
+        Corrigir antes de retornar o teste
       </div>
       {falhas.map((f, i) => (
-        <React.Fragment key={i}>
-          <Sep T={T} />
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-            padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch,
+        <div key={i} style={{
+          padding: '8px 14px',
+          borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{
+            width: 18, height: 18, borderRadius: 3, flexShrink: 0,
+            background: vermelho + '22', color: vermelho,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{
-              width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-              background: dark ? 'rgba(255,59,48,0.15)' : 'rgba(255,59,48,0.08)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <TI name="x" size={12} color={HIG_COLOR.red} />
-            </span>
-            <span style={{ ...higType('subheadline'), color: T.textPrimary, flex: 1 }}>
-              {typeof f === 'string' ? f : (f.label || f.descricao || JSON.stringify(f))}
-            </span>
-          </div>
-        </React.Fragment>
+            <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
+          </span>
+          <span style={{ flex: 1, fontSize: 13, color: T.textPrimary }}>
+            {typeof f === 'string' ? f : (f.label || f.descricao || JSON.stringify(f))}
+          </span>
+        </div>
       ))}
-    </HIGSection>
+    </AtlPanel>
   )
 }
 
-// ─── Constantes de checklist ──────────────────────────────────────────────────
-const CHECKS_DESMONTAGEM = [{ id: 'feito' }]
-const CHECKS_MONTAGEM    = [{ id: 'feito' }]
-
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Componente principal
+// ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }) {
   const { T, dark } = useTheme()
   const { itens } = useOSItens(os?.id)
+  const vermelho = corEtapa('red', dark)
+  const amarelo  = corEtapa('yellow', dark)
 
   const temLimpeza = useMemo(
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
@@ -426,7 +346,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
     [itens]
   )
 
-  // Checklist da manutenção vem do diagnóstico
+  // Checklist da manutencao vem do diagnostico
   const manutChecks = useMemo(() => {
     const marcados = os?.pre_diagnostico?.componentes_marcados || {}
     const out = []
@@ -443,18 +363,14 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
           label: cat?.label || itemId,
           badge: {
             label: isManut ? 'Manut.' : 'Troca',
-            color: isManut ? HIG_COLOR.orange : HIG_COLOR.red,
-            bg: isManut
-              ? (dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.10)')
-              : (dark ? 'rgba(255,59,48,0.15)'  : 'rgba(255,59,48,0.08)'),
+            cor: isManut ? amarelo : vermelho,
           },
         })
       }
     }
     return out
-  }, [os?.pre_diagnostico?.componentes_marcados, dark])
+  }, [os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho])
 
-  // Estado persistido em pre_diagnostico.oficina.execucao
   const oficinaJsonb = os?.pre_diagnostico?.oficina || {}
   const exec = oficinaJsonb.execucao || {}
   const desmVal  = exec.desmontagem  || {}
@@ -479,8 +395,6 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
     }
 
     const novaOficina = { ...oficinaJsonb, execucao: novoExec }
-    // Grava status em pre_diagnostico.oficina — lido por podeMoverOS pra liberar Teste final.
-    // Se o lado não existe na OS, marca 'concluido' pra não bloquear.
     novaOficina.limpeza_status    = temLimpeza    ? calcStatus(limpServOk)  : 'concluido'
     novaOficina.manutencao_status = temManutencao ? calcStatus(manutServOk) : 'concluido'
 
@@ -510,7 +424,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
     if (proxima) onMoverOS?.(os.numero, proxima.id)
   }
 
-  // Gate: orçamento fechado?
+  // Gate: orcamento fechado?
   const orcStatus = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status
   const orcamentoFechado = orcStatus === 'confirmado' || (itens || []).length > 0
   if (!orcamentoFechado) {
@@ -518,9 +432,12 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      gap: 12, fontFamily: ATL_FONT, padding: '0 0 12px',
+    }}>
 
-      {/* 1. Resumo diagnóstico */}
+      {/* 1. Resumo diagnostico */}
       <ResumoDiagnostico
         T={T} dark={dark}
         relato={os?.defeito || ''}
@@ -528,29 +445,27 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
         componentes={manutChecks}
       />
 
-      {/* 2. Falhas do Teste (quando OS volta) */}
+      {/* 2. Banner falhas */}
       <BannerFalhas T={T} dark={dark} falhas={falhas} />
 
-      {/* 3. Aviso diagnóstico vazio */}
+      {/* 3. Aviso diagnostico vazio */}
       {temManutencao && manutChecks.length === 0 && (
-        <HIGSection T={T} dark={dark}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-            padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch,
-          }}>
-            <span style={{
-              width: 28, height: 28, borderRadius: HIG_RADIUS.sm, flexShrink: 0,
-              background: dark ? 'rgba(255,149,0,0.15)' : 'rgba(255,149,0,0.10)',
-              color: HIG_COLOR.orange,
+        <AtlPanel T={T} dark={dark} accent={amarelo}>
+          <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 4,
+              background: amarelo + '22', color: amarelo,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
             }}>
-              <TI name="info-circle" size={14} />
-            </span>
-            <span style={{ ...higType('footnote'), color: HIG_COLOR.gray, flex: 1, lineHeight: '18px' }}>
-              O orçamento tem manutenção mas o diagnóstico não tem componentes marcados. Volte e marque os componentes.
+              <i className="ti ti-info-circle" style={{ fontSize: 14 }} aria-hidden="true" />
+            </div>
+            <span style={{ flex: 1, fontSize: 12.5, color: T.textPrimary, lineHeight: 1.45 }}>
+              O orçamento tem manutenção mas o diagnóstico não tem componentes marcados.
+              Volte e marque os componentes.
             </span>
           </div>
-        </HIGSection>
+        </AtlPanel>
       )}
 
       {/* 4. Lados */}
@@ -580,47 +495,35 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
       )}
 
       {!temLimpeza && !temManutencao && (
-        <HIGSection T={T} dark={dark} title="Conserto">
+        <AtlPanel T={T} dark={dark} title="Conserto">
           <div style={{
-            display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-            padding: `0 ${HIG_SPACE.md}px`, minHeight: HIG_SIZE.touch,
+            padding: '12px 14px',
+            display: 'flex', alignItems: 'center', gap: 8,
+            color: T.textMuted, fontSize: 13, fontStyle: 'italic',
           }}>
-            <TI name="info-circle" size={15} color={HIG_COLOR.gray} />
-            <span style={{ ...higType('subheadline'), color: HIG_COLOR.gray }}>
-              Adicione itens no orçamento pra liberar o conserto.
-            </span>
+            <i className="ti ti-info-circle" style={{ fontSize: 14 }} aria-hidden="true" />
+            Adicione itens no orçamento pra liberar o conserto.
           </div>
-        </HIGSection>
+        </AtlPanel>
       )}
 
       {/* 5. CTA */}
-      <button
-        type="button"
+      <AtlButton
+        T={T} dark={dark}
+        variant="primary"
+        fullWidth
         disabled={!tudoDone}
-        onClick={concluirOficina}
-        style={{
-          ...higFilledButton(
-            tudoDone
-              ? HIG_COLOR.tintIdemaq
-              : (dark ? 'rgba(255,255,255,0.08)' : HIG_COLOR.gray5)
-          ),
-          color: tudoDone ? '#fff' : HIG_COLOR.gray,
-          cursor: tudoDone ? 'pointer' : 'default',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: HIG_SPACE.sm,
-          WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        <TI name={tudoDone ? 'check' : 'lock'} size={17} />
-        <span style={{ ...higType('headline'), color: 'inherit' }}>
-          {tudoDone ? 'Concluir conserto · Teste final' : 'Conclua todas as etapas pra avançar'}
-        </span>
-      </button>
-
+        icon={tudoDone ? 'check' : 'lock'}
+        onClick={concluirOficina}>
+        {tudoDone ? 'Concluir conserto · Teste final' : 'Conclua todas as etapas pra avançar'}
+      </AtlButton>
     </div>
   )
 }
 
-// ─── Tela de bloqueio (orçamento não fechado) ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Bloqueio (orcamento nao fechado) — timeline progresso + voltar pro Orcamento
+// ═══════════════════════════════════════════════════════════════════════════
 const ETAPAS_SEQ = [
   { id: 'recebido',    label: 'Pré-diagnóstico' },
   { id: 'diagnostico', label: 'Diagnóstico' },
@@ -629,6 +532,9 @@ const ETAPAS_SEQ = [
 ]
 
 function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
+  const verde   = corEtapa('green', dark)
+  const amarelo = corEtapa('yellow', dark)
+
   const statusOf = (id) => {
     if (id === 'oficina') return 'blocked'
     if (id === 'orcamento' && !(itens || []).length) return 'miss'
@@ -648,124 +554,94 @@ function BloqueioOrcamento({ T, dark, os, itens, onAbrirAba }) {
     return 'Feito'
   }
 
-  function Sep2({ T }) {
-    return <div style={{ height: 0.5, background: T.border, marginLeft: HIG_SPACE.md + 28 + HIG_SPACE.sm }} />
-  }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: HIG_SPACE.lg }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      gap: 12, fontFamily: ATL_FONT, padding: '0 0 12px',
+    }}>
 
       {/* Aviso */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', gap: HIG_SPACE.sm,
-        padding: HIG_SPACE.md,
-        background: dark ? 'rgba(255,149,0,0.10)' : 'rgba(255,149,0,0.07)',
-        borderRadius: HIG_RADIUS.md,
-        border: `1px solid ${HIG_COLOR.orange}33`,
-      }}>
-        <span style={{
-          width: 32, height: 32, borderRadius: HIG_RADIUS.md, flexShrink: 0,
-          background: dark ? 'rgba(255,149,0,0.18)' : 'rgba(255,149,0,0.14)',
-          color: HIG_COLOR.orange,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <TI name="alert-triangle" size={16} />
-        </span>
-        <div>
-          <div style={{ ...higType('subheadline'), fontWeight: 600, color: T.textPrimary, marginBottom: 2 }}>
-            Etapa anterior pendente
+      <AtlPanel T={T} dark={dark} accent={amarelo}>
+        <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 4,
+            background: amarelo + '22', color: amarelo,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 17 }} aria-hidden="true" />
           </div>
-          <div style={{ ...higType('footnote'), color: HIG_COLOR.gray, lineHeight: '18px' }}>
-            Feche o orçamento antes de iniciar o conserto.
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 600, color: T.textPrimary,
+              letterSpacing: '-0.005em',
+            }}>Etapa anterior pendente</div>
+            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
+              Feche o orçamento antes de iniciar o conserto.
+            </div>
           </div>
         </div>
-      </div>
+      </AtlPanel>
 
       {/* Timeline */}
-      <section>
-        <div style={{
-          padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
-          ...higType('footnote'),
-          color: HIG_COLOR.gray, textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>Progresso</div>
-        <div style={higInsetCard(T, dark)}>
+      <AtlPanel T={T} dark={dark} title="Progresso">
+        <div style={{ padding: '8px 14px' }}>
           {ETAPAS_SEQ.map((step, idx) => {
             const status = statusOf(step.id)
-            const meta   = metaOf(step.id)
+            const meta = metaOf(step.id)
             const isLast = idx === ETAPAS_SEQ.length - 1
             const cfg = {
-              done:    { icon: 'check',        iconColor: HIG_COLOR.green,  bg: 'rgba(52,199,89,0.14)',  lineColor: HIG_COLOR.green },
-              miss:    { icon: 'alert-circle',  iconColor: HIG_COLOR.orange, bg: 'rgba(255,149,0,0.12)', lineColor: HIG_COLOR.orange },
-              blocked: { icon: 'lock',          iconColor: HIG_COLOR.gray2,  bg: dark ? 'rgba(255,255,255,0.06)' : HIG_COLOR.gray5, lineColor: T.border },
+              done:    { icon: 'check',         cor: verde,         bg: verde + '22' },
+              miss:    { icon: 'alert-circle',  cor: amarelo,       bg: amarelo + '22' },
+              blocked: { icon: 'lock',          cor: T.textMuted,   bg: dark ? 'rgba(255,255,255,0.06)' : '#F4F5F7' },
             }[status]
-
             return (
-              <React.Fragment key={step.id}>
-                <div style={{
-                  display: 'flex', alignItems: 'flex-start', gap: HIG_SPACE.sm,
-                  padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
-                  minHeight: HIG_SIZE.touch,
-                  position: 'relative',
-                }}>
-                  {!isLast && (
-                    <div style={{
-                      position: 'absolute',
-                      left: HIG_SPACE.md + 14,
-                      top: HIG_SIZE.touch - 2,
-                      bottom: 0,
-                      width: 2,
-                      background: cfg.lineColor,
-                      opacity: 0.3,
-                      zIndex: 0,
-                    }} />
-                  )}
+              <div key={step.id} style={{
+                display: 'flex', gap: 12, padding: '8px 0',
+                position: 'relative',
+              }}>
+                {!isLast && (
                   <span style={{
-                    width: 28, height: 28, borderRadius: HIG_RADIUS.pill,
-                    background: cfg.bg, color: cfg.iconColor,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, zIndex: 1,
+                    position: 'absolute', left: 11, top: 28, bottom: -8,
+                    width: 2, background: cfg.cor, opacity: 0.3, zIndex: 1,
+                  }} />
+                )}
+                <span style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: cfg.bg, color: cfg.cor,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, zIndex: 2,
+                }}>
+                  <i className={`ti ti-${cfg.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+                </span>
+                <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: status === 'miss' ? 600 : 500,
+                    color: status === 'blocked' ? T.textMuted : T.textPrimary,
+                    letterSpacing: '-0.005em',
                   }}>
-                    <TI name={cfg.icon} size={13} />
-                  </span>
-                  <div style={{ flex: 1, paddingTop: 4 }}>
-                    <div style={{
-                      ...higType('subheadline'),
-                      fontWeight: status === 'miss' ? 600 : 400,
-                      color: status === 'blocked' ? HIG_COLOR.gray : T.textPrimary,
-                    }}>
-                      {step.label}{step.id === 'oficina' && ' · você está aqui'}
-                    </div>
-                    {meta && (
-                      <div style={{
-                        ...higType('caption1'), marginTop: 1,
-                        color: status === 'miss' ? HIG_COLOR.orange : HIG_COLOR.gray,
-                        fontWeight: status === 'miss' ? 600 : 400,
-                      }}>{meta}</div>
-                    )}
+                    {step.label}{step.id === 'oficina' && ' · você está aqui'}
                   </div>
+                  <div style={{
+                    fontSize: 11.5, marginTop: 1,
+                    color: status === 'miss' ? amarelo : T.textMuted,
+                    fontWeight: status === 'miss' ? 600 : 400,
+                  }}>{meta}</div>
                 </div>
-                {!isLast && <Sep2 T={T} />}
-              </React.Fragment>
+              </div>
             )
           })}
         </div>
-      </section>
+      </AtlPanel>
 
-      <button
-        type="button"
-        onClick={() => onAbrirAba?.('pagamento')}
-        style={{
-          ...higFilledButton(HIG_COLOR.tintIdemaq),
-          color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: HIG_SPACE.sm,
-          cursor: 'pointer',
-          WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        <TI name="arrow-back-up" size={17} />
-        <span style={{ ...higType('headline'), color: '#fff' }}>Voltar pro Orçamento</span>
-      </button>
-
+      <AtlButton
+        T={T} dark={dark}
+        variant="primary"
+        fullWidth
+        icon="arrow-back-up"
+        onClick={() => onAbrirAba?.('pagamento')}>
+        Voltar pro Orçamento
+      </AtlButton>
     </div>
   )
 }

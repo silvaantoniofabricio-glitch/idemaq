@@ -1,16 +1,15 @@
 // src/components/osDetalhe/acoes/AcaoRecusada.jsx
-// Etapa Recusado — 3 decisões: converter pra Fabricação · cobrar taxa · entregar.
+// Etapa Recusado — Atlassian Design (reescrito 28/05/2026).
+// 3 decisoes: converter em Fabricacao · cobrar taxa · entregar de volta.
 
 import React, { useState } from 'react'
-import { P } from '../../../theme'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { corEtapa } from '../../../utils/colors'
 import { criarOSDerivada } from '../../../utils/osDerivada'
 import { useToast } from '../../ui'
-import BlocoAcao from './BlocoAcao'
+import { AtlPanel, ATL_FONT, atlHover } from './_AtlassianUI'
 
 export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
-  const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
@@ -23,115 +22,137 @@ export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
   }
 
   function cobrarTaxa() {
-    onUpdateOS(os.numero, { valor: 30, observacoes: [os.observacoes, '— Cobrança: taxa de diagnóstico R$ 30 —'].filter(Boolean).join('\n') })
+    onUpdateOS(os.numero, {
+      valor: 30,
+      observacoes: [os.observacoes, '— Cobrança: taxa de diagnóstico R$ 30 —']
+        .filter(Boolean).join('\n'),
+    })
     const pagamento = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'pagamento')
     if (pagamento) onMoverOS(os.numero, pagamento.id)
   }
 
-  // Conversão Recusada → Fabricação.
-  // Cria uma OS NOVA tipo=fabricacao, etapa=diagnostico, sem cliente,
-  // apontando `os_origem_id` pra OS recusada. A OS original mantém status
-  // recusado com o cliente preservado (some do Kanban em 24h via filtro do useOS).
-  //
-  // Por que OS nova e não UPDATE in-place: o cliente que recusou continua
-  // vinculado à OS original — rastreabilidade. A Fabricação herda
-  // marca/modelo/defeito automaticamente via criarOSDerivada. Itens não
-  // são copiados (fabricação geralmente parte do zero — peças do refurbish
-  // são lançadas como custo na OS nova). Se quiser reaproveitar, copiar
-  // manualmente depois.
   async function converterFabricacao() {
     if (convertendo) return
     const ok = window.confirm(
       `Converter OS #${os.numero} em Fabricação?\n\n` +
       `• Uma NOVA OS de Fabricação será criada na coluna Diagnóstico.\n` +
       `• A OS recusada #${os.numero} fica com o cliente "${os.cliente || '—'}" preservada.\n` +
-      `• Marca, modelo e defeito vêm copiados (pré-preenchidos).\n` +
-      `• Itens do orçamento NÃO são copiados — lance os custos na OS nova.\n\n` +
-      `Continuar?`
+      `• Marca, modelo e defeito vêm copiados.\n` +
+      `• Itens do orçamento NÃO são copiados.\n\nContinuar?`
     )
     if (!ok) return
-
     setConvertendo(true)
     try {
-      const { data, error, numero } = await criarOSDerivada(os.id, {
-        tipo: 'fabricacao',
-        etapa: 'diagnostico',
-        cliente_id: null,
+      const { error, numero } = await criarOSDerivada(os.id, {
+        tipo: 'fabricacao', etapa: 'diagnostico', cliente_id: null,
       })
       if (error) throw error
       notify('ok', `OS #${numero} (Fabricação) criada a partir da #${os.numero}`)
     } catch (e) {
       notify('erro', `Erro ao converter: ${e?.message || 'desconhecido'}`)
-      console.error('[AcaoRecusada] converter:', e)
     } finally {
       setConvertendo(false)
     }
   }
 
   return (
-    <BlocoAcao
-      T={T} dark={dark} icon="ti-circle-x"
-      etapa="Recusada"
-      descricao="O cliente recusou o orçamento. Escolha o destino da máquina."
-      tom="vermelho"
-    >
-      <Decisao
-        T={T} cor={azul} bg={cor('#0d2035', '#e6f1fb')}
-        icon="ti-building-factory-2"
-        titulo="Converter em Fabricação"
-        texto="Aproveita as peças e a máquina vira estoque pra venda futura."
-        onClick={converterFabricacao}
-        loading={convertendo}
-      />
-      <Decisao
-        T={T} cor={amarelo} bg={cor('#2a2000', '#fdf6dc')}
-        icon="ti-cash"
-        titulo="Cobrar taxa de diagnóstico (R$ 30)"
-        texto="Lança R$ 30 no orçamento e move pra Pagamento."
-        onClick={cobrarTaxa}
-      />
-      <Decisao
-        T={T} cor={vermelho} bg={cor('#2a1515', '#fde8e8')}
-        icon="ti-truck-return"
-        titulo="Devolver máquina ao cliente"
-        texto="Move pra Entrega — máquina volta como está, sem cobrança."
-        onClick={entregarDeVolta}
-      />
-    </BlocoAcao>
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      gap: 12, fontFamily: ATL_FONT, padding: '0 0 12px',
+    }}>
+
+      {/* Banner contextual */}
+      <AtlPanel T={T} dark={dark} title="OS recusada" accent={vermelho}>
+        <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 4,
+            background: vermelho + '22', color: vermelho,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <i className="ti ti-circle-x" style={{ fontSize: 17 }} aria-hidden="true" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 600, color: T.textPrimary,
+              letterSpacing: '-0.005em',
+            }}>O cliente recusou o orçamento</div>
+            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
+              Escolha um dos destinos abaixo pra fechar essa OS.
+            </div>
+          </div>
+        </div>
+      </AtlPanel>
+
+      {/* 3 decisoes em panel unico */}
+      <AtlPanel T={T} dark={dark} title="Destino da máquina">
+        <Decisao T={T} dark={dark} cor={azul}
+          first
+          icon="building-factory-2"
+          titulo="Converter em Fabricação"
+          texto="Aproveita as peças e a máquina vira estoque pra venda futura."
+          onClick={converterFabricacao}
+          loading={convertendo}
+        />
+        <Decisao T={T} dark={dark} cor={amarelo}
+          icon="cash"
+          titulo="Cobrar taxa de diagnóstico (R$ 30)"
+          texto="Lança R$ 30 no orçamento e move pra Pagamento."
+          onClick={cobrarTaxa}
+        />
+        <Decisao T={T} dark={dark} cor={vermelho}
+          icon="truck-return"
+          titulo="Devolver máquina ao cliente"
+          texto="Move pra Entrega — máquina volta como está, sem cobrança."
+          onClick={entregarDeVolta}
+        />
+      </AtlPanel>
+    </div>
   )
 }
 
-function Decisao({ T, cor: c, bg, icon, titulo, texto, onClick, disabled, disabledMsg, loading }) {
-  const inativo = disabled || loading
+function Decisao({ T, dark, cor, icon, titulo, texto, onClick, loading, first }) {
+  const [hover, setHover] = useState(false)
+  const inativo = loading
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={inativo}
-      title={disabled ? disabledMsg : undefined}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
-        background: bg,
-        border: `1px solid ${c}55`,
-        borderRadius: 8,
-        padding: '11px 13px',
-        display: 'flex', alignItems: 'center', gap: 10,
-        textAlign: 'left', cursor: inativo ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        fontFamily: 'inherit', color: T.textPrimary,
+        width: '100%',
+        padding: '12px 14px',
+        borderTop: first ? 'none' : `1px solid ${T.border}`,
+        background: hover && !inativo ? atlHover(dark) : 'transparent',
+        border: 'none', cursor: inativo ? 'not-allowed' : 'pointer',
+        fontFamily: ATL_FONT,
+        display: 'flex', alignItems: 'center', gap: 12,
+        textAlign: 'left',
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'background .12s',
       }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 18, color: c, flexShrink: 0 }} aria-hidden="true" />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: c, marginBottom: 2 }}>
-          {titulo} {disabled && <span style={{ fontSize: 10, color: T.textDim, fontWeight: 500 }}>· {disabledMsg}</span>}
-        </div>
-        <div style={{ fontSize: 11, color: T.textMuted, lineHeight: 1.4 }}>
-          {loading ? 'Convertendo…' : texto}
-        </div>
+      <div style={{
+        width: 32, height: 32, borderRadius: 4,
+        background: cor + '22', color: cor,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <i className={`ti ti-${icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
       </div>
-      {loading ? (
-        <i className="ti ti-loader-2" style={{ fontSize: 16, color: c, flexShrink: 0, animation: 'idemaq-spin 0.8s linear infinite' }} aria-hidden="true" />
-      ) : !disabled ? (
-        <i className="ti ti-arrow-right" style={{ fontSize: 16, color: c, flexShrink: 0 }} aria-hidden="true" />
-      ) : null}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 13, fontWeight: 600, color: T.textPrimary,
+          letterSpacing: '-0.005em',
+        }}>{titulo}</div>
+        <div style={{
+          fontSize: 11.5, color: T.textMuted, marginTop: 2, lineHeight: 1.4,
+        }}>{loading ? 'Convertendo…' : texto}</div>
+      </div>
+      <i className={`ti ti-${loading ? 'loader-2' : 'chevron-right'}`}
+         style={{ fontSize: 14, color: T.textDim, flexShrink: 0 }}
+         aria-hidden="true" />
     </button>
   )
 }
