@@ -56,7 +56,7 @@ import FinanceiroMobile from './pages/mobile/FinanceiroMobile'
 import VendasMobile from './pages/mobile/VendasMobile'
 
 export default function App() {
-  const { T, dark, toggleTheme, isMobile } = useTheme()
+  const { T, dark, toggleTheme, daltonismo, toggleDaltonismo, isMobile } = useTheme()
   const [authUser, setAuthUser] = useState(null)
   // Auto-reload temporariamente desligado (suspeita de causar problema
   // no celular do user). hasUpdate fica false eternamente.
@@ -124,7 +124,9 @@ export default function App() {
       {hasUpdate && <AtualizacaoBanner onReload={reload} />}
       <RefreshProvider>
         <BrowserRouter>
-          <AppLayout T={T} dark={dark} toggleTheme={toggleTheme} user={user} sair={sair} isMobile={isMobile}>
+          <AppLayout T={T} dark={dark} toggleTheme={toggleTheme}
+            daltonismo={daltonismo} toggleDaltonismo={toggleDaltonismo}
+            user={user} sair={sair} isMobile={isMobile}>
             <ErrorBoundary T={T}>
               {isMobile
                 ? <RoutesMobile T={T} dark={dark} user={user} />

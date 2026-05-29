@@ -34,6 +34,7 @@ function pageFromPath(pathname) {
 
 export default function AppLayout({
   T, dark, toggleTheme,
+  daltonismo, toggleDaltonismo,
   user, sair,
   isMobile = false,
   children,
@@ -54,7 +55,9 @@ export default function AppLayout({
         background: T.bg, width: '100%',
         fontFamily: 'inherit', overflow: 'hidden',
       }}>
-        <TopbarMobile pagina={pagina} dark={dark} toggleTheme={toggleTheme} T={T} />
+        <TopbarMobile pagina={pagina} dark={dark} toggleTheme={toggleTheme}
+          daltonismo={daltonismo} toggleDaltonismo={toggleDaltonismo}
+          T={T} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           {children}
         </div>

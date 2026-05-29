@@ -10,7 +10,10 @@ import { P } from '../../theme'
 import { MENUS } from '../../utils/osData'
 import LogoIdemaq from '../ui/LogoIdemaq'
 
-export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
+export default function TopbarMobile({
+  pagina, dark, toggleTheme, T,
+  daltonismo, toggleDaltonismo,
+}) {
   const menu = MENUS.find(m => m.id === pagina)
   const titulo = menu?.label ?? 'IdeMaq'
 
@@ -56,20 +59,53 @@ export default function TopbarMobile({ pagina, dark, toggleTheme, T }) {
         {titulo}
       </span>
 
-      {/* Direita: alternar tema */}
-      <button
-        onClick={toggleTheme}
-        aria-label={dark ? 'Modo claro' : 'Modo escuro'}
-        style={{
-          width: 32, height: 32, borderRadius: 16,
-          background: dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
-          border: 'none', cursor: 'pointer',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          color: dark ? P.yellow : T.textMuted,
-          flexShrink: 0,
-        }}>
-        <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: 15 }} aria-hidden="true" />
-      </button>
+      {/* Direita: toggle daltonismo + toggle tema */}
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        {/* Daltonismo */}
+        <button
+          onClick={toggleDaltonismo}
+          aria-label={daltonismo ? 'Desativar modo daltonismo' : 'Ativar modo daltonismo'}
+          title={daltonismo ? 'Daltonismo: ligado' : 'Daltonismo: desligado'}
+          style={{
+            width: 32, height: 32, borderRadius: 16,
+            background: daltonismo
+              ? (dark ? 'rgba(91,155,213,0.18)' : 'rgba(91,155,213,0.12)')
+              : (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+            border: 'none', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: daltonismo ? P.blue : T.textMuted,
+            position: 'relative',
+          }}>
+          <i className="ti ti-eye"
+             style={{ fontSize: 15 }}
+             aria-hidden="true" />
+          {!daltonismo && (
+            <span style={{
+              position: 'absolute', top: 6, left: 6, right: 6, bottom: 6,
+              borderTop: `1.5px solid ${T.textMuted}`,
+              transform: 'rotate(-45deg)',
+              pointerEvents: 'none',
+              transformOrigin: 'center',
+            }} aria-hidden="true" />
+          )}
+        </button>
+
+        {/* Tema */}
+        <button
+          onClick={toggleTheme}
+          aria-label={dark ? 'Modo claro' : 'Modo escuro'}
+          style={{
+            width: 32, height: 32, borderRadius: 16,
+            background: dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+            border: 'none', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            color: dark ? P.yellow : T.textMuted,
+          }}>
+          <i className={`ti ${dark ? 'ti-sun' : 'ti-moon'}`}
+             style={{ fontSize: 15 }}
+             aria-hidden="true" />
+        </button>
+      </div>
     </header>
   )
 }
