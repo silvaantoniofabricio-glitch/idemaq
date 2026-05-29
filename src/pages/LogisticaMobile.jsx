@@ -1,12 +1,17 @@
 // src/pages/LogisticaMobile.jsx
-// Reescrita Apple HIG (27/05/2026 r2) — mantém toda a lógica de useRotas/useOSLogistica
-// mas aplica o mesmo design system de PainelMobile/KPIGridMobile:
-//   - Cards via T.card + elevation no light (sem border)
-//   - Pills compactos (filtros) wrap em vez de scroll horizontal
-//   - Section labels iOS Settings (10.5px uppercase tracked)
-//   - Grouped lists com hairlines T.border + chevron rotate
-//   - Tinted icon containers (34x34 borderRadius 10)
-//   - Touch targets ≥44pt, weights 600/700, letterSpacing -0.01em
+// Pagina Logistica — Atlassian Design (reescrito 28/05/2026).
+//
+// Estrutura:
+//   1. Filtros (segmented multi-select Atlassian — Agenda/Coleta/Teste/Entrega/A receber)
+//   2. Mapa (AtlPanel com MapaLogistica dentro + CardFlutuanteOS overlay)
+//   3. Diagnostico inline (pills com contagem)
+//   4. Rotas de hoje (AtlPanel com 3 accordions A/B/C — drop targets)
+//   5. OS disponiveis (AtlPanel com lista de cards draggable)
+//
+// Exports preservados pro desktop (pages/Logistica.jsx):
+//   FiltroEtapas, RotaAccordion, CardFlutuanteOS, DiagnosticoMapa,
+//   NOMES_SLOT, LETRA_POR_SLOT, ETAPAS_DEFAULT_LOGISTICA,
+//   tipoUiPorEtapa, normalizarTipoUi, VISUAL_TIPO.
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useToast } from '../components/ui'
@@ -19,6 +24,8 @@ import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 const HOJE = new Date().toISOString().slice(0, 10)
+const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
+const ATL_RADIUS = 4
 
 export const NOMES_SLOT = ['Rota A', 'Rota B', 'Rota C']
 export const LETRA_POR_SLOT = { 'Rota A': 'A', 'Rota B': 'B', 'Rota C': 'C' }
@@ -48,23 +55,21 @@ export const VISUAL_TIPO = {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// Página
+// Pagina
 // ════════════════════════════════════════════════════════════════════════
 
 export default function LogisticaMobile({ T, dark }) {
   const notify = useToast()
-  const azul = corEtapa('blue', dark)
 
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_LOGISTICA)
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
   const [criandoRotasFalhou, setCriandoRotasFalhou] = useState(false)
-  const [arrastando, setArrastando] = useState(null)   // {os} sendo arrastado
-  const [hoverRota, setHoverRota] = useState(null)     // letra A/B/C com drag over
+  const [arrastando, setArrastando] = useState(null)
+  const [hoverRota, setHoverRota] = useState(null)
   const criandoRotasRef = useRef(false)
 
   const dataAtiva = HOJE
-
   const incluirPagamento = etapasAtivas.has('pagamento')
   const { osList } = useOSLogistica({ incluirPagamento })
   const { rotas, criar: criarRota, atualizar: atualizarRota } = useRotas()
@@ -172,7 +177,6 @@ export default function LogisticaMobile({ T, dark }) {
     return lista
   }, [slotsRotas, osFiltradas, coordsPorEndereco, osIdsEmRota])
 
-  // OS disponíveis (matching filtros e ainda fora de rota) — usadas pros cards arrastáveis
   const osDisponiveis = useMemo(
     () => osFiltradas.filter(o => !osIdsEmRota.has(o.id)),
     [osFiltradas, osIdsEmRota]
@@ -247,13 +251,15 @@ export default function LogisticaMobile({ T, dark }) {
 
   return (
     <div style={{
-      flex: 1, overflowY: 'auto', background: T.bg,
-      minHeight: 0,
+      flex: 1, overflowY: 'auto', background: T.bg, minHeight: 0,
+      fontFamily: ATL_FONT,
     }}>
       <div style={{
         padding: '12px 14px 96px',
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
+
+        {/* 1. Filtros — segmented multi-select */}
         <FiltroEtapas
           T={T} dark={dark}
           ativas={etapasAtivas}
@@ -264,7 +270,14 @@ export default function LogisticaMobile({ T, dark }) {
           })}
         />
 
-        <MapaCard T={T} dark={dark}>
+        {/* 2. Mapa */}
+        <div style={{
+          position: 'relative',
+          background: T.card,
+          border: `1px solid ${T.border}`,
+          borderRadius: ATL_RADIUS, overflow: 'hidden',
+          boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
+        }}>
           <MapaLogistica
             T={T} dark={dark}
             height={Math.max(280, Math.round(window.innerHeight * 0.40))}
@@ -279,8 +292,9 @@ export default function LogisticaMobile({ T, dark }) {
               onAbrirDetalhe={() => { abrirOSPorId(osPopup.id); setOsPopup(null) }}
             />
           )}
-        </MapaCard>
+        </div>
 
+        {/* 3. Diagnostico inline */}
         <DiagnosticoMapa
           T={T} dark={dark}
           diagnostico={diagnostico}
@@ -288,14 +302,8 @@ export default function LogisticaMobile({ T, dark }) {
           criandoRotasFalhou={criandoRotasFalhou}
         />
 
-        <SectionLabel T={T}>Rotas de hoje</SectionLabel>
-
-        <div style={{
-          background: T.card,
-          borderRadius: 16,
-          overflow: 'hidden',
-          boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
-        }}>
+        {/* 4. Rotas de hoje */}
+        <AtlPanel T={T} dark={dark} title="Rotas de hoje">
           {slotsRotas.map((slot, idx) => {
             const letra = LETRA_POR_SLOT[slot.nome]
             return (
@@ -320,22 +328,22 @@ export default function LogisticaMobile({ T, dark }) {
                 onDragLeaveRota={() => setHoverRota(null)}
                 onDropRota={(e) => {
                   e.preventDefault()
-                  if (arrastando?.os) {
-                    adicionarOSemRota(arrastando.os, letra)
-                  }
+                  if (arrastando?.os) adicionarOSemRota(arrastando.os, letra)
                   setArrastando(null)
                   setHoverRota(null)
                 }}
               />
             )
           })}
-        </div>
+        </AtlPanel>
 
+        {/* 5. OS disponiveis */}
         {osDisponiveis.length > 0 && (
-          <>
-            <SectionLabel T={T}>
-              OS disponíveis ({osDisponiveis.length})
-            </SectionLabel>
+          <AtlPanel
+            T={T} dark={dark}
+            title="OS disponíveis"
+            count={osDisponiveis.length}
+            footer="Toque pra ver opções ou arraste pra uma rota.">
             <OSDisponiveisList
               T={T} dark={dark}
               osList={osDisponiveis}
@@ -344,7 +352,7 @@ export default function LogisticaMobile({ T, dark }) {
               onDragEnd={() => { setArrastando(null); setHoverRota(null) }}
               onTap={(os) => setOsPopup({ ...os })}
             />
-          </>
+          </AtlPanel>
         )}
       </div>
 
@@ -354,79 +362,87 @@ export default function LogisticaMobile({ T, dark }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// Subcomponentes HIG
+// Subcomponentes Atlassian
 // ════════════════════════════════════════════════════════════════════════
 
-// Section label discreto, estilo iOS Settings
-function SectionLabel({ T, children }) {
+// Panel Atlassian inline (mesma assinatura do _AtlassianUI mas inline pra
+// nao adicionar dep cruzado pages -> components/osDetalhe/acoes)
+function AtlPanel({ T, dark, title, count, footer, children }) {
   return (
     <div style={{
-      fontSize: 10.5, fontWeight: 700,
-      color: T.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: '0.07em',
-      padding: '2px 4px 0',
-    }}>
-      {children}
-    </div>
-  )
-}
-
-// Card que envolve o mapa
-function MapaCard({ T, dark, children }) {
-  return (
-    <div style={{
-      position: 'relative',
       background: T.card,
-      borderRadius: 16,
-      overflow: 'hidden',
-      boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
+      border: `1px solid ${T.border}`,
+      borderRadius: ATL_RADIUS, overflow: 'hidden',
+      boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
     }}>
-      {children}
+      {title && (
+        <div style={{
+          padding: '10px 14px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
+        }}>
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: T.textPrimary,
+            letterSpacing: '-0.005em', flex: 1,
+          }}>{title}</div>
+          {count != null && (
+            <span style={{
+              fontSize: 11, fontWeight: 600,
+              color: T.textMuted,
+              background: dark ? 'rgba(255,255,255,0.07)' : '#DFE1E6',
+              padding: '2px 7px', borderRadius: 99,
+              fontVariantNumeric: 'tabular-nums',
+            }}>{count}</span>
+          )}
+        </div>
+      )}
+      <div>{children}</div>
+      {footer && (
+        <div style={{
+          padding: '8px 14px',
+          borderTop: `1px solid ${T.border}`,
+          background: dark ? 'rgba(255,255,255,0.025)' : '#F7F8F9',
+          fontSize: 12, color: T.textMuted,
+        }}>{footer}</div>
+      )}
     </div>
   )
 }
 
-// Segmented control HIG — estilo iOS UISegmentedControl
-// Multi-select: cada segmento ativo fica "elevado" (T.card + shadow);
-// inativo fica transparente. Container unico com bg cinza claro.
+// Segmented multi-select dos filtros — estilo iOS dentro do padrao
+// Atlassian (radius 3, padding compacto). Suporta multi-select porque
+// o filtro permite combinar etapas.
 export function FiltroEtapas({ T, dark, ativas, onToggle }) {
   const bgContainer = dark ? 'rgba(120,120,128,0.24)' : 'rgba(118,118,128,0.12)'
-
   return (
     <div style={{
       display: 'flex',
       background: bgContainer,
-      borderRadius: 9,
-      padding: 2,
-      gap: 0,
+      borderRadius: 3,
+      padding: 2, gap: 0,
     }}>
-      {FILTROS_ETAPA_LOGISTICA.map((f, i) => {
+      {FILTROS_ETAPA_LOGISTICA.map(f => {
         const ativo = ativas.has(f.id)
         return (
-          <button
-            key={f.id}
+          <button key={f.id}
+            type="button"
             onClick={() => onToggle(f.id)}
             style={{
-              flex: 1,
-              minWidth: 0,
-              minHeight: 30,
+              flex: 1, minWidth: 0, minHeight: 30,
               padding: '5px 4px',
-              borderRadius: 7,
-              border: 'none',
+              borderRadius: 3, border: 'none',
               background: ativo ? T.card : 'transparent',
               color: T.textPrimary,
-              fontSize: 12,
-              fontWeight: ativo ? 600 : 500,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
+              fontSize: 12, fontWeight: ativo ? 600 : 500,
+              cursor: 'pointer', fontFamily: ATL_FONT,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              letterSpacing: '-0.01em',
+              letterSpacing: '-0.005em',
               WebkitTapHighlightColor: 'transparent',
               boxShadow: ativo
                 ? (dark
-                    ? '0 3px 8px rgba(0,0,0,0.24), 0 1px 2px rgba(0,0,0,0.16)'
-                    : '0 3px 8px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06)')
+                    ? '0 1px 2px rgba(0,0,0,.4)'
+                    : '0 1px 2px rgba(9,30,66,0.18)')
                 : 'none',
               transition: 'background .12s, box-shadow .12s',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -439,6 +455,7 @@ export function FiltroEtapas({ T, dark, ativas, onToggle }) {
   )
 }
 
+// Diagnostico — pills inline (verde X no mapa, amarelo X sem endereco etc)
 export function DiagnosticoMapa({ T, dark, diagnostico, totalOSFiltradas, criandoRotasFalhou }) {
   if (totalOSFiltradas === 0 && !criandoRotasFalhou) return null
   const verde = corEtapa('green', dark)
@@ -450,33 +467,32 @@ export function DiagnosticoMapa({ T, dark, diagnostico, totalOSFiltradas, criand
       padding: '0 2px',
     }}>
       {diagnostico.comCoord > 0 && (
-        <Pill T={T} cor={verde} icon="ti-map-pin-check">{diagnostico.comCoord} no mapa</Pill>
+        <DiagPill T={T} cor={verde} icon="ti-map-pin-check">{diagnostico.comCoord} no mapa</DiagPill>
       )}
       {diagnostico.geocodificando > 0 && (
-        <Pill T={T} cor={T.textMuted} icon="ti-loader-2">{diagnostico.geocodificando} carregando</Pill>
+        <DiagPill T={T} cor={T.textMuted} icon="ti-loader-2">{diagnostico.geocodificando} carregando</DiagPill>
       )}
       {diagnostico.semEndereco > 0 && (
-        <Pill T={T} cor={amarelo} icon="ti-map-pin-off" title="Cliente sem endereço">
+        <DiagPill T={T} cor={amarelo} icon="ti-map-pin-off" title="Cliente sem endereço">
           {diagnostico.semEndereco} sem endereço
-        </Pill>
+        </DiagPill>
       )}
       {criandoRotasFalhou && (
-        <Pill T={T} cor={amarelo} icon="ti-database-off" title="Rode sql/17-rota-nome.sql">
+        <DiagPill T={T} cor={amarelo} icon="ti-database-off" title="Rode sql/17-rota-nome.sql">
           SQL pendente
-        </Pill>
+        </DiagPill>
       )}
     </div>
   )
 }
 
-function Pill({ T, cor, icon, title, children }) {
+function DiagPill({ T, cor, icon, title, children }) {
   return (
     <span title={title} style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '3px 8px', borderRadius: 999,
+      padding: '3px 8px', borderRadius: 3,
       background: cor + '1f', color: cor,
-      fontWeight: 600, fontSize: 11,
-      letterSpacing: '-0.005em',
+      fontWeight: 600, fontSize: 11, letterSpacing: '-0.005em',
     }}>
       <i className={`ti ${icon}`} style={{ fontSize: 11 }} aria-hidden="true" />
       {children}
@@ -484,7 +500,7 @@ function Pill({ T, cor, icon, title, children }) {
   )
 }
 
-// Card flutuante sobre o mapa quando OS é clicada
+// Card flutuante (overlay no mapa quando OS clicada)
 export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDetalhe }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
@@ -497,25 +513,27 @@ export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDeta
       position: 'absolute', inset: 0,
       background: 'rgba(0,0,0,.32)',
       display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      padding: 14, zIndex: 20, borderRadius: 16,
+      padding: 14, zIndex: 20, borderRadius: ATL_RADIUS,
       backdropFilter: 'blur(2px)',
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
         background: T.card,
-        borderRadius: 14,
+        border: `1px solid ${T.border}`,
+        borderRadius: ATL_RADIUS,
         padding: 14,
         width: '100%', maxWidth: 340,
-        boxShadow: '0 8px 28px rgba(0,0,0,.28)',
+        boxShadow: '0 8px 28px rgba(9,30,66,0.28)',
         display: 'flex', flexDirection: 'column', gap: 11,
+        fontFamily: ATL_FONT,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10,
+            width: 32, height: 32, borderRadius: ATL_RADIUS,
             background: corT + '22', color: corT,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <i className={`ti ${visual.icon}`} style={{ fontSize: 18 }} aria-hidden="true" />
+            <i className={`ti ${visual.icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
@@ -523,14 +541,14 @@ export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDeta
               textTransform: 'uppercase', letterSpacing: '0.06em',
             }}>{visual.label}</div>
             <div style={{
-              fontSize: 13, fontWeight: 600, color: corHero(dark),
+              fontSize: 13, fontWeight: 600, color: T.textPrimary,
               fontVariantNumeric: 'tabular-nums', marginTop: 1,
             }}>OS #{os.numero}</div>
           </div>
           <button onClick={onClose} aria-label="Fechar" style={{
-            width: 28, height: 28, borderRadius: '50%',
-            background: dark ? 'rgba(255,255,255,0.08)' : '#f0f0f3',
-            border: 'none', color: T.textMuted, cursor: 'pointer',
+            width: 26, height: 26, borderRadius: 3,
+            background: 'transparent', border: 'none',
+            color: T.textMuted, cursor: 'pointer',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
@@ -538,8 +556,8 @@ export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDeta
         </div>
 
         <div style={{
-          fontSize: 15, fontWeight: 600, color: corHero(dark),
-          letterSpacing: '-0.01em', lineHeight: 1.25,
+          fontSize: 14.5, fontWeight: 600, color: T.textPrimary,
+          letterSpacing: '-0.005em', lineHeight: 1.25,
         }}>{os.cliente_nome || 'Sem cliente'}</div>
 
         {os.endereco && (
@@ -548,30 +566,36 @@ export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDeta
             display: 'flex', gap: 7, alignItems: 'flex-start',
             lineHeight: 1.35,
           }}>
-            <i className="ti ti-map-pin" style={{ fontSize: 13, marginTop: 1, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
+            <i className="ti ti-map-pin" style={{
+              fontSize: 13, marginTop: 1, color: T.textMuted, flexShrink: 0,
+            }} aria-hidden="true" />
             <span>{os.endereco}</span>
           </div>
         )}
 
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-          <Pill T={T} cor={T.textMuted} icon="ti-tag">{os.etapa_label}</Pill>
+          <DiagPill T={T} cor={T.textMuted} icon="ti-tag">{os.etapa_label}</DiagPill>
           {os.data_agendamento && (
-            <Pill T={T} cor={amarelo} icon="ti-calendar-event">
+            <DiagPill T={T} cor={amarelo} icon="ti-calendar-event">
               {new Date(os.data_agendamento).toLocaleDateString('pt-BR')}
-            </Pill>
+            </DiagPill>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: 7, marginTop: 2 }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           {['A', 'B', 'C'].map(letra => (
             <button key={letra} onClick={() => onAdicionar(letra)} style={{
-              flex: 1, height: 42, borderRadius: 10,
+              flex: 1, height: 36, borderRadius: 3,
               border: 'none', background: azul, color: '#fff',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              fontFamily: 'inherit',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              fontFamily: ATL_FONT,
               WebkitTapHighlightColor: 'transparent',
-              letterSpacing: '-0.01em',
-            }}>+ {letra}</button>
+              letterSpacing: '-0.005em',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            }}>
+              <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
+              {letra}
+            </button>
           ))}
         </div>
 
@@ -579,26 +603,19 @@ export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDeta
           background: 'transparent', border: 'none',
           padding: '2px 0', color: azul,
           fontSize: 13, fontWeight: 500, cursor: 'pointer',
-          fontFamily: 'inherit', letterSpacing: '-0.005em',
+          fontFamily: ATL_FONT, letterSpacing: '-0.005em',
+          textAlign: 'left',
         }}>Ver OS completa →</button>
       </div>
     </div>
   )
 }
 
-// Lista de OS disponíveis pra arrastar/tocar — abaixo das rotas
+// Lista de OS disponiveis — cada item draggable + tap
 function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd, onTap }) {
   return (
-    <div style={{
-      background: T.card,
-      borderRadius: 16,
-      overflow: 'hidden',
-      boxShadow: dark ? 'none' : '0 1px 6px rgba(0,0,0,.06), 0 0 0 .5px rgba(0,0,0,.04)',
-    }}>
+    <div>
       {osList.map((os, idx) => {
-        // tipoUiPorEtapa retorna variantes como 'aguardando_coleta' e
-        // 'aguardando_entrega' que NAO existem em VISUAL_TIPO (so coleta,
-        // entrega, receber, outros). normalizarTipoUi agrupa pra base.
         const tipoUi = normalizarTipoUi(tipoUiPorEtapa(os.etapa_db))
         const visual = VISUAL_TIPO[tipoUi] || VISUAL_TIPO.outros
         const corT = corEtapa(visual.corKey, dark)
@@ -617,29 +634,27 @@ function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd
             onClick={() => onTap(os)}
             style={{
               display: 'grid', gridTemplateColumns: 'auto 1fr auto',
-              gap: 11, alignItems: 'center',
-              padding: '11px 14px',
-              minHeight: 60,
+              gap: 10, alignItems: 'center',
+              padding: '10px 14px',
               borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
               cursor: 'grab',
               opacity: sendoArrastado ? 0.4 : 1,
               transition: 'opacity .15s',
               WebkitTapHighlightColor: 'transparent',
               userSelect: 'none',
-              touchAction: 'none',
             }}>
             <div style={{
-              width: 34, height: 34, borderRadius: 10,
+              width: 28, height: 28, borderRadius: ATL_RADIUS,
               background: corT + '22', color: corT,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
             }}>
-              <i className={`ti ${visual.icon}`} style={{ fontSize: 17 }} aria-hidden="true" />
+              <i className={`ti ${visual.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
             </div>
 
             <div style={{ minWidth: 0 }}>
               <div style={{
-                fontSize: 14, color: corHero(dark), fontWeight: 600,
+                fontSize: 13, color: T.textPrimary, fontWeight: 600,
                 letterSpacing: '-0.005em', lineHeight: 1.25,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{os.cliente_nome || 'Sem cliente'}</div>
@@ -653,16 +668,16 @@ function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd
                 {os.data_agendamento && (
                   <>
                     <span style={{ opacity: 0.5 }}>·</span>
-                    <i className="ti ti-calendar-event" style={{
-                      fontSize: 11, color: corEtapa('yellow', dark),
-                    }} aria-hidden="true" />
+                    <i className="ti ti-calendar-event"
+                       style={{ fontSize: 11, color: corEtapa('yellow', dark) }}
+                       aria-hidden="true" />
                   </>
                 )}
               </div>
             </div>
 
             <i className="ti ti-grip-vertical" style={{
-              fontSize: 16, color: T.textDim, flexShrink: 0,
+              fontSize: 14, color: T.textDim, flexShrink: 0,
             }} aria-hidden="true" />
           </div>
         )
@@ -671,7 +686,7 @@ function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd
   )
 }
 
-// Accordion item de cada rota A/B/C — hairline separators + drop target
+// Accordion de rota A/B/C com drop target
 export function RotaAccordion({
   T, dark, slot, letra, primeiro, expandida, onToggle,
   onRemoverParada, onAdicionarAvulsa, onAbrirOSDetalhe,
@@ -704,28 +719,28 @@ export function RotaAccordion({
         onClick={indisponivel ? undefined : onToggle}
         disabled={indisponivel}
         style={{
-          width: '100%', minHeight: 52,
+          width: '100%', minHeight: 48,
           padding: '10px 14px',
           background: 'transparent', border: 'none',
-          display: 'flex', alignItems: 'center', gap: 11,
+          display: 'flex', alignItems: 'center', gap: 10,
           cursor: indisponivel ? 'not-allowed' : 'pointer',
-          fontFamily: 'inherit',
+          fontFamily: ATL_FONT,
           WebkitTapHighlightColor: 'transparent',
         }}>
         <div style={{
-          width: 32, height: 32, borderRadius: 10,
+          width: 30, height: 30, borderRadius: ATL_RADIUS,
           background: expandida ? azul : (dark ? 'rgba(91,155,213,0.16)' : '#E6F1FB'),
           color: expandida ? '#fff' : azul,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 15, fontWeight: 700,
+          fontSize: 14, fontWeight: 700,
           flexShrink: 0, letterSpacing: '-0.01em',
           transition: 'background .15s',
         }}>{letra}</div>
 
         <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
           <div style={{
-            fontSize: 14.5, fontWeight: 600, color: corHero(dark),
-            letterSpacing: '-0.01em', lineHeight: 1.2,
+            fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
+            letterSpacing: '-0.005em', lineHeight: 1.2,
           }}>
             Rota {letra}
             {indisponivel && (
@@ -735,7 +750,7 @@ export function RotaAccordion({
             )}
           </div>
           <div style={{
-            fontSize: 12, color: T.textMuted,
+            fontSize: 11.5, color: T.textMuted,
             fontVariantNumeric: 'tabular-nums', marginTop: 1,
           }}>
             {paradas.length === 0
@@ -746,7 +761,7 @@ export function RotaAccordion({
 
         {!indisponivel && (
           <i className="ti ti-chevron-right" style={{
-            fontSize: 14, color: T.textDim,
+            fontSize: 13, color: T.textDim,
             transform: expandida ? 'rotate(90deg)' : 'rotate(0deg)',
             transition: 'transform .2s cubic-bezier(0.32, 0.72, 0, 1)',
             flexShrink: 0,
@@ -758,40 +773,38 @@ export function RotaAccordion({
         <div style={{ borderTop: `1px solid ${T.border}` }}>
           {paradas.length === 0 ? (
             <div style={{
-              padding: '18px 14px',
+              padding: '16px 14px',
               fontSize: 12.5, color: T.textMuted,
-              textAlign: 'center',
-              letterSpacing: '-0.005em',
+              textAlign: 'center', letterSpacing: '-0.005em',
+              fontStyle: 'italic',
             }}>
-              Toque num pino do mapa pra adicionar
+              Sem paradas. Toque num pino do mapa ou arraste uma OS aqui.
             </div>
           ) : (
             paradas.map((p, idx) => {
               const tipoUi = normalizarTipoUi(p.tipo)
-              const visual = VISUAL_TIPO[tipoUi]
+              const visual = VISUAL_TIPO[tipoUi] || VISUAL_TIPO.outros
               const corT = corEtapa(visual.corKey, dark)
               return (
                 <div key={p.id} style={{
                   display: 'grid', gridTemplateColumns: 'auto 1fr auto',
-                  gap: 11, alignItems: 'center',
-                  padding: '10px 14px',
+                  gap: 10, alignItems: 'center',
+                  padding: '8px 14px',
                   borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
-                  minHeight: 54,
                 }}>
                   <div style={{
-                    width: 34, height: 34, borderRadius: 10,
+                    width: 28, height: 28, borderRadius: ATL_RADIUS,
                     background: corT + '22', color: corT,
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11.5, fontWeight: 700,
+                    fontSize: 11, fontWeight: 700,
                     flexShrink: 0, letterSpacing: '-0.01em',
                   }}>{letra}{idx + 1}</div>
 
                   <div
                     onClick={p.os_id ? () => onAbrirOSDetalhe(p.os_id) : undefined}
-                    style={{ minWidth: 0, cursor: p.os_id ? 'pointer' : 'default' }}
-                  >
+                    style={{ minWidth: 0, cursor: p.os_id ? 'pointer' : 'default' }}>
                     <div style={{
-                      fontSize: 14, color: corHero(dark), fontWeight: 600,
+                      fontSize: 13, color: T.textPrimary, fontWeight: 600,
                       letterSpacing: '-0.005em', lineHeight: 1.25,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{p.cliente_nome || 'Sem cliente'}</div>
@@ -813,10 +826,9 @@ export function RotaAccordion({
                     onClick={() => onRemoverParada(p.id)}
                     aria-label="Remover parada"
                     style={{
-                      width: 30, height: 30, borderRadius: 8,
-                      background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                      border: 'none', color: T.textMuted,
-                      cursor: 'pointer',
+                      width: 24, height: 24, borderRadius: 3,
+                      background: 'transparent', border: 'none',
+                      color: T.textMuted, cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       WebkitTapHighlightColor: 'transparent',
                     }}>
@@ -827,32 +839,34 @@ export function RotaAccordion({
             })
           )}
 
+          {/* Parada avulsa */}
           {avulsaAberta ? (
             <div style={{
               padding: 12,
               borderTop: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.02)' : '#FAFAFC',
-              display: 'flex', flexDirection: 'column', gap: 7,
+              background: dark ? 'rgba(255,255,255,0.025)' : '#F7F8F9',
+              display: 'flex', flexDirection: 'column', gap: 6,
             }}>
-              <HigInput T={T} dark={dark}
+              <AtlInput T={T} dark={dark}
                 value={avulsaNome}
                 onChange={(e) => setAvulsaNome(e.target.value)}
                 placeholder="Ex.: Buscar peça, Posto…"
                 autoFocus />
-              <HigInput T={T} dark={dark}
+              <AtlInput T={T} dark={dark}
                 value={avulsaEnd}
                 onChange={(e) => setAvulsaEnd(e.target.value)}
                 placeholder="Endereço (opcional)" />
-              <div style={{ display: 'flex', gap: 7 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   onClick={() => { setAvulsaAberta(false); setAvulsaNome(''); setAvulsaEnd('') }}
                   style={{
-                    flex: 1, height: 38, borderRadius: 10,
-                    border: 'none',
-                    background: dark ? 'rgba(255,255,255,0.07)' : '#e4e4e9',
+                    flex: 1, height: 32, borderRadius: 3,
+                    border: `1px solid ${T.border}`,
+                    background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
                     color: T.textPrimary,
-                    fontSize: 13.5, fontWeight: 500,
-                    cursor: 'pointer', fontFamily: 'inherit',
+                    fontSize: 13, fontWeight: 500,
+                    cursor: 'pointer', fontFamily: ATL_FONT,
+                    letterSpacing: '-0.005em',
                     WebkitTapHighlightColor: 'transparent',
                   }}>Cancelar</button>
                 <button
@@ -862,12 +876,12 @@ export function RotaAccordion({
                   }}
                   disabled={!avulsaNome.trim()}
                   style={{
-                    flex: 1, height: 38, borderRadius: 10,
+                    flex: 1, height: 32, borderRadius: 3,
                     border: 'none', background: azul, color: '#fff',
-                    fontSize: 13.5, fontWeight: 600,
+                    fontSize: 13, fontWeight: 600,
                     cursor: avulsaNome.trim() ? 'pointer' : 'not-allowed',
                     opacity: avulsaNome.trim() ? 1 : 0.5,
-                    fontFamily: 'inherit',
+                    fontFamily: ATL_FONT, letterSpacing: '-0.005em',
                     WebkitTapHighlightColor: 'transparent',
                   }}>Adicionar</button>
               </div>
@@ -876,18 +890,18 @@ export function RotaAccordion({
             <button
               onClick={() => setAvulsaAberta(true)}
               style={{
-                width: '100%', minHeight: 44,
-                padding: '11px 14px',
+                width: '100%', minHeight: 36,
+                padding: '8px 14px',
                 background: 'transparent', border: 'none',
                 borderTop: `1px solid ${T.border}`,
                 color: azul,
-                fontSize: 13.5, fontWeight: 500,
-                cursor: 'pointer', fontFamily: 'inherit',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                fontSize: 12.5, fontWeight: 500,
+                cursor: 'pointer', fontFamily: ATL_FONT,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 letterSpacing: '-0.005em',
                 WebkitTapHighlightColor: 'transparent',
               }}>
-              <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
+              <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
               Parada avulsa
             </button>
           )}
@@ -897,19 +911,18 @@ export function RotaAccordion({
   )
 }
 
-function HigInput({ T, dark, ...props }) {
+function AtlInput({ T, dark, ...props }) {
   return (
     <input
       {...props}
       style={{
         width: '100%', boxSizing: 'border-box',
-        height: 38, padding: '0 11px',
-        borderRadius: 10,
+        height: 32, padding: '0 10px',
+        borderRadius: 3,
         border: `1px solid ${T.border}`,
         background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
         color: T.textPrimary,
-        fontSize: 13.5,
-        outline: 'none', fontFamily: 'inherit',
+        fontSize: 13, outline: 'none', fontFamily: ATL_FONT,
         letterSpacing: '-0.005em',
         ...props.style,
       }}
