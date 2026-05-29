@@ -318,6 +318,10 @@ export default function LogisticaMobile({ T, dark }) {
                 hoverAtiva={hoverRota === letra}
                 onToggle={() => setRotaExpandida(rotaExpandida === letra ? null : letra)}
                 onRemoverParada={(paradaId) => removerParada(slot.rota, paradaId)}
+                onReordenarParadas={async (novasParadas) => {
+                  if (!slot.rota) return
+                  await atualizarRota(slot.rota.id, { paradas: novasParadas })
+                }}
                 onAdicionarAvulsa={(nome, end) => adicionarParadaAvulsa(slot.rota, nome, end)}
                 onAbrirOSDetalhe={abrirOSPorId}
                 onDragOverRota={(e) => {
@@ -689,7 +693,7 @@ function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd
 // Accordion de rota A/B/C com drop target
 export function RotaAccordion({
   T, dark, slot, letra, primeiro, expandida, onToggle,
-  onRemoverParada, onAdicionarAvulsa, onAbrirOSDetalhe,
+  onRemoverParada, onAdicionarAvulsa, onAbrirOSDetalhe, onReordenarParadas,
   arrastando, hoverAtiva, onDragOverRota, onDragLeaveRota, onDropRota,
 }) {
   const azul = corEtapa('blue', dark)
@@ -698,6 +702,43 @@ export function RotaAccordion({
   const [avulsaAberta, setAvulsaAberta] = useState(false)
   const [avulsaNome, setAvulsaNome] = useState('')
   const [avulsaEnd, setAvulsaEnd] = useState('')
+
+  // Drag-and-drop de reordenação interna
+  const dragSrcIdx = useRef(null)
+  const [dragOverIdx, setDragOverIdx] = useState(null)
+
+  function handleDragStart(e, idx) {
+    e.stopPropagation() // não aciona o drag de OS→rota externo
+    dragSrcIdx.current = idx
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', 'reorder') // marca pra distinguir do drag externo
+  }
+
+  function handleDragOver(e, idx) {
+    if (dragSrcIdx.current === null) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    if (idx !== dragOverIdx) setDragOverIdx(idx)
+  }
+
+  function handleDrop(e, idx) {
+    e.preventDefault()
+    e.stopPropagation()
+    const src = dragSrcIdx.current
+    if (src === null || src === idx) { dragSrcIdx.current = null; setDragOverIdx(null); return }
+    const novo = [...paradas]
+    const [item] = novo.splice(src, 1)
+    novo.splice(idx, 0, item)
+    onReordenarParadas?.(novo)
+    dragSrcIdx.current = null
+    setDragOverIdx(null)
+  }
+
+  function handleDragEnd() {
+    dragSrcIdx.current = null
+    setDragOverIdx(null)
+  }
 
   const dropAtivo = !!arrastando && !indisponivel
   const bgHover = hoverAtiva
@@ -785,13 +826,32 @@ export function RotaAccordion({
               const tipoUi = normalizarTipoUi(p.tipo)
               const visual = VISUAL_TIPO[tipoUi] || VISUAL_TIPO.outros
               const corT = corEtapa(visual.corKey, dark)
+              const isDragOver = dragOverIdx === idx && dragSrcIdx.current !== null && dragSrcIdx.current !== idx
               return (
-                <div key={p.id} style={{
-                  display: 'grid', gridTemplateColumns: 'auto 1fr auto',
-                  gap: 10, alignItems: 'center',
-                  padding: '8px 14px',
-                  borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
-                }}>
+                <div
+                  key={p.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={(e) => handleDrop(e, idx)}
+                  onDragEnd={handleDragEnd}
+                  style={{
+                    display: 'grid', gridTemplateColumns: 'auto auto 1fr auto',
+                    gap: 8, alignItems: 'center',
+                    padding: '8px 14px',
+                    borderTop: isDragOver
+                      ? `2px solid #5B9BD5`
+                      : (idx === 0 ? 'none' : `1px solid ${T.border}`),
+                    cursor: 'grab',
+                    userSelect: 'none',
+                    transition: 'border-color .1s',
+                  }}>
+                  {/* Handle de drag */}
+                  <i className="ti ti-grip-vertical" style={{
+                    fontSize: 14, color: T.textDim,
+                    cursor: 'grab', flexShrink: 0,
+                  }} aria-hidden="true" />
+
                   <div style={{
                     width: 28, height: 28, borderRadius: ATL_RADIUS,
                     background: corT + '22', color: corT,

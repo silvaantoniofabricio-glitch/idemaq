@@ -659,6 +659,11 @@ function LogisticaDesktop({ T, dark }) {
                   rotaExpandida === letra ? null : letra
                 )}
                 onRemoverParada={(paradaId) => removerParada(slot.rota, paradaId)}
+                onReordenarParadas={async (novasParadas) => {
+                  if (!slot.rota) return
+                  const { error: err } = await atualizarRota(slot.rota.id, { paradas: novasParadas })
+                  if (err) notify('erro', err.message || 'Falha ao reordenar')
+                }}
                 onAdicionarAvulsa={(nome, end) => adicionarParadaAvulsa(slot.rota, nome, end)}
                 onAbrirOSDetalhe={abrirOSPorId}
               />
