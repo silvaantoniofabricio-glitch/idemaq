@@ -316,12 +316,29 @@ export default function NovaOSAntigaModal({ T, dark, onClose, onCriada }) {
         {tipo !== 'fabricacao' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <Label T={T}>Marca</Label>
                 <input type="text" value={marca}
                   onChange={(e) => setMarca(e.target.value)}
                   placeholder="Ex: Brastemp"
                   style={inputStyle(T)} />
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {['Electrolux', 'Brastemp', 'Consul'].map(m => (
+                    <button key={m} type="button"
+                      onClick={() => setMarca(m)}
+                      style={{
+                        padding: '2px 10px', borderRadius: 99,
+                        border: `1px solid ${marca === m ? '#5B9BD5' : (T.border || '#ddd')}`,
+                        background: marca === m ? '#5B9BD5' : 'transparent',
+                        color: marca === m ? '#fff' : T.textSecondary,
+                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        transition: 'all .12s',
+                      }}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <Label T={T}>Modelo</Label>

@@ -194,14 +194,33 @@ export default function FormEquipamentoEdit({
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-          <Input T={T} dark={dark}
-            label="Marca"
-            value={form.marca}
-            onChange={v => update('marca', v.toUpperCase())}
-            icon="ti-device-washing-machine"
-            placeholder="Ex: BRASTEMP"
-            autoFocus
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Input T={T} dark={dark}
+              label="Marca"
+              value={form.marca}
+              onChange={v => update('marca', v.toUpperCase())}
+              icon="ti-device-washing-machine"
+              placeholder="Ex: BRASTEMP"
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {['ELECTROLUX', 'BRASTEMP', 'CONSUL'].map(m => (
+                <button key={m} type="button"
+                  onClick={() => update('marca', m)}
+                  style={{
+                    padding: '2px 10px', borderRadius: 99,
+                    border: `1px solid ${form.marca === m ? azul : (dark ? '#444' : '#ddd')}`,
+                    background: form.marca === m ? azul : 'transparent',
+                    color: form.marca === m ? '#fff' : T.textSecondary,
+                    fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    fontFamily: 'inherit', letterSpacing: '0.01em',
+                    transition: 'all .12s',
+                  }}>
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
           <Input T={T} dark={dark}
             label="Modelo"
             value={form.modelo}
