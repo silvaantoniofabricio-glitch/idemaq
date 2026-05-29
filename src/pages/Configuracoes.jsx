@@ -1,26 +1,25 @@
-// idemaq-src/pages/Configuracoes.jsx
-// Módulo 09 — Configurações da empresa (admin-only).
-// MVP: edição da meta mensal e da jornada padrão. Cada chave vive na tabela
+// src/pages/Configuracoes.jsx
+// Configuracoes da empresa — Atlassian Design (reescrito 28/05/2026).
+//
+// MVP: edicao da meta mensal e da jornada padrao. Cada chave vive na tabela
 // `configuracoes` (sql/10) como chave/valor JSONB. Hook: useConfiguracoes.
 
 import React, { useState, useEffect } from 'react'
 import { fmtBRL } from '../utils/fmt'
 import { useConfiguracoes } from '../hooks/useConfiguracoes'
 import { useToast } from '../components/ui/Toast'
+import { corEtapa } from '../utils/colors'
 
-import Card from '../components/ui/Card'
-import Input from '../components/ui/Input'
-import Button from '../components/ui/Button'
-import PageHeader from '../components/ui/PageHeader'
-import SectionHeader from '../components/ui/SectionHeader'
+const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
+const ATL_RADIUS = 4
 
 export default function Configuracoes({ T, dark }) {
   const { configs, loading, tabelaAusente, get, set } = useConfiguracoes()
   const notify = useToast()
+  const azul = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
 
-  // Estados locais: começam vazios e hidratam quando o hook resolve.
-  // Permite edição livre sem perder digitação durante refetch.
-  const [meta, setMeta]       = useState('')
+  const [meta, setMeta] = useState('')
   const [jornada, setJornada] = useState('')
   const [salvandoMeta, setSalvandoMeta] = useState(false)
   const [salvandoJornada, setSalvandoJornada] = useState(false)
@@ -30,7 +29,7 @@ export default function Configuracoes({ T, dark }) {
       setMeta(String(get('meta_mensal', 20000)))
       setJornada(String(get('jornada_padrao_horas', 8)))
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, configs])
 
   async function salvarMeta() {
@@ -78,94 +77,221 @@ export default function Configuracoes({ T, dark }) {
       padding: '20px 24px 32px',
       overflowY: 'auto', flex: 1,
       display: 'flex', flexDirection: 'column', gap: 14,
-      fontSize: 14,
+      fontFamily: ATL_FONT,
     }}>
-      <PageHeader
-        T={T} dark={dark}
-        title="Configurações"
-        subtitle="Parâmetros da empresa usados pelos painéis e relatórios."
-      />
+      {/* Page header */}
+      <div>
+        <h1 style={{
+          fontSize: 22, fontWeight: 700, color: T.textPrimary,
+          margin: 0, letterSpacing: '-0.01em',
+        }}>Configurações</h1>
+        <p style={{
+          fontSize: 13, color: T.textMuted, margin: '4px 0 0',
+          letterSpacing: '-0.005em',
+        }}>
+          Parâmetros da empresa usados pelos painéis e relatórios.
+        </p>
+      </div>
 
       {tabelaAusente && (
-        <Card T={T} dark={dark} padding="10px 14px" style={{ borderLeft: `3px solid ${T.warning || '#FFD966'}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 18, color: T.textSecondary }} aria-hidden="true" />
-            <div style={{ fontSize: 12.5, color: T.textSecondary, lineHeight: 1.4 }}>
-              <strong>Modo demo:</strong> rode <code>sql/10-configuracoes.sql</code> no Supabase pra
+        <AtlPanel T={T} dark={dark} accent={amarelo}>
+          <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: ATL_RADIUS,
+              background: amarelo + '22', color: amarelo,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <i className="ti ti-alert-triangle" style={{ fontSize: 15 }} aria-hidden="true" />
+            </div>
+            <div style={{ fontSize: 12.5, color: T.textPrimary, lineHeight: 1.45 }}>
+              <strong>Modo demo:</strong> rode <code style={{
+                background: dark ? 'rgba(255,255,255,0.07)' : '#F4F5F7',
+                padding: '1px 5px', borderRadius: 3,
+                fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+                fontSize: 11,
+              }}>sql/10-configuracoes.sql</code> no Supabase pra
               persistir as alterações. Por enquanto, as mudanças ficam só nesta sessão.
             </div>
           </div>
-        </Card>
+        </AtlPanel>
       )}
 
       {/* Meta mensal */}
-      <Card T={T} dark={dark} padding="16px 20px">
-        <SectionHeader T={T} dark={dark} icon="ti-target" sm>Meta mensal de faturamento</SectionHeader>
-        <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12 }}>
-          Valor em reais que o Painel usa pra calcular o progresso do mês e a meta diária restante.
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ width: 200 }}>
-            <Input
-              T={T} dark={dark}
+      <AtlPanel T={T} dark={dark}
+        titleIcon="target"
+        title="Meta mensal de faturamento"
+        footer="O Painel usa essa meta pra calcular o progresso do mês e a meta diária restante.">
+        <div style={{ padding: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+            <AtlField T={T} dark={dark}
               label="Meta (R$)"
-              type="number"
-              value={meta}
-              onChange={setMeta}
-              icon="ti-currency-real"
-              min={0}
-              step={100}
+              icon="currency-real"
+              type="number" min={0} step={100}
+              value={meta} onChange={setMeta}
+              width={200}
             />
-          </div>
-          <Button
-            T={T} dark={dark}
-            variant="primary"
-            iconLeft={salvandoMeta ? 'ti-loader-2' : 'ti-device-floppy'}
-            onClick={salvarMeta}
-            disabled={salvandoMeta || loading}
-          >
-            {salvandoMeta ? 'Salvando…' : 'Salvar'}
-          </Button>
-          <div style={{ fontSize: 11.5, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
-            Atual: <strong style={{ color: T.textSecondary }}>{fmtBRL(Number(get('meta_mensal', 20000)) || 0)}</strong>
+            <AtlButton T={T} dark={dark} variant="primary"
+              icon={salvandoMeta ? 'loader-2' : 'device-floppy'}
+              disabled={salvandoMeta || loading}
+              onClick={salvarMeta}>
+              {salvandoMeta ? 'Salvando…' : 'Salvar'}
+            </AtlButton>
+            <div style={{
+              fontSize: 11.5, color: T.textMuted,
+              fontVariantNumeric: 'tabular-nums', alignSelf: 'center',
+            }}>
+              Atual: <strong style={{ color: T.textPrimary }}>
+                {fmtBRL(Number(get('meta_mensal', 20000)) || 0)}
+              </strong>
+            </div>
           </div>
         </div>
-      </Card>
+      </AtlPanel>
 
-      {/* Jornada padrão */}
-      <Card T={T} dark={dark} padding="16px 20px">
-        <SectionHeader T={T} dark={dark} icon="ti-clock" sm>Jornada padrão</SectionHeader>
-        <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12 }}>
-          Horas trabalhadas por dia padrão. Será a base do módulo de Ponto (horas extras / banco de horas).
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ width: 160 }}>
-            <Input
-              T={T} dark={dark}
+      {/* Jornada padrao */}
+      <AtlPanel T={T} dark={dark}
+        titleIcon="clock"
+        title="Jornada padrão"
+        footer="Horas trabalhadas por dia. Base do módulo Ponto (horas extras / banco de horas).">
+        <div style={{ padding: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+            <AtlField T={T} dark={dark}
               label="Horas / dia"
-              type="number"
-              value={jornada}
-              onChange={setJornada}
-              icon="ti-hourglass"
-              min={1}
-              max={24}
-              step={0.5}
+              icon="hourglass"
+              type="number" min={1} max={24} step={0.5}
+              value={jornada} onChange={setJornada}
+              width={160}
             />
-          </div>
-          <Button
-            T={T} dark={dark}
-            variant="primary"
-            iconLeft={salvandoJornada ? 'ti-loader-2' : 'ti-device-floppy'}
-            onClick={salvarJornada}
-            disabled={salvandoJornada || loading}
-          >
-            {salvandoJornada ? 'Salvando…' : 'Salvar'}
-          </Button>
-          <div style={{ fontSize: 11.5, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
-            Atual: <strong style={{ color: T.textSecondary }}>{Number(get('jornada_padrao_horas', 8)) || 8} h/dia</strong>
+            <AtlButton T={T} dark={dark} variant="primary"
+              icon={salvandoJornada ? 'loader-2' : 'device-floppy'}
+              disabled={salvandoJornada || loading}
+              onClick={salvarJornada}>
+              {salvandoJornada ? 'Salvando…' : 'Salvar'}
+            </AtlButton>
+            <div style={{
+              fontSize: 11.5, color: T.textMuted,
+              fontVariantNumeric: 'tabular-nums', alignSelf: 'center',
+            }}>
+              Atual: <strong style={{ color: T.textPrimary }}>
+                {Number(get('jornada_padrao_horas', 8)) || 8} h/dia
+              </strong>
+            </div>
           </div>
         </div>
-      </Card>
+      </AtlPanel>
+    </div>
+  )
+}
+
+// ─── Primitivos Atlassian inline ─────────────────────────────────────────
+function AtlPanel({ T, dark, title, titleIcon, accent, footer, children }) {
+  return (
+    <div style={{
+      background: T.card,
+      border: `1px solid ${T.border}`,
+      borderRadius: ATL_RADIUS, overflow: 'hidden',
+      boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
+      fontFamily: ATL_FONT,
+    }}>
+      {(title || titleIcon) && (
+        <div style={{
+          padding: '10px 14px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
+        }}>
+          {accent && (
+            <div style={{
+              width: 3, alignSelf: 'stretch', borderRadius: 99,
+              background: accent, minHeight: 14, flexShrink: 0,
+            }} />
+          )}
+          {titleIcon && (
+            <i className={`ti ti-${titleIcon}`}
+               style={{ fontSize: 14, color: T.textMuted, flexShrink: 0 }}
+               aria-hidden="true" />
+          )}
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: T.textPrimary,
+            letterSpacing: '-0.005em', flex: 1,
+          }}>{title}</div>
+        </div>
+      )}
+      <div>{children}</div>
+      {footer && (
+        <div style={{
+          padding: '8px 14px',
+          borderTop: `1px solid ${T.border}`,
+          background: dark ? 'rgba(255,255,255,0.025)' : '#F7F8F9',
+          fontSize: 12, color: T.textMuted,
+        }}>{footer}</div>
+      )}
+    </div>
+  )
+}
+
+function AtlButton({ T, dark, variant = 'default', icon, onClick, disabled, children }) {
+  const azul = corEtapa('blue', dark)
+  const styles = variant === 'primary'
+    ? { background: azul, color: '#fff', border: 'none' }
+    : {
+        background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+        color: T.textPrimary,
+        border: `1px solid ${T.border}`,
+      }
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      style={{
+        ...styles,
+        padding: '7px 12px', borderRadius: 3,
+        fontSize: 13.5, fontWeight: 500,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        fontFamily: ATL_FONT,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        minHeight: 32, letterSpacing: '-0.005em',
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+      {icon && <i className={`ti ti-${icon}`} style={{ fontSize: 14 }} aria-hidden="true" />}
+      {children}
+    </button>
+  )
+}
+
+function AtlField({ T, dark, label, icon, value, onChange, type = 'text', width, ...rest }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width }}>
+      <label style={{
+        fontSize: 11, fontWeight: 600, color: T.textMuted,
+        letterSpacing: '-0.005em',
+      }}>{label}</label>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '0 10px',
+        background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+        border: `1px solid ${T.border}`,
+        borderRadius: 3, height: 32,
+      }}>
+        {icon && (
+          <i className={`ti ti-${icon}`}
+             style={{ fontSize: 14, color: T.textMuted, flexShrink: 0 }}
+             aria-hidden="true" />
+        )}
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          {...rest}
+          style={{
+            flex: 1, minWidth: 0,
+            border: 'none', background: 'transparent', outline: 'none',
+            fontSize: 13, color: T.textPrimary,
+            fontFamily: ATL_FONT, letterSpacing: '-0.005em',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        />
+      </div>
     </div>
   )
 }
