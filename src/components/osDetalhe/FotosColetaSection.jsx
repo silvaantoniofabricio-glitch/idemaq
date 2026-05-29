@@ -87,8 +87,8 @@ export default function FotosColetaSection({
         body: { imageUrl },
       })
       if (error || !data?.ok) {
-        // Falha silenciosa — usuário preenche manual
-        if (error) console.warn('[extrair-etiqueta] falha:', error)
+        console.warn('[extrair-etiqueta] falha:', error, data)
+        notify('info', `Etiqueta: erro — ${error?.message || data?.error || 'verifique console'}`)
         return
       }
       const campos = {
