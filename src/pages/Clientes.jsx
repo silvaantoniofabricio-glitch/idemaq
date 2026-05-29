@@ -7,6 +7,7 @@
 
 import React, { useState, useMemo } from 'react'
 import { corEtapa, corHero } from '../utils/colors'
+import { useIsMobile } from '../theme'
 import { useClientes } from '../hooks/useClientes'
 import { useOS } from '../hooks/useOS'
 import {
@@ -26,8 +27,25 @@ function iniciais(nome) {
     .join('') || '?'
 }
 
+// Detecta nome 'ruim' (telefone na coluna nome — comum na importacao Bling).
+// Se o nome so tem digitos, + e separadores telefonicos -> trata como sem nome.
+function nomeEhTelefone(nome) {
+  if (!nome) return false
+  const limpo = nome.trim()
+  if (limpo.length < 3) return false
+  // se removendo digitos, +, espacos, parenteses, traco, ponto sobra <2 chars
+  const semFone = limpo.replace(/[\d+\-\s().]+/g, '').trim()
+  return semFone.length < 2
+}
+
+function exibirNome(c) {
+  if (nomeEhTelefone(c.nome)) return 'Cliente sem nome'
+  return c.nome || 'Sem nome'
+}
+
 export default function Clientes({ T, dark }) {
   const cor = (d, c) => dark ? d : c
+  const isMobile = useIsMobile()
   const notify = useToast()
   const azul = corEtapa('blue', dark)
 
@@ -190,77 +208,93 @@ export default function Clientes({ T, dark }) {
             >Lista</SectionHeader>
           </div>
 
-          {visiveis.map((c) => (
-            <div key={c.id}
-              onClick={() => abrirFicha(c)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirFicha(c) } }}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'auto 1fr auto',
-                gap: 14, alignItems: 'center',
-                padding: '12px 16px',
-                borderTop: `1px solid ${T.border}`,
-                cursor: 'pointer',
-                transition: 'background .12s',
-                outline: 'none',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              onFocus={e => e.currentTarget.style.background = T.cardAlt}
-              onBlur={e => e.currentTarget.style.background = 'transparent'}
-            >
-              {/* Avatar com iniciais */}
-              <div style={{
-                width: 34, height: 34, borderRadius: 9,
-                background: cor('#0d2035', '#e6f1fb'),
-                border: `1px solid ${azul}33`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700, color: azul,
-                letterSpacing: '.5px',
-                flexShrink: 0,
-              }}>
-                {iniciais(c.nome)}
-              </div>
-
-              {/* Nome + endereço */}
-              <div style={{ minWidth: 0 }}>
+          {visiveis.map((c) => {
+            const semNome = nomeEhTelefone(c.nome)
+            return (
+              <div key={c.id}
+                onClick={() => abrirFicha(c)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirFicha(c) } }}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr auto',
+                  gap: isMobile ? 10 : 14, alignItems: 'center',
+                  padding: '12px 14px',
+                  borderTop: `1px solid ${T.border}`,
+                  cursor: 'pointer',
+                  transition: 'background .12s',
+                  outline: 'none',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onFocus={e => e.currentTarget.style.background = T.cardAlt}
+                onBlur={e => e.currentTarget.style.background = 'transparent'}
+              >
+                {/* Avatar — icone person quando nome ruim, iniciais quando ok */}
                 <div style={{
-                  fontSize: 13.5, fontWeight: 600,
-                  color: corHero(dark),
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  width: 36, height: 36, borderRadius: 4,
+                  background: azul + '22',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 12, fontWeight: 700, color: azul,
+                  letterSpacing: '0.5px',
+                  flexShrink: 0,
                 }}>
-                  {c.nome}
+                  {semNome
+                    ? <i className="ti ti-user" style={{ fontSize: 17 }} aria-hidden="true" />
+                    : iniciais(c.nome)}
                 </div>
-                <div style={{
-                  fontSize: 11, color: T.textMuted, marginTop: 3,
-                  display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-                }}>
-                  <i className="ti ti-map-pin" style={{ fontSize: 12 }} aria-hidden="true" />
-                  <span style={{
+
+                {/* Stack: Nome + Endereco + Telefone */}
+                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{
+                    fontSize: 13.5, fontWeight: 600,
+                    color: semNome ? T.textMuted : T.textPrimary,
+                    fontStyle: semNome ? 'italic' : 'normal',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    maxWidth: 360,
-                  }}>{c.endereco || '—'}</span>
-                </div>
-              </div>
+                    letterSpacing: '-0.005em',
+                  }}>
+                    {exibirNome(c)}
+                  </div>
 
-              {/* Telefone (WhatsApp) + chevron sutil */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  fontSize: 12, color: T.textSecondary,
-                  fontVariantNumeric: 'tabular-nums',
-                  display: 'flex', alignItems: 'center', gap: 5,
-                }}>
-                  <i className="ti ti-brand-whatsapp"
-                     style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-                  {c.telefone || '—'}
+                  {c.endereco && (
+                    <div style={{
+                      fontSize: 11.5, color: T.textMuted,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      letterSpacing: '-0.005em',
+                    }}>
+                      <i className="ti ti-map-pin"
+                         style={{ fontSize: 11, flexShrink: 0 }}
+                         aria-hidden="true" />
+                      <span style={{
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        flex: 1, minWidth: 0,
+                      }}>{c.endereco}</span>
+                    </div>
+                  )}
+
+                  {c.telefone && (
+                    <div style={{
+                      fontSize: 11.5, color: azul, fontWeight: 500,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      fontVariantNumeric: 'tabular-nums',
+                      letterSpacing: '-0.005em',
+                    }}>
+                      <i className="ti ti-brand-whatsapp"
+                         style={{ fontSize: 11, flexShrink: 0 }}
+                         aria-hidden="true" />
+                      {c.telefone}
+                    </div>
+                  )}
                 </div>
+
+                {/* Chevron */}
                 <i className="ti ti-chevron-right"
-                   style={{ fontSize: 16, color: T.textDim }} aria-hidden="true" />
+                   style={{ fontSize: 14, color: T.textDim, flexShrink: 0 }}
+                   aria-hidden="true" />
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {totalPaginas > 1 && (
             <div style={{

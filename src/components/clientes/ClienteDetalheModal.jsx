@@ -198,10 +198,13 @@ export default function ClienteDetalheModal({
 
         <div style={{ height: 1, background: T.border, margin: '18px 0 14px' }} />
 
-        {/* Histórico de OS — filtra osList do useOS (montado no pai) */}
+        {/* Histórico de OS — filtra osList do useOS (montado no pai).
+            Matching: cliente_id exato OU telefone normalizado (cobre OSes
+            importadas do Trello/Bling sem link explicito). */}
         <HistoricoOS
           T={T} dark={dark}
           clienteId={cliente.id}
+          clienteFone={cliente.telefone}
           osList={osList}
           onAbrirOS={onAbrirOS}
         />
@@ -236,15 +239,36 @@ export default function ClienteDetalheModal({
 // Filtra a osList do useOS (recebida do pai) por cliente_id em memória.
 // Reaproveita Realtime do useOS sem disparar query nova por abertura de modal.
 // Clique chama onAbrirOS(id) — pai abre OSDetalhe.
-function HistoricoOS({ T, dark, clienteId, osList, onAbrirOS }) {
+// Normaliza telefone pra so digitos (e remove DDI 55 inicial se houver
+// 13 digitos). Permite match de OSes importadas do Trello/Bling onde
+// `cliente_id` pode estar NULL mas o `fone` na OS bate com o `telefone`
+// do cliente quando ambos normalizados.
+function normFone(s) {
+  if (!s) return ''
+  let d = String(s).replace(/\D/g, '')
+  if (d.length === 13 && d.startsWith('55')) d = d.slice(2)
+  return d
+}
+
+function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
   const azul = corEtapa('blue', dark)
 
   const osCliente = useMemo(() => {
+    const foneClienteN = normFone(clienteFone)
     return (osList || [])
-      .filter(o => o.cliente_id === clienteId)
+      .filter(o => {
+        // Match primario: cliente_id exato (links explicitos)
+        if (o.cliente_id && o.cliente_id === clienteId) return true
+        // Fallback: telefone normalizado bate (cobre importacao sem link)
+        if (foneClienteN && foneClienteN.length >= 8) {
+          const foneOSN = normFone(o.fone)
+          if (foneOSN === foneClienteN) return true
+        }
+        return false
+      })
       .slice()
       .sort((a, b) => new Date(b.abertura) - new Date(a.abertura))
-  }, [osList, clienteId])
+  }, [osList, clienteId, clienteFone])
 
   const sectionLabel = {
     fontSize: 11, color: T.textMuted, fontWeight: 600,
