@@ -7,15 +7,12 @@
 // `modelo_equipamento`, `numero_serie`, `defeito_relatado`).
 // Colunas aplicadas via sql/10-os-equipamento.sql em 20/05/2026.
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
 import {
   Modal, ModalHeader, Button, Input, Textarea,
   useToast,
 } from '../ui'
-import {
-  uploadFotoColeta, removerFotoColeta, resolverFotoUrl, FOTO_STORAGE_MARKER,
-} from '../../utils/osStorage'
 import FotosColetaSection from './FotosColetaSection'
 
 export default function FormEquipamentoEdit({
@@ -26,52 +23,6 @@ export default function FormEquipamentoEdit({
 }) {
   const notify = useToast()
   const azul = corEtapa('blue', dark)
-  const inputFotoRef = useRef(null)
-
-  // Foto — prioriza foto_coleta_1 (etiqueta salva pela AcaoColeta), cai pra foto legacy
-  const fotoColeta1 = os?.pre_diagnostico?.foto_coleta_1 || null
-  const fotoLegacy  = os?.pre_diagnostico?.foto || os?.foto || null
-  const fotoRef  = fotoColeta1 || fotoLegacy
-  const fotoTipo = fotoColeta1 ? 'coleta_1' : 'coleta'
-  const [fotoUrl, setFotoUrl] = useState(null)
-  const [uploading, setUploading] = useState(false)
-
-  useEffect(() => {
-    let cancelado = false
-    async function carregar() {
-      const url = await resolverFotoUrl(fotoRef, os.id, fotoTipo)
-      if (!cancelado) setFotoUrl(url || null)
-    }
-    if (fotoRef) carregar()
-    else setFotoUrl(null)
-    return () => { cancelado = true }
-  }, [fotoRef, os?.id, fotoTipo])
-
-  async function escolherFoto(file) {
-    if (!file || !file.type?.startsWith('image/')) {
-      notify('erro', 'Selecione uma imagem (JPG/PNG).')
-      return
-    }
-    setUploading(true)
-    const res = await uploadFotoColeta(os.id, file)
-    setUploading(false)
-    if (!res.ok) { notify('erro', `Falha ao enviar foto: ${res.error}`); return }
-    setFotoUrl(res.url)
-    onUpdateOS?.(os.numero, {
-      pre_diagnostico: { ...(os.pre_diagnostico || {}), foto: FOTO_STORAGE_MARKER },
-    })
-    notify('ok', 'Foto adicionada')
-  }
-
-  async function removerFoto() {
-    if (!window.confirm('Remover a foto?')) return
-    const res = await removerFotoColeta(os.id)
-    if (!res.ok) { notify('erro', `Falha ao remover: ${res.error}`); return }
-    setFotoUrl(null)
-    const { foto, ...resto } = os.pre_diagnostico || {}
-    onUpdateOS?.(os.numero, { pre_diagnostico: resto })
-    notify('ok', 'Foto removida')
-  }
 
   const [form, setForm] = useState({
     marca: (os?.marca || '').toUpperCase(),
@@ -125,73 +76,6 @@ export default function FormEquipamentoEdit({
         padding: '18px 20px',
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
-
-        {/* Foto do equipamento */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            onClick={() => !uploading && inputFotoRef.current?.click()}
-            style={{
-              width: 80, height: 80, flexShrink: 0,
-              borderRadius: 10,
-              border: `2px dashed ${fotoUrl ? 'transparent' : azul + '66'}`,
-              background: fotoUrl
-                ? `url(${fotoUrl}) center/cover no-repeat`
-                : (dark ? '#1e2d3d' : '#eef4fb'),
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: uploading ? 'wait' : 'pointer',
-              overflow: 'hidden', flexShrink: 0,
-            }}
-          >
-            {!fotoUrl && !uploading && (
-              <i className="ti ti-camera-plus"
-                style={{ fontSize: 26, color: azul, opacity: 0.7 }}
-                aria-hidden="true" />
-            )}
-            {uploading && (
-              <i className="ti ti-loader-2"
-                style={{ fontSize: 24, color: azul, animation: 'spin 1s linear infinite' }}
-                aria-hidden="true" />
-            )}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: T.textPrimary, marginBottom: 4 }}>
-              Foto do equipamento
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => !uploading && inputFotoRef.current?.click()}
-                disabled={uploading}
-                style={{
-                  padding: '5px 12px', borderRadius: 6, border: `1px solid ${azul}`,
-                  background: 'transparent', color: azul,
-                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                }}
-              >
-                {fotoUrl ? 'Trocar' : 'Adicionar'}
-              </button>
-              {fotoUrl && (
-                <button
-                  onClick={removerFoto}
-                  style={{
-                    padding: '5px 12px', borderRadius: 6, border: `1px solid ${T.border}`,
-                    background: 'transparent', color: T.textMuted,
-                    fontSize: 12, cursor: 'pointer',
-                  }}
-                >
-                  Remover
-                </button>
-              )}
-            </div>
-          </div>
-          <input
-            ref={inputFotoRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: 'none' }}
-            onChange={e => escolherFoto(e.target.files?.[0])}
-          />
-        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
