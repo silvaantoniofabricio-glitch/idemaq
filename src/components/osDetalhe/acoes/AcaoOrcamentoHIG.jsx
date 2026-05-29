@@ -1190,6 +1190,352 @@ function AtlDescontoCard({ T, dark, subtotalBruto, descontoRS, onChangeRS, onCha
   )
 }
 
+// ─── Botão Atlassian (primary/subtle/default) ─────────────────────────────
+function AtlButton({ T, dark, variant = 'default', icon, onClick, disabled, children, fullWidth }) {
+  const [hover, setHover] = useState(false)
+  const azul = corEtapa('blue', dark)
+
+  const styles = variant === 'primary'
+    ? {
+        background: hover ? '#4a8bc8' : azul,
+        color: '#fff',
+        border: 'none',
+      }
+    : variant === 'subtle'
+      ? {
+          background: hover ? atlHover(dark) : 'transparent',
+          color: azul,
+          border: 'none',
+        }
+      : {
+          background: hover
+            ? (dark ? 'rgba(255,255,255,0.08)' : '#EBECF0')
+            : (dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7'),
+          color: T.textPrimary,
+          border: `1px solid ${T.border}`,
+        }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        ...styles,
+        padding: '7px 12px', borderRadius: 3,
+        fontSize: 13.5, fontWeight: 500,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        fontFamily: ATL_FONT,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        width: fullWidth ? '100%' : undefined,
+        minHeight: 32, letterSpacing: '-0.005em',
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'background .12s',
+      }}>
+      {icon && <i className={`ti ti-${icon}`} style={{ fontSize: 14 }} aria-hidden="true" />}
+      {children}
+    </button>
+  )
+}
+
+// ─── Card de totais em padrão Atlassian ───────────────────────────────────
+function AtlTotalCard({ T, dark, subtotais, descontoRS, total }) {
+  const temDesc = descontoRS > 0
+  const azul = corEtapa('blue', dark)
+  const vermelho = corEtapa('red', dark)
+
+  return (
+    <AtlPanel T={T} dark={dark} title="Resumo">
+      {TIPOS.map((t, i) => {
+        const v = subtotais[t.id] || 0
+        return (
+          <div key={t.id} style={{
+            padding: '8px 14px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
+          }}>
+            <div style={{
+              width: 22, height: 22, borderRadius: 4,
+              background: bgFor(t.color, dark),
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <TI name={t.icon} size={11} color={t.color} />
+            </div>
+            <span style={{ flex: 1, fontSize: 13, color: T.textPrimary }}>{t.label}</span>
+            <span style={{
+              fontSize: 13, fontWeight: v > 0 ? 600 : 400,
+              color: v > 0 ? T.textPrimary : T.textMuted,
+              fontVariantNumeric: 'tabular-nums',
+            }}>{fmtBRL(v)}</span>
+          </div>
+        )
+      })}
+
+      {temDesc && (
+        <div style={{
+          padding: '8px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          borderTop: `1px solid ${T.border}`,
+        }}>
+          <div style={{
+            width: 22, height: 22, borderRadius: 4,
+            background: vermelho + '22',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <i className="ti ti-tag" style={{ fontSize: 11, color: vermelho }} aria-hidden="true" />
+          </div>
+          <span style={{ flex: 1, fontSize: 13, color: vermelho }}>Desconto</span>
+          <span style={{
+            fontSize: 13, fontWeight: 600, color: vermelho,
+            fontVariantNumeric: 'tabular-nums',
+          }}>− {fmtBRL(descontoRS)}</span>
+        </div>
+      )}
+
+      {/* Total destacado */}
+      <div style={{
+        padding: '14px',
+        borderTop: `1px solid ${T.border}`,
+        background: dark ? 'rgba(91,155,213,0.06)' : 'rgba(91,155,213,0.04)',
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+      }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+        }}>Total</span>
+        <span style={{
+          fontSize: 26, fontWeight: 700, color: azul,
+          fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
+        }}>{fmtBRL(total)}</span>
+      </div>
+    </AtlPanel>
+  )
+}
+
+// ─── Status do orçamento em padrão Atlassian ──────────────────────────────
+function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
+  const statusSalvo = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle'
+  const [status, setStatus] = useState(statusSalvo)
+  const [fase, setFase] = useState('normal') // 'normal' | 'confirmar' | 'desfazer'
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+  const vermelho = corEtapa('red', dark)
+  const amarelo = corEtapa('yellow', dark)
+
+  useEffect(() => {
+    setStatus(os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle')
+  }, [os?.pre_diagnostico?.orcamento_status, os?.orcamento_status])
+
+  function persistir(novo) {
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: { ...(os.pre_diagnostico || {}), orcamento_status: novo },
+    })
+  }
+
+  function resolver(novo) {
+    setStatus(novo); setFase('normal'); persistir(novo)
+    if (novo === 'confirmado') onMoverOS?.(os.numero, 'oficina')
+  }
+
+  function reverter() {
+    setStatus('aguardando'); setFase('normal'); persistir('aguardando')
+    if (os?.etapa !== 'orcamento') onMoverOS?.(os.numero, 'orcamento')
+  }
+
+  // Estado de confirmar resposta do cliente
+  if (fase === 'confirmar') {
+    return (
+      <AtlPanel T={T} dark={dark} title="Resposta do cliente">
+        <div style={{
+          padding: 14,
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+        }}>
+          <button type="button" onClick={() => resolver('recusado')} style={{
+            padding: '14px 8px', borderRadius: 4,
+            background: dark ? 'rgba(192,66,66,0.10)' : '#FEF0EF',
+            border: `1px solid ${vermelho}33`,
+            color: vermelho, cursor: 'pointer', fontFamily: ATL_FONT,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+            <i className="ti ti-x" style={{ fontSize: 20 }} aria-hidden="true" />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Recusado</span>
+          </button>
+          <button type="button" onClick={() => resolver('confirmado')} style={{
+            padding: '14px 8px', borderRadius: 4,
+            background: dark ? 'rgba(60,140,80,0.10)' : '#E8F9EE',
+            border: `1px solid ${verde}33`,
+            color: verde, cursor: 'pointer', fontFamily: ATL_FONT,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+            <i className="ti ti-check" style={{ fontSize: 20 }} aria-hidden="true" />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Aprovado</span>
+          </button>
+        </div>
+        <div style={{
+          padding: '8px 14px', borderTop: `1px solid ${T.border}`,
+          background: atlSurfaceSunken(dark), textAlign: 'center',
+        }}>
+          <AtlTextButton T={T} dark={dark} onClick={() => setFase('normal')}>
+            Cancelar
+          </AtlTextButton>
+        </div>
+      </AtlPanel>
+    )
+  }
+
+  // Estado de desfazer
+  if (fase === 'desfazer') {
+    return (
+      <AtlPanel T={T} dark={dark} title="Reabrir orçamento">
+        <div style={{ padding: 14 }}>
+          <p style={{
+            fontSize: 13, color: T.textMuted, margin: '0 0 12px',
+            lineHeight: 1.5, letterSpacing: '-0.005em',
+          }}>
+            {status === 'confirmado'
+              ? 'A OS volta pra etapa Orçamento e o status fica como "Aguardando resposta".'
+              : 'O status volta pra "Aguardando resposta" — você pode reabrir a decisão.'}
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <AtlButton T={T} dark={dark} variant="default" onClick={() => setFase('normal')}>
+              Cancelar
+            </AtlButton>
+            <AtlButton T={T} dark={dark} variant="primary" icon="arrow-back-up" onClick={reverter}>
+              Reabrir
+            </AtlButton>
+          </div>
+        </div>
+      </AtlPanel>
+    )
+  }
+
+  // Estado normal — banner com status + ação
+  const cfg = {
+    idle: {
+      icon: 'send', label: 'Enviar orçamento ao cliente',
+      cor: azul, sub: 'Quando o cliente receber, marque como aguardando resposta.',
+    },
+    aguardando: {
+      icon: 'clock', label: 'Aguardando resposta',
+      cor: amarelo, sub: 'Toque pra registrar se o cliente aprovou ou recusou.',
+    },
+    confirmado: {
+      icon: 'circle-check', label: 'Orçamento aprovado',
+      cor: verde, sub: 'OS avançou pra oficina. Toque pra reabrir se precisar.',
+    },
+    recusado: {
+      icon: 'circle-x', label: 'Orçamento recusado',
+      cor: vermelho, sub: 'Toque pra reabrir se o cliente reconsiderar.',
+    },
+  }
+  const c = cfg[status] || cfg.idle
+  const resolvido = status === 'confirmado' || status === 'recusado'
+
+  function handleClick() {
+    if (status === 'idle') { setStatus('aguardando'); persistir('aguardando') }
+    else if (status === 'aguardando') setFase('confirmar')
+    else if (resolvido) setFase('desfazer')
+  }
+
+  return (
+    <AtlPanel T={T} dark={dark}>
+      <button
+        type="button"
+        onClick={handleClick}
+        style={{
+          width: '100%', padding: '14px',
+          background: 'transparent', border: 'none',
+          cursor: 'pointer', fontFamily: ATL_FONT,
+          display: 'flex', alignItems: 'center', gap: 12,
+          textAlign: 'left',
+          WebkitTapHighlightColor: 'transparent',
+        }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 4,
+          background: c.cor + '22', color: c.cor,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <i className={`ti ti-${c.icon}`} style={{ fontSize: 18 }} aria-hidden="true" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 13.5, fontWeight: 600, color: c.cor,
+            letterSpacing: '-0.005em',
+          }}>{c.label}</div>
+          <div style={{
+            fontSize: 12, color: T.textMuted, marginTop: 2,
+            lineHeight: 1.35,
+          }}>{c.sub}</div>
+        </div>
+        <i className="ti ti-chevron-right" style={{
+          fontSize: 14, color: T.textDim, flexShrink: 0,
+        }} aria-hidden="true" />
+      </button>
+    </AtlPanel>
+  )
+}
+
+// ─── Documentos (PDF/WhatsApp) em padrão Atlassian ────────────────────────
+function AtlDocumentosCard({ T, dark, onPdf, onWhats }) {
+  const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+
+  const items = [
+    { id: 'pdf',   icon: 'file-text', cor: azul,  label: 'Gerar PDF',           sub: 'Compartilhe o orçamento por e-mail ou impresso.', onClick: onPdf },
+    { id: 'whats', icon: 'brand-whatsapp', cor: verde, label: 'Enviar pelo WhatsApp', sub: 'Mande direto pro cliente via mensagem.', onClick: onWhats },
+  ]
+
+  return (
+    <AtlPanel T={T} dark={dark} title="Documentos">
+      {items.map((it, i) => (
+        <button
+          key={it.id}
+          type="button"
+          onClick={it.onClick}
+          style={{
+            width: '100%',
+            padding: '10px 14px',
+            borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
+            background: 'transparent', border: 'none',
+            cursor: 'pointer', fontFamily: ATL_FONT,
+            display: 'flex', alignItems: 'center', gap: 10,
+            textAlign: 'left',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 4,
+            background: it.cor + '22', color: it.cor,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <i className={`ti ti-${it.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 600, color: T.textPrimary,
+              letterSpacing: '-0.005em',
+            }}>{it.label}</div>
+            <div style={{
+              fontSize: 11.5, color: T.textMuted, marginTop: 1,
+            }}>{it.sub}</div>
+          </div>
+          <i className="ti ti-chevron-right" style={{
+            fontSize: 13, color: T.textDim, flexShrink: 0,
+          }} aria-hidden="true" />
+        </button>
+      ))}
+    </AtlPanel>
+  )
+}
+
 // ─── Grupo de itens (Serviços / Peças / Deslocamento) ─────────────────────
 function GrupoItens({ tipo, itens, subtotal, T, dark, onAddNovo, onRemove }) {
   const count = itens.length
@@ -1606,11 +1952,11 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
         onRemove={() => { setDescontoRS(0); onUpdateOS?.(os.numero, { desconto: 0 }) }}
       />
 
-      {/* 4. Total */}
-      <TotalCard T={T} dark={dark} subtotais={subtotais} descontoRS={descontoRS} total={total} />
+      {/* 4. Total — Atlassian panel */}
+      <AtlTotalCard T={T} dark={dark} subtotais={subtotais} descontoRS={descontoRS} total={total} />
 
-      {/* 5. Status do orçamento */}
-      <StatusOrcamento T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
+      {/* 5. Status do orçamento — Atlassian panel */}
+      <AtlStatusOrcamento T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
 
       {/* 6. Recebimento antecipado */}
       <FormRecebimento
@@ -1639,46 +1985,12 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
         onGerarPix={() => {}}
       />
 
-      {/* 7. Ações secundárias */}
-      <HIGSection T={T} dark={dark} title="Documentos">
-        <button type="button" onClick={() => setDocSheet('pdf')} style={{
-          width: '100%', minHeight: HIG_SIZE.listRow,
-          padding: `0 ${HIG_SPACE.md}px`,
-          border: 'none', background: 'transparent',
-          display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-          cursor: 'pointer', fontFamily: HIG_FONT,
-          WebkitTapHighlightColor: 'transparent',
-        }}>
-          <span style={{
-            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            background: dark ? 'rgba(91,155,213,0.15)' : 'rgba(91,155,213,0.10)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <TI name="file-text" size={16} color={HIG_COLOR.tintIdemaq} />
-          </span>
-          <span style={{ flex: 1, ...higType('body'), color: T.textPrimary }}>Gerar PDF</span>
-          <TI name="chevron-right" size={14} color={T.textDim} />
-        </button>
-        <Sep T={T} indent={HIG_SPACE.md + 32 + HIG_SPACE.sm} />
-        <button type="button" onClick={() => setDocSheet('whats')} style={{
-          width: '100%', minHeight: HIG_SIZE.listRow,
-          padding: `0 ${HIG_SPACE.md}px`,
-          border: 'none', background: 'transparent',
-          display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-          cursor: 'pointer', fontFamily: HIG_FONT,
-          WebkitTapHighlightColor: 'transparent',
-        }}>
-          <span style={{
-            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            background: dark ? 'rgba(52,199,89,0.15)' : 'rgba(52,199,89,0.10)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <TI name="brand-whatsapp" size={16} color={HIG_COLOR.green} />
-          </span>
-          <span style={{ flex: 1, ...higType('body'), color: T.textPrimary }}>Enviar pelo WhatsApp</span>
-          <TI name="chevron-right" size={14} color={T.textDim} />
-        </button>
-      </HIGSection>
+      {/* 7. Documentos — Atlassian panel */}
+      <AtlDocumentosCard
+        T={T} dark={dark}
+        onPdf={() => setDocSheet('pdf')}
+        onWhats={() => setDocSheet('whats')}
+      />
 
       {/* ActionSheet para escolher tipo de documento */}
       {docSheet && (
