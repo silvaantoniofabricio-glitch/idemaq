@@ -602,8 +602,8 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
           {/* Input de busca */}
           <div style={{ position: 'relative' }}>
             <i className="ti ti-search" style={{
-              position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 18, color: T.textMuted,
+              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 14, color: T.textMuted, pointerEvents: 'none',
             }} aria-hidden="true" />
             <input
               className="idemaq-novaos-input"
@@ -612,21 +612,23 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
               onChange={e => setBusca(e.target.value)}
               placeholder="Buscar por nome ou telefone…"
               style={{
-                width: '100%', minHeight: 52,
-                padding: '12px 14px 12px 44px',
-                borderRadius: 12,
+                width: '100%', height: 40,
+                padding: '0 12px 0 32px',
+                borderRadius: 3,
                 border: `1px solid ${T.border}`,
-                background: T.card, color: T.textPrimary,
-                fontSize: 16, // não <16px → evita zoom iOS
+                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+                color: T.textPrimary,
+                fontSize: 16,
                 outline: 'none', boxSizing: 'border-box',
                 fontFamily: 'inherit',
-                transition: 'border-color .15s, box-shadow .15s',
+                letterSpacing: '-0.005em',
+                transition: 'border-color .12s, box-shadow .12s',
               }}
             />
             {loading && (
               <i className="ti ti-loader-2" aria-hidden="true" style={{
-                position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-                fontSize: 18, color: T.textMuted,
+                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                fontSize: 14, color: T.textMuted,
                 animation: 'idemaq-novaos-spin .8s linear infinite',
               }} />
             )}
@@ -652,28 +654,33 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
               {resultados.map(c => (
                 <button key={c.id} onClick={() => escolher(c)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 14px', borderRadius: 12,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 12px', borderRadius: 3,
                     border: `1px solid ${T.border}`,
                     background: T.card, color: T.textPrimary,
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    width: '100%', minHeight: 64,
+                    width: '100%', minHeight: 56,
+                    boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
                     animation: 'idemaq-novaos-fade-up .12s ease-out',
                   }}>
                   <div style={{
-                    width: 40, height: 40, borderRadius: 20,
-                    background: `${azul}1f`, color: azul,
+                    width: 32, height: 32, borderRadius: 4,
+                    background: azul + '22', color: azul,
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
                   }}>
-                    <i className="ti ti-user" style={{ fontSize: 18 }} aria-hidden="true" />
+                    <i className="ti ti-user" style={{ fontSize: 16 }} aria-hidden="true" />
                   </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{
-                      fontSize: 14, fontWeight: 600, color: corHero(dark),
+                      fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
+                      letterSpacing: '-0.005em',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>{c.nome}</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                    <div style={{
+                      fontSize: 11.5, color: T.textMuted, marginTop: 2,
+                      letterSpacing: '-0.005em',
+                    }}>
                       {c.fone || '— sem telefone —'}
                       {c.enderecos.length > 0 && (
                         <> · {c.enderecos.length} end.</>
@@ -681,7 +688,7 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
                     </div>
                   </div>
                   <i className="ti ti-chevron-right" style={{
-                    fontSize: 16, color: T.textMuted, flexShrink: 0,
+                    fontSize: 14, color: T.textDim, flexShrink: 0,
                   }} aria-hidden="true" />
                 </button>
               ))}
@@ -691,41 +698,46 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
           {/* Atalho cadastrar novo */}
           <button onClick={() => setModalNovoCli(true)}
             style={{
-              padding: '12px 14px', borderRadius: 12, minHeight: 48,
-              border: `1.5px dashed ${azul}55`,
-              background: `${azul}0d`,
-              color: azul, fontWeight: 700, fontSize: 13,
+              padding: '0 12px', borderRadius: 3, height: 36,
+              border: `1px solid ${T.border}`,
+              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+              color: azul, fontWeight: 500, fontSize: 13.5,
               cursor: 'pointer', fontFamily: 'inherit',
+              letterSpacing: '-0.005em',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className="ti ti-user-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+            <i className="ti ti-user-plus" style={{ fontSize: 14 }} aria-hidden="true" />
             Cadastrar novo cliente
           </button>
         </div>
       ) : (
         // Cliente selecionado
         <div style={{
-          padding: 14, borderRadius: 14,
-          background: `${azul}10`,
-          border: `1px solid ${azul}55`,
-          display: 'flex', alignItems: 'center', gap: 12,
+          padding: 10, borderRadius: 3,
+          background: azul + '12',
+          border: `1px solid ${azul}44`,
+          display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 22,
+            width: 36, height: 36, borderRadius: 4,
             background: azul, color: '#fff',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, fontSize: 15, fontWeight: 700,
+            flexShrink: 0, fontSize: 13, fontWeight: 700,
+            letterSpacing: '-0.005em',
           }}>
             {iniciais(form.cliente)}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{
-              fontSize: 15, fontWeight: 700, color: corHero(dark),
+              fontSize: 14, fontWeight: 600, color: T.textPrimary,
+              letterSpacing: '-0.005em',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{form.cliente}</div>
             <div style={{
-              fontSize: 12, color: T.textMuted, marginTop: 2,
+              fontSize: 11.5, color: T.textMuted, marginTop: 1,
               display: 'inline-flex', alignItems: 'center', gap: 4,
+              letterSpacing: '-0.005em',
             }}>
               <i className="ti ti-phone" style={{ fontSize: 11 }} aria-hidden="true" />
               {form.fone || '—'}
@@ -733,13 +745,15 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
           </div>
           <button onClick={trocar} aria-label="Trocar cliente"
             style={{
-              width: 40, height: 40, borderRadius: 10,
-              background: T.card, border: `1px solid ${T.border}`,
-              color: T.textSecondary, cursor: 'pointer',
+              width: 32, height: 32, borderRadius: 3,
+              background: dark ? 'rgba(255,255,255,0.05)' : '#fff',
+              border: `1px solid ${T.border}`,
+              color: T.textPrimary, cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
+              WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className="ti ti-edit" style={{ fontSize: 16 }} aria-hidden="true" />
+            <i className="ti ti-edit" style={{ fontSize: 14 }} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -932,14 +946,17 @@ function AgendamentoBlock({ T, dark, form, update, rotulo = 'Agendamento da cole
       </div>
       {!form.data && (
         <div style={{
-          marginTop: 10, padding: '10px 12px',
-          background: `${azul}10`, borderRadius: 10,
+          marginTop: 10, padding: '8px 12px',
+          background: azul + '12', borderRadius: 3,
           border: `1px solid ${azul}33`,
-          fontSize: 12, color: T.textSecondary, lineHeight: 1.45,
+          fontSize: 12, color: T.textPrimary, lineHeight: 1.45,
           display: 'flex', alignItems: 'center', gap: 8,
+          letterSpacing: '-0.005em',
         }}>
-          <i className="ti ti-info-circle" style={{ fontSize: 14, color: azul, flexShrink: 0 }} aria-hidden="true" />
-          <span>Sem data marcada? A OS abre como <strong style={{ color: corHero(dark) }}>Aguardando agendamento</strong>.</span>
+          <i className="ti ti-info-circle"
+             style={{ fontSize: 13, color: azul, flexShrink: 0 }}
+             aria-hidden="true" />
+          <span>Sem data marcada? A OS abre como <strong style={{ color: T.textPrimary }}>Aguardando agendamento</strong>.</span>
         </div>
       )}
     </div>
@@ -1214,8 +1231,8 @@ function inputBaseStyle(T, dark) {
 function InfoBanner({ T, dark, cor, titulo, texto }) {
   return (
     <div style={{
-      padding: 14, borderRadius: 12,
-      background: `${cor}10`,
+      padding: '10px 12px', borderRadius: 3,
+      background: cor + '12',
       border: `1px solid ${cor}33`,
       display: 'flex', alignItems: 'flex-start', gap: 10,
     }}>
