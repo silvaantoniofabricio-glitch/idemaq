@@ -115,32 +115,55 @@ export default function Clientes({ T, dark }) {
       flexDirection: 'column',
       gap: 14,
     }}>
-      <PageHeader T={T} dark={dark}
-        title="Clientes"
-        subtitle={
-          loading
-            ? 'Carregando…'
-            : `${clientes.length} ${clientes.length === 1 ? 'cadastrado' : 'cadastrados'}`
-        }
-        stats={[
-          { label: 'Ativos', value: clientes.length, color: azul },
-          // TODO Lote 2: cruzar com OS pra calcular "OS no mês" e "Inadimplentes"
-        ]}
-        actions={
-          <Button variant="primary" iconLeft="ti-plus" onClick={() => setModalNovo(true)}>
-            Novo cliente
-          </Button>
-        }
-      />
-
-      <Card T={T} dark={dark}>
-        <Input T={T} dark={dark}
-          value={busca}
-          onChange={mudarBusca}
-          icon="ti-search"
-          placeholder="Buscar por nome, telefone ou endereço…"
+      {/* PageHeader so no desktop — no mobile o titulo ja aparece na topbar */}
+      {!isMobile && (
+        <PageHeader T={T} dark={dark}
+          title="Clientes"
+          subtitle={
+            loading
+              ? 'Carregando…'
+              : `${clientes.length} ${clientes.length === 1 ? 'cadastrado' : 'cadastrados'}`
+          }
+          stats={[
+            { label: 'Ativos', value: clientes.length, color: azul },
+          ]}
+          actions={
+            <Button variant="primary" iconLeft="ti-plus" onClick={() => setModalNovo(true)}>
+              Novo cliente
+            </Button>
+          }
         />
-      </Card>
+      )}
+
+      {/* Busca + botao Novo cliente icone (so mobile) */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <Input T={T} dark={dark}
+            value={busca}
+            onChange={mudarBusca}
+            icon="ti-search"
+            placeholder={isMobile ? 'Buscar nome, telefone ou endereço…' : 'Buscar por nome, telefone ou endereço…'}
+          />
+        </div>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setModalNovo(true)}
+            aria-label="Novo cliente"
+            title="Novo cliente"
+            style={{
+              width: 32, height: 32, borderRadius: 3,
+              background: azul, color: '#fff',
+              border: 'none', cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
+              alignSelf: 'flex-end',
+            }}>
+            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+          </button>
+        )}
+      </div>
 
       {error && (
         <Card T={T} dark={dark} accent={corEtapa('red', dark)}>
