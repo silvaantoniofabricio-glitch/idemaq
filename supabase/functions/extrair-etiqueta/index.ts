@@ -1,25 +1,20 @@
 // supabase/functions/extrair-etiqueta/index.ts
 //
 // Edge function (Deno) que lê a foto da etiqueta de uma máquina de lavar
-// usando Claude Haiku 4.5 (vision) e devolve { marca, modelo, serie }.
+// usando Google Gemini Flash (vision, gratuito) e devolve { marca, modelo, serie }.
 //
 // Chamada pelo front via:
 //   supabase.functions.invoke('extrair-etiqueta', { body: { imageUrl } })
 //
-// Modelo: claude-haiku-4-5 — vision, mais barato que Sonnet. Etiquetas são
-// OCR simples, não precisa de raciocínio profundo.
-//
-// Reaproveita ANTHROPIC_API_KEY já configurada no secret do Supabase
-// (mesmo padrão da relatorio-ia).
+// Secret necessário: GEMINI_API_KEY (Google AI Studio — gratuito)
 //
 // Deploy:
-//   supabase functions deploy extrair-etiqueta --no-verify-jwt
+//   supabase functions deploy extrair-etiqueta
 
-// @ts-ignore — Deno runtime (resolve em runtime do Supabase, não no tsc local)
+// @ts-ignore — Deno runtime
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
 
-const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
-const MODEL = 'claude-haiku-4-5'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -27,7 +22,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const SYSTEM_PROMPT = `Você é um OCR especializado em etiquetas de máquinas de lavar roupa.
+const PROMPT = `Você é um OCR especializado em etiquetas de máquinas de lavar roupa.
 
 Sua tarefa: olhar a foto e extrair APENAS três campos:
 - marca:   fabricante (Brastemp, Consul, Electrolux, LG, Samsung, Mueller, Continental, etc.)
@@ -56,10 +51,10 @@ serve(async (req: Request) => {
     return json({ error: 'method not allowed' }, 405)
   }
 
-  // @ts-ignore — Deno global existe em runtime do Supabase
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  // @ts-ignore — Deno global
+  const apiKey = Deno.env.get('GEMINI_API_KEY')
   if (!apiKey) {
-    return json({ error: 'ANTHROPIC_API_KEY não configurada nos secrets' }, 500)
+    return json({ error: 'GEMINI_API_KEY não configurada nos secrets' }, 500)
   }
 
   let body: { imageUrl?: string }
@@ -74,9 +69,7 @@ serve(async (req: Request) => {
     return json({ error: 'campo "imageUrl" obrigatório' }, 400)
   }
 
-  // Baixa a imagem (signed URL do Supabase Storage) e converte pra base64.
-  // Mais robusto que passar URL direto pro Anthropic (signed URLs do Supabase
-  // expiram em 1h e o servidor da Anthropic pode falhar em buscar).
+  // Baixa a imagem e converte para base64
   let imageBase64: string
   let mediaType = 'image/jpeg'
   try {
@@ -93,59 +86,43 @@ serve(async (req: Request) => {
   }
 
   try {
-    const claudeRes = await fetch(ANTHROPIC_URL, {
+    const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 300,
-        system: [
+        contents: [
           {
-            type: 'text',
-            text: SYSTEM_PROMPT,
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
-        messages: [
-          {
-            role: 'user',
-            content: [
+            parts: [
               {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mediaType,
+                inline_data: {
+                  mime_type: mediaType,
                   data: imageBase64,
                 },
               },
-              {
-                type: 'text',
-                text: 'Extraia marca, modelo e número de série desta etiqueta. Responda só com o JSON.',
-              },
+              { text: PROMPT },
             ],
           },
         ],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 300,
+        },
       }),
     })
 
-    if (!claudeRes.ok) {
-      const errText = await claudeRes.text()
-      return json({ error: `Claude API erro ${claudeRes.status}`, detail: errText }, 502)
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text()
+      return json({ error: `Gemini API erro ${geminiRes.status}`, detail: errText }, 502)
     }
 
-    const payload = await claudeRes.json()
-    const rawText = (payload?.content || [])
-      .filter((b: { type: string }) => b.type === 'text')
-      .map((b: { text: string }) => b.text)
-      .join('\n')
-      .trim()
+    const payload = await geminiRes.json()
+    const rawText = payload?.candidates?.[0]?.content?.parts
+      ?.filter((p: { text?: string }) => p.text)
+      ?.map((p: { text: string }) => p.text)
+      ?.join('\n')
+      ?.trim() || ''
 
-    // Claude pode envolver o JSON em ```json … ``` mesmo depois do prompt
-    // pedir puro. Strip defensivo.
+    // Strip defensivo de ```json ... ```
     const jsonStr = rawText
       .replace(/^```(?:json)?\s*/i, '')
       .replace(/\s*```\s*$/i, '')
@@ -155,11 +132,7 @@ serve(async (req: Request) => {
     try {
       parsed = JSON.parse(jsonStr)
     } catch {
-      return json({
-        ok: false,
-        error: 'resposta não-JSON',
-        raw: rawText,
-      }, 200)
+      return json({ ok: false, error: 'resposta não-JSON', raw: rawText }, 200)
     }
 
     return json({
@@ -167,11 +140,10 @@ serve(async (req: Request) => {
       marca:  sanitize(parsed?.marca),
       modelo: sanitize(parsed?.modelo),
       serie:  sanitize(parsed?.serie),
-      modelo_ia: MODEL,
-      usage: payload?.usage ?? null,
+      modelo_ia: 'gemini-2.0-flash',
     })
   } catch (e) {
-    return json({ error: 'falha ao chamar Claude API', detail: String(e) }, 500)
+    return json({ error: 'falha ao chamar Gemini API', detail: String(e) }, 500)
   }
 })
 
@@ -183,7 +155,6 @@ function sanitize(v: unknown): string | null {
 }
 
 function uint8ToBase64(bytes: Uint8Array): string {
-  // chunked pra não estourar stack em imagens grandes
   let bin = ''
   const chunk = 0x8000
   for (let i = 0; i < bytes.length; i += chunk) {
