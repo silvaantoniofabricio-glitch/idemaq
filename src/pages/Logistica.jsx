@@ -35,6 +35,156 @@ import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 // Semana removido a pedido do Toni em 22/05/2026).
 const HOJE = new Date().toISOString().slice(0, 10)
 
+// Converte timestamp ISO pra hora local (America/Cuiaba) no formato HH:MM
+function horaLocal(iso) {
+  if (!iso) return null
+  try {
+    return new Date(iso).toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Cuiaba',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch { return null }
+}
+
+// Data local no fuso certo (pra comparar com HOJE que é UTC date)
+function dataLocalHoje() {
+  return new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Cuiaba',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).split('/').reverse().join('-') // yyyy-mm-dd
+}
+
+// Cor do chip de etapa pra agenda
+function corChipEtapa(etapaDb, dark) {
+  if (etapaDb === 'agendamento') return { bg: '#1565C0', text: '#fff' }
+  if (etapaDb === 'entrega')     return { bg: '#2E7D32', text: '#fff' }
+  if (etapaDb === 'pagamento')   return { bg: '#E65100', text: '#fff' }
+  if (etapaDb === 'teste_final') return { bg: '#558B2F', text: '#fff' }
+  return { bg: dark ? '#37474F' : '#CFD8DC', text: dark ? '#CFD8DC' : '#37474F' }
+}
+
+// Agenda do Dia — mostra OS com horário agendado pra hoje, ordenadas por hora
+function AgendaDia({ T, dark, osList, onAbrirOS }) {
+  const hoje = dataLocalHoje()
+
+  const osHoje = useMemo(() => {
+    return osList
+      .filter(os => {
+        if (!os.data_agendamento) return false
+        // Converte o timestamp pro fuso local e compara só a data
+        const dataLocal = new Date(os.data_agendamento).toLocaleDateString('pt-BR', {
+          timeZone: 'America/Cuiaba',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+        }).split('/').reverse().join('-')
+        return dataLocal === hoje
+      })
+      .sort((a, b) => (a.data_agendamento || '').localeCompare(b.data_agendamento || ''))
+  }, [osList, hoje])
+
+  return (
+    <div style={{
+      border: `1px solid ${T.border}`,
+      borderRadius: 10,
+      background: T.card,
+      overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '10px 14px',
+        borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-calendar-time" style={{ fontSize: 15, color: '#5B9BD5' }} aria-hidden="true" />
+        <span style={{ fontWeight: 600, fontSize: 13, color: T.textPrimary }}>
+          Agenda do Dia
+        </span>
+        {osHoje.length > 0 && (
+          <span style={{
+            marginLeft: 'auto',
+            background: '#5B9BD5',
+            color: '#fff',
+            borderRadius: 99,
+            padding: '1px 8px',
+            fontSize: 11,
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {osHoje.length}
+          </span>
+        )}
+      </div>
+
+      {/* Lista */}
+      {osHoje.length === 0 ? (
+        <div style={{ padding: '20px 14px', textAlign: 'center', color: T.textDim, fontSize: 12 }}>
+          <i className="ti ti-calendar-off" style={{ fontSize: 20, display: 'block', marginBottom: 6 }} aria-hidden="true" />
+          Nenhum agendamento pra hoje
+        </div>
+      ) : (
+        <div style={{ maxHeight: 280, overflowY: 'auto' }}>
+          {osHoje.map((os, idx) => {
+            const hora = horaLocal(os.data_agendamento)
+            const chip = corChipEtapa(os.etapa_db, dark)
+            return (
+              <div
+                key={os.id}
+                onClick={() => onAbrirOS?.(os.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 14px',
+                  borderBottom: idx < osHoje.length - 1 ? `1px solid ${T.border}` : 'none',
+                  cursor: 'pointer',
+                  transition: 'background .1s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = T.cardAlt }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              >
+                {/* Hora */}
+                <span style={{
+                  fontVariantNumeric: 'tabular-nums',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: '#5B9BD5',
+                  minWidth: 40,
+                  flexShrink: 0,
+                }}>
+                  {hora || '--:--'}
+                </span>
+
+                {/* OS + cliente */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: T.textPrimary, lineHeight: 1.3 }}>
+                    #{os.numero} · {os.cliente_nome}
+                  </div>
+                  {os.endereco && (
+                    <div style={{ fontSize: 11, color: T.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {os.endereco}
+                    </div>
+                  )}
+                </div>
+
+                {/* Chip etapa */}
+                <span style={{
+                  background: chip.bg,
+                  color: chip.text,
+                  borderRadius: 5,
+                  padding: '2px 7px',
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}>
+                  {os.etapa_label}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function whatsappUrl(fone) {
   const num = (fone || '').replace(/\D/g, '')
   return `whatsapp://send?phone=55${num}`
@@ -514,6 +664,13 @@ function LogisticaDesktop({ T, dark }) {
               />
             )
           })}
+
+          {/* Agenda do dia — OS com horário agendado pra hoje */}
+          <AgendaDia
+            T={T} dark={dark}
+            osList={osList}
+            onAbrirOS={abrirOSPorId}
+          />
 
           {/* Atalho pra abrir RotaDetalheModal (edição avançada / DnD) */}
           {dataAtiva && slotsRotas.some(s => s.rota) && (
