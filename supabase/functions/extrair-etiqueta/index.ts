@@ -57,32 +57,35 @@ serve(async (req: Request) => {
     return json({ error: 'GEMINI_API_KEY não configurada nos secrets' }, 500)
   }
 
-  let body: { imageUrl?: string }
+  let body: { imageUrl?: string; imageBase64?: string; mediaType?: string }
   try {
     body = await req.json()
   } catch {
-    return json({ error: 'body inválido (esperado JSON com imageUrl)' }, 400)
+    return json({ error: 'body inválido (esperado JSON)' }, 400)
   }
 
-  const { imageUrl } = body
-  if (!imageUrl || typeof imageUrl !== 'string') {
-    return json({ error: 'campo "imageUrl" obrigatório' }, 400)
-  }
-
-  // Baixa a imagem e converte para base64
   let imageBase64: string
-  let mediaType = 'image/jpeg'
-  try {
-    const imgRes = await fetch(imageUrl)
-    if (!imgRes.ok) {
-      return json({ error: `falha ao baixar imagem (${imgRes.status})` }, 400)
+  let mediaType = body.mediaType || 'image/jpeg'
+
+  if (body.imageBase64) {
+    // Caminho preferido: base64 vem direto do front (sem fetch)
+    imageBase64 = body.imageBase64
+  } else if (body.imageUrl) {
+    // Fallback: baixa da URL
+    try {
+      const imgRes = await fetch(body.imageUrl)
+      if (!imgRes.ok) {
+        return json({ error: `falha ao baixar imagem (${imgRes.status})` }, 400)
+      }
+      const ctype = imgRes.headers.get('content-type') || ''
+      if (ctype.startsWith('image/')) mediaType = ctype.split(';')[0].trim()
+      const buf = new Uint8Array(await imgRes.arrayBuffer())
+      imageBase64 = uint8ToBase64(buf)
+    } catch (e) {
+      return json({ error: 'erro ao baixar imagem', detail: String(e) }, 500)
     }
-    const ctype = imgRes.headers.get('content-type') || ''
-    if (ctype.startsWith('image/')) mediaType = ctype.split(';')[0].trim()
-    const buf = new Uint8Array(await imgRes.arrayBuffer())
-    imageBase64 = uint8ToBase64(buf)
-  } catch (e) {
-    return json({ error: 'erro ao baixar imagem', detail: String(e) }, 500)
+  } else {
+    return json({ error: 'forneça imageBase64 ou imageUrl' }, 400)
   }
 
   try {
