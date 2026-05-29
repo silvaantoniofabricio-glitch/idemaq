@@ -785,32 +785,8 @@ export default function FinanceiroMobile({ T, dark }) {
       padding: '14px 14px 80px', gap: 12,
       overflowY: 'auto', background: T.bg,
     }}>
-      {/* ── Header ────────────────────────────────────────────────────────── */}
+      {/* ── KPIs (titulo "Financeiro" ja esta na topbar) ────────────────── */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: corHero(dark), letterSpacing: '-0.01em' }}>
-              Financeiro
-            </div>
-            <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>
-              Contas a receber, pagar e caixa
-            </div>
-          </div>
-          <button
-            onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}
-            style={{
-              background: azul, color: '#fff', border: 'none',
-              borderRadius: 10, padding: '10px 16px',
-              fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
-              fontFamily: 'inherit', flexShrink: 0,
-            }}
-          >
-            <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-            Novo
-          </button>
-        </div>
-
         {/* KPI strip 3 colunas */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
           {[
@@ -865,38 +841,70 @@ export default function FinanceiroMobile({ T, dark }) {
         </div>
       )}
 
-      {/* ── Abas horizontais com scroll ───────────────────────────────────── */}
-      <div style={{
-        display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
-        scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch',
-      }}>
-        {ABAS.map(a => {
-          const ativo = a.id === aba
-          return (
-            <button key={a.id} onClick={() => setAba(a.id)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                padding: '9px 14px', borderRadius: 10,
-                border: `1px solid ${ativo ? azul : T.border}`,
-                background: ativo ? cor('#0d2035', '#e6f1fb') : T.card,
-                color: ativo ? azul : T.textMuted,
-                fontWeight: ativo ? 700 : 500, fontSize: 13,
-                cursor: 'pointer', fontFamily: 'inherit', transition: 'all .12s',
-              }}>
-              <i className={`ti ${a.icon}`} style={{ fontSize: 15 }} aria-hidden="true" />
-              {a.label}
-              {a.count != null && a.count > 0 && (
-                <span style={{
-                  background: ativo ? azul : T.cardAlt,
-                  color: ativo ? '#fff' : T.textSecondary,
-                  fontSize: 10.5, fontWeight: 700, padding: '1px 6px',
-                  borderRadius: 10, minWidth: 18, textAlign: 'center',
-                  fontVariantNumeric: 'tabular-nums',
-                }}>{a.count}</span>
-              )}
-            </button>
-          )
-        })}
+      {/* ── Abas — segmented Atlassian + botao Novo ──────────────────────── */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{
+          flex: 1, minWidth: 0,
+          display: 'flex',
+          background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+          borderRadius: 3, padding: 2, gap: 0,
+        }}>
+          {ABAS.map(a => {
+            const ativo = a.id === aba
+            return (
+              <button key={a.id} onClick={() => setAba(a.id)}
+                style={{
+                  flex: 1, minWidth: 0, minHeight: 30,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                  padding: '4px 6px',
+                  borderRadius: 3, border: 'none',
+                  background: ativo ? (dark ? '#22272B' : '#FFFFFF') : 'transparent',
+                  color: ativo ? T.textPrimary : T.textMuted,
+                  fontSize: 12, fontWeight: ativo ? 600 : 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  letterSpacing: '-0.005em',
+                  boxShadow: ativo
+                    ? (dark
+                        ? '0 1px 2px rgba(0,0,0,.4)'
+                        : '0 1px 2px rgba(9,30,66,0.18)')
+                    : 'none',
+                  transition: 'background .12s, box-shadow .12s',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {a.label}
+                </span>
+                {a.count != null && a.count > 0 && (
+                  <span style={{
+                    background: ativo
+                      ? (dark ? 'rgba(255,255,255,0.10)' : '#DFE1E6')
+                      : 'transparent',
+                    color: ativo ? T.textPrimary : T.textMuted,
+                    fontSize: 10.5, fontWeight: 700, padding: '1px 6px',
+                    borderRadius: 99, minWidth: 16, textAlign: 'center',
+                    fontVariantNumeric: 'tabular-nums',
+                    flexShrink: 0,
+                  }}>{a.count}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}
+          aria-label="Novo lançamento"
+          style={{
+            width: 34, height: 34, borderRadius: 3,
+            border: 'none', background: azul, color: '#fff',
+            cursor: 'pointer', flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'inherit',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+        </button>
       </div>
 
       {/* ── Conteúdo da aba ───────────────────────────────────────────────── */}
