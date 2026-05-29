@@ -70,26 +70,27 @@ const PALETA_DEUTAN = {
   orangeDark:    '#A05A1F',
 }
 
-// Paleta oficial Atlassian Design System (atlassian.design):
-//   - Blue 500 #0065FF (primary action) + Blue 600 #0052CC (hover/light bg)
-//   - Red 500 #FF5630 (danger) + Red 600 #DE350B
-//   - Yellow/Warning Y300 #FFC400 (warning) + Y500 #FF991F
-//   - Green 400 #36B37E (success) + Green 500 #00875A
-//   - Orange Y600 #FF8B00 + Y700 #FF7A00
-//   - Blue Light B200 #B3D4FF (info bg) + B300 #4C9AFF
+// Paleta NORMAL — verde Bling como cor predominante (substitui o azul
+// como cor primaria de acao). Outras cores ajustadas pra harmonizar com
+// o verde: vermelho/amarelo do Atlassian, laranja mais quente.
+//
+// Como o token `blue` e usado como cor PRIMARIA em toda a app (botoes,
+// links, headers de painel), mapeamos ele pro verde Bling pra trocar
+// instantaneamente sem refatorar centenas de callsites. O token `green`
+// continua sendo verde tambem (success state).
 const PALETA_NORMAL = {
-  blue:      '#0065FF', // B500 — Atlassian primary blue
-  yellow:    '#FFC400', // Y300 — vibrant warning
-  red:       '#FF5630', // R500 — Atlassian danger
-  blueLight: '#B3D4FF', // B200 — info background
-  green:     '#36B37E', // G400 — success
-  orange:    '#FF8B00', // Y600 — accent
-  blueDark:      '#0052CC', // B600 — hover/contraste no light
-  yellowDark:    '#FF991F', // Y500
-  redDark:       '#DE350B', // R600
-  blueLightDark: '#4C9AFF', // B300
-  greenDark:     '#00875A', // G500
-  orangeDark:    '#FF7A00', // Y700
+  blue:      '#94C11F', // Bling green primary — substitui azul como acao
+  yellow:    '#FFC400', // Atlassian Y300 — warning
+  red:       '#FF5630', // Atlassian R500 — danger
+  blueLight: '#D6E8A8', // verde claro pra info bg
+  green:     '#7CB342', // verde mais escuro pra success (distinguir do primary)
+  orange:    '#FF8B00', // Atlassian Y600 — accent quente
+  blueDark:      '#6FAA2C', // verde Bling escuro pra modo claro / hover
+  yellowDark:    '#FF991F',
+  redDark:       '#DE350B',
+  blueLightDark: '#A8C77F',
+  greenDark:     '#558B2F',
+  orangeDark:    '#FF7A00',
 }
 
 export const P = { ...PALETA_DEUTAN }
