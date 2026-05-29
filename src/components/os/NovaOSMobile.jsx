@@ -180,8 +180,8 @@ export default function NovaOSMobile({
       onClick={tryClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 250,
-        background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(3px)',
+        background: 'rgba(9,30,66,0.5)',
+        backdropFilter: 'blur(2px)',
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         opacity: montado ? 1 : 0,
         transition: 'opacity .18s ease-out',
@@ -193,10 +193,10 @@ export default function NovaOSMobile({
           width: '100%',
           maxHeight: '94vh',
           background: T.card,
-          borderRadius: '20px 20px 0 0',
+          borderRadius: '8px 8px 0 0',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.4)',
+          boxShadow: '0 -8px 32px rgba(9,30,66,0.35)',
           transform: montado ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .24s cubic-bezier(.2,.8,.2,1)',
           paddingBottom: 'env(safe-area-inset-bottom)',
@@ -205,8 +205,8 @@ export default function NovaOSMobile({
         {/* Drag handle visual */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px' }}>
           <div style={{
-            width: 40, height: 4, borderRadius: 2,
-            background: T.border,
+            width: 36, height: 3, borderRadius: 2,
+            background: dark ? 'rgba(255,255,255,0.15)' : '#DFE1E6',
           }} />
         </div>
 
@@ -277,15 +277,15 @@ function Header({ T, dark, okObg, totalObg, onClose }) {
   const completo = okObg === totalObg
   return (
     <div style={{
-      padding: '4px 16px 14px',
+      padding: '4px 14px 12px',
       borderBottom: `1px solid ${T.border}`,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
       flexShrink: 0,
     }}>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{
-          fontSize: 18, fontWeight: 700, color: corHero(dark),
-          letterSpacing: '-.2px',
+          fontSize: 17, fontWeight: 700, color: T.textPrimary,
+          letterSpacing: '-0.01em',
         }}>
           Nova ordem de serviço
         </div>
@@ -295,10 +295,11 @@ function Header({ T, dark, okObg, totalObg, onClose }) {
         }}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '2px 8px', borderRadius: 10,
-            background: completo ? `${verde}1f` : `${azul}1f`,
+            padding: '2px 8px', borderRadius: 3,
+            background: completo ? verde + '22' : azul + '22',
             color: completo ? verde : azul,
-            fontWeight: 700, fontSize: 11,
+            fontWeight: 600, fontSize: 11,
+            letterSpacing: '-0.005em',
           }}>
             <i className={`ti ${completo ? 'ti-check' : 'ti-progress'}`}
                style={{ fontSize: 12 }} aria-hidden="true" />
@@ -308,13 +309,14 @@ function Header({ T, dark, okObg, totalObg, onClose }) {
       </div>
       <button onClick={onClose} aria-label="Fechar"
         style={{
-          width: 40, height: 40, borderRadius: 12,
-          background: T.cardAlt, border: `1px solid ${T.border}`,
+          width: 32, height: 32, borderRadius: 3,
+          background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+          border: `1px solid ${T.border}`,
           color: T.textPrimary, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
+          flexShrink: 0, WebkitTapHighlightColor: 'transparent',
         }}>
-        <i className="ti ti-x" style={{ fontSize: 20 }} aria-hidden="true" />
+        <i className="ti ti-x" style={{ fontSize: 16 }} aria-hidden="true" />
       </button>
     </div>
   )
@@ -331,9 +333,9 @@ function TipoSegmented({ T, dark, tipo, onChange }) {
       flexShrink: 0,
     }}>
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
-        background: T.bg, padding: 4, borderRadius: 12,
-        border: `1px solid ${T.border}`,
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0,
+        background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+        padding: 2, borderRadius: 3,
       }}>
         {TIPOS_ORDEM.map(id => {
           const cfg = TIPOS_OS[id]
@@ -343,18 +345,24 @@ function TipoSegmented({ T, dark, tipo, onChange }) {
           return (
             <button key={id} onClick={() => onChange(id)}
               style={{
-                padding: '10px 4px', borderRadius: 9, border: 'none',
-                background: ativo ? T.card : 'transparent',
+                padding: '6px 4px', borderRadius: 3, border: 'none',
+                background: ativo ? (dark ? '#22272B' : '#FFFFFF') : 'transparent',
                 color: ativo ? c : T.textMuted,
-                fontSize: 13, fontWeight: ativo ? 700 : 600,
+                fontSize: 13, fontWeight: ativo ? 600 : 500,
                 fontFamily: 'inherit',
                 cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                boxShadow: ativo ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-                transition: 'background .15s, color .15s, box-shadow .15s',
-                minHeight: 40,
+                boxShadow: ativo
+                  ? (dark
+                      ? '0 1px 2px rgba(0,0,0,.4)'
+                      : '0 1px 2px rgba(9,30,66,0.18)')
+                  : 'none',
+                letterSpacing: '-0.005em',
+                transition: 'background .12s, color .12s, box-shadow .12s',
+                minHeight: 32,
+                WebkitTapHighlightColor: 'transparent',
               }}>
-              <i className={`ti ${cfg.icon}`} style={{ fontSize: 16 }} aria-hidden="true" />
+              <i className={`ti ${cfg.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
               <span>{cfg.label}</span>
             </button>
           )
@@ -1027,32 +1035,38 @@ function StickyFooter({ T, dark, podeSalvar, salvando, obrigatorios, onSalvar })
       {faltam.length > 0 && (
         <div style={{
           marginBottom: 10, padding: '8px 12px',
-          background: T.cardAlt, borderRadius: 10,
+          background: dark ? 'rgba(255,255,255,0.025)' : '#F7F8F9',
+          border: `1px solid ${T.border}`,
+          borderRadius: 3,
           fontSize: 12, color: T.textMuted,
           display: 'flex', alignItems: 'center', gap: 8,
+          letterSpacing: '-0.005em',
         }}>
-          <i className="ti ti-alert-circle" style={{ fontSize: 14, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
+          <i className="ti ti-alert-circle"
+             style={{ fontSize: 13, color: T.textMuted, flexShrink: 0 }}
+             aria-hidden="true" />
           Falta: {faltam.map(f => f.label).join(', ')}
         </div>
       )}
 
       <button onClick={onSalvar} disabled={!podeSalvar}
         style={{
-          width: '100%', minHeight: 54,
-          padding: '14px 16px', borderRadius: 14, border: 'none',
+          width: '100%', minHeight: 36,
+          padding: '8px 12px', borderRadius: 3, border: 'none',
           background: podeSalvar
-            ? `linear-gradient(135deg, ${P.blue}, #3a7bbf)`
-            : T.cardAlt,
+            ? azul
+            : (dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7'),
           color: podeSalvar ? '#fff' : T.textDim,
-          fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
+          fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
           cursor: podeSalvar ? 'pointer' : 'not-allowed',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: podeSalvar ? '0 4px 14px rgba(91,155,213,0.35)' : 'none',
-          transition: 'background .15s, box-shadow .15s, color .15s',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          letterSpacing: '-0.005em',
+          transition: 'background .15s, color .15s',
+          WebkitTapHighlightColor: 'transparent',
         }}>
         <i className={`ti ${salvando ? 'ti-loader-2' : 'ti-check'}`}
            style={{
-             fontSize: 18,
+             fontSize: 14,
              animation: salvando ? 'idemaq-novaos-spin .8s linear infinite' : undefined,
            }} aria-hidden="true" />
         {salvando ? 'Criando OS…' : 'Criar OS'}
@@ -1072,21 +1086,24 @@ function SectionHeader({ T, dark, icon, titulo, obrigatorio, opcional, noBottom 
       display: 'flex', alignItems: 'center', gap: 8,
       marginBottom: noBottom ? 0 : 10,
     }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 17, color: azul }} aria-hidden="true" />
+      <i className={`ti ${icon}`}
+         style={{ fontSize: 15, color: azul }}
+         aria-hidden="true" />
       <span style={{
-        fontSize: 13, fontWeight: 700, color: corHero(dark),
-        letterSpacing: '-.1px',
+        fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
+        letterSpacing: '-0.005em',
       }}>{titulo}</span>
       {obrigatorio && (
         <span style={{
-          fontSize: 9.5, fontWeight: 800, letterSpacing: '.4px',
-          padding: '2px 6px', borderRadius: 4,
-          background: `${vermelho}1c`, color: vermelho,
+          fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+          padding: '2px 6px', borderRadius: 3,
+          background: vermelho + '22', color: vermelho,
         }}>OBRIGATÓRIO</span>
       )}
       {opcional && (
         <span style={{
-          fontSize: 10.5, fontWeight: 500, color: T.textDim,
+          fontSize: 11, fontWeight: 500, color: T.textDim,
+          letterSpacing: '-0.005em',
         }}>· opcional</span>
       )}
     </div>

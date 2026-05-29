@@ -1,4 +1,6 @@
-// idemaq-src/components/ui/Textarea.jsx
+// src/components/ui/Textarea.jsx
+// Textarea — Atlassian Design. Border 1, radius 3, focus halo 33% alpha.
+
 import React from 'react'
 import { corEtapa } from '../../utils/colors'
 
@@ -15,6 +17,7 @@ export default function Textarea({
   ...rest
 }) {
   const azul = corEtapa('blue', dark)
+  const vermelho = corEtapa('red', dark)
 
   const inner = (
     <textarea
@@ -27,28 +30,45 @@ export default function Textarea({
       style={{
         width: fullWidth ? '100%' : 'auto',
         minHeight,
-        padding: '9px 12px',
-        fontSize: 12.5,
+        padding: '8px 10px',
+        fontSize: 13,
         color: T?.textPrimary,
-        background: T?.card,
+        background: dark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
         border: `1px solid ${T?.border}`,
-        borderRadius: 8,
+        borderRadius: 3,
         outline: 'none',
         fontFamily: 'inherit',
-        boxShadow: T?.shadow,
+        letterSpacing: '-0.005em',
+        lineHeight: 1.45,
         resize: 'vertical',
+        transition: 'border-color .12s, box-shadow .12s',
         ...extraStyle,
       }}
-      onFocus={(e) => { e.currentTarget.style.borderColor = azul; e.currentTarget.style.boxShadow = `0 0 0 3px ${azul}22` }}
-      onBlur={(e) => { e.currentTarget.style.borderColor = T?.border; e.currentTarget.style.boxShadow = T?.shadow }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = azul
+        e.currentTarget.style.boxShadow = `0 0 0 2px ${azul}33`
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = T?.border
+        e.currentTarget.style.boxShadow = 'none'
+      }}
       {...rest}
     />
   )
 
   if (!label) return inner
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: fullWidth ? '100%' : 'auto' }}>
-      <span style={{ fontSize: 12, color: T?.textSecondary, fontWeight: 500 }}>{label}{required && <span style={{ color: corEtapa('red', dark), marginLeft: 3 }}>*</span>}</span>
+    <label style={{
+      display: 'flex', flexDirection: 'column', gap: 4,
+      width: fullWidth ? '100%' : 'auto',
+    }}>
+      <span style={{
+        fontSize: 11, color: T?.textMuted, fontWeight: 600,
+        letterSpacing: '-0.005em',
+      }}>
+        {label}
+        {required && <span style={{ color: vermelho, marginLeft: 3 }}>*</span>}
+      </span>
       {inner}
     </label>
   )
