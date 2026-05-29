@@ -70,19 +70,26 @@ const PALETA_DEUTAN = {
   orangeDark:    '#A05A1F',
 }
 
+// Paleta oficial Atlassian Design System (atlassian.design):
+//   - Blue 500 #0065FF (primary action) + Blue 600 #0052CC (hover/light bg)
+//   - Red 500 #FF5630 (danger) + Red 600 #DE350B
+//   - Yellow/Warning Y300 #FFC400 (warning) + Y500 #FF991F
+//   - Green 400 #36B37E (success) + Green 500 #00875A
+//   - Orange Y600 #FF8B00 + Y700 #FF7A00
+//   - Blue Light B200 #B3D4FF (info bg) + B300 #4C9AFF
 const PALETA_NORMAL = {
-  blue:      '#2196F3',
-  yellow:    '#FFC107',
-  red:       '#F44336',
-  blueLight: '#90CAF9',
-  green:     '#4CAF50',
-  orange:    '#FF9800',
-  blueDark:      '#1565C0',
-  yellowDark:    '#FF8F00',
-  redDark:       '#C62828',
-  blueLightDark: '#5C9CE6',
-  greenDark:     '#2E7D32',
-  orangeDark:    '#EF6C00',
+  blue:      '#0065FF', // B500 — Atlassian primary blue
+  yellow:    '#FFC400', // Y300 — vibrant warning
+  red:       '#FF5630', // R500 — Atlassian danger
+  blueLight: '#B3D4FF', // B200 — info background
+  green:     '#36B37E', // G400 — success
+  orange:    '#FF8B00', // Y600 — accent
+  blueDark:      '#0052CC', // B600 — hover/contraste no light
+  yellowDark:    '#FF991F', // Y500
+  redDark:       '#DE350B', // R600
+  blueLightDark: '#4C9AFF', // B300
+  greenDark:     '#00875A', // G500
+  orangeDark:    '#FF7A00', // Y700
 }
 
 export const P = { ...PALETA_DEUTAN }
