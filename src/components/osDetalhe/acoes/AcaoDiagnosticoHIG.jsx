@@ -1,31 +1,32 @@
 // src/components/osDetalhe/acoes/AcaoDiagnosticoHIG.jsx
-// Diagnóstico — Apple HIG, do zero.
+// Etapa Diagnostico — Atlassian Design (reescrito 28/05/2026).
 //
-// Seções:
-//   1. Relato do cliente (texto da OS)
-//   2. Resumo da avaliação (testes, nao liga, vazamentos vindos do recebido)
-//   3. Causa identificada (textarea + autocomplete localStorage)
-//   4. Componentes afetados (grupos como list rows → accordion com itens
-//      Troca / Manutenção por item)
-//   5. CTA 50pt "Concluir diagnóstico"
+// Estrutura:
+//   1. Relato do cliente — texto da OS (so leitura, accent amarela)
+//   2. Resumo da avaliacao — naoLiga + vazamentos + 4 testes vindos do recebido
+//   3. Causa identificada — textarea + autocomplete (localStorage)
+//   4. Componentes afetados — busca + grupos accordion + itens Troca/Manutencao
+//   5. CTA Concluir diagnostico
 //
 // Persiste:
 //   · os.pre_diagnostico.causa_diagnostico
-//   · os.pre_diagnostico.componentes_marcados { [grupoId]: { [itemId]: 'troca'|'manutencao' } }
+//   · os.pre_diagnostico.componentes_marcados
+//      { [grupoId]: { [itemId]: 'troca' | 'manutencao' } }
 //   · localStorage idemaq:diagnostico:causas_historico (autocomplete)
+//
+// Nome do arquivo permanece *HIG por compat com imports do EtapaTab.
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { useTheme } from '../../../theme'
-import { TI } from '../../_shared/PrimitivasMobile'
-import {
-  HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT,
-  higType, higFilledButton, higInsetCard,
-} from '../../../theme-hig'
+import { corEtapa } from '../../../utils/colors'
 import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
+import {
+  AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
+} from './_AtlassianUI'
 
-// ─── Dados dos grupos de componentes ─────────────────────────────────────
+// ─── Dados ────────────────────────────────────────────────────────────────
 const ICON_MAP = {
   motor:      'engine',
   agua:       'droplet',
@@ -42,15 +43,20 @@ const GRUPOS = Object.entries(GRUPOS_CATEGORIA).map(([id, g]) => ({
   itens: CATEGORIAS_PECA.filter(c => c.grupo === id).map(c => ({ id: c.id, label: c.label })),
 }))
 
-// Mapeamento visual dos resultados da avaliação
-const RESULTADO_VISUAL = {
-  ok:      { label: 'OK',      color: HIG_COLOR.green,  icon: 'check',          bgLight: '#E8F9EE', bgDark: 'rgba(52,199,89,0.15)'  },
-  defeito: { label: 'Defeito', color: HIG_COLOR.red,    icon: 'alert-triangle', bgLight: '#FEF0EF', bgDark: 'rgba(255,59,48,0.15)'  },
-  barulho: { label: 'Barulho', color: HIG_COLOR.orange, icon: 'volume',         bgLight: '#FFF5E6', bgDark: 'rgba(255,149,0,0.15)'  },
-  na:      { label: 'N/A',     color: HIG_COLOR.gray,   icon: 'minus',          bgLight: '#F2F2F7', bgDark: 'rgba(142,142,147,0.15)' },
+// Cores dos resultados dos testes (do Recebido)
+const RES_COR = {
+  ok:      'green',
+  defeito: 'red',
+  barulho: 'yellow',
+}
+const RES_LABEL = {
+  ok: 'OK', defeito: 'Defeito', barulho: 'Barulho', na: 'N/A',
+}
+const RES_ICON = {
+  ok: 'check', defeito: 'alert-triangle', barulho: 'volume', na: 'minus',
 }
 
-// ─── Autocomplete ─────────────────────────────────────────────────────────
+// ─── Autocomplete (localStorage) ──────────────────────────────────────────
 const CAUSAS_KEY = 'idemaq:diagnostico:causas_historico'
 const CAUSAS_MAX = 80
 
@@ -60,7 +66,6 @@ function lerCausas() {
     return Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : []
   } catch { return [] }
 }
-
 function salvarCausa(frase) {
   const f = (frase || '').trim()
   if (f.length < 4) return
@@ -71,7 +76,7 @@ function salvarCausa(frase) {
   } catch {}
 }
 
-// ─── Migração de formato antigo (array → objeto) ─────────────────────────
+// Migracao formato antigo (array → objeto)
 function normalizeMarcados(raw) {
   const out = {}
   for (const [grupoId, val] of Object.entries(raw || {})) {
@@ -85,199 +90,181 @@ function normalizeMarcados(raw) {
   return out
 }
 
-// ─── HIGSection ───────────────────────────────────────────────────────────
-function HIGSection({ T, dark, title, children, footer }) {
+// ─── Resumo: row de info (icone tintado + label + sub) ────────────────────
+function ResumoRow({ T, dark, icon, iconCor, label, sub, first }) {
   return (
-    <section>
-      <div style={{
-        ...higType('footnote'),
-        color: T.textMuted,
-        textTransform: 'uppercase',
-        padding: `0 ${HIG_SPACE.md}px ${HIG_SPACE.xxs}px`,
-        letterSpacing: 0.5,
-      }}>
-        {title}
-      </div>
-      <div style={higInsetCard(T, dark)}>
-        {children}
-      </div>
-      {footer && (
-        <div style={{
-          ...higType('footnote'),
-          color: T.textMuted,
-          padding: `${HIG_SPACE.xxs}px ${HIG_SPACE.md}px 0`,
-        }}>
-          {footer}
-        </div>
-      )}
-    </section>
-  )
-}
-
-// ─── Separator ───────────────────────────────────────────────────────────
-function Sep({ T, indent = 0 }) {
-  return <div style={{ height: 0.5, background: T.border, marginLeft: indent, opacity: 0.7 }} />
-}
-
-// ─── Badge de resultado (pill colorida) ──────────────────────────────────
-function ResultBadge({ valor, dark }) {
-  const v = RESULTADO_VISUAL[valor]
-  if (!v) return null
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '3px 9px', borderRadius: 999,
-      background: dark ? v.bgDark : v.bgLight,
-      color: v.color,
-      ...higType('caption1'),
-      fontWeight: 700,
-      flexShrink: 0,
+    <div style={{
+      padding: '10px 14px',
+      borderTop: first ? 'none' : `1px solid ${T.border}`,
+      display: 'flex', alignItems: 'center', gap: 10,
     }}>
-      <TI name={v.icon} size={11} color={v.color} />
-      {v.label}
-    </span>
+      <div style={{
+        width: 28, height: 28, borderRadius: 4,
+        background: iconCor + '22', color: iconCor,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <i className={`ti ti-${icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 13, fontWeight: 600, color: T.textPrimary,
+          letterSpacing: '-0.005em',
+        }}>{label}</div>
+        {sub && (
+          <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1 }}>
+            {sub}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
-// ─── Row de grupo (accordion header) ─────────────────────────────────────
-function GrupoRow({ T, dark, grupo, marcados, open, onToggle }) {
-  const count = Object.keys(marcados).length
-  const temMarcado = count > 0
-
+// ─── Resumo: row de teste com badge ───────────────────────────────────────
+function TesteResumoRow({ T, dark, teste, first }) {
+  const cor = corEtapa(RES_COR[teste.valor] || 'blue', dark)
   return (
-    <button
-      type="button"
+    <div style={{
+      padding: '10px 14px',
+      borderTop: first ? 'none' : `1px solid ${T.border}`,
+      display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: 4,
+        background: cor + '22', color: cor,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <i className={`ti ti-${RES_ICON[teste.valor] || 'minus'}`}
+           style={{ fontSize: 14 }} aria-hidden="true" />
+      </div>
+      <span style={{ flex: 1, fontSize: 13, color: T.textPrimary }}>
+        {teste.label || teste.id}
+      </span>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '2px 8px', borderRadius: 3,
+        background: cor + '22', color: cor,
+        fontSize: 11.5, fontWeight: 600, letterSpacing: '-0.005em',
+      }}>
+        <i className={`ti ti-${RES_ICON[teste.valor]}`} style={{ fontSize: 11 }} aria-hidden="true" />
+        {RES_LABEL[teste.valor] || teste.valor}
+      </span>
+    </div>
+  )
+}
+
+// ─── Grupo accordion header ───────────────────────────────────────────────
+function GrupoHeader({ T, dark, grupo, marcadosCount, open, onToggle, first }) {
+  const [hover, setHover] = useState(false)
+  const azul = corEtapa('blue', dark)
+  const ativo = marcadosCount > 0
+  return (
+    <button type="button"
       onClick={onToggle}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
-        width: '100%', minHeight: HIG_SIZE.listRow,
-        padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-        border: 'none',
-        background: open
-          ? (dark ? 'rgba(91,155,213,0.08)' : 'rgba(91,155,213,0.06)')
-          : 'transparent',
-        display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-        cursor: 'pointer', textAlign: 'left', fontFamily: HIG_FONT,
+        width: '100%',
+        padding: '10px 14px',
+        borderTop: first ? 'none' : `1px solid ${T.border}`,
+        background: hover ? atlHover(dark) : (open ? atlSurfaceSunken(dark) : 'transparent'),
+        border: 'none', cursor: 'pointer', fontFamily: ATL_FONT,
+        display: 'flex', alignItems: 'center', gap: 10,
+        textAlign: 'left',
         WebkitTapHighlightColor: 'transparent',
         transition: 'background .12s',
-      }}
-    >
-      {/* Ícone em badge */}
-      <span style={{
-        width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-        background: temMarcado
-          ? (dark ? 'rgba(91,155,213,0.18)' : 'rgba(91,155,213,0.12)')
-          : (dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.055)'),
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+      <div style={{
+        width: 28, height: 28, borderRadius: 4,
+        background: ativo ? azul + '22' : (dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7'),
+        color: ativo ? azul : T.textMuted,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
         transition: 'background .15s',
       }}>
-        <TI name={grupo.icon} size={16}
-          color={temMarcado ? HIG_COLOR.tintIdemaq : HIG_COLOR.gray} />
-      </span>
-
-      {/* Label */}
-      <span style={{ flex: 1, ...higType('body'), color: T.textPrimary }}>
-        {grupo.label}
-      </span>
-
-      {/* Badge de contagem */}
-      {temMarcado && (
+        <i className={`ti ti-${grupo.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
+      </div>
+      <span style={{
+        flex: 1, fontSize: 13, fontWeight: 600,
+        color: T.textPrimary, letterSpacing: '-0.005em',
+      }}>{grupo.label}</span>
+      {ativo && (
         <span style={{
-          ...higType('caption1'),
-          fontWeight: 700,
-          color: HIG_COLOR.tintIdemaq,
-          background: dark ? 'rgba(91,155,213,0.15)' : 'rgba(91,155,213,0.10)',
-          padding: '2px 8px', borderRadius: 999,
-        }}>
-          {count}
-        </span>
+          fontSize: 11, fontWeight: 700,
+          color: azul, background: azul + '22',
+          padding: '2px 7px', borderRadius: 99,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{marcadosCount}</span>
       )}
-
-      {/* Chevron rotacionado quando aberto */}
-      <TI
-        name="chevron-right"
-        size={14}
-        color={T.textDim}
-        style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }}
-      />
+      <i className="ti ti-chevron-right" style={{
+        fontSize: 13, color: T.textDim, flexShrink: 0,
+        transform: open ? 'rotate(90deg)' : 'none',
+        transition: 'transform .2s',
+      }} aria-hidden="true" />
     </button>
   )
 }
 
-// ─── Row de item com Troca / Manutenção ──────────────────────────────────
-function ItemRow({ T, dark, item, acao, onSetAcao, isLast }) {
-  const trocoAtivo = acao === 'troca'
-  const manutAtivo = acao === 'manutencao'
+// ─── Item row com Troca/Manutencao ────────────────────────────────────────
+function ItemRow({ T, dark, item, acao, onSetAcao }) {
+  const vermelho = corEtapa('red', dark)
+  const amarelo  = corEtapa('yellow', dark)
+  const trocaOn = acao === 'troca'
+  const manutOn = acao === 'manutencao'
 
   return (
     <div style={{
-      minHeight: 48,
-      padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-      display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-      background: acao
-        ? (dark ? 'rgba(91,155,213,0.06)' : 'rgba(91,155,213,0.04)')
-        : 'transparent',
-      borderTop: `0.5px solid ${T.border}`,
+      padding: '8px 14px',
+      borderTop: `1px solid ${T.border}`,
+      background: acao ? (dark ? 'rgba(91,155,213,0.04)' : 'rgba(91,155,213,0.03)') : 'transparent',
+      display: 'flex', alignItems: 'center', gap: 8,
+      transition: 'background .12s',
     }}>
-      {/* Label do item */}
       <span style={{
         flex: 1, minWidth: 0,
-        ...higType('subheadline'),
-        color: T.textPrimary,
-        fontWeight: acao ? 600 : 400,
+        fontSize: 13, color: T.textPrimary,
+        fontWeight: acao ? 600 : 500,
+        letterSpacing: '-0.005em',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {item.label}
-      </span>
+      }}>{item.label}</span>
 
-      {/* Botão Troca */}
-      <button
-        type="button"
-        onClick={() => onSetAcao(item.id, trocoAtivo ? null : 'troca')}
+      <button type="button"
+        onClick={() => onSetAcao(trocaOn ? null : 'troca')}
         style={{
-          minHeight: 32, padding: '0 12px',
-          borderRadius: HIG_RADIUS.card,
-          border: `1.5px solid ${trocoAtivo ? HIG_COLOR.red : T.border}`,
-          background: trocoAtivo
-            ? (dark ? 'rgba(255,59,48,0.15)' : '#FEF0EF')
-            : 'transparent',
-          color: trocoAtivo ? HIG_COLOR.red : T.textMuted,
-          ...higType('caption1'),
-          fontWeight: trocoAtivo ? 700 : 500,
-          cursor: 'pointer',
+          height: 28, padding: '0 10px',
+          borderRadius: 3,
+          border: `1px solid ${trocaOn ? vermelho : T.border}`,
+          background: trocaOn ? vermelho + '22' : 'transparent',
+          color: trocaOn ? vermelho : T.textMuted,
+          fontSize: 12, fontWeight: trocaOn ? 600 : 500,
+          fontFamily: ATL_FONT, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', gap: 4,
+          letterSpacing: '-0.005em', flexShrink: 0,
           WebkitTapHighlightColor: 'transparent',
           transition: 'background .12s, border-color .12s',
-          fontFamily: HIG_FONT,
-          flexShrink: 0,
-        }}
-      >
-        <TI name="replace" size={12} color={trocoAtivo ? HIG_COLOR.red : T.textMuted} />
+        }}>
+        <i className="ti ti-replace" style={{ fontSize: 12 }} aria-hidden="true" />
         Troca
       </button>
 
-      {/* Botão Manutenção */}
-      <button
-        type="button"
-        onClick={() => onSetAcao(item.id, manutAtivo ? null : 'manutencao')}
+      <button type="button"
+        onClick={() => onSetAcao(manutOn ? null : 'manutencao')}
         style={{
-          minHeight: 32, padding: '0 12px',
-          borderRadius: HIG_RADIUS.card,
-          border: `1.5px solid ${manutAtivo ? HIG_COLOR.orange : T.border}`,
-          background: manutAtivo
-            ? (dark ? 'rgba(255,149,0,0.15)' : '#FFF5E6')
-            : 'transparent',
-          color: manutAtivo ? HIG_COLOR.orange : T.textMuted,
-          ...higType('caption1'),
-          fontWeight: manutAtivo ? 700 : 500,
-          cursor: 'pointer',
+          height: 28, padding: '0 10px',
+          borderRadius: 3,
+          border: `1px solid ${manutOn ? amarelo : T.border}`,
+          background: manutOn ? amarelo + '22' : 'transparent',
+          color: manutOn ? amarelo : T.textMuted,
+          fontSize: 12, fontWeight: manutOn ? 600 : 500,
+          fontFamily: ATL_FONT, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', gap: 4,
+          letterSpacing: '-0.005em', flexShrink: 0,
           WebkitTapHighlightColor: 'transparent',
           transition: 'background .12s, border-color .12s',
-          fontFamily: HIG_FONT,
-          flexShrink: 0,
-        }}
-      >
-        <TI name="tool" size={12} color={manutAtivo ? HIG_COLOR.orange : T.textMuted} />
+        }}>
+        <i className="ti ti-tool" style={{ fontSize: 12 }} aria-hidden="true" />
         Manut.
       </button>
     </div>
@@ -289,30 +276,30 @@ function ItemRow({ T, dark, item, acao, onSetAcao, isLast }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
+  const azul = corEtapa('blue', dark)
 
   // ── Estado ───────────────────────────────────────────────────────────────
   const preDiag = os?.pre_diagnostico || {}
-  const [causa, setCausa]                   = useState(preDiag.causa_diagnostico || '')
-  const [marcadosPorGrupo, setMarcados]     = useState(() => normalizeMarcados(preDiag.componentes_marcados))
-  const [grupoAberto, setGrupoAberto]       = useState(null)
-  const [busca, setBusca]                   = useState('')
-  const [causaFocada, setCausaFocada]       = useState(false)
-  const [historicoCausas, setHistorico]     = useState(() => lerCausas())
-  const [salvando, setSalvando]             = useState(false)
+  const [causa, setCausa]               = useState(preDiag.causa_diagnostico || '')
+  const [marcadosPorGrupo, setMarcados] = useState(() => normalizeMarcados(preDiag.componentes_marcados))
+  const [grupoAberto, setGrupoAberto]   = useState(null)
+  const [busca, setBusca]               = useState('')
+  const [causaFocada, setCausaFocada]   = useState(false)
+  const [historicoCausas, setHistorico] = useState(() => lerCausas())
+  const [salvando, setSalvando]         = useState(false)
 
-  // Re-sync quando OS muda (Realtime)
   useEffect(() => {
     setCausa(os?.pre_diagnostico?.causa_diagnostico || '')
     setMarcados(normalizeMarcados(os?.pre_diagnostico?.componentes_marcados))
   }, [os?.id])
 
-  // ── Testes da avaliação anterior ─────────────────────────────────────────
+  // ── Testes da avaliacao anterior ─────────────────────────────────────────
   const { itens: chkRecebido } = useChecklistEtapa(os.id, 'recebido')
   const testesComResultado = useMemo(
     () => (chkRecebido || []).filter(t => t.valor && t.valor !== 'na'),
     [chkRecebido]
   )
-  const naoLiga   = !!preDiag.equipamento_nao_liga
+  const naoLiga    = !!preDiag.equipamento_nao_liga
   const vazamentos = preDiag.vazamentos || {}
   const locaisVaz  = [
     vazamentos.entrada  && 'Entrada',
@@ -320,15 +307,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     vazamentos.saida    && 'Saída',
   ].filter(Boolean)
 
-  // ── Itens filtrados do grupo aberto ──────────────────────────────────────
-  const itensDoGrupo = useMemo(() => {
-    if (!grupoAberto) return []
-    const base = GRUPOS.find(g => g.id === grupoAberto)?.itens || []
-    if (!busca.trim()) return base
-    return base.filter(i => i.label.toLowerCase().includes(busca.toLowerCase()))
-  }, [grupoAberto, busca])
-
-  // ── Auto-save componentes (debounce 400ms) ────────────────────────────────
+  // ── Autosave componentes ─────────────────────────────────────────────────
   useEffect(() => {
     if (!os?.id) return
     const salvoServ = normalizeMarcados(os?.pre_diagnostico?.componentes_marcados)
@@ -342,7 +321,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marcadosPorGrupo, os?.id])
 
-  // ── Autocomplete ──────────────────────────────────────────────────────────
+  // ── Autocomplete ─────────────────────────────────────────────────────────
   const sugestoes = useMemo(() => {
     const q = causa.trim().toLowerCase()
     const base = historicoCausas.filter(f => f.toLowerCase() !== q)
@@ -370,17 +349,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     setHistorico(lerCausas())
   }
 
-  // ── Marcação de componente ────────────────────────────────────────────────
-  function setAcaoItem(itemId, acao) {
-    setMarcados(prev => {
-      const atual = { ...(prev[grupoAberto] || {}) }
-      if (!acao) delete atual[itemId]
-      else atual[itemId] = acao
-      return { ...prev, [grupoAberto]: atual }
-    })
-  }
-
-  // ── CTA ───────────────────────────────────────────────────────────────────
+  // ── CTA ──────────────────────────────────────────────────────────────────
   const totalMarcados = Object.values(marcadosPorGrupo).reduce(
     (s, obj) => s + Object.keys(obj || {}).length, 0
   )
@@ -403,150 +372,75 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   }
 
   const relatoCliente = (os?.defeito || '').trim()
+  const ctaLabel = salvando ? 'Salvando…'
+    : !causa.trim() ? 'Descreva a causa identificada'
+    : totalMarcados === 0 ? 'Marque pelo menos 1 componente'
+    : 'Concluir diagnóstico'
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      gap: HIG_SPACE.lg,
-      fontFamily: HIG_FONT,
-      padding: `0 0 ${HIG_SPACE.md}px`,
+      gap: 12,
+      fontFamily: ATL_FONT,
+      padding: '0 0 12px',
     }}>
 
-      {/* ── 1. Relato do cliente ─────────────────────────────────────────── */}
-      <HIGSection T={T} dark={dark} title="Relato do cliente">
+      {/* 1. Relato do cliente */}
+      <AtlPanel T={T} dark={dark} title="Relato do cliente" accent="#FFCC00">
         {relatoCliente ? (
           <div style={{
-            padding: `${HIG_SPACE.sm}px ${HIG_SPACE.md}px`,
-            display: 'flex', gap: 10, alignItems: 'flex-start',
-          }}>
-            <div style={{
-              width: 3, borderRadius: 99, alignSelf: 'stretch',
-              flexShrink: 0, background: '#FFCC00', minHeight: 20,
-            }} />
-            <p style={{
-              ...higType('body'), color: T.textPrimary,
-              margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap',
-            }}>
-              {relatoCliente}
-            </p>
-          </div>
+            padding: '12px 14px',
+            fontSize: 13.5, color: T.textPrimary,
+            lineHeight: 1.5, letterSpacing: '-0.005em',
+            whiteSpace: 'pre-wrap',
+          }}>{relatoCliente}</div>
         ) : (
           <div style={{
-            padding: HIG_SPACE.md,
-            display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
+            padding: 14, display: 'flex', alignItems: 'center', gap: 8,
+            color: T.textMuted,
           }}>
-            <TI name="message-off" size={17} color={T.textDim} />
-            <span style={{ ...higType('subheadline'), color: T.textMuted, fontStyle: 'italic' }}>
+            <i className="ti ti-message-off" style={{ fontSize: 15 }} aria-hidden="true" />
+            <span style={{ fontSize: 13, fontStyle: 'italic' }}>
               Sem relato na abertura da OS.
             </span>
           </div>
         )}
-      </HIGSection>
+      </AtlPanel>
 
-      {/* ── 2. Resumo da avaliação ───────────────────────────────────────── */}
-      <HIGSection T={T} dark={dark} title="Resumo da avaliação">
-        {/* "Não liga" */}
-        {naoLiga && (
-          <>
-            <div style={{
-              minHeight: 44, padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-              display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-            }}>
-              <span style={{
-                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                background: dark ? 'rgba(91,155,213,0.15)' : 'rgba(91,155,213,0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <TI name="bolt-off" size={16} color={HIG_COLOR.tintIdemaq} />
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ ...higType('subheadline'), color: T.textPrimary, fontWeight: 500 }}>
-                  Equipamento não liga
-                </div>
-                {preDiag.motivo_nao_liga && (
-                  <div style={{ ...higType('caption1'), color: T.textMuted, marginTop: 1 }}>
-                    {preDiag.motivo_nao_liga}
-                  </div>
-                )}
-              </div>
-            </div>
-            {(locaisVaz.length > 0 || testesComResultado.length > 0) && <Sep T={T} indent={HIG_SPACE.md} />}
-          </>
-        )}
+      {/* 2. Resumo da avaliacao */}
+      {(naoLiga || locaisVaz.length > 0 || testesComResultado.length > 0) && (
+        <AtlPanel T={T} dark={dark} title="Resumo da avaliação">
+          {naoLiga && (
+            <ResumoRow T={T} dark={dark}
+              first
+              icon="bolt-off" iconCor={azul}
+              label="Equipamento não liga"
+              sub={preDiag.motivo_nao_liga || undefined}
+            />
+          )}
+          {locaisVaz.length > 0 && (
+            <ResumoRow T={T} dark={dark}
+              first={!naoLiga}
+              icon="droplet" iconCor={azul}
+              label="Vazamento detectado"
+              sub={locaisVaz.join(' · ')}
+            />
+          )}
+          {testesComResultado.map((t, i) => (
+            <TesteResumoRow
+              key={t.id}
+              T={T} dark={dark}
+              teste={t}
+              first={!naoLiga && locaisVaz.length === 0 && i === 0}
+            />
+          ))}
+        </AtlPanel>
+      )}
 
-        {/* Vazamentos */}
-        {locaisVaz.length > 0 && (
-          <>
-            <div style={{
-              minHeight: 44, padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-              display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-            }}>
-              <span style={{
-                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                background: dark ? 'rgba(91,155,213,0.15)' : 'rgba(91,155,213,0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <TI name="droplet" size={16} color={HIG_COLOR.tintIdemaq} />
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ ...higType('subheadline'), color: T.textPrimary, fontWeight: 500 }}>
-                  Vazamento detectado
-                </div>
-                <div style={{ ...higType('caption1'), color: T.textMuted, marginTop: 1 }}>
-                  {locaisVaz.join(' · ')}
-                </div>
-              </div>
-            </div>
-            {testesComResultado.length > 0 && <Sep T={T} indent={HIG_SPACE.md} />}
-          </>
-        )}
-
-        {/* Resultados dos testes */}
-        {testesComResultado.length > 0 ? (
-          testesComResultado.map((t, i) => (
-            <React.Fragment key={t.id}>
-              {i > 0 && <Sep T={T} indent={HIG_SPACE.md + 32 + HIG_SPACE.sm} />}
-              <div style={{
-                minHeight: 44, padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-                display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-              }}>
-                <span style={{
-                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                  background: dark
-                    ? (RESULTADO_VISUAL[t.valor]?.bgDark || 'rgba(142,142,147,0.15)')
-                    : (RESULTADO_VISUAL[t.valor]?.bgLight || '#F2F2F7'),
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <TI
-                    name={RESULTADO_VISUAL[t.valor]?.icon || 'minus'}
-                    size={15}
-                    color={RESULTADO_VISUAL[t.valor]?.color || HIG_COLOR.gray}
-                  />
-                </span>
-                <span style={{ flex: 1, ...higType('subheadline'), color: T.textPrimary, fontWeight: 400 }}>
-                  {t.label || t.id}
-                </span>
-                <ResultBadge valor={t.valor} dark={dark} />
-              </div>
-            </React.Fragment>
-          ))
-        ) : !naoLiga ? (
-          <div style={{
-            padding: HIG_SPACE.md,
-            display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
-          }}>
-            <TI name="clipboard-off" size={16} color={T.textDim} />
-            <span style={{ ...higType('subheadline'), color: T.textMuted, fontStyle: 'italic' }}>
-              Nenhum teste registrado na Avaliação.
-            </span>
-          </div>
-        ) : null}
-      </HIGSection>
-
-      {/* ── 3. Causa identificada ────────────────────────────────────────── */}
-      <HIGSection T={T} dark={dark} title="Causa identificada"
-        footer={!causa.trim() ? 'Obrigatório para concluir o diagnóstico' : undefined}>
-        <div style={{ padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px` }}>
+      {/* 3. Causa identificada */}
+      <AtlPanel T={T} dark={dark} title="Causa identificada"
+        footer={!causa.trim() ? 'Obrigatório para concluir o diagnóstico.' : undefined}>
+        <div style={{ padding: '10px 14px' }}>
           <textarea
             placeholder="Ex: Rolamento do tambor desgastado, correia rompida…"
             value={causa}
@@ -556,78 +450,73 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
             rows={3}
             style={{
               width: '100%', boxSizing: 'border-box',
-              padding: `${HIG_SPACE.xs}px ${HIG_SPACE.sm}px`,
-              borderRadius: HIG_RADIUS.small,
+              padding: '8px 10px',
+              borderRadius: 3,
               border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : HIG_COLOR.gray6,
+              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
               color: T.textPrimary,
-              ...higType('subheadline'),
-              fontFamily: HIG_FONT,
+              fontSize: 13, fontFamily: ATL_FONT,
               outline: 'none', resize: 'vertical',
+              letterSpacing: '-0.005em', lineHeight: 1.45,
             }}
           />
         </div>
 
-        {/* Autocomplete — lista iOS abaixo do textarea */}
         {causaFocada && sugestoes.length > 0 && (
-          <>
-            <Sep T={T} />
+          <div style={{
+            borderTop: `1px solid ${T.border}`,
+            background: atlSurfaceSunken(dark),
+          }}>
             <div style={{
-              padding: `${HIG_SPACE.xxs}px ${HIG_SPACE.md}px`,
+              padding: '8px 14px 4px',
               display: 'flex', alignItems: 'center', gap: 4,
+              fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
             }}>
-              <TI name="history" size={11} color={T.textMuted} />
-              <span style={{
-                ...higType('caption2'),
-                color: T.textMuted,
-                textTransform: 'uppercase', letterSpacing: 0.5,
-              }}>
-                {causa.trim() ? 'Sugestões' : 'Usadas recentemente'}
-              </span>
+              <i className="ti ti-history" style={{ fontSize: 11 }} aria-hidden="true" />
+              {causa.trim() ? 'Sugestões' : 'Usadas recentemente'}
             </div>
             {sugestoes.map((f, i) => (
-              <React.Fragment key={i}>
-                <Sep T={T} indent={HIG_SPACE.md} />
-                <button
-                  type="button"
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => aplicarSugestao(f)}
-                  style={{
-                    width: '100%', minHeight: 44,
-                    padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-                    border: 'none', background: 'transparent',
-                    display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
-                    cursor: 'pointer', textAlign: 'left', fontFamily: HIG_FONT,
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
-                >
-                  <TI name="corner-down-left" size={14} color={HIG_COLOR.tintIdemaq} />
-                  <span style={{
-                    flex: 1, ...higType('subheadline'), color: T.textPrimary,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {f}
-                  </span>
-                </button>
-              </React.Fragment>
+              <button key={i} type="button"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => aplicarSugestao(f)}
+                style={{
+                  width: '100%',
+                  padding: '8px 14px',
+                  borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+                  background: 'transparent', border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', textAlign: 'left', fontFamily: ATL_FONT,
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <i className="ti ti-corner-down-left"
+                   style={{ fontSize: 13, color: azul, flexShrink: 0 }} aria-hidden="true" />
+                <span style={{
+                  flex: 1, fontSize: 13, color: T.textPrimary,
+                  letterSpacing: '-0.005em',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{f}</span>
+              </button>
             ))}
-          </>
+          </div>
         )}
-      </HIGSection>
+      </AtlPanel>
 
-      {/* ── 4. Componentes afetados ──────────────────────────────────────── */}
-      <HIGSection T={T} dark={dark} title="Componentes afetados"
+      {/* 4. Componentes afetados */}
+      <AtlPanel T={T} dark={dark}
+        title="Componentes afetados"
+        count={totalMarcados > 0 ? totalMarcados : undefined}
         footer={totalMarcados > 0
-          ? `${totalMarcados} ${totalMarcados === 1 ? 'componente marcado' : 'componentes marcados'}`
-          : 'Selecione pelo menos 1 componente para concluir'}>
+          ? `${totalMarcados} ${totalMarcados === 1 ? 'componente marcado' : 'componentes marcados'}.`
+          : 'Selecione pelo menos 1 componente para concluir.'}>
 
-        {/* Campo de busca */}
+        {/* Busca */}
         <div style={{
-          padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
-          display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
-          borderBottom: `0.5px solid ${T.border}`,
+          padding: '8px 14px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <TI name="search" size={15} color={T.textMuted} />
+          <i className="ti ti-search" style={{ fontSize: 14, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
           <input
             type="search"
             placeholder="Buscar componente…"
@@ -635,8 +524,8 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
             onChange={e => setBusca(e.target.value)}
             style={{
               flex: 1, border: 'none', background: 'transparent',
-              outline: 'none', ...higType('body'), color: T.textPrimary,
-              fontFamily: HIG_FONT,
+              outline: 'none', fontSize: 13, color: T.textPrimary,
+              fontFamily: ATL_FONT, letterSpacing: '-0.005em',
             }}
           />
           {busca && (
@@ -644,16 +533,14 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
               style={{
                 border: 'none', background: 'transparent',
                 cursor: 'pointer', color: T.textMuted, padding: 0,
+                display: 'inline-flex', alignItems: 'center', flexShrink: 0,
               }}>
-              <TI name="x" size={14} color={T.textMuted} />
+              <i className="ti ti-x" style={{ fontSize: 13 }} aria-hidden="true" />
             </button>
           )}
         </div>
 
-        {/* Lista de grupos com accordion.
-            Quando há busca, todos os grupos com matches expandem automaticamente
-            e grupos sem matches somem. Sem busca, comportamento normal de
-            accordion (1 aberto por vez via grupoAberto). */}
+        {/* Grupos */}
         {(() => {
           const buscaAtiva = busca.trim().length > 0
           const queryLower = busca.trim().toLowerCase()
@@ -671,11 +558,11 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
           if (buscaAtiva && gruposVisiveis.length === 0) {
             return (
               <div style={{
-                padding: `${HIG_SPACE.md}px`,
-                display: 'flex', alignItems: 'center', gap: HIG_SPACE.xs,
+                padding: 14, display: 'flex', alignItems: 'center', gap: 8,
+                color: T.textMuted,
               }}>
-                <TI name="search-off" size={15} color={T.textDim} />
-                <span style={{ ...higType('subheadline'), color: T.textMuted, fontStyle: 'italic' }}>
+                <i className="ti ti-search-off" style={{ fontSize: 14 }} aria-hidden="true" />
+                <span style={{ fontSize: 13, fontStyle: 'italic' }}>
                   Nenhum componente encontrado.
                 </span>
               </div>
@@ -684,37 +571,33 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
 
           return gruposVisiveis.map(({ grupo, marcados, itensMatch, open }, idx) => (
             <React.Fragment key={grupo.id}>
-              {idx > 0 && <Sep T={T} indent={HIG_SPACE.md + 32 + HIG_SPACE.sm} />}
-              <GrupoRow
+              <GrupoHeader
                 T={T} dark={dark}
                 grupo={grupo}
-                marcados={marcados}
+                marcadosCount={Object.keys(marcados).length}
                 open={open}
+                first={idx === 0}
                 onToggle={() => {
-                  // Durante busca o toggle é ignorado (todos abertos por design)
                   if (buscaAtiva) return
                   setGrupoAberto(open ? null : grupo.id)
                 }}
               />
               {open && (
-                <div style={{ borderTop: `0.5px solid ${T.border}` }}>
-                  {itensMatch.map((item, iIdx) => (
+                <div>
+                  {itensMatch.map(item => (
                     <ItemRow
                       key={item.id}
                       T={T} dark={dark}
                       item={item}
                       acao={marcados[item.id]}
-                      onSetAcao={(itemId, acao) => {
-                        // setAcaoItem usa grupoAberto, que pode ser null durante busca.
-                        // Aqui sabemos o grupo certo — escreve direto.
+                      onSetAcao={(acao) => {
                         setMarcados(prev => {
                           const atual = { ...(prev[grupo.id] || {}) }
-                          if (!acao) delete atual[itemId]
-                          else atual[itemId] = acao
+                          if (!acao) delete atual[item.id]
+                          else atual[item.id] = acao
                           return { ...prev, [grupo.id]: atual }
                         })
                       }}
-                      isLast={iIdx === itensMatch.length - 1}
                     />
                   ))}
                 </div>
@@ -722,30 +605,18 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
             </React.Fragment>
           ))
         })()}
-      </HIGSection>
+      </AtlPanel>
 
-      {/* ── CTA: Concluir diagnóstico ─────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={concluir}
+      {/* 5. CTA */}
+      <AtlButton
+        T={T} dark={dark}
+        variant="primary"
+        fullWidth
         disabled={!podeConcluir || salvando}
-        style={{
-          ...higFilledButton(T, dark),
-          width: '100%',
-          background: podeConcluir
-            ? HIG_COLOR.tintIdemaq
-            : (dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA'),
-          color: podeConcluir ? '#FFFFFF' : T.textDim,
-          opacity: salvando ? 0.6 : 1,
-          cursor: (podeConcluir && !salvando) ? 'pointer' : 'not-allowed',
-        }}
-      >
-        <TI name={salvando ? 'loader-2' : 'arrow-right'} size={18} />
-        {salvando          ? 'Salvando…'
-          : !causa.trim()  ? 'Descreva a causa identificada'
-          : totalMarcados === 0 ? 'Marque pelo menos 1 componente'
-          : 'Concluir diagnóstico'}
-      </button>
+        icon={salvando ? 'loader-2' : 'arrow-right'}
+        onClick={concluir}>
+        {ctaLabel}
+      </AtlButton>
 
     </div>
   )
