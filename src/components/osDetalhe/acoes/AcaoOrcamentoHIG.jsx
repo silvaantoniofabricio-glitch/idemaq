@@ -628,7 +628,7 @@ function ItemRowEditando({ item, tipo, T, dark, onConfirm }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Estilo Atlassian Design — substitui HIGSection no orçamento
+// Estilo Atlassian Design — substitui HIGSection no orçamento (deploy v2)
 // ═══════════════════════════════════════════════════════════════════════════
 
 const ATL_RADIUS = 4
