@@ -8,6 +8,7 @@
 // Visível só pro dono — rota `/relatorios` envolvida em <AdminOnly> no App.jsx.
 
 import React, { useState, useMemo } from 'react'
+import { useIsMobile } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
@@ -72,6 +73,7 @@ function fmtMesBR(yyyymm) {
 
 // === Página ===
 export default function Relatorios({ T, dark }) {
+  const isMobile = useIsMobile()
   const notify = useToast()
   const [relAtivo, setRelAtivo] = useState(null) // null = hub
   const [periodo, setPeriodo] = useState('mes')
@@ -116,7 +118,7 @@ export default function Relatorios({ T, dark }) {
       padding: '20px 24px 32px', overflowY: 'auto', flex: 1,
       display: 'flex', flexDirection: 'column', gap: 14,
     }}>
-      <PageHeader T={T} dark={dark}
+      {!isMobile && <PageHeader T={T} dark={dark}
         title="Relatórios"
         subtitle={relAtivo
           ? `${RELATORIOS.find(r => r.id === relAtivo)?.label} · período ${labelPeriodo()}`
@@ -139,7 +141,7 @@ export default function Relatorios({ T, dark }) {
             </Button>
           </div>
         )}
-      />
+      />}
 
       {relAtivo && (
         <Card T={T} dark={dark}>

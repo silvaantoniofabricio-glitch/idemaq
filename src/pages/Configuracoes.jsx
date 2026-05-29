@@ -5,6 +5,7 @@
 // `configuracoes` (sql/10) como chave/valor JSONB. Hook: useConfiguracoes.
 
 import React, { useState, useEffect } from 'react'
+import { useIsMobile } from '../theme'
 import { fmtBRL } from '../utils/fmt'
 import { useConfiguracoes } from '../hooks/useConfiguracoes'
 import { useToast } from '../components/ui/Toast'
@@ -14,6 +15,7 @@ const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helve
 const ATL_RADIUS = 4
 
 export default function Configuracoes({ T, dark }) {
+  const isMobile = useIsMobile()
   const { configs, loading, tabelaAusente, get, set } = useConfiguracoes()
   const notify = useToast()
   const azul = corEtapa('blue', dark)
@@ -79,19 +81,21 @@ export default function Configuracoes({ T, dark }) {
       display: 'flex', flexDirection: 'column', gap: 14,
       fontFamily: ATL_FONT,
     }}>
-      {/* Page header */}
-      <div>
-        <h1 style={{
-          fontSize: 22, fontWeight: 700, color: T.textPrimary,
-          margin: 0, letterSpacing: '-0.01em',
-        }}>Configurações</h1>
-        <p style={{
-          fontSize: 13, color: T.textMuted, margin: '4px 0 0',
-          letterSpacing: '-0.005em',
-        }}>
-          Parâmetros da empresa usados pelos painéis e relatórios.
-        </p>
-      </div>
+      {/* Page header — escondido no mobile (titulo ja esta na topbar) */}
+      {!isMobile && (
+        <div>
+          <h1 style={{
+            fontSize: 22, fontWeight: 700, color: T.textPrimary,
+            margin: 0, letterSpacing: '-0.01em',
+          }}>Configurações</h1>
+          <p style={{
+            fontSize: 13, color: T.textMuted, margin: '4px 0 0',
+            letterSpacing: '-0.005em',
+          }}>
+            Parâmetros da empresa usados pelos painéis e relatórios.
+          </p>
+        </div>
+      )}
 
       {tabelaAusente && (
         <AtlPanel T={T} dark={dark} accent={amarelo}>
