@@ -74,14 +74,12 @@ function SecaoCliente({ T, dark, os, onUpdateOS }) {
   const azul = HIG_COLOR.tintIdemaq
 
   useEffect(() => {
-    const raw = os?.pre_diagnostico?.foto
+    // Prioriza foto_coleta_1 (etiqueta da coleta); cai pra foto legacy
+    const raw  = os?.pre_diagnostico?.foto_coleta_1 || os?.pre_diagnostico?.foto
+    const tipo = os?.pre_diagnostico?.foto_coleta_1 ? 'coleta_1' : 'coleta'
     if (!raw) { setFotoUrl(null); return }
-    if (raw === FOTO_STORAGE_MARKER || raw?.startsWith?.(FOTO_STORAGE_MARKER)) {
-      resolverFotoUrl(os.id).then(url => setFotoUrl(url || null))
-    } else {
-      setFotoUrl(raw)
-    }
-  }, [os?.id, os?.pre_diagnostico?.foto])
+    resolverFotoUrl(raw, os.id, tipo).then(url => setFotoUrl(url || null))
+  }, [os?.id, os?.pre_diagnostico?.foto_coleta_1, os?.pre_diagnostico?.foto])
 
   async function escolherFoto(file) {
     if (!file || !file.type?.startsWith('image/')) return

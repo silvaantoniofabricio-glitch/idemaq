@@ -28,21 +28,24 @@ export default function FormEquipamentoEdit({
   const azul = corEtapa('blue', dark)
   const inputFotoRef = useRef(null)
 
-  // Foto
-  const fotoRef = os?.pre_diagnostico?.foto || os?.foto || null
+  // Foto — prioriza foto_coleta_1 (etiqueta salva pela AcaoColeta), cai pra foto legacy
+  const fotoColeta1 = os?.pre_diagnostico?.foto_coleta_1 || null
+  const fotoLegacy  = os?.pre_diagnostico?.foto || os?.foto || null
+  const fotoRef  = fotoColeta1 || fotoLegacy
+  const fotoTipo = fotoColeta1 ? 'coleta_1' : 'coleta'
   const [fotoUrl, setFotoUrl] = useState(null)
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     let cancelado = false
     async function carregar() {
-      const url = await resolverFotoUrl(fotoRef, os.id)
+      const url = await resolverFotoUrl(fotoRef, os.id, fotoTipo)
       if (!cancelado) setFotoUrl(url || null)
     }
     if (fotoRef) carregar()
     else setFotoUrl(null)
     return () => { cancelado = true }
-  }, [fotoRef, os?.id])
+  }, [fotoRef, os?.id, fotoTipo])
 
   async function escolherFoto(file) {
     if (!file || !file.type?.startsWith('image/')) {
