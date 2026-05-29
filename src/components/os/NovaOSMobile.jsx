@@ -307,16 +307,20 @@ function Header({ T, dark, okObg, totalObg, onClose }) {
           </span>
         </div>
       </div>
-      <button onClick={onClose} aria-label="Fechar"
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onClose() }}
+        aria-label="Fechar"
         style={{
-          width: 32, height: 32, borderRadius: 3,
+          width: 36, height: 36, borderRadius: 3,
           background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
           border: `1px solid ${T.border}`,
           color: T.textPrimary, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0, WebkitTapHighlightColor: 'transparent',
+          padding: 0, fontFamily: 'inherit',
         }}>
-        <i className="ti ti-x" style={{ fontSize: 16 }} aria-hidden="true" />
+        <i className="ti ti-x" style={{ fontSize: 18 }} aria-hidden="true" />
       </button>
     </div>
   )
@@ -1112,16 +1116,19 @@ function SectionHeader({ T, dark, icon, titulo, obrigatorio, opcional, noBottom 
 
 function Field({ T, label, opcional, children }) {
   return (
-    <div>
+    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       <label style={{
         display: 'flex', alignItems: 'center', gap: 5,
         fontSize: 11, fontWeight: 600, color: T.textMuted,
-        letterSpacing: '.3px', textTransform: 'uppercase',
+        letterSpacing: '0.07em', textTransform: 'uppercase',
         marginBottom: 6,
       }}>
         {label}
         {opcional && (
-          <span style={{ fontSize: 10, fontWeight: 500, color: T.textDim, letterSpacing: 'normal', textTransform: 'none' }}>
+          <span style={{
+            fontSize: 10, fontWeight: 500, color: T.textDim,
+            letterSpacing: 'normal', textTransform: 'none',
+          }}>
             · opcional
           </span>
         )}
@@ -1187,18 +1194,20 @@ function NativeTextarea({ T, dark, value, onChange, placeholder, minHeight = 80 
 function inputBaseStyle(T, dark) {
   return {
     width: '100%',
-    minHeight: 48,
-    padding: '12px 14px',
-    borderRadius: 12,
+    minWidth: 0,
+    minHeight: 40,
+    padding: '8px 12px',
+    borderRadius: 3,
     border: `1px solid ${T.border}`,
-    background: T.card,
+    background: dark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
     color: T.textPrimary,
     fontSize: 16, // não <16 — evita zoom iOS
     fontFamily: 'inherit',
     outline: 'none',
     boxSizing: 'border-box',
+    letterSpacing: '-0.005em',
     colorScheme: dark ? 'dark' : 'light',
-    transition: 'border-color .15s, box-shadow .15s',
+    transition: 'border-color .12s, box-shadow .12s',
   }
 }
 
