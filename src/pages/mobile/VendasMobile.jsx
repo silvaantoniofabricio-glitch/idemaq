@@ -153,22 +153,83 @@ function FiltrosMobile({
 
   return (
     <div>
-      <button
-        onClick={() => setAberto(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-          padding: '10px 14px', borderRadius: 10,
-          background: T.card, border: `1px solid ${T.border}`,
-          color: T.textSecondary, fontSize: 13, cursor: 'pointer',
-          fontFamily: 'inherit', fontWeight: 500,
-        }}
-      >
-        <i className="ti ti-filter" style={{ fontSize: 15, color: temFiltroAtivo ? azul : T.textMuted }} aria-hidden="true" />
-        <span style={{ flex: 1, textAlign: 'left' }}>
-          Filtros{temFiltroAtivo && <span style={{ color: azul, fontWeight: 700 }}> · ativos</span>}
-        </span>
-        <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
-      </button>
+      {/* Linha: busca + botao Filtros (icone) */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <i className="ti ti-search" aria-hidden="true" style={{
+            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+            fontSize: 14, color: T.textMuted, pointerEvents: 'none',
+          }} />
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar OS, cliente, equipamento…"
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              height: 34,
+              padding: '0 32px 0 32px',
+              borderRadius: 3,
+              border: `1px solid ${T.border}`,
+              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+              color: T.textPrimary,
+              fontSize: 13, fontFamily: 'inherit',
+              outline: 'none', letterSpacing: '-0.005em',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = azul
+              e.currentTarget.style.boxShadow = `0 0 0 2px ${azul}33`
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = T.border
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          />
+          {busca && (
+            <button
+              type="button"
+              onClick={() => setBusca('')}
+              aria-label="Limpar busca"
+              style={{
+                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                width: 18, height: 18, borderRadius: 9,
+                background: T.textMuted + '88', color: '#fff',
+                border: 'none', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+              <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setAberto(o => !o)}
+          aria-label={aberto ? 'Fechar filtros' : 'Abrir filtros'}
+          style={{
+            width: 34, height: 34, borderRadius: 3,
+            border: `1px solid ${temFiltroAtivo ? azul : T.border}`,
+            background: temFiltroAtivo
+              ? azul + '22'
+              : (dark ? 'rgba(255,255,255,0.04)' : '#fff'),
+            color: temFiltroAtivo ? azul : T.textPrimary,
+            cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, position: 'relative',
+            fontFamily: 'inherit',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <i className="ti ti-adjustments-horizontal"
+             style={{ fontSize: 16 }} aria-hidden="true" />
+          {temFiltroAtivo && (
+            <span style={{
+              position: 'absolute', top: -3, right: -3,
+              width: 8, height: 8, borderRadius: '50%',
+              background: azul, border: `2px solid ${T.bg}`,
+            }} />
+          )}
+        </button>
+      </div>
 
       {aberto && (
         <div style={{
