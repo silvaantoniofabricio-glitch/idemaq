@@ -73,6 +73,7 @@ export default function EstoqueMobile({ T, dark, user }) {
   const [pecaAberta, setPecaAberta]     = useState(null)
   const [maquinaAberta, setMaquinaAberta] = useState(null)
   const [novaPecaAberta, setNovaPeca]   = useState(false)
+  const [filtroOpen, setFiltroOpen]     = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setBD(busca), 300)
@@ -255,7 +256,7 @@ export default function EstoqueMobile({ T, dark, user }) {
         />
       </div>
 
-      {/* 4. Sticky busca + chips */}
+      {/* 4. Sticky busca + botao filtro (categorias dentro de sheet) */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
         background: T.bg,
@@ -263,93 +264,98 @@ export default function EstoqueMobile({ T, dark, user }) {
         backdropFilter: 'saturate(180%) blur(20px)',
         WebkitBackdropFilter: 'saturate(180%) blur(20px)',
       }}>
-        {/* Busca */}
-        <div style={{ padding: '0 14px', position: 'relative', marginBottom: 8 }}>
-          <i className="ti ti-search" aria-hidden="true" style={{
-            position: 'absolute', left: 14 + 10, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 14, color: T.textMuted, pointerEvents: 'none',
-          }} />
-          <input
-            type="search"
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder={onPecas ? 'Buscar peça por nome, SKU…' : 'Buscar máquina…'}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              minHeight: 34,
-              padding: '0 32px 0 32px',
-              borderRadius: 3,
-              border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-              color: T.textPrimary,
-              fontSize: 13, fontFamily: ATL_FONT,
-              outline: 'none', letterSpacing: '-0.005em',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = azul
-              e.currentTarget.style.boxShadow = `0 0 0 2px ${azul}33`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = T.border
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          />
-          {busca && (
-            <button onClick={() => setBusca('')} aria-label="Limpar" style={{
-              position: 'absolute', right: 14 + 8, top: '50%', transform: 'translateY(-50%)',
-              width: 18, height: 18, borderRadius: 9,
-              background: T.textMuted + '88', color: '#fff',
-              border: 'none', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
+        <div style={{
+          padding: '0 14px 10px',
+          display: 'flex', gap: 8, alignItems: 'center',
+        }}>
+          {/* Busca */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <i className="ti ti-search" aria-hidden="true" style={{
+              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 14, color: T.textMuted, pointerEvents: 'none',
+            }} />
+            <input
+              type="search"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder={onPecas ? 'Buscar peça por nome, SKU…' : 'Buscar máquina…'}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                height: 34,
+                padding: '0 32px 0 32px',
+                borderRadius: 3,
+                border: `1px solid ${T.border}`,
+                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+                color: T.textPrimary,
+                fontSize: 13, fontFamily: ATL_FONT,
+                outline: 'none', letterSpacing: '-0.005em',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = azul
+                e.currentTarget.style.boxShadow = `0 0 0 2px ${azul}33`
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = T.border
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            />
+            {busca && (
+              <button onClick={() => setBusca('')} aria-label="Limpar" style={{
+                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                width: 18, height: 18, borderRadius: 9,
+                background: T.textMuted + '88', color: '#fff',
+                border: 'none', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          {/* Botao filtro (so pra Pecas — tem categorias) */}
+          {onPecas && chipsCat.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setFiltroOpen(true)}
+              aria-label="Filtrar categorias"
+              style={{
+                width: 34, height: 34, borderRadius: 3,
+                border: `1px solid ${categoriaSel !== 'todas' ? azul : T.border}`,
+                background: categoriaSel !== 'todas'
+                  ? azul + '22'
+                  : (dark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                color: categoriaSel !== 'todas' ? azul : T.textPrimary,
+                cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, position: 'relative',
+                fontFamily: ATL_FONT,
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              <i className="ti ti-adjustments-horizontal"
+                 style={{ fontSize: 16 }} aria-hidden="true" />
+              {categoriaSel !== 'todas' && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: azul, border: `2px solid ${T.bg}`,
+                }} />
+              )}
             </button>
           )}
         </div>
-
-        {/* Chips categoria */}
-        {onPecas && chipsCat.length > 1 && (
-          <div style={{
-            display: 'flex', gap: 5,
-            padding: '0 14px 8px',
-            overflowX: 'auto', scrollbarWidth: 'none',
-            WebkitOverflowScrolling: 'touch',
-          }}>
-            <style>{`div::-webkit-scrollbar{display:none}`}</style>
-            {chipsCat.map(cat => {
-              const ativo = categoriaSel === cat.id
-              return (
-                <button key={cat.id} onClick={() => setCategoriaSel(cat.id)} style={{
-                  flexShrink: 0,
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '5px 10px',
-                  borderRadius: 99,
-                  border: `1px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? azul : (dark ? 'rgba(255,255,255,0.025)' : '#FAFBFC'),
-                  color: ativo ? '#fff' : T.textPrimary,
-                  fontSize: 12, fontWeight: ativo ? 600 : 500,
-                  cursor: 'pointer', minHeight: 28,
-                  whiteSpace: 'nowrap', fontFamily: ATL_FONT,
-                  letterSpacing: '-0.005em',
-                  WebkitTapHighlightColor: 'transparent',
-                  transition: 'background .12s, border-color .12s',
-                }}>
-                  {cat.label}
-                  {cat.badge != null && (
-                    <span style={{
-                      background: ativo ? 'rgba(255,255,255,0.25)' : (dark ? 'rgba(255,255,255,0.07)' : '#DFE1E6'),
-                      color: ativo ? '#fff' : T.textMuted,
-                      fontSize: 10.5, fontWeight: 600,
-                      padding: '1px 6px', borderRadius: 99,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>{cat.badge}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        )}
       </div>
+
+      {/* Filtro categorias — bottom sheet */}
+      {filtroOpen && (
+        <FiltroCategoriasSheet
+          T={T} dark={dark}
+          azul={azul}
+          chips={chipsCat}
+          ativo={categoriaSel}
+          onSelect={(id) => { setCategoriaSel(id); setFiltroOpen(false) }}
+          onClose={() => setFiltroOpen(false)}
+        />
+      )}
 
       {/* 5. Lista */}
       <div style={{
@@ -560,6 +566,136 @@ function AtlSkeletonList({ T, dark }) {
         </div>
       ))}
     </>
+  )
+}
+
+// ─── Bottom sheet de filtro de categorias ────────────────────────────────
+function FiltroCategoriasSheet({ T, dark, azul, chips, ativo, onSelect, onClose }) {
+  const [montado, setMontado] = useState(false)
+
+  useEffect(() => {
+    requestAnimationFrame(() => setMontado(true))
+    function onEsc(e) { if (e.key === 'Escape') fechar() }
+    document.addEventListener('keydown', onEsc)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onEsc)
+      document.body.style.overflow = prev
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function fechar() {
+    setMontado(false)
+    setTimeout(onClose, 180)
+  }
+
+  return (
+    <div onClick={fechar} style={{
+      position: 'fixed', inset: 0, zIndex: 300,
+      background: 'rgba(9,30,66,0.5)',
+      backdropFilter: 'blur(2px)',
+      display: 'flex', alignItems: 'flex-end',
+      opacity: montado ? 1 : 0,
+      transition: 'opacity .18s ease-out',
+      fontFamily: ATL_FONT,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: '100%', maxHeight: '70vh',
+        background: T.card,
+        borderRadius: '8px 8px 0 0',
+        boxShadow: '0 -8px 32px rgba(9,30,66,0.35)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+        transform: montado ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform .22s cubic-bezier(.2,.8,.2,1)',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px' }}>
+          <div style={{
+            width: 36, height: 3, borderRadius: 2,
+            background: dark ? 'rgba(255,255,255,0.15)' : '#DFE1E6',
+          }} />
+        </div>
+
+        {/* Header */}
+        <div style={{
+          padding: '8px 14px 12px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div>
+            <div style={{
+              fontSize: 15, fontWeight: 600, color: T.textPrimary,
+              letterSpacing: '-0.01em',
+            }}>Filtrar por categoria</div>
+            <div style={{
+              fontSize: 11.5, color: T.textMuted, marginTop: 2,
+              letterSpacing: '-0.005em',
+            }}>
+              {chips.length} {chips.length === 1 ? 'opção' : 'opções'}
+            </div>
+          </div>
+          <button onClick={fechar} aria-label="Fechar" style={{
+            width: 32, height: 32, borderRadius: 3,
+            background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+            border: `1px solid ${T.border}`, cursor: 'pointer',
+            color: T.textPrimary,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+            <i className="ti ti-x" style={{ fontSize: 16 }} aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Lista categorias scrollavel */}
+        <div style={{
+          flex: 1, overflowY: 'auto',
+          padding: 8,
+        }}>
+          {chips.map(cat => {
+            const sel = cat.id === ativo
+            return (
+              <button key={cat.id} onClick={() => onSelect(cat.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: '10px 12px',
+                background: sel
+                  ? (dark ? 'rgba(91,155,213,0.12)' : 'rgba(91,155,213,0.08)')
+                  : 'transparent',
+                border: 'none', borderRadius: 3,
+                color: sel ? azul : T.textPrimary,
+                fontSize: 14, fontWeight: sel ? 600 : 500,
+                cursor: 'pointer', textAlign: 'left',
+                fontFamily: ATL_FONT,
+                letterSpacing: '-0.005em',
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'background .12s',
+              }}>
+                <span style={{ flex: 1 }}>{cat.label}</span>
+                {cat.badge != null && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: sel ? azul : T.textMuted,
+                    background: sel
+                      ? (dark ? 'rgba(91,155,213,0.20)' : 'rgba(91,155,213,0.14)')
+                      : (dark ? 'rgba(255,255,255,0.07)' : '#DFE1E6'),
+                    padding: '2px 8px', borderRadius: 99,
+                    fontVariantNumeric: 'tabular-nums',
+                    minWidth: 26, textAlign: 'center',
+                  }}>{cat.badge}</span>
+                )}
+                {sel && (
+                  <i className="ti ti-check" style={{
+                    fontSize: 16, color: azul, flexShrink: 0,
+                  }} aria-hidden="true" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 
