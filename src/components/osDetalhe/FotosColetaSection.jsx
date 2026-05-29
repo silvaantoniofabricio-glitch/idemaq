@@ -73,19 +73,31 @@ export default function FotosColetaSection({
       },
     })
 
-    // Auto-OCR: se foi a etiqueta (slot 1), chama Claude pra extrair marca/modelo/série.
-    // Falha silenciosa se a edge function não estiver deployada (não atrapalha o fluxo).
-    if (slot === 1 && res.url) {
-      lerEtiqueta(res.url)
+    // Auto-OCR: se foi a etiqueta (slot 1), extrai marca/modelo/série.
+    // Manda base64 direto (mais confiável que signed URL na edge function).
+    if (slot === 1) {
+      lerEtiqueta(file)
     }
   }
 
-  async function lerEtiqueta(imageUrl) {
+  async function lerEtiqueta(fileOrUrl) {
     setLendoEtiqueta(true)
     try {
-      const { data, error } = await supabase.functions.invoke('extrair-etiqueta', {
-        body: { imageUrl },
-      })
+      // Converte File pra base64 e manda direto — mais confiável que signed URL
+      let body
+      if (fileOrUrl instanceof File || fileOrUrl instanceof Blob) {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result.split(',')[1])
+          reader.onerror = reject
+          reader.readAsDataURL(fileOrUrl)
+        })
+        body = { imageBase64: base64, mediaType: 'image/jpeg' }
+      } else {
+        body = { imageUrl: fileOrUrl }
+      }
+
+      const { data, error } = await supabase.functions.invoke('extrair-etiqueta', { body })
       if (error || !data?.ok) {
         console.warn('[extrair-etiqueta] falha:', error, data)
         notify('info', `Etiqueta: erro — ${error?.message || data?.error || 'verifique console'}`)
