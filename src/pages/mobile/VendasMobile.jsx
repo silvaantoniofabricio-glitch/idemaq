@@ -124,6 +124,7 @@ function FiltrosMobile({
   tiposAtivos, setTiposAtivos,
   pagamentosAtivos, setPagamentosAtivos,
   busca, setBusca,
+  onNovaOS,
 }) {
   const [aberto, setAberto] = useState(false)
   const azul = corEtapa('blue', dark)
@@ -201,6 +202,25 @@ function FiltrosMobile({
             </button>
           )}
         </div>
+
+        {onNovaOS && (
+          <button
+            type="button"
+            onClick={onNovaOS}
+            aria-label="Nova OS"
+            style={{
+              width: 34, height: 34, borderRadius: 3,
+              border: 'none',
+              background: azul, color: '#fff',
+              cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+          </button>
+        )}
 
         <button
           type="button"
@@ -564,32 +584,8 @@ export default function VendasMobile({ T, dark, user }) {
       overflowY: 'auto', background: T.bg,
     }}>
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── KPIs (titulo "Vendas" ja esta na topbar) ─────────────────────── */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: corHero(dark), letterSpacing: '-0.01em' }}>
-              Vendas
-            </div>
-            <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>
-              Histórico de ordens de serviço
-            </div>
-          </div>
-          <button
-            onClick={() => setNovaOSAberta(true)}
-            style={{
-              background: azul, color: '#fff', border: 'none',
-              borderRadius: 10, padding: '10px 16px',
-              fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
-              fontFamily: 'inherit', flexShrink: 0,
-            }}
-          >
-            <i className="ti ti-plus" style={{ fontSize: 15 }} aria-hidden="true" />
-            Nova
-          </button>
-        </div>
-
         {/* KPI 2×2 */}
         <KpiGrid T={T} dark={dark} kpis={[
           { label: 'Faturado',     valor: fmtBRL(kpis.faturado), cor: corHero(dark), icon: 'ti-cash-banknote',  iconCor: azul },
@@ -656,6 +652,7 @@ export default function VendasMobile({ T, dark, user }) {
         tiposAtivos={tiposAtivos} setTiposAtivos={setTiposAtivos}
         pagamentosAtivos={pagamentosAtivos} setPagamentosAtivos={setPagamentosAtivos}
         busca={busca} setBusca={setBusca}
+        onNovaOS={() => setNovaOSAberta(true)}
       />
 
       {/* ── Contador de resultados ─────────────────────────────────────────── */}
