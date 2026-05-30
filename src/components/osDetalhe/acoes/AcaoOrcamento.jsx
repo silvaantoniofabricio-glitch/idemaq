@@ -398,8 +398,94 @@ function PecaPicker({ T, dark, fg, termo, onEscolher }) {
   )
 }
 
+// ─── Formulário de edição de item existente ───────────────────────────────────
+function EditItemForm({ item, T, dark, onSave, onCancel, saving }) {
+  const [nome, setNome]   = useState(item.nome || '')
+  const [qtd, setQtd]     = useState(String(item.qtd || 1))
+  const [valor, setValor] = useState(String(item.valor_unitario || ''))
+
+  const valido = nome.trim().length > 0 && Number(qtd) > 0
+  const azul   = corEtapa('blue', dark)
+  const azulBg = dark ? 'rgba(91,155,213,0.20)' : 'rgba(91,155,213,0.15)'
+
+  const inlineInputStyle = {
+    width: '100%', boxSizing: 'border-box',
+    padding: '8px 10px', borderRadius: 7,
+    border: `1px solid ${T.border}`,
+    background: T.bg, color: T.textPrimary,
+    fontSize: 13, outline: 'none', fontFamily: 'inherit',
+    fontVariantNumeric: 'tabular-nums',
+  }
+  const iconBtnStyle = (color, bgC, disabled) => ({
+    width: 32, height: 32, borderRadius: 7, flexShrink: 0,
+    background: bgC, border: 'none', color,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.45 : 1,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent',
+  })
+
+  function handleSave() {
+    if (!valido) return
+    onSave({ nome: nome.trim(), qtd: Number(qtd) || 1, valor_unitario: Number(valor) || 0 })
+  }
+
+  return (
+    <div style={{
+      padding: '8px 10px',
+      borderTop: `1px solid ${T.border}`,
+      background: dark ? 'rgba(91,155,213,0.07)' : 'rgba(91,155,213,0.06)',
+      display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <input
+          type="text" value={nome} onChange={e => setNome(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && valido) handleSave(); if (e.key === 'Escape') onCancel() }}
+          autoFocus style={inlineInputStyle}
+        />
+      </div>
+      <input
+        type="number" min="1" step="1" value={qtd}
+        onChange={e => setQtd(e.target.value)}
+        aria-label="Quantidade" title="Quantidade"
+        style={{ ...inlineInputStyle, width: 52, textAlign: 'center', flexShrink: 0 }}
+      />
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 3,
+        padding: '0 4px 0 8px', borderRadius: 7,
+        border: `1px solid ${T.border}`, background: T.bg,
+        width: 92, flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>R$</span>
+        <input
+          type="number" min="0" step="0.01" value={valor}
+          onChange={e => setValor(e.target.value)}
+          aria-label="Valor unitário"
+          style={{
+            flex: 1, minWidth: 0, padding: '8px 0',
+            border: 'none', outline: 'none',
+            background: 'transparent', color: T.textPrimary,
+            fontSize: 13, fontFamily: 'inherit',
+            fontVariantNumeric: 'tabular-nums', textAlign: 'right',
+          }}
+        />
+      </div>
+      <button type="button" onClick={onCancel} disabled={saving}
+        aria-label="Cancelar" title="Cancelar"
+        style={iconBtnStyle(T.textMuted, 'transparent', saving)}>
+        <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+      </button>
+      <button type="button" onClick={handleSave} disabled={!valido || saving}
+        aria-label={saving ? 'Salvando' : 'Salvar'} title="Salvar"
+        style={iconBtnStyle(azul, azulBg, !valido || saving)}>
+        <i className={`ti ${saving ? 'ti-loader-2' : 'ti-check'}`} style={{ fontSize: 14 }} aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
 // ─── Bloco de um grupo de itens ───────────────────────────────────────────────
-function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionandoTipo }) {
+function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, onEdit, editandoId, savingEdit, adicionandoTipo }) {
   const { fg, bg } = corTipo(tipo, dark)
   const isEmpty = itens.length === 0
 
@@ -460,7 +546,14 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
       </div>
 
       {/* Lista de itens */}
-      {itens.map((it, idx) => (
+      {itens.map((it, idx) => editandoId === it.id ? (
+        <EditItemForm
+          key={it.id || idx}
+          item={it} T={T} dark={dark} saving={savingEdit}
+          onSave={patch => onEdit(it.id, patch)}
+          onCancel={() => onEdit(null, null)}
+        />
+      ) : (
         <div key={it.id || idx} style={{
           padding: '9px 12px',
           borderTop: `1px solid ${T.border}`,
@@ -478,6 +571,19 @@ function GrupoBlock({ tipo, itens, subtotal, T, dark, onAdd, onRemove, adicionan
             fontSize: 13, fontWeight: 600, color: T.textPrimary,
             fontVariantNumeric: 'tabular-nums', minWidth: 62, textAlign: 'right', flexShrink: 0,
           }}>{fmtBRL((it.qtd || 1) * (it.valor_unitario || 0))}</span>
+          <button
+            type="button"
+            onClick={() => onEdit(it.id, null)}
+            style={{
+              width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+              background: 'transparent', border: `1px solid ${T.border}`,
+              color: T.textMuted, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            aria-label="Editar item"
+          >
+            <i className="ti ti-pencil" style={{ fontSize: 12 }} aria-hidden="true" />
+          </button>
           <button
             type="button"
             onClick={() => onRemove(it.id)}
@@ -1053,8 +1159,10 @@ function Label({ T, children }) {
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAbrirAba }) {
   const [escolherTipo, setEscolherTipo] = useState({ acao: null, open: false })
-  const { itens, addItem, removeItem } = useOSItens(os?.id)
+  const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [adicionandoTipo, setAdicionandoTipo] = useState(null)
+  const [editandoId, setEditandoId] = useState(null)
+  const [savingEdit, setSavingEdit] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const porTipo = useMemo(() => {
@@ -1116,6 +1224,15 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
     return null
   }
 
+  async function handleEditItem(id, patch) {
+    if (!id) { setEditandoId(null); return }
+    if (!patch) { setEditandoId(id); return }
+    setSavingEdit(true)
+    await updateItem(id, patch)
+    setSavingEdit(false)
+    setEditandoId(null)
+  }
+
   async function handleSaveItem(dados) {
     setSaving(true)
     await addItem(dados)
@@ -1145,6 +1262,9 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
             T={T} dark={dark}
             onAdd={id => setAdicionandoTipo(id)}
             onRemove={removeItem}
+            onEdit={handleEditItem}
+            editandoId={editandoId}
+            savingEdit={savingEdit}
             adicionandoTipo={adicionandoTipo}
           />
           {adicionandoTipo === t.id && (
