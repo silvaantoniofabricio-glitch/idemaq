@@ -1162,6 +1162,24 @@ function AtlItensCard({ T, dark, itens, porTipo, subtotais, onAddNovo, onRemove 
                 onRemove={() => onRemove(it.id)}
               />
             ))}
+            {tipo.id === 'servico' && (
+              <div style={{ display: 'flex', gap: 6, padding: '4px 12px 2px', flexWrap: 'wrap' }}>
+                {[{ nome: 'Manutenção', valor: 185 }, { nome: 'Limpeza', valor: 185 }].map(s => (
+                  <button key={s.nome} type="button"
+                    onClick={() => onAddNovo('servico', { nome: s.nome, qtd: 1, valor_unitario: s.valor })}
+                    style={{
+                      padding: '3px 12px', borderRadius: 99,
+                      border: `1px solid ${dark ? '#444' : '#ddd'}`,
+                      background: 'transparent',
+                      color: '#5B9BD5',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      fontFamily: 'inherit', letterSpacing: '0.01em',
+                    }}>
+                    + {s.nome} — R$ {s.valor}
+                  </button>
+                ))}
+              </div>
+            )}
             <AtlNovoItemRow
               T={T} dark={dark} tipo={tipo}
               onAdd={(dados) => onAddNovo(tipo.id, dados)}
