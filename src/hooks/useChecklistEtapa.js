@@ -27,7 +27,7 @@ const isUUID = v => typeof v === 'string' && UUID_REGEX.test(v)
 export function useChecklistEtapa(osId, etapaDb) {
   const [itens, setItens] = useState([])
   const [observacoes, setObservacoes] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // true inicial impede hidratação prematura
   const [error, setError] = useState(null)
   const [preDiagnostico, setPreDiagnostico] = useState(null)
 
