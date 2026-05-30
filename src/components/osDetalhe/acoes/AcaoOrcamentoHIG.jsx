@@ -813,21 +813,79 @@ function AtlItemRow({ T, dark, item, tipo, onRemove }) {
 }
 
 // Row sempre presente pra adicionar novo item (estilo Atlassian inline)
+// ─── Dropdown de sugestões do estoque ────────────────────────────────────
+function PecaSugestoes({ T, dark, termo, onEscolher }) {
+  const [buscaDebounced, setBuscaDebounced] = useState(termo)
+  useEffect(() => {
+    const t = setTimeout(() => setBuscaDebounced(termo), 220)
+    return () => clearTimeout(t)
+  }, [termo])
+  const { pecas, loading } = usePecas({ busca: buscaDebounced, pageSize: 6 })
+
+  if (loading && pecas.length === 0) return (
+    <div style={{ padding: '10px 14px', fontSize: 12, color: T.textMuted, fontStyle: 'italic' }}>
+      Buscando…
+    </div>
+  )
+  if (!loading && pecas.length === 0) return (
+    <div style={{ padding: '10px 14px', fontSize: 12, color: T.textMuted, fontStyle: 'italic' }}>
+      {termo.trim() ? 'Nenhuma peça encontrada — pode digitar livre' : 'Digite para sugerir peças'}
+    </div>
+  )
+  return (
+    <div>
+      {pecas.map((p, i) => (
+        <button key={p.id} type="button"
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => onEscolher(p)}
+          style={{
+            width: '100%', padding: '8px 14px',
+            background: 'transparent', border: 'none',
+            borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+            display: 'flex', alignItems: 'center', gap: 8,
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(91,155,213,0.1)' : 'rgba(91,155,213,0.06)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+          {p.favorito
+            ? <i className="ti ti-star-filled" style={{ fontSize: 11, color: '#FFD966', flexShrink: 0 }} aria-hidden="true" />
+            : <span style={{ width: 11, flexShrink: 0 }} />}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: T.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {p.nome}
+            </div>
+            {(p.sku || p.qtdAtual != null) && (
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
+                {[p.sku && `SKU ${p.sku}`, p.qtdAtual != null && `${p.qtdAtual} em estoque`].filter(Boolean).join(' · ')}
+              </div>
+            )}
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#5B9BD5', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+            {p.precoVenda > 0 ? fmtBRL(p.precoVenda) : '—'}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
   const [nome, setNome] = useState('')
   const [qtd, setQtd] = useState('1')
   const [valor, setValor] = useState('')
   const [focusado, setFocusado] = useState(false)
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
   const containerRef = useRef(null)
   const flushedRef = useRef(false)
+  const ehPeca = tipo.id === 'peca'
 
   const valido = nome.trim().length > 0
-  const azul = corEtapa('blue', dark)
 
   async function flush() {
     if (flushedRef.current) return
     if (!valido) return
     flushedRef.current = true
+    setMostrarSugestoes(false)
     await onAdd({
       nome: nome.trim(),
       qtd: Number(qtd) || 1,
@@ -837,10 +895,25 @@ function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
     flushedRef.current = false
   }
 
+  function escolherPeca(p) {
+    setMostrarSugestoes(false)
+    flushedRef.current = true
+    onAdd({
+      nome: p.nome,
+      qtd: Number(qtd) || 1,
+      valor_unitario: p.precoVenda || 0,
+      peca_id: p.id,
+    }).then(() => {
+      setNome(''); setQtd('1'); setValor('')
+      flushedRef.current = false
+    })
+  }
+
   function handleBlur(e) {
     const next = e.relatedTarget
     if (next && containerRef.current?.contains(next)) return
     setFocusado(false)
+    setMostrarSugestoes(false)
     flush()
   }
 
@@ -851,18 +924,16 @@ function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
     fontFamily: 'inherit',
   }
 
-  const placeholder = tipo.id === 'peca'
+  const placeholder = ehPeca
     ? 'Adicionar peça…'
     : tipo.id === 'desloc'
       ? 'Adicionar deslocamento…'
       : 'Adicionar serviço…'
 
   return (
-    <div
-      ref={containerRef}
-      onFocus={() => setFocusado(true)}
-      onBlur={handleBlur}
-      style={{
+    <div ref={containerRef} onFocus={() => setFocusado(true)} onBlur={handleBlur}
+      style={{ position: 'relative' }}>
+      <div style={{
         padding: '8px 14px',
         display: 'flex', alignItems: 'center', gap: 10,
         background: focusado
@@ -871,59 +942,62 @@ function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
         borderTop: `1px dashed ${T.border}`,
         transition: 'background .12s',
       }}>
-      <div style={{
-        width: 24, height: 24, borderRadius: 4,
-        background: focusado ? bgFor(tipo.color, dark) : 'transparent',
-        border: `1px dashed ${focusado ? 'transparent' : T.border}`,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-        transition: 'background .12s, border-color .12s',
-      }}>
-        <TI name="plus" size={11} color={focusado ? tipo.color : T.textDim} />
+        <div style={{
+          width: 24, height: 24, borderRadius: 4,
+          background: focusado ? bgFor(tipo.color, dark) : 'transparent',
+          border: `1px dashed ${focusado ? 'transparent' : T.border}`,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, transition: 'background .12s, border-color .12s',
+        }}>
+          <TI name="plus" size={11} color={focusado ? tipo.color : T.textDim} />
+        </div>
+
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={nome}
+          onChange={e => { setNome(e.target.value); if (ehPeca) setMostrarSugestoes(true) }}
+          onFocus={() => { if (ehPeca) setMostrarSugestoes(true) }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); flush() }
+            if (e.key === 'Escape') { setNome(''); setValor(''); setMostrarSugestoes(false); e.currentTarget.blur() }
+          }}
+          style={{ ...inStyle, flex: 1, minWidth: 0, textOverflow: 'ellipsis' }}
+        />
+
+        {valido && (
+          <>
+            <input type="number" min="1" value={qtd}
+              onChange={e => setQtd(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); flush() } }}
+              style={{ ...inStyle, width: 30, textAlign: 'right' }}
+            />
+            <span style={{ fontSize: 11, color: T.textMuted, marginLeft: -4, opacity: 0.7 }}>×</span>
+            <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, minWidth: 76, justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 11, color: T.textMuted }}>R$</span>
+              <input type="number" min="0" step="0.01" placeholder="0" value={valor}
+                onChange={e => setValor(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); flush() } }}
+                style={{ ...inStyle, width: 60, textAlign: 'right' }}
+              />
+            </div>
+          </>
+        )}
+        <span style={{ width: 24, flexShrink: 0 }} aria-hidden="true" />
       </div>
 
-      <input
-        type="text"
-        placeholder={placeholder}
-        value={nome}
-        onChange={e => setNome(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') { e.preventDefault(); flush() }
-          if (e.key === 'Escape') { setNome(''); setValor(''); e.currentTarget.blur() }
-        }}
-        style={{ ...inStyle, flex: 1, minWidth: 0, textOverflow: 'ellipsis' }}
-      />
-
-      {/* Qtd/Valor so aparecem depois que comecou a digitar — assim o
-          placeholder do nome usa toda a largura disponivel. */}
-      {valido && (
-        <>
-          <input
-            type="number" min="1"
-            value={qtd}
-            onChange={e => setQtd(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); flush() } }}
-            style={{ ...inStyle, width: 30, textAlign: 'right' }}
-          />
-          <span style={{ fontSize: 11, color: T.textMuted, marginLeft: -4, opacity: 0.7 }}>×</span>
-
-          <div style={{
-            display: 'inline-flex', alignItems: 'baseline', gap: 2,
-            minWidth: 76, justifyContent: 'flex-end',
-          }}>
-            <span style={{ fontSize: 11, color: T.textMuted }}>R$</span>
-            <input
-              type="number" min="0" step="0.01" placeholder="0"
-              value={valor}
-              onChange={e => setValor(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); flush() } }}
-              style={{ ...inStyle, width: 60, textAlign: 'right' }}
-            />
-          </div>
-        </>
+      {ehPeca && mostrarSugestoes && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+          background: dark ? '#1E1E2E' : '#fff',
+          border: `1px solid ${T.border}`, borderTop: 'none',
+          borderRadius: '0 0 8px 8px',
+          boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
+          overflow: 'hidden',
+        }}>
+          <PecaSugestoes T={T} dark={dark} termo={nome} onEscolher={escolherPeca} />
+        </div>
       )}
-
-      <span style={{ width: 24, flexShrink: 0 }} aria-hidden="true" />
     </div>
   )
 }
