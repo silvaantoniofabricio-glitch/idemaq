@@ -64,14 +64,23 @@ export default function FotosColetaSection({
     const tipo = slot === 1 ? 'coleta_1' : 'coleta_2'
     const res = await uploadFotoOS(os.id, file, tipo)
     setUploading(u => ({ ...u, [slot]: false }))
-    if (!res.ok) return
+    if (!res.ok) {
+      notify('erro', `Falha ao enviar foto: ${res.error || 'erro desconhecido'}`)
+      return
+    }
+    // Mostra a foto imediatamente (signed URL do upload)
     setUrls(u => ({ ...u, [slot]: res.url }))
-    onUpdateOS?.(os.numero, {
+
+    // Persiste o marcador no banco
+    const resultado = await onUpdateOS?.(os.numero, {
       pre_diagnostico: {
         ...(os.pre_diagnostico || {}),
         [`foto_coleta_${slot}`]: FOTO_STORAGE_MARKER,
       },
     })
+    if (resultado && !resultado.ok) {
+      notify('erro', `Foto enviada mas falhou ao salvar no banco: ${resultado.error}`)
+    }
 
     // Auto-OCR: se foi a etiqueta (slot 1), extrai marca/modelo/série.
     // Manda base64 direto (mais confiável que signed URL na edge function).
