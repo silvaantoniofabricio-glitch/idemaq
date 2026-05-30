@@ -1899,6 +1899,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const LEMBRETES = [
     { rx: /\bcapa\b/i,            frase: 'Levar a capa na entrega' },
     { rx: /mangueira.*entrada/i,  frase: 'Levar mangueira de entrada na entrega' },
+    { rx: /mangueira.*sa[íi]da/i, frase: 'Levar mangueira de saída na entrega' },
   ]
   function lembreteParaItem(nome) {
     for (const { rx, frase } of LEMBRETES) if (rx.test(nome || '')) return frase

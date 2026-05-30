@@ -31,7 +31,8 @@ export const CATEGORIAS_PECA = [
   // Sistema de água
   { id: 'eletrobomba',       label: 'Eletrobomba',          grupo: 'agua' },
   { id: 'valvula',           label: 'Válvula',              grupo: 'agua' },
-  { id: 'mangueira',         label: 'Mangueira',            grupo: 'agua' },
+  { id: 'mangueira_entrada',  label: 'Mangueira de entrada',  grupo: 'agua' },
+  { id: 'mangueira_saida',    label: 'Mangueira de saída',    grupo: 'agua' },
   { id: 'pressostato',       label: 'Pressostato',          grupo: 'agua' },
   { id: 'braco_injetor',     label: 'Braço injetor',        grupo: 'agua' },
 

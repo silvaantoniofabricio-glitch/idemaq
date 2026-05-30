@@ -1105,6 +1105,7 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
   const LEMBRETES_ENTREGA = [
     { rx: /\bcapa\b/i,           frase: 'Levar a capa na entrega' },
     { rx: /mangueira.*entrada/i, frase: 'Levar mangueira de entrada na entrega' },
+    { rx: /mangueira.*sa[íi]da/i, frase: 'Levar mangueira de saída na entrega' },
   ]
 
   function lembreteParaItem(nome) {
