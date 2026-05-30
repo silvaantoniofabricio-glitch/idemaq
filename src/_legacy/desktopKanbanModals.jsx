@@ -472,10 +472,20 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
       const { data, error: err } = await supabase
         .from('os')
         .insert(payload)
-        .select('numero')
+        .select('id, numero')
         .single()
 
       if (err) throw err
+
+      if (tipo === 'atendimento') {
+        const itensPadrao = [
+          { os_id: data.id, categoria: 'servico', nome: 'Limpeza',      quantidade: 1, valor_unitario: 165 },
+          { os_id: data.id, categoria: 'servico', nome: 'Manutenção',   quantidade: 1, valor_unitario: 165 },
+          { os_id: data.id, categoria: 'desloc',  nome: 'Deslocamento', quantidade: 1, valor_unitario: 20  },
+        ]
+        const { error: errItens } = await supabase.from('os_item').insert(itensPadrao)
+        if (errItens) console.warn('[NovaOS] itens padrão falharam:', errItens)
+      }
 
       notify?.('ok', `OS #${data.numero} criada`)
       onCriada?.()
