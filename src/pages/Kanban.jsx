@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabase'
 import { useOS, uiEtapaToDb } from '../hooks/useOS'
+import { duplicarOS } from '../utils/osDerivada'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { P } from '../theme'
 import {
@@ -142,6 +143,10 @@ export default function Kanban({ T, dark, user }) {
   // Exclusão (soft-delete) — optimistic remove imediato + rollback em erro.
   // Não confia em Realtime pra sumir do Kanban (latência variável e às vezes
   // a publication `os` não está habilitada no Supabase).
+  async function handleDuplicarOS(os) {
+    return duplicarOS(os)
+  }
+
   async function excluirOS(numero) {
     const os = osList.find(o => o.numero === numero)
     if (!os) return
@@ -511,6 +516,7 @@ export default function Kanban({ T, dark, user }) {
         onMoverOS={moverOS}
         onUpdateOS={updateOS}
         onExcluir={excluirOS}
+        onDuplicar={handleDuplicarOS}
         onRefetchOS={osRefetch} />}
     </>
   )

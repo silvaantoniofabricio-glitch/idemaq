@@ -17,6 +17,32 @@ import { supabase } from '../supabase'
 const CAMPOS_ORIGEM = 'id, cliente_id, marca_equipamento, modelo_equipamento, defeito_relatado, garantia_dias'
 
 /**
+ * Duplica uma OS existente: copia cliente + tipo + equipamento + defeito +
+ * observações e abre nova OS do zero (etapa inicial, sem financeiro, sem garantia).
+ * Recebe o objeto `os` já mapeado pelo useOS (não precisa de SELECT extra).
+ * Devolve { data, error, numero }.
+ */
+export async function duplicarOS(os) {
+  if (!os?.id) return { data: null, error: new Error('os.id obrigatório'), numero: null }
+
+  const payload = {
+    cliente_id:         os.cliente_id   || null,
+    tipo:               os.tipo         || 'atendimento',
+    etapa:              'recebido',
+    marca_equipamento:  os.marca        || null,
+    modelo_equipamento: os.modelo       || null,
+    numero_serie:       os.serie        || null,
+    defeito_relatado:   os.defeito      || null,
+    observacoes:        os.observacoes  || null,
+  }
+
+  const { data, error } = await supabase
+    .from('os').insert(payload).select('id, numero').single()
+  if (error) return { data: null, error, numero: null }
+  return { data, error: null, numero: data?.numero ?? null }
+}
+
+/**
  * Cria OS nova derivada de `osOrigemId`. Devolve { data, error, numero }.
  * `overrides` substitui qualquer campo do payload (tipo, etapa, garantia, …).
  *

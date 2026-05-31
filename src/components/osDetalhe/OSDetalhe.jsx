@@ -32,6 +32,7 @@ export default function OSDetalhe({
   onMoverOS,
   onUpdateOS,
   onExcluir,
+  onDuplicar,
   onRefetchOS,
   mobile = false,
 }) {
@@ -196,6 +197,7 @@ export default function OSDetalhe({
             onClose={onClose}
             onUpdateOS={onUpdateOS}
             onExcluir={onExcluir}
+            onDuplicar={onDuplicar}
             onRefetchOS={onRefetchOS}
             mobile={mobile}
           />

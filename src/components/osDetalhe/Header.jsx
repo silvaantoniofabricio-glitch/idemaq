@@ -38,7 +38,7 @@ export default function Header({
   T, dark, os, admin,
   aba, setAba,
   onShowHistorico, onClose,
-  onUpdateOS, onExcluir,
+  onUpdateOS, onExcluir, onDuplicar,
   onRefetchOS,
   mobile = false,
 }) {
@@ -73,6 +73,7 @@ export default function Header({
   // === Dropdown "Mais ações" ===
   const [menuAberto, setMenuAberto] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
+  const [duplicando, setDuplicando] = useState(false)
   useEffect(() => {
     if (!menuAberto) return
     function onDocClick(e) {
@@ -88,6 +89,21 @@ export default function Header({
       document.removeEventListener('keydown', onEsc, true)
     }
   }, [menuAberto])
+
+  async function duplicarOSHandler() {
+    if (duplicando || !onDuplicar) return
+    setMenuAberto(false)
+    setDuplicando(true)
+    try {
+      const res = await onDuplicar(os)
+      if (res?.error) throw res.error
+      notify('ok', `OS #${res?.numero} criada como duplicata`)
+    } catch (e) {
+      notify('erro', `Erro ao duplicar: ${e?.message || 'desconhecido'}`)
+    } finally {
+      setDuplicando(false)
+    }
+  }
 
   async function copiarNumero() {
     setMenuAberto(false)
@@ -313,6 +329,12 @@ export default function Header({
                 <MenuItem T={T} icon="ti-copy" onClick={copiarNumero}>
                   Copiar nº da OS
                 </MenuItem>
+                {onDuplicar && (
+                  <MenuItem T={T} icon="ti-copy-plus"
+                    onClick={duplicarOSHandler} disabled={duplicando}>
+                    {duplicando ? 'Duplicando…' : 'Duplicar OS'}
+                  </MenuItem>
+                )}
                 {admin && (
                   <>
                     <div style={{ height: 1, background: T.border, margin: '4px 0' }} />
