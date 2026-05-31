@@ -750,8 +750,8 @@ function AtlSubHeader({ T, dark, label, valor, first }) {
   )
 }
 
-// Row de item (modo display) — hover sutil + remover só no hover
-function AtlItemRow({ T, dark, item, tipo, onRemove }) {
+// Row de item (modo display) — hover sutil + lápis + remover só no hover
+function AtlItemRow({ T, dark, item, tipo, onRemove, onEdit }) {
   const [hover, setHover] = useState(false)
   return (
     <div
@@ -795,6 +795,21 @@ function AtlItemRow({ T, dark, item, tipo, onRemove }) {
       </div>
       <button
         type="button"
+        onClick={onEdit}
+        aria-label="Editar item"
+        style={{
+          width: 24, height: 24, borderRadius: 3,
+          border: 'none', background: 'transparent',
+          color: T.textMuted, cursor: 'pointer',
+          opacity: hover ? 1 : 0,
+          transition: 'opacity .12s',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+        <TI name="pencil" size={13} color={T.textMuted} />
+      </button>
+      <button
+        type="button"
         onClick={onRemove}
         aria-label="Remover item"
         style={{
@@ -802,12 +817,154 @@ function AtlItemRow({ T, dark, item, tipo, onRemove }) {
           border: 'none', background: 'transparent',
           color: T.textMuted, cursor: 'pointer',
           opacity: hover ? 1 : 0,
-          transition: 'opacity .12s, background .12s',
+          transition: 'opacity .12s',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
         <TI name="trash" size={13} color={T.textMuted} />
       </button>
+    </div>
+  )
+}
+
+// Row de item (modo edição inline) — Atlassian style
+function AtlItemRowEditando({ T, dark, item, tipo, onConfirm, onCancel }) {
+  const [nome, setNome] = useState(item.nome || '')
+  const [qtd, setQtd] = useState(String(item.qtd || 1))
+  const [valor, setValor] = useState(item.valor_unitario != null ? String(item.valor_unitario) : '')
+  const [pecaId, setPecaId] = useState(item.peca_id || null)
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const containerRef = useRef(null)
+  const inputRef = useRef(null)
+  const flushedRef = useRef(false)
+  const ehPeca = tipo.id === 'peca'
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  function confirmar() {
+    if (flushedRef.current) return
+    flushedRef.current = true
+    setMostrarSugestoes(false)
+    onConfirm({
+      nome: nome.trim(),
+      qtd: Number(qtd) || 1,
+      valor_unitario: Number(String(valor).replace(',', '.')) || 0,
+      ...(pecaId ? { peca_id: pecaId } : {}),
+    })
+  }
+
+  function cancelar() {
+    if (flushedRef.current) return
+    flushedRef.current = true
+    setMostrarSugestoes(false)
+    onCancel()
+  }
+
+  function handleBlur(e) {
+    const next = e.relatedTarget
+    if (next && containerRef.current?.contains(next)) return
+    confirmar()
+  }
+
+  function escolherPeca(p) {
+    setNome(p.nome)
+    setValor(p.precoVenda ? String(p.precoVenda) : '')
+    setPecaId(p.id)
+    setMostrarSugestoes(false)
+  }
+
+  const inStyle = {
+    border: 'none', background: 'transparent', outline: 'none',
+    fontSize: 13, color: T.textPrimary,
+    fontVariantNumeric: 'tabular-nums', fontFamily: 'inherit',
+  }
+
+  return (
+    <div ref={containerRef} onBlur={handleBlur} style={{ position: 'relative' }}>
+      <div style={{
+        padding: '8px 14px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: dark ? 'rgba(91,155,213,0.07)' : 'rgba(91,155,213,0.05)',
+        borderLeft: `2px solid #5B9BD5`,
+      }}>
+        <div style={{
+          width: 24, height: 24, borderRadius: 4,
+          background: bgFor(tipo.color, dark),
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <TI name={tipo.icon} size={12} color={tipo.color} />
+        </div>
+
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder={ehPeca ? 'Peça…' : tipo.id === 'desloc' ? 'Deslocamento…' : 'Serviço…'}
+          value={nome}
+          onChange={e => { setNome(e.target.value); setPecaId(null); if (ehPeca) setMostrarSugestoes(true) }}
+          onFocus={() => { if (ehPeca) setMostrarSugestoes(true) }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); confirmar() }
+            if (e.key === 'Escape') cancelar()
+          }}
+          style={{ ...inStyle, flex: 1, minWidth: 0 }}
+        />
+
+        <input
+          type="number" min="1"
+          value={qtd}
+          onChange={e => setQtd(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmar() } }}
+          style={{ ...inStyle, width: 30, textAlign: 'right', flexShrink: 0 }}
+        />
+        <span style={{ fontSize: 11, color: T.textMuted, marginLeft: -4, opacity: 0.7 }}>×</span>
+
+        <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, minWidth: 76, justifyContent: 'flex-end', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: T.textMuted }}>R$</span>
+          <input
+            type="number" min="0" step="0.01" placeholder="0"
+            value={valor}
+            onChange={e => setValor(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmar() } }}
+            style={{ ...inStyle, width: 60, textAlign: 'right' }}
+          />
+        </div>
+
+        <button type="button" onMouseDown={e => { e.preventDefault(); cancelar() }}
+          aria-label="Cancelar edição"
+          style={{
+            width: 24, height: 24, borderRadius: 3,
+            border: 'none', background: 'transparent',
+            cursor: 'pointer', flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <TI name="x" size={13} color={T.textMuted} />
+        </button>
+        <button type="button" onMouseDown={e => { e.preventDefault(); confirmar() }}
+          aria-label="Confirmar edição"
+          style={{
+            width: 24, height: 24, borderRadius: 3,
+            border: 'none',
+            background: dark ? 'rgba(91,155,213,0.20)' : 'rgba(91,155,213,0.15)',
+            cursor: 'pointer', flexShrink: 0,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <TI name="check" size={13} color="#5B9BD5" />
+        </button>
+      </div>
+
+      {ehPeca && mostrarSugestoes && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+          background: dark ? '#1E1E2E' : '#fff',
+          border: `1px solid ${T.border}`, borderTop: 'none',
+          borderRadius: '0 0 8px 8px',
+          boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
+          overflow: 'hidden',
+        }}>
+          <PecaSugestoes T={T} dark={dark} termo={nome} onEscolher={escolherPeca} />
+        </div>
+      )}
     </div>
   )
 }
@@ -1136,8 +1293,9 @@ function AtlDiagnosticoCard({ T, dark, os }) {
 }
 
 // ─── Itens do orçamento em panel Atlassian (3 sub-grupos) ────────────────
-function AtlItensCard({ T, dark, itens, porTipo, subtotais, onAddNovo, onRemove }) {
+function AtlItensCard({ T, dark, itens, porTipo, subtotais, onAddNovo, onRemove, onEdit }) {
   const totalItens = itens.length
+  const [editandoId, setEditandoId] = useState(null)
 
   return (
     <AtlPanel T={T} dark={dark}
@@ -1155,12 +1313,23 @@ function AtlItensCard({ T, dark, itens, porTipo, subtotais, onAddNovo, onRemove 
               first={idxTipo === 0}
             />
             {arr.map(it => (
-              <AtlItemRow
-                key={it.id}
-                T={T} dark={dark} tipo={tipo}
-                item={it}
-                onRemove={() => onRemove(it.id)}
-              />
+              editandoId === it.id
+                ? <AtlItemRowEditando
+                    key={it.id}
+                    T={T} dark={dark} tipo={tipo} item={it}
+                    onConfirm={async (patch) => {
+                      setEditandoId(null)
+                      if (patch.nome) await onEdit(it.id, patch)
+                    }}
+                    onCancel={() => setEditandoId(null)}
+                  />
+                : <AtlItemRow
+                    key={it.id}
+                    T={T} dark={dark} tipo={tipo}
+                    item={it}
+                    onEdit={() => setEditandoId(it.id)}
+                    onRemove={() => { if (editandoId === it.id) setEditandoId(null); onRemove(it.id) }}
+                  />
             ))}
             {tipo.id === 'servico' && (
               <div style={{ display: 'flex', gap: 6, padding: '4px 12px 2px', flexWrap: 'wrap' }}>
@@ -1958,7 +2127,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
-  const { itens, addItem, removeItem } = useOSItens(os?.id)
+  const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
 
   // Agrupa itens por tipo
@@ -2032,6 +2201,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
         subtotais={subtotais}
         onAddNovo={handleAddNovo}
         onRemove={removeItem}
+        onEdit={updateItem}
       />
 
       {/* 3. Desconto — Atlassian panel */}
