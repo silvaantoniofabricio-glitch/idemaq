@@ -73,16 +73,16 @@ export function useOS(buscando = false) {
 
       if (err) throw err
 
-      const limite24h = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      const agora = new Date()
+      const inicioMesAtual = new Date(agora.getFullYear(), agora.getMonth(), 1)
 
       const mapped = (data || [])
         .filter(os => {
-          // Ocultar concluídas há mais de 24h (busca escapa esse filtro).
-          // Usa data_conclusao quando existir; fallback pra atualizado_em pra
-          // pegar OS antigas migradas sem data_conclusao preenchida.
+          // Ocultar concluídas/recusadas de meses anteriores (busca escapa o filtro).
+          // Permanecem visíveis até virar o mês — fechamento mensal.
           if (!buscando && (os.etapa === 'concluido' || os.etapa === 'recusado')) {
             const ref = os.data_conclusao || os.atualizado_em
-            if (ref && new Date(ref) < limite24h) return false
+            if (ref && new Date(ref) < inicioMesAtual) return false
           }
           // Ocultar OS de cliente soft-deletado (fabricação tem cliente_id NULL — passa)
           if (os.cliente_id && os.cliente?.deleted_at) return false

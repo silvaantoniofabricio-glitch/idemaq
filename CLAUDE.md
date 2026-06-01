@@ -143,7 +143,7 @@ Ver `CONTEXTO PROJETO ATUALIZADO/contexto-ui.md` para lista completa com props e
 - **Garantia = OS nova** com `garantia: true` + `os_origem_id`. Valor R$ 0. 90 dias padrão.
 - **Sem responsável fixo** — cada etapa tem responsável lido de `os_historico`
 - **3 usuários**: Toni (`dono`) · Alessandro (`logistica`) · Guilherme (`oficina`)
-- **OS some do Kanban 24h após concluída** — visível via busca/relatórios/cliente
+- **OS concluída/recusada some do Kanban ao virar o mês** (fechamento mensal) — visível via busca/relatórios/cliente
 - **Drag-and-drop**: 1 etapa por vez. `Concluído` não volta. Use `podeMoverOS()`.
 - **Datas UTC no banco** (`timestamptz`) — converter pra `America/Cuiaba` na UI
 - **Auditoria automática** — não preencher `criado_em`/`atualizado_em` no front (trigger faz)
