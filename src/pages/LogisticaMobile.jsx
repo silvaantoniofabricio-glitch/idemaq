@@ -29,7 +29,7 @@ const AMANHA = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return
 const SEMANA_INI = (() => { const d = new Date(); const dia = d.getDay(); const diff = (dia === 0 ? -6 : 1 - dia); d.setDate(d.getDate() + diff); return d.toISOString().slice(0, 10) })()
 const SEMANA_FIM = (() => { const d = new Date(SEMANA_INI); d.setDate(d.getDate() + 6); return d.toISOString().slice(0, 10) })()
 
-function filtrarPorAgenda(osList, filtro) {
+export function filtrarPorAgenda(osList, filtro) {
   if (filtro === 'amanha') return osList.filter(o => o.data_agendamento?.slice(0, 10) === AMANHA)
   if (filtro === 'semana') return osList.filter(o => {
     const d = o.data_agendamento?.slice(0, 10)
@@ -486,7 +486,7 @@ const OPCOES_AGENDA = [
   { id: 'semana', label: 'Semana',            icon: 'ti-calendar-week' },
 ]
 
-function FiltroAgenda({ T, dark, ativo, onChange }) {
+export function FiltroAgenda({ T, dark, ativo, onChange }) {
   const azul = corEtapa('blue', dark)
   return (
     <div style={{ display: 'flex', gap: 6 }}>

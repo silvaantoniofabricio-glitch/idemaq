@@ -15,7 +15,8 @@ import { corEtapa, corHero } from '../utils/colors'
 import LogisticaMobile, {
   NOMES_SLOT, LETRA_POR_SLOT,
   ETAPAS_DEFAULT_LOGISTICA, tipoUiPorEtapa, normalizarTipoUi, VISUAL_TIPO,
-  CardFlutuanteOS, RotaAccordion, FiltroEtapas, DiagnosticoMapa,
+  CardFlutuanteOS, RotaAccordion, FiltroEtapas, FiltroAgenda, DiagnosticoMapa,
+  filtrarPorAgenda,
 } from './LogisticaMobile'
 import {
   Card, Button, Input,
@@ -270,6 +271,7 @@ function LogisticaDesktop({ T, dark }) {
 
   // ─── Estado ──────────────────────────────────────────────────────────────
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_LOGISTICA)
+  const [filtroAgenda, setFiltroAgenda] = useState('hoje')
   const [rotaExpandida, setRotaExpandida] = useState('A')  // letra A/B/C ou null
   const [osPopup, setOsPopup] = useState(null)             // OS clicada no mapa
   const [novaRotaAberta, setNovaRotaAberta] = useState(false)
@@ -287,10 +289,10 @@ function LogisticaDesktop({ T, dark }) {
   const incluirPagamento = etapasAtivas.has('pagamento')
   const { osList } = useOSLogistica({ incluirPagamento })
 
-  const osFiltradas = useMemo(
-    () => osList.filter(o => etapasAtivas.has(o.etapa_db)),
-    [osList, etapasAtivas]
-  )
+  const osFiltradas = useMemo(() => {
+    const porEtapa = osList.filter(o => etapasAtivas.has(o.etapa_db))
+    return filtrarPorAgenda(porEtapa, filtroAgenda)
+  }, [osList, etapasAtivas, filtroAgenda])
 
   // Geocoda os endereços das OS filtradas (Photon/Google decidem em runtime)
   const enderecos = useMemo(
@@ -569,7 +571,7 @@ function LogisticaDesktop({ T, dark }) {
         }
       />
 
-      {/* Toolbar — filtro etapas (Hoje/Amanhã/Semana removido em 22/05/2026) */}
+      {/* Toolbar — filtro etapas + filtro agenda */}
       <div style={{
         display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
         padding: '4px 4px',
@@ -584,6 +586,7 @@ function LogisticaDesktop({ T, dark }) {
             return next
           })}
         />
+        <FiltroAgenda T={T} dark={dark} ativo={filtroAgenda} onChange={setFiltroAgenda} />
       </div>
 
       {/* Grid principal — mapa à esquerda, accordions à direita */}
