@@ -30,9 +30,10 @@ export default function ControleFinanceiroPF({ T, dark }) {
   const vermelho = corEtapa('red', dark)
 
   const [mesAtivo, setMesAtivo] = useState('2026-05')
+  const [pessoaAtiva, setPessoaAtiva] = useState('total') // total | toni | rafa
   const [verSecao, setVerSecao] = useState('dashboard') // dashboard | tabela | conselhos
 
-  const despesas = DESPESAS_PF_POR_MES[mesAtivo] || []
+  const despesas = (DESPESAS_PF_POR_MES[mesAtivo] || {})[pessoaAtiva] || []
 
   const analise = useMemo(() => analisarDespesas(despesas), [despesas])
 
@@ -59,6 +60,16 @@ export default function ControleFinanceiroPF({ T, dark }) {
             options={MESES_DISPONIVEIS}
             value={mesAtivo}
             onChange={setMesAtivo}
+            variant="segmented"
+          />
+          <Tabs T={T} dark={dark}
+            options={[
+              { id: 'total', label: 'Total (casal)' },
+              { id: 'toni',  label: 'Toni (eu)' },
+              { id: 'rafa',  label: 'Rafa' },
+            ]}
+            value={pessoaAtiva}
+            onChange={setPessoaAtiva}
             variant="segmented"
           />
           <div style={{ flex: 1 }} />

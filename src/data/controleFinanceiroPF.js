@@ -10,6 +10,8 @@ export const CATEGORIA_MAE = {
   'Farmacia': 'Saúde',
   'Saude/Academia': 'Saúde',
   'Saude/Otica': 'Saúde',
+  'Saude/Dentista': 'Saúde',
+  'Educacao': 'Educação',
   'Veiculo PF': 'Veículos',
   'Pedagio': 'Veículos',
   'Combustivel': 'Veículos',
@@ -35,9 +37,9 @@ export function maeDe(categoria) {
   return CATEGORIA_MAE[categoria] || 'Outros'
 }
 
-// Despesas PF maio/2026 (136 itens)
+// Despesas PF maio/2026 — TONI (136 itens)
 // Campos: data (DD/MM/YYYY), origem, descricao, valor (number), categoria, obs
-export const DESPESAS_PF_MAIO_2026 = [
+export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '04/05/2026', origem: 'Nubank',           descricao: 'Pagamento fatura cartao Nubank',                       valor: 563.58,  categoria: 'Cartao' },
   { data: '05/05/2026', origem: 'Bradesco PF',      descricao: 'Encargos limite credito',                              valor: 44.86,   categoria: 'Tarifa banco' },
   { data: '05/05/2026', origem: 'Bradesco PF',      descricao: 'IOF utilizacao limite',                                valor: 16.47,   categoria: 'IOF' },
@@ -173,9 +175,69 @@ export const DESPESAS_PF_MAIO_2026 = [
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Boi Na Brasa A Arte de',                               valor: 78.60,   categoria: 'Cultura/Lazer' },
 ]
 
-// Indice por mes
+// Despesas PF maio/2026 — RAFA (esposa)
+// Fonte: REVISAO FECHAMENTO 2026/MAIO/DESPESAS PF/RAFA/
+//   - Extrato conta corrente Bradesco 05/2026 (.xlsx)
+//   - Despesas-poupanca.xlsx (gastos pagos direto da poupanca, sem data — agrupados em 31/05)
+export const DESPESAS_PF_RAFA_MAIO_2026 = [
+  // Conta corrente
+  { data: '04/05/2026', origem: 'Bradesco CC',  descricao: 'PIX 65.254.562 MARIA APARECID',                valor: 150.00, categoria: 'PIX terceiros' },
+  { data: '05/05/2026', origem: 'Bradesco CC',  descricao: 'PIX MANO AUTO POSTO LTDA',                     valor: 50.00,  categoria: 'Combustivel' },
+  { data: '05/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Jchagas Alimentos Ltda',                   valor: 40.13,  categoria: 'Alimentacao' },
+  { data: '06/05/2026', origem: 'Bradesco CC',  descricao: 'PIX 62.110.904 SARAH REGINA S',                valor: 23.00,  categoria: 'PIX terceiros' },
+  { data: '06/05/2026', origem: 'Bradesco CC',  descricao: 'Tarifa Pacote de Servicos',                    valor: 4.53,   categoria: 'Tarifa banco' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 500.00, categoria: 'Transferencia' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 700.00, categoria: 'Transferencia' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX RAFAELA GARCIA CENTURIAO (propria)',       valor: 689.00, categoria: 'Transferencia' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX TELEFONICA BRAS',                          valor: 38.92,  categoria: 'Diverso' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Boleto CONSELHO REGIONAL DE PSICOLOGI',        valor: 153.50, categoria: 'Educacao' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX UNINTER',                                  valor: 85.78,  categoria: 'Educacao' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Antonio Fabricio da Silva (marido)',       valor: 2000.00, categoria: 'Transferencia' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Tarifa parcelada Pacote Servicos',             valor: 11.37,  categoria: 'Tarifa banco' },
+  { data: '08/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 3900.00, categoria: 'Transferencia' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX ANI STORE',                                valor: 100.00, categoria: 'Vestuario' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX CLAMED FARMACIAS',                         valor: 36.50,  categoria: 'Farmacia' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX MANO AUTO POSTO LTDA',                     valor: 100.00, categoria: 'Combustivel' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX FED NACIONAL COMUNIDADE E',                valor: 520.00, categoria: 'Doacao/Igreja' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Silvana Vieira de Souza',                  valor: 20.00,  categoria: 'PIX terceiros' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Telma Rosana Sanches Godo',                valor: 35.00,  categoria: 'PIX terceiros' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'FIES JRS/AMORTIZACAO',                         valor: 106.41, categoria: 'Educacao' },
+  { data: '13/05/2026', origem: 'Bradesco CC',  descricao: 'PIX PANIFICADORA E CONFEITARI',                valor: 34.26,  categoria: 'Alimentacao' },
+  { data: '13/05/2026', origem: 'Bradesco CC',  descricao: 'PIX MANDIOCA S CONVENIENCIA',                  valor: 45.95,  categoria: 'Alimentacao' },
+  { data: '29/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 3000.00, categoria: 'Transferencia' },
+
+  // Poupanca (data exata desconhecida — agrupado no fim do mes)
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Dizimo',                                       valor: 320.00, categoria: 'Doacao/Igreja' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Boi na Brasa',                                 valor: 61.50,  categoria: 'Alimentacao' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Gessica',                                      valor: 24.00,  categoria: 'PIX terceiros' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Mano Auto Posto',                              valor: 104.08, categoria: 'Combustivel' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Dentista',                                     valor: 500.00, categoria: 'Saude/Dentista' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Rafa Chipa',                                   valor: 30.00,  categoria: 'Alimentacao' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Hering - presente mae',                        valor: 99.00,  categoria: 'Compras pessoais' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Bolo - presente mae',                          valor: 130.00, categoria: 'Compras pessoais' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Nick - roupa Arthur',                          valor: 69.96,  categoria: 'Vestuario' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Jose de Almeida',                              valor: 14.00,  categoria: 'PIX terceiros' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Pit Stop',                                     valor: 22.50,  categoria: 'Alimentacao' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Presentes RH',                                 valor: 37.00,  categoria: 'Compras pessoais' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Presentes RH (2)',                             valor: 22.21,  categoria: 'Compras pessoais' },
+]
+
+// Marca a pessoa em cada item (pra agregacao no total)
+const marcarPessoa = (lista, pessoa) => lista.map(d => ({ ...d, pessoa }))
+
+const TONI_MAIO = marcarPessoa(DESPESAS_PF_TONI_MAIO_2026, 'toni')
+const RAFA_MAIO = marcarPessoa(DESPESAS_PF_RAFA_MAIO_2026, 'rafa')
+
+// Indice: mes -> pessoa -> lista
+// 'total' = uniao Toni + Rafa (NAO descontamos transferencias Rafa->Toni aqui,
+// fica como Transferencia em ambos os lados; CATEGORIAS_FLUXO_INTERNO ja exclui
+// do gasto real efetivo).
 export const DESPESAS_PF_POR_MES = {
-  '2026-05': DESPESAS_PF_MAIO_2026,
+  '2026-05': {
+    toni:  TONI_MAIO,
+    rafa:  RAFA_MAIO,
+    total: [...TONI_MAIO, ...RAFA_MAIO],
+  },
 }
 
 // Categorias consideradas "fluxo interno" (não são gasto real, apenas transferencia entre contas do proprio Toni ou pagamentos de fatura).
