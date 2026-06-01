@@ -224,7 +224,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   // Pagos no sabado 30/05 (caiu so segunda 01/06 no extrato — lancados na data real pra controle)
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX PAULO RICARDO PRADELLA',                   valor: 500.00,   categoria: 'PIX terceiros' },
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: "PIX MINAMI'S",                                 valor: 30.00,    categoria: 'Alimentacao' },
-  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX BANCO VOTORANTIM S.A. (fatura cartao BV)', valor: 1256.16,  categoria: 'Cartao' },
+  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'Parcela Civic (Banco Votorantim)',             valor: 1398.82,  categoria: 'Veiculo PF' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
