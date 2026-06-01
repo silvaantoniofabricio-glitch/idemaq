@@ -118,6 +118,20 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  // Realtime: qualquer UPDATE/INSERT/DELETE em `os` refaz o fetch.
+  // Sem isso, mudancas feitas no Kanban (ex: reschedule de data_agendamento)
+  // nao aparecem na Logistica ate o reload — causa de OS aparecer com data
+  // antiga no mapa enquanto o Kanban mostra a nova.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`os-logistica-${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'os' }, () => {
+        fetchAll()
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchAll])
+
   return { osList, loading, error, refetch: fetchAll }
 }
 
