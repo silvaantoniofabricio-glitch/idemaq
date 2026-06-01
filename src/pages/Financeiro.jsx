@@ -117,13 +117,12 @@ const ABAS = [
   { id:'caixa',   label:'Caixa',       icon:'ti-cash-banknote' },
 ]
 
-// Presets de período — estilo Bling
+// Presets de período
 const PERIODOS = [
-  { id:'7d',     label:'Últimos 7d',  dias:7 },
-  { id:'mes',    label:'Mês atual',   mes:true },
-  { id:'30d',    label:'Próximos 30d',dias:30, futuro:true },
-  { id:'90d',    label:'Próximos 90d',dias:90, futuro:true },
-  { id:'todos',  label:'Todos',       all:true },
+  { id:'mes',       label:'Mês atual',    mesAtual:true },
+  { id:'mes_ant',   label:'Mês passado',  mesAnterior:true },
+  { id:'sel_mes',   label:'Selecionar mês',    selMes:true },
+  { id:'sel_period',label:'Selecionar período', selPeriod:true },
 ]
 
 // ============================================================================
@@ -162,26 +161,24 @@ function StatusBadgePag({ item, dark }) {
   )
 }
 
-// Aplica filtro de período (id ou {de, ate})
+// Aplica filtro de período
 function filtrarPorPeriodo(itens, periodo, campoData) {
-  if (periodo.id === 'todos') return itens
   const hoje = new Date(); hoje.setHours(0,0,0,0)
   let de, ate
-  if (periodo.id === 'custom') {
-    de = periodo.de  ? new Date(periodo.de  + 'T00:00:00') : null
+  if (periodo.id === 'mes') {
+    de  = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+    ate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59)
+  } else if (periodo.id === 'mes_ant') {
+    de  = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)
+    ate = new Date(hoje.getFullYear(), hoje.getMonth(), 0, 23, 59, 59)
+  } else if (periodo.id === 'sel_mes' && periodo.ano != null && periodo.mes != null) {
+    de  = new Date(periodo.ano, periodo.mes, 1)
+    ate = new Date(periodo.ano, periodo.mes + 1, 0, 23, 59, 59)
+  } else if (periodo.id === 'sel_period') {
+    de  = periodo.de  ? new Date(periodo.de  + 'T00:00:00') : null
     ate = periodo.ate ? new Date(periodo.ate + 'T23:59:59') : null
   } else {
-    const cfg = PERIODOS.find(p => p.id === periodo.id) || PERIODOS[1]
-    if (cfg.mes) {
-      de  = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
-      ate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59)
-    } else if (cfg.futuro) {
-      de = hoje
-      ate = new Date(hoje); ate.setDate(ate.getDate() + cfg.dias)
-    } else {
-      ate = hoje
-      de  = new Date(hoje); de.setDate(de.getDate() - cfg.dias)
-    }
+    return itens
   }
   return itens.filter(it => {
     if (!it[campoData]) return true
@@ -192,12 +189,17 @@ function filtrarPorPeriodo(itens, periodo, campoData) {
   })
 }
 
+const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
 function labelPeriodo(periodo) {
-  if (periodo.id === 'custom') {
+  if (periodo.id === 'sel_period') {
     const fmt = (s) => s ? s.split('-').reverse().join('/') : '...'
     return `${fmt(periodo.de)} → ${fmt(periodo.ate)}`
   }
-  return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[1]).label
+  if (periodo.id === 'sel_mes' && periodo.ano != null && periodo.mes != null) {
+    return `${MESES_NOME[periodo.mes]} ${periodo.ano}`
+  }
+  return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[0]).label
 }
 
 // ============================================================================
@@ -520,6 +522,115 @@ function TabsComContador({ T, dark, abas, value, onChange }) {
 }
 
 // ============================================================================
+// DROPDOWN DE PERÍODO — compartilhado entre BarraFiltros e CaixaPeriodo
+// ============================================================================
+function DropdownPeriodo({ T, dark, periodo, setPeriodo, onClose }) {
+  const azul = corEtapa('blue', dark)
+  const cor = (d, c) => dark ? d : c
+  const hoje = new Date()
+  // estado do seletor de mês
+  const [selMesAno, setSelMesAno] = useState(
+    periodo.id === 'sel_mes' && periodo.ano != null
+      ? { ano: periodo.ano, mes: periodo.mes }
+      : { ano: hoje.getFullYear(), mes: hoje.getMonth() }
+  )
+
+  const itemStyle = (ativo) => ({
+    display:'flex', alignItems:'center', gap:8, width:'100%',
+    padding:'8px 10px', borderRadius:6, border:'none',
+    background: ativo ? cor('#0d2035','#e6f1fb') : 'transparent',
+    color: ativo ? azul : T.textSecondary,
+    fontSize:12.5, fontWeight: ativo ? 700 : 500,
+    cursor:'pointer', fontFamily:'inherit', textAlign:'left',
+  })
+
+  return (
+    <div style={{
+      position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:50,
+      minWidth:270,
+      background: T.card, border:`1px solid ${T.border}`,
+      borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,0.18)',
+      padding:8,
+    }}>
+      {/* Mês atual */}
+      <button style={itemStyle(periodo.id === 'mes')}
+        onClick={() => { setPeriodo({ id:'mes' }); onClose() }}>
+        {periodo.id === 'mes' ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : <span style={{ width:13 }} />}
+        Mês atual
+      </button>
+
+      {/* Mês passado */}
+      <button style={itemStyle(periodo.id === 'mes_ant')}
+        onClick={() => { setPeriodo({ id:'mes_ant' }); onClose() }}>
+        {periodo.id === 'mes_ant' ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : <span style={{ width:13 }} />}
+        Mês passado
+      </button>
+
+      {/* Selecionar mês — expande inline */}
+      <button style={itemStyle(periodo.id === 'sel_mes')}
+        onClick={() => setPeriodo(p => p.id === 'sel_mes' ? p : { id:'sel_mes', ano:selMesAno.ano, mes:selMesAno.mes })}>
+        {periodo.id === 'sel_mes' ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : <span style={{ width:13 }} />}
+        Selecionar mês
+        <i className={`ti ti-chevron-${periodo.id === 'sel_mes' ? 'up' : 'down'}`} style={{ fontSize:12, marginLeft:'auto', color:T.textMuted }} aria-hidden="true" />
+      </button>
+
+      {periodo.id === 'sel_mes' && (
+        <div style={{ padding:'6px 10px 8px', display:'flex', alignItems:'center', gap:6 }}>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 0 ? { ano: selMesAno.ano - 1, mes: 11 } : { ano: selMesAno.ano, mes: selMesAno.mes - 1 }
+            setSelMesAno(novo); setPeriodo({ id:'sel_mes', ...novo })
+          }} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, padding:2 }}>
+            <i className="ti ti-chevron-left" style={{ fontSize:14 }} aria-hidden="true" />
+          </button>
+          <span style={{ flex:1, textAlign:'center', fontSize:13, fontWeight:600, color:T.textPrimary }}>
+            {MESES_NOME[selMesAno.mes]} {selMesAno.ano}
+          </span>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 11 ? { ano: selMesAno.ano + 1, mes: 0 } : { ano: selMesAno.ano, mes: selMesAno.mes + 1 }
+            setSelMesAno(novo); setPeriodo({ id:'sel_mes', ...novo })
+          }} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, padding:2 }}>
+            <i className="ti ti-chevron-right" style={{ fontSize:14 }} aria-hidden="true" />
+          </button>
+          <button onClick={onClose}
+            style={{ background:azul, border:'none', cursor:'pointer', color:'#fff', padding:'3px 10px', borderRadius:5, fontSize:12, fontWeight:600, fontFamily:'inherit' }}>
+            OK
+          </button>
+        </div>
+      )}
+
+      {/* Selecionar período — expande inline */}
+      <button style={itemStyle(periodo.id === 'sel_period')}
+        onClick={() => setPeriodo(p => p.id === 'sel_period' ? p : { id:'sel_period', de:'', ate:'' })}>
+        {periodo.id === 'sel_period' ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : <span style={{ width:13 }} />}
+        Selecionar período
+        <i className={`ti ti-chevron-${periodo.id === 'sel_period' ? 'up' : 'down'}`} style={{ fontSize:12, marginLeft:'auto', color:T.textMuted }} aria-hidden="true" />
+      </button>
+
+      {periodo.id === 'sel_period' && (
+        <div style={{ padding:'4px 8px 8px', display:'flex', flexDirection:'column', gap:6 }}>
+          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+            <span style={{ fontSize:11, color:T.textMuted, minWidth:24 }}>De</span>
+            <input type="date" value={periodo.de || ''} onChange={e => setPeriodo({ id:'sel_period', de:e.target.value, ate:periodo.ate })}
+              style={inputDate(T)} />
+          </div>
+          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+            <span style={{ fontSize:11, color:T.textMuted, minWidth:24 }}>Até</span>
+            <input type="date" value={periodo.ate || ''} onChange={e => setPeriodo({ id:'sel_period', de:periodo.de, ate:e.target.value })}
+              style={inputDate(T)} />
+          </div>
+          {periodo.de && periodo.ate && (
+            <button onClick={onClose}
+              style={{ alignSelf:'flex-end', background:azul, border:'none', cursor:'pointer', color:'#fff', padding:'3px 12px', borderRadius:5, fontSize:12, fontWeight:600, fontFamily:'inherit' }}>
+              OK
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
 // BARRA DE FILTROS (Bling-style) — período + status + busca + categoria/conta
 // ============================================================================
 function BarraFiltros({
@@ -573,43 +684,7 @@ function BarraFiltros({
           </button>
 
           {periodoAberto && (
-            <div style={{
-              position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:50,
-              minWidth:260,
-              background: T.card, border:`1px solid ${T.border}`,
-              borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,0.18)',
-              padding:8,
-            }}>
-              {PERIODOS.map(p => {
-                const ativo = periodo.id === p.id
-                return (
-                  <button key={p.id}
-                    onClick={() => { setPeriodo({ id:p.id }); setPeriodoAberto(false) }}
-                    style={{
-                      display:'flex', alignItems:'center', gap:8, width:'100%',
-                      padding:'8px 10px', borderRadius:6,
-                      border:'none', background: ativo ? cor('#0d2035','#e6f1fb') : 'transparent',
-                      color: ativo ? azul : T.textSecondary,
-                      fontSize:12.5, fontWeight: ativo ? 700 : 500,
-                      cursor:'pointer', fontFamily:'inherit', textAlign:'left',
-                    }}>
-                    {ativo && <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" />}
-                    {!ativo && <span style={{ width:13 }} />}
-                    {p.label}
-                  </button>
-                )
-              })}
-              <div style={{ height:1, background:T.border, margin:'6px 4px' }} />
-              <div style={{ padding:'4px 6px 2px', fontSize:10.5, color:T.textMuted, fontWeight:600, textTransform:'uppercase', letterSpacing:'.04em' }}>
-                Personalizado
-              </div>
-              <div style={{ display:'flex', gap:6, padding:6 }}>
-                <input type="date" value={periodo.de  || ''} onChange={e => setPeriodo({ id:'custom', de:e.target.value,  ate:periodo.ate })}
-                  style={inputDate(T)} />
-                <input type="date" value={periodo.ate || ''} onChange={e => setPeriodo({ id:'custom', de:periodo.de, ate:e.target.value })}
-                  style={inputDate(T)} />
-              </div>
-            </div>
+            <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} onClose={() => setPeriodoAberto(false)} />
           )}
         </div>
 
@@ -1337,30 +1412,7 @@ function CaixaPeriodo({ T, dark, periodo, setPeriodo }) {
         <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize:14, color:T.textMuted }} aria-hidden="true" />
       </button>
       {aberto && (
-        <div style={{
-          position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:50, minWidth:240,
-          background:T.card, border:`1px solid ${T.border}`,
-          borderRadius:10, boxShadow:'0 10px 30px rgba(0,0,0,0.18)', padding:8,
-        }}>
-          {PERIODOS.map(p => {
-            const ativo = periodo.id === p.id
-            return (
-              <button key={p.id}
-                onClick={() => { setPeriodo({ id:p.id }); setAberto(false) }}
-                style={{
-                  display:'flex', alignItems:'center', gap:8, width:'100%',
-                  padding:'8px 10px', borderRadius:6, border:'none',
-                  background: ativo ? cor('#0d2035','#e6f1fb') : 'transparent',
-                  color: ativo ? azul : T.textSecondary,
-                  fontSize:12.5, fontWeight: ativo ? 700 : 500,
-                  cursor:'pointer', fontFamily:'inherit', textAlign:'left',
-                }}>
-                {ativo ? <i className="ti ti-check" style={{ fontSize:13 }} aria-hidden="true" /> : <span style={{ width:13 }} />}
-                {p.label}
-              </button>
-            )
-          })}
-        </div>
+        <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} onClose={() => setAberto(false)} />
       )}
     </div>
   )
