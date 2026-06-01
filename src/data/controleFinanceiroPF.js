@@ -30,6 +30,7 @@ export const CATEGORIA_MAE = {
   'Doacao/Igreja': 'Doações',
   'Dizimo': 'Doações',
   'Multa transito': 'Multas',
+  'Casa': 'Casa',
   'PIX terceiros': 'Outros',
   'Diverso': 'Outros',
   'Transferencia': 'Transferências (PF→PF)',
@@ -228,7 +229,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
 
   // Pagos no sabado 30/05 (caiu so segunda 01/06 no extrato — lancados na data real pra controle)
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX PAULO RICARDO PRADELLA',                   valor: 500.00,   categoria: 'PIX terceiros' },
-  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: "PIX MINAMI'S",                                 valor: 30.00,    categoria: 'Alimentacao' },
+  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: "PIX MINAMI'S (planta pra casa)",              valor: 30.00,    categoria: 'Casa' },
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'Parcela Civic',                                valor: 1398.82,  categoria: 'Veiculo PF' },
 
   // Plano de saude (mensalidade + co-participacao)
