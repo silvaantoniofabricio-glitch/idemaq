@@ -13,7 +13,7 @@
 // Toda a lógica de negócio preservada do AcaoOrcamento original.
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { useTheme, useIsMobile } from '../../../theme'
+import { useTheme } from '../../../theme'
 import { TI } from '../../_shared/PrimitivasMobile'
 import {
   HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT, HIG_FONT_MONO,
@@ -36,6 +36,14 @@ const TIPOS = [
 
 const SUGESTOES = {
   servico: [{ nome: 'Limpeza', valor: 165 }, { nome: 'Manutenção', valor: 165 }],
+  desloc:  [{ nome: 'Deslocamento', valor: 20 }],
+  peca:    [],
+}
+
+// Chips de adicao rapida (1 clique) por tipo. Substituem o auto-preenchimento
+// que duplicava itens. Toni clica e ajusta o valor depois se precisar.
+const QUICK_CHIPS = {
+  servico: [{ nome: 'Manutenção', valor: 165 }, { nome: 'Limpeza', valor: 165 }],
   desloc:  [{ nome: 'Deslocamento', valor: 20 }],
   peca:    [],
 }
@@ -1331,11 +1339,11 @@ function AtlItensCard({ T, dark, itens, porTipo, subtotais, onAddNovo, onRemove,
                     onRemove={() => { if (editandoId === it.id) setEditandoId(null); onRemove(it.id) }}
                   />
             ))}
-            {tipo.id === 'servico' && (
+            {(QUICK_CHIPS[tipo.id] || []).length > 0 && (
               <div style={{ display: 'flex', gap: 6, padding: '4px 12px 2px', flexWrap: 'wrap' }}>
-                {[{ nome: 'Manutenção', valor: 165 }, { nome: 'Limpeza', valor: 165 }].map(s => (
+                {QUICK_CHIPS[tipo.id].map(s => (
                   <button key={s.nome} type="button"
-                    onClick={() => onAddNovo('servico', { nome: s.nome, qtd: 1, valor_unitario: s.valor })}
+                    onClick={() => onAddNovo(tipo.id, { nome: s.nome, qtd: 1, valor_unitario: s.valor })}
                     style={{
                       padding: '3px 12px', borderRadius: 99,
                       border: `1px solid ${dark ? '#444' : '#ddd'}`,
@@ -2127,28 +2135,14 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
-  const mobile = useIsMobile()
-  const { itens, loading: itensLoading, addItem, updateItem, removeItem } = useOSItens(os?.id)
+  const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
 
-  // Pre-preenchimento: quando o orcamento abre vazio pela 1a vez, ja insere
-  // os 3 itens padrao (Manutencao 165, Limpeza 165, Deslocamento 20).
-  // Toni revisa/ajusta valores depois — economiza 3 cliques por OS.
-  // Ref bloqueia segundo trigger se o usuario apagar todos os itens depois.
-  const prefilledRef = useRef(false)
-  useEffect(() => {
-    if (!os?.id) return
-    if (prefilledRef.current) return
-    if (itensLoading) return // aguarda fetch inicial completar
-    if (itens.length > 0) { prefilledRef.current = true; return }
-    prefilledRef.current = true
-    ;(async () => {
-      await addItem({ tipo: 'servico', nome: 'Manutenção',   qtd: 1, valor_unitario: 165 })
-      await addItem({ tipo: 'servico', nome: 'Limpeza',      qtd: 1, valor_unitario: 165 })
-      await addItem({ tipo: 'desloc',  nome: 'Deslocamento', qtd: 1, valor_unitario: 20 })
-    })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [os?.id, itens, itensLoading])
+  // SEM auto-preenchimento. Inserir itens padrao automaticamente ao abrir a
+  // etapa causava DUPLICACAO: a ref de controle resetava a cada remontagem
+  // (toda vez que trocava de aba/etapa o componente montava de novo e
+  // re-inseria Manutencao/Limpeza/Deslocamento). Os itens padrao agora
+  // entram via chips de 1 clique no card de itens abaixo.
 
   // Agrupa itens por tipo
   const porTipo = useMemo(() => {
@@ -2202,28 +2196,19 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
 
   return (
     <div style={{
-      display: 'grid',
-      // Desktop: diagnostico fixo a esquerda (auxilia a construir o orcamento)
-      // Mobile: stack vertical normal.
-      gridTemplateColumns: mobile ? '1fr' : 'minmax(280px, 340px) 1fr',
+      // Coluna unica: largura total do modal. O grid de 2 colunas antigo
+      // espremia os itens pra direita quando o modal nao era largo o
+      // suficiente ("fora de quadro").
+      display: 'flex', flexDirection: 'column',
       gap: HIG_SPACE.lg,
       fontFamily: HIG_FONT,
       padding: `0 0 ${HIG_SPACE.md}px`,
-      alignItems: 'start',
+      minWidth: 0, // evita overflow
     }}>
 
-      {/* 1. Diagnostico — sticky na coluna 1 no desktop pra ficar visivel
-            enquanto o usuario rola a coluna de itens/desconto/total. */}
-      <div style={mobile ? undefined : { position: 'sticky', top: 0 }}>
-        <AtlDiagnosticoCard T={T} dark={dark} os={os} />
-      </div>
-
-      {/* Coluna direita: itens + desconto + total + acoes */}
-      <div style={{
-        display: 'flex', flexDirection: 'column',
-        gap: HIG_SPACE.lg,
-        minWidth: 0, // evita overflow em grid
-      }}>
+      {/* 1. Diagnostico — card no topo em largura total, orienta a
+            construcao do orcamento sem espremer os itens. */}
+      <AtlDiagnosticoCard T={T} dark={dark} os={os} />
 
       {/* 2. Itens — Atlassian panel com 3 sub-grupos (Servicos/Pecas/Desloc),
             cada um com sub-header (label + subtotal) e row sempre-presente
@@ -2312,7 +2297,6 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
         />
       )}
 
-      </div>{/* fim coluna direita */}
     </div>
   )
 }
