@@ -327,3 +327,57 @@ Cálculo: `(meta_mensal - faturado_no_mes) / dias_uteis_restantes`.
 - **Relatórios**: DRE com IA (Claude API) consome `lancamento_financeiro`. Ver `contexto-relatorios.md`
 - **Painel**: KPI de receita do mês + meta diária + alertas de inadimplência. Ver `contexto-painel.md`
 - **Geral / cross-area**: schema parte 2 (rodar SQL 01). Ver `contexto-geral.md`
+
+---
+
+## 14. Fechamento maio/2026 + reset histórico (01/06/2026)
+
+Sessão longa que limpou e refez todo o financeiro real maio/2026 + zerou o histórico não confiável.
+
+### Decisão estratégica
+Dados pré-maio/2026 eram imports automáticos de Bling/OFX/InfinitePay/TON, com qualidade duvidosa (Cresol aparecia em datas onde Toni ainda nem tinha conta; algumas contas estavam cadastradas erradas).
+
+**Toni decidiu apagar todo lançamento financeiro de jan/2024 → abr/2026** e manter só:
+- **Maio/2026**: revisado item a item (38 OS receitas + ~165 despesas)
+- **Junho/2026**: 2 receitas a receber (Paula R$ 100, Sueli R$ 240)
+
+### SQLs criados (sessão 01/06/2026)
+- `sql/55` Cresol despesas maio (Alessandro 1650, Zion 250, empréstimo PJ 1421,71, Jane máquina 100, pacote 51,99)
+- `sql/56` Mercado Pago despesas maio (cria conta MP, Guilherme 1650, Claude/Anthropic, ML, Junta)
+- `sql/57` limpa lixo antigo (BLING-PAG sem pago_em + CRESOL1/2 maio)
+- `sql/58` taxas faltantes TON Nelci+Hellen + InfinitePay Larissa+Solange
+- `sql/59` Nubank despesas maio (cria conta Nubank, FleetNet + Energisa)
+- `sql/60` Bradesco PJ despesas maio (cria conta, IOF + Eletro Garrincha + Tarifa MEI)
+- `sql/61` migrou conta "Cresol 2 (40990-1)" → "Bradesco PJ" (cadastro errado original)
+- `sql/62-66` faturas cartão item por item (Elo Grafite, Visa Bradesco, Inter, MP, Bradesco PJ Elo Mais, Nubank Emp+PF)
+- `sql/68` água Sanesul venc 04/05 paga 01/06 (lançada pelo vencimento)
+- `sql/69` SOFT-DELETE de tudo em jan/2025 → abr/2026
+- `sql/70` SOFT-DELETE de tudo em 2024
+
+### Contas bancárias finais cadastradas
+- **Cresol** (138286-1) — aberta há ~2 meses, único Cresol real
+- **Bradesco PJ** (40990-1)
+- **Mercado Pago** (digital)
+- **Nubank** (digital)
+- **Inter** (digital)
+- **Ton Black** (maquininha)
+- **InfinitePay** (maquininha)
+
+(Bradesco PF da 358510-7 não foi cadastrada porque Toni decidiu não rastrear PF nesse sistema)
+
+### Total fechamento maio 2026
+- Receitas: R$ 14.763 (40 lançamentos)
+- Despesas: R$ 13.458 (145 lançamentos)
+- A receber junho: R$ 340 (Paula 100 + Sueli 240)
+- Resultado: ≈ R$ 1.305
+
+### Mudanças UI da sessão
+- **Novo relatório "Relatório Financeiro" em /relatorios** (`pages/relatorios/RelatorioFinanceiroMensal.jsx` + `useRelatorioFinanceiroMensal` em `useRelatorios.js`) — KPIs, gráficos por categoria/forma/conta, top 10 despesas, fluxo diário, comparativo mês anterior
+- **Nova página `/financeiro-pf`** (admin-only) — Controle Financeiro PF separado da empresa. Dados estáticos em `src/data/controleFinanceiroPF.js` (136 itens maio). Dashboard + planilha + análise automática com conselhos
+- **Kanban: filtro de 24h virou filtro mensal** (`hooks/useOS.js`) — OS concluída/recusada permanece visível até virar o mês, usa `data_conclusao || criado_em` como fallback (não `atualizado_em` que falseava imports)
+- **Financeiro: aba "Visão geral" removida** — default agora abre em "A receber". KPIs do mês foram corrigidos pra filtrar pelo mês de referência (antes somavam o caixa inteiro do histórico).
+
+### Regra: água Sanesul exemplo (não duplicar)
+Conta venceu 04/05, paga 01/06 — lançada por **vencimento** (04/05). Quando vier o extrato Cresol junho, NÃO lançar de novo o débito R$ 199,27 de 01/06.
+
+Mesmo princípio vale pra qualquer conta paga em mês diferente do vencimento.
