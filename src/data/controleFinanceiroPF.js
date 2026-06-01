@@ -11,6 +11,7 @@ export const CATEGORIA_MAE = {
   'Saude/Academia': 'Saúde',
   'Saude/Otica': 'Saúde',
   'Saude/Dentista': 'Saúde',
+  'Saude/Plano': 'Saúde',
   'Educacao': 'Educação',
   'Veiculo PF': 'Veículos',
   'Pedagio': 'Veículos',
@@ -229,6 +230,10 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX PAULO RICARDO PRADELLA',                   valor: 500.00,   categoria: 'PIX terceiros' },
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: "PIX MINAMI'S",                                 valor: 30.00,    categoria: 'Alimentacao' },
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'Parcela Civic',                                valor: 1398.82,  categoria: 'Veiculo PF' },
+
+  // Plano de saude (mensalidade + co-participacao)
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Plano de saude',                              valor: 250.00,   categoria: 'Saude/Plano' },
+  { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Co-participacao plano de saude',              valor: 140.00,   categoria: 'Saude/Plano' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
