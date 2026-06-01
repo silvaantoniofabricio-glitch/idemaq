@@ -81,7 +81,9 @@ export function useOS(buscando = false) {
           // Ocultar concluídas/recusadas de meses anteriores (busca escapa o filtro).
           // Permanecem visíveis até virar o mês — fechamento mensal.
           if (!buscando && (os.etapa === 'concluido' || os.etapa === 'recusado')) {
-            const ref = os.data_conclusao || os.atualizado_em
+            // Fallback pra criado_em (não atualizado_em) — OS importadas do
+            // Bling/Trello em maio teriam atualizado_em recente e falseariam o filtro.
+            const ref = os.data_conclusao || os.criado_em
             if (ref && new Date(ref) < inicioMesAtual) return false
           }
           // Ocultar OS de cliente soft-deletado (fabricação tem cliente_id NULL — passa)
