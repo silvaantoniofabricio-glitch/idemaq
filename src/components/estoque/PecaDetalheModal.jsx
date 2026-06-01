@@ -208,6 +208,7 @@ export default function PecaDetalheModal({
       qtdMaxima: String(peca.qtdMaxima ?? 0),
       custoAtual: String(peca.custoAtual ?? 0),
       precoVenda: String(peca.precoVenda ?? 0),
+      favorito: !!peca.favorito,
     })
     setEditando(true)
   }
@@ -544,10 +545,29 @@ export default function PecaDetalheModal({
       }}>
         {editando ? (
           <>
-            <Button T={T} dark={dark} variant="ghost"
-              onClick={cancelarEdicao} disabled={salvando}>
-              Cancelar
-            </Button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <Button T={T} dark={dark} variant="ghost"
+                onClick={cancelarEdicao} disabled={salvando}>
+                Cancelar
+              </Button>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, favorito: !f.favorito }))}
+                title={form.favorito ? 'Remover dos favoritos' : 'Marcar como favorito'}
+                disabled={salvando}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 6, cursor: salvando ? 'not-allowed' : 'pointer',
+                  border: `1px solid ${form.favorito ? '#f59e0b' : T.border}`,
+                  background: form.favorito ? '#fef3c7' : 'transparent',
+                  color: form.favorito ? '#92400e' : T.text,
+                  fontWeight: form.favorito ? 600 : 400,
+                }}>
+                <i className={form.favorito ? 'ti ti-star-filled' : 'ti ti-star'}
+                   style={{ color: form.favorito ? '#f59e0b' : 'inherit' }} />
+                {form.favorito ? 'Favorita' : 'Favoritar'}
+              </button>
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button variant="primary" iconLeft={salvando ? 'ti-loader-2 ti-spin' : 'ti-check'}
                 onClick={salvar} disabled={!podeSalvar || salvando}>
