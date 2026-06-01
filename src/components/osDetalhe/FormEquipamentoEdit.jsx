@@ -24,7 +24,15 @@ export default function FormEquipamentoEdit({
   const notify = useToast()
   const azul = corEtapa('blue', dark)
 
+  const TIPOS_EQUIP = [
+    { id: 'lavadora',    label: 'Lavadora',    icon: 'ti-device-washing-machine' },
+    { id: 'lava_loucas', label: 'Lava-louças', icon: 'ti-tool' },
+    { id: 'microondas',  label: 'Microondas',  icon: 'ti-microwave' },
+    { id: 'outros',      label: 'Outros',      icon: 'ti-cpu' },
+  ]
+
   const [form, setForm] = useState({
+    tipoEquipamento: os?.tipoEquipamento || 'lavadora',
     marca: (os?.marca || '').toUpperCase(),
     modelo: (os?.modelo || '').toUpperCase(),
     serie: (os?.serie || '').toUpperCase(),
@@ -38,6 +46,7 @@ export default function FormEquipamentoEdit({
   // (ex: marca sem modelo, ou só o defeito relatado). Salvar só faz sentido
   // se algo realmente mudou.
   const alterado =
+    (form.tipoEquipamento || 'lavadora') !== (os?.tipoEquipamento || 'lavadora') ||
     (form.marca   || '') !== (os?.marca   || '') ||
     (form.modelo  || '') !== (os?.modelo  || '') ||
     (form.serie   || '') !== (os?.serie   || '') ||
@@ -49,6 +58,7 @@ export default function FormEquipamentoEdit({
     if (!podeSalvar) return
     setSalvando(true)
     const patch = {
+      tipo_equipamento: form.tipoEquipamento,
       marca:   form.marca.trim()   || null,
       modelo:  form.modelo.trim()  || null,
       serie:   form.serie.trim()   || null,
@@ -76,6 +86,35 @@ export default function FormEquipamentoEdit({
         padding: '18px 20px',
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
+
+        {/* Tipo de equipamento */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: T.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Tipo de equipamento
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {TIPOS_EQUIP.map(t => {
+              const ativo = form.tipoEquipamento === t.id
+              return (
+                <button key={t.id} type="button"
+                  onClick={() => update('tipoEquipamento', t.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 14px', borderRadius: 99,
+                    border: `1px solid ${ativo ? azul : (dark ? '#444' : '#ddd')}`,
+                    background: ativo ? azul : 'transparent',
+                    color: ativo ? '#fff' : T.textSecondary,
+                    fontSize: 12, fontWeight: ativo ? 700 : 500,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    transition: 'all .12s',
+                  }}>
+                  <i className={`ti ${t.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

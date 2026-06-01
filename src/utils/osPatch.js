@@ -27,7 +27,9 @@ const COLUNAS_SAFE = new Set([
   'prazo', 'data_conclusao',
   'cliente_id',
   // Equipamento — aplicado via sql/10-os-equipamento.sql em 20/05/2026.
+  // tipo_equipamento — adicionado via sql/71-os-tipo-equipamento.sql em 01/06/2026.
   'marca_equipamento', 'modelo_equipamento', 'numero_serie', 'defeito_relatado',
+  'tipo_equipamento',
   'data_agendamento',
   // jsonb: marker 'storage' da foto da coleta + obs/testes do pre-diagnostico.
   // Coluna `os.pre_diagnostico jsonb` ja consumida em SELECT — adicionar

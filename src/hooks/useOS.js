@@ -63,6 +63,7 @@ export function useOS(buscando = false) {
           prazo, data_agendamento, data_conclusao, criado_em, atualizado_em,
           cliente_id,
           marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado,
+          tipo_equipamento,
           pre_diagnostico, observacoes,
           cliente:cliente_id(id, nome, telefone, endereco, deleted_at),
           os_item(count),
@@ -98,10 +99,8 @@ export function useOS(buscando = false) {
           cliente: os.cliente?.nome || '',
           fone: os.cliente?.telefone || '',
           cliente_id: os.cliente?.id || null,
-          // Equipamento: colunas reais em `os` (aplicadas via
-          // sql/10-os-equipamento.sql em 20/05/2026). `equipamento` ainda
-          // não tem coluna dedicada.
           equipamento: '',
+          tipoEquipamento: os.tipo_equipamento || 'lavadora',
           marca: os.marca_equipamento || '',
           modelo: os.modelo_equipamento || '',
           serie: os.numero_serie || '',
