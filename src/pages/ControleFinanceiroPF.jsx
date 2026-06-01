@@ -246,20 +246,28 @@ function PlanilhaCompleta({ T, dark, despesas }) {
   const [busca, setBusca] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
 
+  // Exclui fluxo interno (transferencias entre contas + pagamento de fatura)
+  // pra planilha mostrar so gasto real. Categorias e filtros tambem se
+  // baseiam nessa lista enxuta.
+  const despesasReais = useMemo(
+    () => despesas.filter(d => !CATEGORIAS_FLUXO_INTERNO.has(d.categoria)),
+    [despesas]
+  )
+
   const categorias = useMemo(() => {
-    const s = new Set(despesas.map(d => d.categoria))
+    const s = new Set(despesasReais.map(d => d.categoria))
     return Array.from(s).sort()
-  }, [despesas])
+  }, [despesasReais])
 
   const filtradas = useMemo(() => {
     const buscaLower = busca.toLowerCase().trim()
-    return despesas.filter(d => {
+    return despesasReais.filter(d => {
       if (categoriaFiltro && d.categoria !== categoriaFiltro) return false
       if (buscaLower && !d.descricao.toLowerCase().includes(buscaLower)
           && !d.origem.toLowerCase().includes(buscaLower)) return false
       return true
     })
-  }, [despesas, busca, categoriaFiltro])
+  }, [despesasReais, busca, categoriaFiltro])
 
   const totalFiltrado = filtradas.reduce((s, d) => s + d.valor, 0)
 
@@ -325,13 +333,13 @@ function PlanilhaCompleta({ T, dark, despesas }) {
             <div style={{ color: T.textMuted }}>{d.origem}</div>
             <div style={{ color: corHero(dark), fontWeight: 500 }}>{d.descricao}</div>
             <div>
-              <Badge variant={CATEGORIAS_FLUXO_INTERNO.has(d.categoria) ? 'azulClaro' : 'amarelo'} dark={dark} sm>
+              <Badge variant="amarelo" dark={dark} sm>
                 {d.categoria}
               </Badge>
             </div>
             <div style={{
               textAlign: 'right', fontWeight: 600,
-              color: CATEGORIAS_FLUXO_INTERNO.has(d.categoria) ? T.textMuted : corHero(dark),
+              color: corHero(dark),
               fontVariantNumeric: 'tabular-nums',
             }}>
               {fmtBRL(d.valor, { fr: true })}
