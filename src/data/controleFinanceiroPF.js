@@ -96,7 +96,6 @@ export const DESPESAS_PF_MAIO_2026 = [
   { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'Cristiano Xavier Per 2/3 (Bateria Focus)',             valor: 116.66,  categoria: 'Veiculo PF' },
   { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'MP Marineshop 2/10',                                   valor: 93.27,   categoria: 'Compras pessoais' },
   { data: '18/05/2026', origem: 'Bradesco PF',      descricao: 'Emprestimo carro PF',                                  valor: 1398.82, categoria: 'Emprestimo' },
-  { data: '19/05/2026', origem: 'Bradesco PF',      descricao: 'BX.ANT.FINANC/EMP (carro PF)',                         valor: 8704.86, categoria: 'Emprestimo' },
   { data: '19/05/2026', origem: 'Nubank',           descricao: 'PIX Rodrigo Cardoso',                                  valor: 7.00,    categoria: 'PIX terceiros' },
   { data: '20/05/2026', origem: 'Nubank',           descricao: 'PIX Telma Rosana (1)',                                 valor: 71.50,   categoria: 'PIX terceiros' },
   { data: '20/05/2026', origem: 'Nubank',           descricao: 'PIX Telma Rosana (2)',                                 valor: 13.00,   categoria: 'PIX terceiros' },
