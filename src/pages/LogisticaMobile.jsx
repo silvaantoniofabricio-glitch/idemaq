@@ -24,6 +24,23 @@ import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 const HOJE = new Date().toISOString().slice(0, 10)
+const AMANHA = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) })()
+// Início e fim da semana corrente (seg–dom)
+const SEMANA_INI = (() => { const d = new Date(); const dia = d.getDay(); const diff = (dia === 0 ? -6 : 1 - dia); d.setDate(d.getDate() + diff); return d.toISOString().slice(0, 10) })()
+const SEMANA_FIM = (() => { const d = new Date(SEMANA_INI); d.setDate(d.getDate() + 6); return d.toISOString().slice(0, 10) })()
+
+function filtrarPorAgenda(osList, filtro) {
+  if (filtro === 'amanha') return osList.filter(o => o.data_agendamento?.slice(0, 10) === AMANHA)
+  if (filtro === 'semana') return osList.filter(o => {
+    const d = o.data_agendamento?.slice(0, 10)
+    return d && d >= SEMANA_INI && d <= SEMANA_FIM
+  })
+  // 'hoje' (default): agendados pra hoje OU sem data
+  return osList.filter(o => {
+    const d = o.data_agendamento?.slice(0, 10)
+    return !d || d === HOJE
+  })
+}
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const ATL_RADIUS = 4
 
@@ -62,6 +79,7 @@ export default function LogisticaMobile({ T, dark }) {
   const notify = useToast()
 
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_LOGISTICA)
+  const [filtroAgenda, setFiltroAgenda] = useState('hoje')
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
   const [criandoRotasFalhou, setCriandoRotasFalhou] = useState(false)
@@ -75,10 +93,10 @@ export default function LogisticaMobile({ T, dark }) {
   const { rotas, criar: criarRota, atualizar: atualizarRota } = useRotas()
   const { abrirOSPorId, modalProps: osDetalheProps } = useOSDetalheModal({ notify })
 
-  const osFiltradas = useMemo(
-    () => osList.filter(o => etapasAtivas.has(o.etapa_db)),
-    [osList, etapasAtivas]
-  )
+  const osFiltradas = useMemo(() => {
+    const porEtapa = osList.filter(o => etapasAtivas.has(o.etapa_db))
+    return filtrarPorAgenda(porEtapa, filtroAgenda)
+  }, [osList, etapasAtivas, filtroAgenda])
 
   const enderecos = useMemo(
     () => osFiltradas.map(o => o.endereco).filter(Boolean),
@@ -270,6 +288,9 @@ export default function LogisticaMobile({ T, dark }) {
           })}
         />
 
+        {/* 1b. Filtro de agenda */}
+        <FiltroAgenda T={T} dark={dark} ativo={filtroAgenda} onChange={setFiltroAgenda} />
+
         {/* 2. Mapa */}
         <div style={{
           position: 'relative',
@@ -452,6 +473,46 @@ export function FiltroEtapas({ T, dark, ativas, onToggle }) {
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
             {f.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const OPCOES_AGENDA = [
+  { id: 'hoje',   label: 'Hoje / Sem agenda', icon: 'ti-calendar-event' },
+  { id: 'amanha', label: 'Amanhã',            icon: 'ti-calendar-plus' },
+  { id: 'semana', label: 'Semana',            icon: 'ti-calendar-week' },
+]
+
+function FiltroAgenda({ T, dark, ativo, onChange }) {
+  const azul = corEtapa('blue', dark)
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      {OPCOES_AGENDA.map(op => {
+        const sel = ativo === op.id
+        return (
+          <button key={op.id} type="button"
+            onClick={() => onChange(op.id)}
+            style={{
+              flex: 1, minWidth: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+              padding: '6px 4px',
+              borderRadius: ATL_RADIUS,
+              border: `1px solid ${sel ? azul : T.border}`,
+              background: sel ? azul + '22' : T.card,
+              color: sel ? azul : T.textSecondary,
+              fontSize: 11.5, fontWeight: sel ? 700 : 500,
+              cursor: 'pointer', fontFamily: ATL_FONT,
+              letterSpacing: '-0.005em',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'all .12s',
+              boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.08)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+            <i className={`ti ${op.icon}`} style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
+            {op.label}
           </button>
         )
       })}
