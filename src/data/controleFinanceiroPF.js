@@ -220,6 +220,11 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Pit Stop',                                     valor: 22.50,  categoria: 'Alimentacao' },
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Presentes RH',                                 valor: 37.00,  categoria: 'Compras pessoais' },
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Presentes RH (2)',                             valor: 22.21,  categoria: 'Compras pessoais' },
+
+  // Pagos no sabado 30/05 (caiu so segunda 01/06 no extrato — lancados na data real pra controle)
+  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX PAULO RICARDO PRADELLA',                   valor: 500.00,   categoria: 'PIX terceiros' },
+  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: "PIX MINAMI'S",                                 valor: 30.00,    categoria: 'Alimentacao' },
+  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX BANCO VOTORANTIM S.A. (fatura cartao BV)', valor: 1256.16,  categoria: 'Cartao' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
