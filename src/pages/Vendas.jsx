@@ -113,14 +113,19 @@ function dataCompetenciaIso(os) {
   const hist = Array.isArray(os.historico) ? os.historico : []
   // historico ja vem ordenado ASC com etapa_para em cada entrada.
   // "Saida de entrega" = entrada cuja anterior tinha etapa === 'entrega'.
+  // Atencao: dbEtapaToUI mapeia 'entrega' DB -> 'entregue' UI quando tipo=venda.
+  // Cobre as duas variantes.
+  const isEntrega = (et) => et === 'entrega' || et === 'entregue'
   for (let i = 1; i < hist.length; i++) {
-    if (hist[i - 1]?.etapa === 'entrega' && hist[i]?.etapa !== 'entrega') {
+    if (isEntrega(hist[i - 1]?.etapa) && !isEntrega(hist[i]?.etapa)) {
       const d = hist[i].data
       if (d) return String(d).slice(0, 10)
     }
   }
-  // Fallback: OS recusada usa data_conclusao; demais, criado_em.
-  if (os.etapa === 'recusado' && os.data_conclusao) {
+  // Fallback: OS concluida/recusada sem transicao registrada usa data_conclusao
+  // (melhor que abertura — pelo menos reflete fim do fluxo).
+  const ehFechada = os.etapa === 'concluido' || os.etapa === 'recusado'
+  if (ehFechada && os.data_conclusao) {
     return String(os.data_conclusao).slice(0, 10)
   }
   return (os.abertura || '').slice(0, 10)
