@@ -2128,7 +2128,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
   const mobile = useIsMobile()
-  const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
+  const { itens, loading: itensLoading, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
 
   // Pre-preenchimento: quando o orcamento abre vazio pela 1a vez, ja insere
@@ -2139,7 +2139,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   useEffect(() => {
     if (!os?.id) return
     if (prefilledRef.current) return
-    if (itens === undefined) return // ainda carregando
+    if (itensLoading) return // aguarda fetch inicial completar
     if (itens.length > 0) { prefilledRef.current = true; return }
     prefilledRef.current = true
     ;(async () => {
@@ -2147,7 +2147,8 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
       await addItem({ tipo: 'servico', nome: 'Limpeza',      qtd: 1, valor_unitario: 165 })
       await addItem({ tipo: 'desloc',  nome: 'Deslocamento', qtd: 1, valor_unitario: 20 })
     })()
-  }, [os?.id, itens, addItem])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [os?.id, itens, itensLoading])
 
   // Agrupa itens por tipo
   const porTipo = useMemo(() => {

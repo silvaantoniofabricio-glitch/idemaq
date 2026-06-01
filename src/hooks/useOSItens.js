@@ -39,7 +39,9 @@ function uiToDb(ui) {
  */
 export function useOSItens(osId) {
   const [itens, setItens] = useState([])
-  const [loading, setLoading] = useState(false)
+  // Inicia como true quando há ID válido para evitar janela falsa de "vazio"
+  // antes do primeiro fetch completar (ver AcaoOrcamentoHIG prefill guard).
+  const [loading, setLoading] = useState(!!(osId && isUUID(osId)))
   const [error, setError] = useState(null)
 
   async function fetchItens() {
