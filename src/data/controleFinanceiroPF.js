@@ -189,7 +189,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '06/05/2026', origem: 'Bradesco CC',  descricao: 'Tarifa Pacote de Servicos',                    valor: 4.53,   categoria: 'Tarifa banco' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 500.00, categoria: 'Transferencia' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 700.00, categoria: 'Transferencia' },
-  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX RAFAELA GARCIA CENTURIAO (propria)',       valor: 689.00, categoria: 'Transferencia' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Rafaela (Parcela da Casa)',                valor: 689.00, categoria: 'Moradia' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX TELEFONICA BRAS',                          valor: 38.92,  categoria: 'Diverso' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Boleto CONSELHO REGIONAL DE PSICOLOGI',        valor: 153.50, categoria: 'Educacao' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX UNINTER',                                  valor: 85.78,  categoria: 'Educacao' },
