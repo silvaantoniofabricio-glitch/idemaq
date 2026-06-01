@@ -33,12 +33,15 @@ export function filtrarPorAgenda(osList, filtro) {
   if (filtro === 'amanha') return osList.filter(o => o.data_agendamento?.slice(0, 10) === AMANHA)
   if (filtro === 'semana') return osList.filter(o => {
     const d = o.data_agendamento?.slice(0, 10)
-    return d && d >= SEMANA_INI && d <= SEMANA_FIM
+    // Sem data tambem entra na semana (OS sem agenda fica visivel em qualquer filtro de planejamento)
+    if (!d) return true
+    return d >= SEMANA_INI && d <= SEMANA_FIM
   })
-  // 'hoje' (default): agendados pra hoje OU sem data
+  // 'hoje' (default): atrasadas (passado) + hoje + sem data
+  // Atrasadas precisam ficar visiveis — sao mais urgentes que as de hoje.
   return osList.filter(o => {
     const d = o.data_agendamento?.slice(0, 10)
-    return !d || d === HOJE
+    return !d || d <= HOJE
   })
 }
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
@@ -481,7 +484,7 @@ export function FiltroEtapas({ T, dark, ativas, onToggle }) {
 }
 
 const OPCOES_AGENDA = [
-  { id: 'hoje',   label: 'Hoje / Sem agenda', icon: 'ti-calendar-event' },
+  { id: 'hoje',   label: 'Hoje / Atrasadas',  icon: 'ti-calendar-event' },
   { id: 'amanha', label: 'Amanhã',            icon: 'ti-calendar-plus' },
   { id: 'semana', label: 'Semana',            icon: 'ti-calendar-week' },
 ]
