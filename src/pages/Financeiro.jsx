@@ -252,9 +252,21 @@ export default function Financeiro({ T, dark }) {
   const vermelho = corEtapa('red', dark)
   const verde    = corEtapa('green', dark)
 
-  // KPIs de topo (visão geral) e badge contadores na tab
-  const recebidoMes  = caixa.filter(m => m.tipo === 'receita').reduce((s, m) => s + m.valor, 0)
-  const pagoMes      = caixa.filter(m => m.tipo === 'despesa').reduce((s, m) => s + m.valor, 0)
+  // KPIs de topo (visão geral) — filtra pelo MÊS DE REFERÊNCIA:
+  // mês corrente se tiver pagamentos; senão último mês com pagamento.
+  // Antes somava o caixa inteiro (histórico todo) e gerava números inflados.
+  const mesRef = (() => {
+    const mesAtual = new Date().toISOString().slice(0, 7)
+    const mesesComDados = new Set(
+      caixa.map(m => (m.data || m.vencimento || '').slice(0, 7)).filter(Boolean)
+    )
+    if (mesesComDados.has(mesAtual)) return mesAtual
+    const sorted = [...mesesComDados].sort()
+    return sorted[sorted.length - 1] || mesAtual
+  })()
+  const caixaMes = caixa.filter(m => (m.data || '').startsWith(mesRef))
+  const recebidoMes  = caixaMes.filter(m => m.tipo === 'receita').reduce((s, m) => s + m.valor, 0)
+  const pagoMes      = caixaMes.filter(m => m.tipo === 'despesa').reduce((s, m) => s + m.valor, 0)
   const saldoCaixa   = recebidoMes - pagoMes
   const totalReceber = receber.filter(r => r.status === 'aberto').reduce((s, r) => s + r.valor, 0)
   const totalPagar   = pagar.filter(p => p.status === 'aberto').reduce((s, p) => s + p.valor, 0)
@@ -410,6 +422,7 @@ export default function Financeiro({ T, dark }) {
           vencidos={vencidos} totalVencido={totalVencido}
           totalReceber={totalReceber} totalPagar={totalPagar}
           onIrParaReceber={() => setAba('receber')}
+          mesRef={mesRef}
         />
       )}
 
@@ -1447,7 +1460,14 @@ function VisaoGeral({
   vencidos, totalVencido,
   totalReceber, totalPagar,
   onIrParaReceber,
+  mesRef,
 }) {
+  const labelMes = (() => {
+    if (!mesRef) return 'mês'
+    const [y, m] = mesRef.split('-')
+    const nomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+    return `${nomes[Number(m)-1] || ''}/${y}`
+  })()
   const azul     = corEtapa('blue', dark)
   const amarelo  = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
@@ -1541,10 +1561,10 @@ function VisaoGeral({
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           <ResumoLinha T={T} dark={dark}
             icon="ti-arrow-down-circle" iconCor={azul}
-            label="Recebido no mês" valor={recebidoMes} corValor={corHero(dark)} />
+            label={`Recebido em ${labelMes}`} valor={recebidoMes} corValor={corHero(dark)} />
           <ResumoLinha T={T} dark={dark}
             icon="ti-arrow-up-circle" iconCor={amarelo}
-            label="Pago no mês" valor={pagoMes} corValor={corHero(dark)} />
+            label={`Pago em ${labelMes}`} valor={pagoMes} corValor={corHero(dark)} />
           <div style={{ height:1, background:T.border, margin:'4px 0' }} />
           <ResumoLinha T={T} dark={dark}
             icon="ti-cash-banknote" iconCor={saldoCaixa >= 0 ? verde : vermelho}
