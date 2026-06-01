@@ -24,7 +24,9 @@ export const CATEGORIAS_PECA = [
   { id: 'embreagem',         label: 'Embreagem',            grupo: 'motor' },
   { id: 'atuador_embreagem', label: 'Atuador / Embreagem',  grupo: 'motor' },
   { id: 'catraca',           label: 'Catraca',              grupo: 'motor' },
-  { id: 'rolamento',         label: 'Rolamento',            grupo: 'motor' },
+  { id: 'rolamento_motor',     label: 'Rolamento do Motor',     grupo: 'motor' },
+  { id: 'rolamento_mecanismo', label: 'Rolamento do Mecanismo', grupo: 'motor' },
+  { id: 'rolamento_eixo',      label: 'Rolamento do Eixo',      grupo: 'motor' },
   { id: 'retentor',          label: 'Retentor',             grupo: 'motor' },
   { id: 'braco_coinjetado',  label: 'Braço co-injetado',    grupo: 'motor' },
 
