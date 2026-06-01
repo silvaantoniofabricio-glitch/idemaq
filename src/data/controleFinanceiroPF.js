@@ -47,7 +47,7 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '06/05/2026', origem: 'Bradesco PF',      descricao: 'PIX QR Code dinamico',                                 valor: 26.99,   categoria: 'Diverso' },
   { data: '08/05/2026', origem: 'Nubank',           descricao: 'PIX Meiriane Cristine',                                valor: 10.00,   categoria: 'PIX terceiros' },
   { data: '10/05/2026', origem: 'Nubank',           descricao: 'PIX STAFEBANK (Bradesco)',                             valor: 146.00,  categoria: 'Transferencia' },
-  { data: '10/05/2026', origem: 'Nubank',           descricao: 'PIX Federacao Sara Nossa Terra (Dizimo)',              valor: 500.00,  categoria: 'Dizimo' },
+  { data: '10/05/2026', origem: 'Nubank',           descricao: 'Dizimo',                                               valor: 500.00,  categoria: 'Dizimo' },
   { data: '11/05/2026', origem: 'Nubank',           descricao: 'NuPay iFood',                                          valor: 26.99,   categoria: 'Alimentacao' },
   { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'iFood DAIANE',                                         valor: 17.99,   categoria: 'Alimentacao' },
   { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'IOF Diario Rotativo/Atraso',                           valor: 0.75,    categoria: 'IOF' },
@@ -199,7 +199,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX ANI STORE',                                valor: 100.00, categoria: 'Vestuario' },
   { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX CLAMED FARMACIAS',                         valor: 36.50,  categoria: 'Farmacia' },
   { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX MANO AUTO POSTO LTDA',                     valor: 100.00, categoria: 'Combustivel' },
-  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX FED NACIONAL COMUNIDADE E (Dizimo)',       valor: 520.00, categoria: 'Dizimo' },
+  { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'Dizimo',                                       valor: 520.00, categoria: 'Dizimo' },
   { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Silvana Vieira de Souza',                  valor: 20.00,  categoria: 'PIX terceiros' },
   { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Telma Rosana Sanches Godo',                valor: 35.00,  categoria: 'PIX terceiros' },
   { data: '11/05/2026', origem: 'Bradesco CC',  descricao: 'FIES JRS/AMORTIZACAO',                         valor: 106.41, categoria: 'Educacao' },
@@ -225,7 +225,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   // Pagos no sabado 30/05 (caiu so segunda 01/06 no extrato — lancados na data real pra controle)
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX PAULO RICARDO PRADELLA',                   valor: 500.00,   categoria: 'PIX terceiros' },
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: "PIX MINAMI'S",                                 valor: 30.00,    categoria: 'Alimentacao' },
-  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'Parcela Civic (Banco Votorantim)',             valor: 1398.82,  categoria: 'Veiculo PF' },
+  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'Parcela Civic',                                valor: 1398.82,  categoria: 'Veiculo PF' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
