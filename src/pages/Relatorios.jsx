@@ -18,6 +18,7 @@ import {
   useToast,
 } from '../components/ui'
 import RelatorioPonto from './relatorios/RelatorioPonto'
+import RelatorioFinanceiroMensal from './relatorios/RelatorioFinanceiroMensal'
 import {
   computeRange,
   useRelatorioGeral,
@@ -32,6 +33,7 @@ import { useRelatorioIA } from '../hooks/useRelatorioIA'
 
 // === Catálogo dos 7 relatórios ===
 const RELATORIOS = [
+  { id:'finmensal',     label:'Relatório Financeiro', icon:'ti-report-money',  desc:'Receitas, despesas, fluxo e comparativo do mês', cor:'blue' },
   { id:'geral',         label:'Geral',           icon:'ti-chart-arcs',        desc:'Visão consolidada do negócio', cor:'blue' },
   { id:'operacional',   label:'OS Operacional',  icon:'ti-clipboard-list',    desc:'Tempos por etapa, gargalos, retrabalho', cor:'blue' },
   { id:'estoque',       label:'Estoque',         icon:'ti-package',           desc:'Giro, paradas, projeção', cor:'blue' },
@@ -182,6 +184,7 @@ export default function Relatorios({ T, dark }) {
         <RelatoriosHub T={T} dark={dark} onAbrir={setRelAtivo} />
       ) : (
         <>
+          {relAtivo === 'finmensal'    && <RelatorioFinanceiroMensal T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}

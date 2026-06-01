@@ -703,6 +703,189 @@ export function useRelatorioDRE({ iniIso, fimIso }) {
 }
 
 // =============================================================================
+// useRelatorioFinanceiroMensal — Relatório financeiro completo do mês.
+// Mais rico que o DRE: cobre receitas+despesas por categoria/conta/forma de
+// pagamento, top 10 maiores despesas individuais, a receber e a pagar em aberto,
+// fluxo diário, taxas pagas (maquininhas) e comparativo com mês anterior.
+// Tudo em regime de caixa (pago_em dentro do range), exceto os "abertos" que
+// usam pago_em IS NULL com vencimento dentro do range.
+// =============================================================================
+export function useRelatorioFinanceiroMensal({ iniIso, fimIso }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelado = false
+    async function run() {
+      setLoading(true); setError(null)
+      try {
+        const iniDate = iniIso.slice(0, 10)
+        const fimDate = fimIso.slice(0, 10)
+
+        // Período anterior do mesmo tamanho (em dias) pra comparativo
+        const dIni = new Date(iniDate + 'T00:00:00')
+        const dFim = new Date(fimDate + 'T00:00:00')
+        const dias = Math.max(1, Math.round((dFim - dIni) / 86400000) + 1)
+        const dAntFim = new Date(dIni.getTime() - 86400000)
+        const dAntIni = new Date(dAntFim.getTime() - (dias - 1) * 86400000)
+        const antIni = dAntIni.toISOString().slice(0,10)
+        const antFim = dAntFim.toISOString().slice(0,10)
+
+        // 1) Lançamentos pagos no período + contas
+        const { data: lancs, error: errL } = await supabase
+          .from('lancamento_financeiro')
+          .select('id, tipo, valor, categoria, descricao, conta_id, pago_em, vencimento, taxa_pct, forma_pagamento, os_id')
+          .is('deleted_at', null)
+          .or(`and(pago_em.gte.${iniDate},pago_em.lte.${fimDate}),and(pago_em.is.null,vencimento.gte.${iniDate},vencimento.lte.${fimDate})`)
+        if (errL) throw errL
+
+        // 2) Lançamentos pagos no período anterior (só totais)
+        const { data: lancsAnt } = await supabase
+          .from('lancamento_financeiro')
+          .select('tipo, valor')
+          .is('deleted_at', null)
+          .not('pago_em', 'is', null)
+          .gte('pago_em', antIni)
+          .lte('pago_em', antFim)
+
+        // 3) Contas bancárias
+        const { data: contas } = await supabase
+          .from('conta_bancaria')
+          .select('id, nome, tipo')
+          .is('deleted_at', null)
+
+        if (cancelado) return
+
+        const nomeConta = Object.fromEntries((contas || []).map(c => [c.id, c.nome]))
+
+        // Estado agregado
+        let recPagas = 0, despPagas = 0
+        let aReceber = 0, aPagar = 0
+        let totalTaxasMaq = 0
+        const recPorCat = {}, despPorCat = {}
+        const recPorForma = {}, despPorForma = {}
+        const recPorConta = {}, despPorConta = {}
+        const fluxoPorDia = {}
+        const maioresDesp = []
+        const aReceberLista = []
+        const aPagarLista = []
+
+        for (const l of lancs || []) {
+          const v = Number(l.valor || 0)
+          const cat = (l.categoria || '').trim() || 'Sem categoria'
+          const forma = (l.forma_pagamento || '').trim() || 'Sem forma'
+          const conta = nomeConta[l.conta_id] || 'Sem conta'
+          const pago = !!l.pago_em
+
+          if (pago) {
+            const dia = String(l.pago_em).slice(0,10)
+            fluxoPorDia[dia] = fluxoPorDia[dia] || { dia, entrada: 0, saida: 0 }
+
+            if (l.tipo === 'receita') {
+              recPagas += v
+              recPorCat[cat] = (recPorCat[cat] || 0) + v
+              recPorForma[forma] = (recPorForma[forma] || 0) + v
+              recPorConta[conta] = (recPorConta[conta] || 0) + v
+              fluxoPorDia[dia].entrada += v
+            } else if (l.tipo === 'despesa') {
+              despPagas += v
+              despPorCat[cat] = (despPorCat[cat] || 0) + v
+              despPorForma[forma] = (despPorForma[forma] || 0) + v
+              despPorConta[conta] = (despPorConta[conta] || 0) + v
+              fluxoPorDia[dia].saida += v
+              maioresDesp.push({
+                id: l.id, valor: v, categoria: cat, descricao: l.descricao || '', conta,
+                pago_em: l.pago_em,
+              })
+              if (cat.toLowerCase().includes('taxa')) totalTaxasMaq += v
+            }
+          } else {
+            // Aberto (pago_em null + vencimento dentro do range)
+            if (l.tipo === 'receita') {
+              aReceber += v
+              aReceberLista.push({ id: l.id, valor: v, categoria: cat, descricao: l.descricao || '', vencimento: l.vencimento })
+            } else if (l.tipo === 'despesa') {
+              aPagar += v
+              aPagarLista.push({ id: l.id, valor: v, categoria: cat, descricao: l.descricao || '', vencimento: l.vencimento })
+            }
+          }
+        }
+
+        // Comparativo (período anterior pago)
+        let recAnt = 0, despAnt = 0
+        for (const l of lancsAnt || []) {
+          const v = Number(l.valor || 0)
+          if (l.tipo === 'receita') recAnt += v
+          else if (l.tipo === 'despesa') despAnt += v
+        }
+        const lucroAnt = recAnt - despAnt
+        const pctDelta = (atual, ant) => (ant > 0 ? Math.round(((atual - ant) / ant) * 100) : (atual > 0 ? 100 : 0))
+
+        const lucro = recPagas - despPagas
+        const margem = recPagas > 0 ? Math.round((lucro / recPagas) * 100) : 0
+        const receitaLiquida = recPagas - totalTaxasMaq
+
+        const sortValor = (a, b) => b.valor - a.valor
+        const mapObj = (obj) => Object.entries(obj)
+          .map(([k, v]) => ({ label: k, valor: v }))
+          .sort(sortValor)
+
+        const fluxoDias = Object.values(fluxoPorDia)
+          .sort((a, b) => a.dia.localeCompare(b.dia))
+          .map(f => ({ ...f, saldo: f.entrada - f.saida }))
+
+        maioresDesp.sort(sortValor)
+        aReceberLista.sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''))
+        aPagarLista.sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''))
+
+        setData({
+          // KPIs principais
+          receitas: recPagas,
+          receitaLiquida,
+          despesas: despPagas,
+          lucro,
+          margem,
+          aReceber,
+          aPagar,
+          totalTaxasMaq,
+
+          // Comparativo mês anterior
+          delta: {
+            receitas: pctDelta(recPagas, recAnt),
+            despesas: pctDelta(despPagas, despAnt),
+            lucro: pctDelta(lucro, lucroAnt),
+          },
+
+          // Detalhes
+          receitasPorCategoria: mapObj(recPorCat),
+          despesasPorCategoria: mapObj(despPorCat),
+          receitasPorForma: mapObj(recPorForma),
+          despesasPorForma: mapObj(despPorForma),
+          receitasPorConta: mapObj(recPorConta),
+          despesasPorConta: mapObj(despPorConta),
+          maioresDespesas: maioresDesp.slice(0, 10),
+          aReceberLista: aReceberLista.slice(0, 15),
+          aPagarLista: aPagarLista.slice(0, 15),
+          fluxoDias,
+
+          totalLancamentos: (lancs || []).length,
+          periodo: { iniDate, fimDate, antIni, antFim },
+        })
+      } catch (e) {
+        if (!cancelado) setError(e?.message || 'Erro ao carregar relatório financeiro')
+      } finally {
+        if (!cancelado) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelado = true }
+  }, [iniIso, fimIso])
+
+  return { data, loading, error }
+}
+
+// =============================================================================
 // useRelatorioFuncionarios — agrega `os_historico` + `usuarios` no período.
 // Por funcionário:
 //   - etapasFeitas: linhas do histórico com funcionario_id no período
