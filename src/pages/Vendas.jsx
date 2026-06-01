@@ -104,6 +104,28 @@ function corPagto(os, dark) {
 }
 
 // Formata data ISO/timestamp → DD/MM/YYYY
+// Data de competencia da venda (regime de competencia):
+//  - OS entregue: data em que SAIU da etapa "entrega" no historico
+//    (independe de quando pagou)
+//  - OS recusada: data_conclusao (encerramento)
+//  - OS aberta sem entrega: criado_em (placeholder ate ser entregue)
+function dataCompetenciaIso(os) {
+  const hist = Array.isArray(os.historico) ? os.historico : []
+  // historico ja vem ordenado ASC com etapa_para em cada entrada.
+  // "Saida de entrega" = entrada cuja anterior tinha etapa === 'entrega'.
+  for (let i = 1; i < hist.length; i++) {
+    if (hist[i - 1]?.etapa === 'entrega' && hist[i]?.etapa !== 'entrega') {
+      const d = hist[i].data
+      if (d) return String(d).slice(0, 10)
+    }
+  }
+  // Fallback: OS recusada usa data_conclusao; demais, criado_em.
+  if (os.etapa === 'recusado' && os.data_conclusao) {
+    return String(os.data_conclusao).slice(0, 10)
+  }
+  return (os.abertura || '').slice(0, 10)
+}
+
 function fmtDataBR(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -165,16 +187,14 @@ export default function Vendas({ T, dark, user }) {
   const filtradas = useMemo(() => {
     let r = osList
 
-    // Período (regime de competencia): receita conta no mes da ENTREGA.
-    //  - OS concluida/recusada: usa data_conclusao
-    //  - OS aberta (ainda em andamento): usa criado_em (abertura)
-    // Evita "venda fantasma": OS aberta em maio e entregue em junho aparece em junho.
+    // Período (regime de competencia): receita conta no mes da ENTREGA real
+    // (saida da etapa Entrega), independente de quando o cliente pagou.
+    // Caso entregue mas ainda nao pagou: usa a data em que saiu de "entrega"
+    // no historico. Sem essa transicao, cai pra criado_em (abertura).
+    // Recusado: usa data_conclusao (fim do fluxo).
     if (range.ini || range.fim) {
       r = r.filter(os => {
-        const ehFechada = os.etapa === 'concluido' || os.etapa === 'recusado'
-        const refIso = ehFechada && os.data_conclusao
-          ? String(os.data_conclusao).slice(0, 10)
-          : (os.abertura || '').slice(0, 10)
+        const refIso = dataCompetenciaIso(os)
         if (!refIso) return false
         if (range.ini && refIso < range.ini) return false
         if (range.fim && refIso > range.fim) return false
