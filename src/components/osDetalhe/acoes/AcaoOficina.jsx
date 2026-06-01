@@ -288,8 +288,12 @@ const AcaoOficina = ({ os, onUpdateOS, onMoverOS, onAbrirAba }) => {
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
     [itens]
   );
+  // Manutencao so e ativada se o orcamento tem item explicito de manutencao
+  // (nao basta ter "qualquer item nao-limpeza" — taxa/deslocamento/capa nao
+  // sao servicos de oficina). Casos como FRAN: so limpeza no orcamento
+  // -> nao deve pedir manutencao.
   const temManutencao = useMemo(
-    () => (itens || []).some(it => !/limpeza/i.test(it.nome || '')),
+    () => (itens || []).some(it => /manuten/i.test(it.nome || '')),
     [itens]
   );
 
