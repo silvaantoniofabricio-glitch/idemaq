@@ -1333,7 +1333,7 @@ function AtlItensCard({ T, dark, itens, porTipo, subtotais, onAddNovo, onRemove,
             ))}
             {tipo.id === 'servico' && (
               <div style={{ display: 'flex', gap: 6, padding: '4px 12px 2px', flexWrap: 'wrap' }}>
-                {[{ nome: 'Manutenção', valor: 185 }, { nome: 'Limpeza', valor: 185 }].map(s => (
+                {[{ nome: 'Manutenção', valor: 165 }, { nome: 'Limpeza', valor: 165 }].map(s => (
                   <button key={s.nome} type="button"
                     onClick={() => onAddNovo('servico', { nome: s.nome, qtd: 1, valor_unitario: s.valor })}
                     style={{
@@ -2129,6 +2129,24 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
   const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
+
+  // Pre-preenchimento: quando o orcamento abre vazio pela 1a vez, ja insere
+  // os 3 itens padrao (Manutencao 165, Limpeza 165, Deslocamento 20).
+  // Toni revisa/ajusta valores depois — economiza 3 cliques por OS.
+  // Ref bloqueia segundo trigger se o usuario apagar todos os itens depois.
+  const prefilledRef = useRef(false)
+  useEffect(() => {
+    if (!os?.id) return
+    if (prefilledRef.current) return
+    if (itens === undefined) return // ainda carregando
+    if (itens.length > 0) { prefilledRef.current = true; return }
+    prefilledRef.current = true
+    ;(async () => {
+      await addItem({ tipo: 'servico', nome: 'Manutenção',   qtd: 1, valor_unitario: 165 })
+      await addItem({ tipo: 'servico', nome: 'Limpeza',      qtd: 1, valor_unitario: 165 })
+      await addItem({ tipo: 'desloc',  nome: 'Deslocamento', qtd: 1, valor_unitario: 20 })
+    })()
+  }, [os?.id, itens, addItem])
 
   // Agrupa itens por tipo
   const porTipo = useMemo(() => {
