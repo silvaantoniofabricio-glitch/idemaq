@@ -165,13 +165,19 @@ export default function Vendas({ T, dark, user }) {
   const filtradas = useMemo(() => {
     let r = osList
 
-    // Período (compara contra criado_em da OS, em formato YYYY-MM-DD)
+    // Período (regime de competencia): receita conta no mes da ENTREGA.
+    //  - OS concluida/recusada: usa data_conclusao
+    //  - OS aberta (ainda em andamento): usa criado_em (abertura)
+    // Evita "venda fantasma": OS aberta em maio e entregue em junho aparece em junho.
     if (range.ini || range.fim) {
       r = r.filter(os => {
-        const dataRef = (os.abertura || '').slice(0, 10) // toCuiaba já trouxe a data local
-        if (!dataRef) return false
-        if (range.ini && dataRef < range.ini) return false
-        if (range.fim && dataRef > range.fim) return false
+        const ehFechada = os.etapa === 'concluido' || os.etapa === 'recusado'
+        const refIso = ehFechada && os.data_conclusao
+          ? String(os.data_conclusao).slice(0, 10)
+          : (os.abertura || '').slice(0, 10)
+        if (!refIso) return false
+        if (range.ini && refIso < range.ini) return false
+        if (range.fim && refIso > range.fim) return false
         return true
       })
     }
