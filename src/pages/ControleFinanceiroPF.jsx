@@ -295,7 +295,7 @@ function PlanilhaCompleta({ T, dark, despesas }) {
           fontSize: 13, color: corHero(dark), fontWeight: 600,
           fontVariantNumeric: 'tabular-nums',
         }}>
-          {filtradas.length} itens · {fmtBRL(totalFiltrado)}
+          {filtradas.length} itens · {fmtBRL(totalFiltrado, { fr: true })}
         </div>
       </div>
 
@@ -334,7 +334,7 @@ function PlanilhaCompleta({ T, dark, despesas }) {
               color: CATEGORIAS_FLUXO_INTERNO.has(d.categoria) ? T.textMuted : corHero(dark),
               fontVariantNumeric: 'tabular-nums',
             }}>
-              {fmtBRL(d.valor)}
+              {fmtBRL(d.valor, { fr: true })}
             </div>
           </div>
         ))}
@@ -558,7 +558,7 @@ function Barras({ T, dark, itens, total, cor }) {
                 color: corHero(dark), fontWeight: 600,
                 fontVariantNumeric: 'tabular-nums',
               }}>
-                {fmtBRL(i.valor)}
+                {fmtBRL(i.valor, { fr: true })}
                 <span style={{ color: T.textMuted, fontWeight: 400, marginLeft: 6 }}>
                   · {pct}%
                 </span>
@@ -611,7 +611,7 @@ function ListaMaiores({ T, dark, itens }) {
             fontSize: 13, fontWeight: 700, color: corEtapa('yellow', dark),
             textAlign: 'right', fontVariantNumeric: 'tabular-nums',
           }}>
-            {fmtBRL(d.valor)}
+            {fmtBRL(d.valor, { fr: true })}
           </div>
         </div>
       ))}
