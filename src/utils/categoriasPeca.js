@@ -48,7 +48,8 @@ export const CATEGORIAS_PECA = [
   { id: 'agitador',          label: 'Agitador',             grupo: 'estrutura' },
   { id: 'suspensao',         label: 'Suspensão',            grupo: 'estrutura' },
   { id: 'tirantes',          label: 'Tirantes',             grupo: 'estrutura' },
-  { id: 'suporte',           label: 'Suporte',              grupo: 'estrutura' },
+  { id: 'suporte_tampa',     label: 'Suporte da Tampa',     grupo: 'estrutura' },
+  { id: 'suporte_cesto',    label: 'Suporte do Cesto',     grupo: 'estrutura' },
 
   // Acabamento
   { id: 'dobradicas',        label: 'Dobradiças',           grupo: 'acabamento' },
