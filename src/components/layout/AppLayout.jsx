@@ -22,6 +22,7 @@ const ROUTES = {
   relatorios:     '/relatorios',
   'meu-relatorio':'/meu-relatorio',
   configuracoes:  '/configuracoes',
+  'financeiro-pf': '/financeiro-pf',
 }
 // Reverso para inferir pagina ativa pela URL
 function pageFromPath(pathname) {
