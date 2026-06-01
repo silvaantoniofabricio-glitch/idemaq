@@ -13,7 +13,7 @@
 // Toda a lógica de negócio preservada do AcaoOrcamento original.
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { useTheme } from '../../../theme'
+import { useTheme, useIsMobile } from '../../../theme'
 import { TI } from '../../_shared/PrimitivasMobile'
 import {
   HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT, HIG_FONT_MONO,
@@ -2127,6 +2127,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
+  const mobile = useIsMobile()
   const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
 
@@ -2200,14 +2201,28 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column',
+      display: 'grid',
+      // Desktop: diagnostico fixo a esquerda (auxilia a construir o orcamento)
+      // Mobile: stack vertical normal.
+      gridTemplateColumns: mobile ? '1fr' : 'minmax(280px, 340px) 1fr',
       gap: HIG_SPACE.lg,
       fontFamily: HIG_FONT,
       padding: `0 0 ${HIG_SPACE.md}px`,
+      alignItems: 'start',
     }}>
 
-      {/* 1. Diagnóstico — Atlassian panel */}
-      <AtlDiagnosticoCard T={T} dark={dark} os={os} />
+      {/* 1. Diagnostico — sticky na coluna 1 no desktop pra ficar visivel
+            enquanto o usuario rola a coluna de itens/desconto/total. */}
+      <div style={mobile ? undefined : { position: 'sticky', top: 0 }}>
+        <AtlDiagnosticoCard T={T} dark={dark} os={os} />
+      </div>
+
+      {/* Coluna direita: itens + desconto + total + acoes */}
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        gap: HIG_SPACE.lg,
+        minWidth: 0, // evita overflow em grid
+      }}>
 
       {/* 2. Itens — Atlassian panel com 3 sub-grupos (Servicos/Pecas/Desloc),
             cada um com sub-header (label + subtotal) e row sempre-presente
@@ -2296,6 +2311,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
         />
       )}
 
+      </div>{/* fim coluna direita */}
     </div>
   )
 }
