@@ -341,8 +341,10 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
     [itens]
   )
+  // Manutencao so e ativada se o orcamento tem item explicito de manutencao
+  // (taxa/deslocamento/capa/peca avulsa NAO sao servicos de oficina).
   const temManutencao = useMemo(
-    () => (itens || []).some(it => !/limpeza/i.test(it.nome || '')),
+    () => (itens || []).some(it => /manuten/i.test(it.nome || '')),
     [itens]
   )
 
