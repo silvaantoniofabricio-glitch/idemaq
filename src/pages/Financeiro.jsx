@@ -111,7 +111,6 @@ const FORMAS = ['PIX', 'Dinheiro', 'Cartão 1x', 'Cartão 2x', 'Cartão 3x', 'Bo
 // página consome `lancamentos` do hook → adapter → split em receber/pagar/caixa.
 
 const ABAS = [
-  { id:'visao',   label:'Visão geral', icon:'ti-layout-dashboard' },
   { id:'receber', label:'A receber',   icon:'ti-arrow-down-circle' },
   { id:'pagar',   label:'A pagar',     icon:'ti-arrow-up-circle' },
   { id:'caixa',   label:'Caixa',       icon:'ti-cash-banknote' },
@@ -207,7 +206,7 @@ function labelPeriodo(periodo) {
 // ============================================================================
 export default function Financeiro({ T, dark }) {
   const notify = useToast()
-  const [aba, setAba] = useState('visao')
+  const [aba, setAba] = useState('receber')
   const [receber, setReceber] = useState([])
   const [pagar, setPagar]     = useState([])
   const [caixa, setCaixa]     = useState([])
@@ -414,17 +413,6 @@ export default function Financeiro({ T, dark }) {
       <Card T={T} dark={dark} padding="6px 8px">
         <TabsComContador T={T} dark={dark} abas={abasComContador} value={aba} onChange={setAba} />
       </Card>
-
-      {aba === 'visao' && (
-        <VisaoGeral T={T} dark={dark}
-          recebidoMes={recebidoMes} pagoMes={pagoMes} saldoCaixa={saldoCaixa}
-          pctMeta={pctMeta} faltaMeta={faltaMeta} meta={META_MES}
-          vencidos={vencidos} totalVencido={totalVencido}
-          totalReceber={totalReceber} totalPagar={totalPagar}
-          onIrParaReceber={() => setAba('receber')}
-          mesRef={mesRef}
-        />
-      )}
 
       {aba === 'receber' && (
         <ListaLancamentos T={T} dark={dark}
