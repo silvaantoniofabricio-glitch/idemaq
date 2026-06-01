@@ -121,7 +121,6 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '20/05/2026', origem: 'Visa Bradesco',    descricao: 'Motiva Pantanal (pedagio 1)',                          valor: 8.90,    categoria: 'Pedagio' },
   { data: '20/05/2026', origem: 'Visa Bradesco',    descricao: 'Motiva Pantanal (pedagio 2)',                          valor: 8.90,    categoria: 'Pedagio' },
   { data: '20/05/2026', origem: 'Visa Bradesco',    descricao: 'Supermercado Chama',                                   valor: 27.14,   categoria: 'Supermercado' },
-  { data: '20/05/2026', origem: 'Visa Bradesco',    descricao: 'Apple.com/Bill',                                       valor: 59.90,   categoria: 'Lazer' },
   { data: '20/05/2026', origem: 'Visa Bradesco',    descricao: 'Mercado Wilson',                                       valor: 4.00,    categoria: 'Supermercado' },
   { data: '26/05/2026', origem: 'Inter',            descricao: 'Retifica Navirai 1/10 (Focus)',                        valor: 129.50,  categoria: 'Veiculo PF' },
   { data: '26/05/2026', origem: 'Inter',            descricao: 'Pronto Paulo Cesar AD 1/10 (Focus)',                   valor: 89.00,   categoria: 'Veiculo PF' },
