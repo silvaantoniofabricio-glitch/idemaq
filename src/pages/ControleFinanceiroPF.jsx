@@ -137,6 +137,7 @@ function analisarDespesas(despesas) {
   let totalReal = 0
   let totalTransferencia = 0
   let totalFaturas = 0
+  let totalDizimo = 0
 
   const porCategoria = {}
   const porCategoriaMae = {}
@@ -153,6 +154,11 @@ function analisarDespesas(despesas) {
     }
     if (d.categoria === 'Cartao') {
       totalFaturas += v
+      continue
+    }
+    if (d.categoria === 'Dizimo') {
+      totalDizimo += v
+      // visivel na lista, mas nao soma no gasto real efetivo
       continue
     }
 
@@ -185,6 +191,7 @@ function analisarDespesas(despesas) {
     totalReal,
     totalTransferencia,
     totalFaturas,
+    totalDizimo,
     totalItens: despesas.length,
     porCategoria: mapObj(porCategoria),
     porCategoriaMae: mapObj(porCategoriaMae),
@@ -230,6 +237,8 @@ function Dashboard({ T, dark, analise }) {
           icon="ti-transfer" detalhe="Não conta como gasto" />
         <KPI T={T} dark={dark} label="Pagamentos de fatura" valor={fmtBRL(analise.totalFaturas)} cor={azulClaro}
           icon="ti-credit-card" detalhe="Já contado item a item" />
+        <KPI T={T} dark={dark} label="Dízimo" valor={fmtBRL(analise.totalDizimo, { fr: true })} cor={azulClaro}
+          icon="ti-church" detalhe="Visível mas fora do gasto real" />
         <KPI T={T} dark={dark} label="Total de lançamentos" valor={analise.totalItens} cor={azul}
           icon="ti-list-numbers" detalhe={`em ${analise.porOrigem.length} origens`} />
       </div>

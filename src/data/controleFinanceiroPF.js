@@ -251,4 +251,5 @@ export const DESPESAS_PF_POR_MES = {
 export const CATEGORIAS_FLUXO_INTERNO = new Set([
   'Transferencia',
   'Cartao', // pagamento de boleto de fatura - os itens da fatura ja estao separados
+  'Dizimo', // visivel na lista, mas nao entra no gasto real efetivo (10% bruto, conta a parte)
 ])
