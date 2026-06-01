@@ -15,6 +15,27 @@ import {
   CATEGORIAS_FLUXO_INTERNO,
   maeDe,
 } from '../data/controleFinanceiroPF'
+import { useFinanceiro } from '../hooks/useFinanceiro'
+
+const FILTRO_EMPRESA_POR_MES = {
+  '2026-05': { tipo: 'despesa', dataInicio: '2026-05-01', dataFim: '2026-05-31' },
+}
+
+function isoParaBR(iso) {
+  if (!iso) return '00/00/0000'
+  const [y, m, d] = String(iso).split('-')
+  return `${d}/${m}/${y}`
+}
+
+function adaptarEmpresaParaPF(lancs) {
+  return (lancs || []).map(l => ({
+    data: isoParaBR(l.vencimento || l.pago_em),
+    origem: l.conta?.nome || 'Sem conta',
+    descricao: l.descricao || '(sem descricao)',
+    valor: Number(l.valor || 0),
+    categoria: l.categoria || 'Diverso',
+  }))
+}
 
 const MESES_DISPONIVEIS = [
   { id: '2026-05', label: 'Maio/2026' },
@@ -30,10 +51,18 @@ export default function ControleFinanceiroPF({ T, dark }) {
   const vermelho = corEtapa('red', dark)
 
   const [mesAtivo, setMesAtivo] = useState('2026-05')
-  const [pessoaAtiva, setPessoaAtiva] = useState('total') // total | toni | rafa
+  const [pessoaAtiva, setPessoaAtiva] = useState('total') // total | toni | rafa | empresa
   const [verSecao, setVerSecao] = useState('dashboard') // dashboard | tabela | conselhos
 
-  const despesas = (DESPESAS_PF_POR_MES[mesAtivo] || {})[pessoaAtiva] || []
+  // Empresa: vem do Supabase (lancamento_financeiro). Sempre busca, mesmo se aba
+  // empresa nao estiver ativa — barato e mantem hooks estaveis.
+  const filtroEmp = FILTRO_EMPRESA_POR_MES[mesAtivo] || FILTRO_EMPRESA_POR_MES['2026-05']
+  const { lancamentos: lancsEmpresa, loading: loadingEmpresa } = useFinanceiro(filtroEmp)
+  const despesasEmpresa = useMemo(() => adaptarEmpresaParaPF(lancsEmpresa), [lancsEmpresa])
+
+  const despesas = pessoaAtiva === 'empresa'
+    ? despesasEmpresa
+    : ((DESPESAS_PF_POR_MES[mesAtivo] || {})[pessoaAtiva] || [])
 
   const analise = useMemo(() => analisarDespesas(despesas), [despesas])
 
@@ -64,9 +93,10 @@ export default function ControleFinanceiroPF({ T, dark }) {
           />
           <Tabs T={T} dark={dark}
             options={[
-              { id: 'total', label: 'Total (casal)' },
-              { id: 'toni',  label: 'Toni (eu)' },
-              { id: 'rafa',  label: 'Rafa' },
+              { id: 'total',   label: 'Total (casal)' },
+              { id: 'toni',    label: 'Toni (eu)' },
+              { id: 'rafa',    label: 'Rafa' },
+              { id: 'empresa', label: 'Empresa' },
             ]}
             value={pessoaAtiva}
             onChange={setPessoaAtiva}
