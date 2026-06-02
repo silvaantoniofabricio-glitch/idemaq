@@ -111,9 +111,9 @@ const FORMAS = ['PIX', 'Dinheiro', 'Cartão 1x', 'Cartão 2x', 'Cartão 3x', 'Bo
 // página consome `lancamentos` do hook → adapter → split em receber/pagar/caixa.
 
 const ABAS = [
+  { id:'caixa',   label:'Caixa',       icon:'ti-cash-banknote' },
   { id:'receber', label:'A receber',   icon:'ti-arrow-down-circle' },
   { id:'pagar',   label:'A pagar',     icon:'ti-arrow-up-circle' },
-  { id:'caixa',   label:'Caixa',       icon:'ti-cash-banknote' },
 ]
 
 // Presets de período
@@ -206,7 +206,7 @@ function labelPeriodo(periodo) {
 // ============================================================================
 export default function Financeiro({ T, dark }) {
   const notify = useToast()
-  const [aba, setAba] = useState('receber')
+  const [aba, setAba] = useState('caixa')
   const [receber, setReceber] = useState([])
   const [pagar, setPagar]     = useState([])
   const [caixa, setCaixa]     = useState([])
