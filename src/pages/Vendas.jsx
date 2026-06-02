@@ -247,7 +247,8 @@ export default function Vendas({ T, dark, user }) {
       if (ordemCol === 'numero' || ordemCol === 'valor') {
         va = Number(va) || 0; vb = Number(vb) || 0
       } else if (ordemCol === 'abertura') {
-        va = a.abertura || ''; vb = b.abertura || ''
+        // ordena pela data de competencia, que e o que o filtro/visualizacao usa
+        va = dataCompetenciaIso(a) || ''; vb = dataCompetenciaIso(b) || ''
       } else {
         va = (va || '').toString().toLowerCase()
         vb = (vb || '').toString().toLowerCase()
@@ -541,7 +542,7 @@ function LinhaOS({ os, T, dark, onClick }) {
         #{os.numero}
       </td>
       <td style={{ ...tdStyle(T), color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-        {fmtDataBR(os.abertura)}
+        {fmtDataBR(dataCompetenciaIso(os))}
       </td>
       <td style={{ ...tdStyle(T), color: corHero(dark), fontWeight: 600,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>
