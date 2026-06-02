@@ -1,20 +1,10 @@
 // supabase/functions/extrair-etiqueta/index.ts
-//
-// Edge function (Deno) que lê a foto da etiqueta de uma máquina de lavar
-// usando Google Gemini Flash (vision, gratuito) e devolve { marca, modelo, serie }.
-//
-// Chamada pelo front via:
-//   supabase.functions.invoke('extrair-etiqueta', { body: { imageUrl } })
-//
-// Secret necessário: GEMINI_API_KEY (Google AI Studio — gratuito)
-//
-// Deploy:
-//   supabase functions deploy extrair-etiqueta
+// Lê foto de etiqueta via Claude Haiku 4.5 (vision) e devolve { marca, modelo, serie }.
+// Secret necessário: ANTHROPIC_API_KEY (mesma do relatorio-ia)
+// Deploy: supabase functions deploy extrair-etiqueta --no-verify-jwt
 
 // @ts-ignore — Deno runtime
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'
-
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -24,19 +14,19 @@ const CORS_HEADERS = {
 
 const PROMPT = `Você é um OCR especializado em etiquetas de máquinas de lavar roupa.
 
-Sua tarefa: olhar a foto e extrair APENAS três campos:
-- marca:   fabricante (Brastemp, Consul, Electrolux, LG, Samsung, Mueller, Continental, etc.)
-- modelo:  código do modelo (ex: BWK11AB, LSE12, CWE10AB, BWL11A)
-- serie:   número de série (ex: BR-2024-00887, FA-21345-77)
+Olhe a foto e extraia APENAS três campos:
+- marca:  fabricante (Brastemp, Consul, Electrolux, LG, Samsung, Mueller, Continental, etc.)
+- modelo: código do modelo (ex: BWK11AB, LSE12, CWE10AB, BWL11A)
+- serie:  número de série (ex: BR-2024-00887, FA-21345-77)
 
-Regras CRÍTICAS:
+Regras:
 1. Responda SEMPRE em JSON válido puro — sem markdown, sem texto antes/depois.
 2. Cada campo é uma string OU null se não conseguir ler com confiança.
 3. NÃO chute. Se não tem certeza, retorne null naquele campo.
 4. NÃO inclua "Modelo:" ou "Marca:" no valor — só o valor cru.
 5. Modelo e série geralmente são alfanuméricos maiúsculos.
 
-Formato exato da resposta:
+Formato exato:
 {"marca": "...", "modelo": "...", "serie": "..."}
 
 Se a foto não é uma etiqueta ou está ilegível:
@@ -46,15 +36,14 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS_HEADERS })
   }
-
   if (req.method !== 'POST') {
     return json({ error: 'method not allowed' }, 405)
   }
 
   // @ts-ignore — Deno global
-  const apiKey = Deno.env.get('GEMINI_API_KEY')
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) {
-    return json({ error: 'GEMINI_API_KEY não configurada nos secrets' }, 500)
+    return json({ error: 'ANTHROPIC_API_KEY não configurada nos secrets' }, 500)
   }
 
   let body: { imageUrl?: string; imageBase64?: string; mediaType?: string }
@@ -68,15 +57,11 @@ serve(async (req: Request) => {
   let mediaType = body.mediaType || 'image/jpeg'
 
   if (body.imageBase64) {
-    // Caminho preferido: base64 vem direto do front (sem fetch)
     imageBase64 = body.imageBase64
   } else if (body.imageUrl) {
-    // Fallback: baixa da URL
     try {
       const imgRes = await fetch(body.imageUrl)
-      if (!imgRes.ok) {
-        return json({ error: `falha ao baixar imagem (${imgRes.status})` }, 400)
-      }
+      if (!imgRes.ok) return json({ error: `falha ao baixar imagem (${imgRes.status})` }, 400)
       const ctype = imgRes.headers.get('content-type') || ''
       if (ctype.startsWith('image/')) mediaType = ctype.split(';')[0].trim()
       const buf = new Uint8Array(await imgRes.arrayBuffer())
@@ -89,43 +74,43 @@ serve(async (req: Request) => {
   }
 
   try {
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
       body: JSON.stringify({
-        contents: [
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        messages: [
           {
-            parts: [
+            role: 'user',
+            content: [
               {
-                inline_data: {
-                  mime_type: mediaType,
-                  data: imageBase64,
-                },
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: imageBase64 },
               },
-              { text: PROMPT },
+              { type: 'text', text: PROMPT },
             ],
           },
         ],
-        generationConfig: {
-          temperature: 0,
-          maxOutputTokens: 300,
-        },
       }),
     })
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text()
-      return json({ error: `Gemini API erro ${geminiRes.status}`, detail: errText }, 502)
+    if (!res.ok) {
+      const errText = await res.text()
+      return json({ error: `Anthropic API erro ${res.status}`, detail: errText }, 502)
     }
 
-    const payload = await geminiRes.json()
-    const rawText = payload?.candidates?.[0]?.content?.parts
-      ?.filter((p: { text?: string }) => p.text)
-      ?.map((p: { text: string }) => p.text)
-      ?.join('\n')
-      ?.trim() || ''
+    const payload = await res.json()
+    const rawText = (payload?.content || [])
+      .filter((b: { type: string }) => b.type === 'text')
+      .map((b: { text: string }) => b.text)
+      .join('')
+      .trim()
 
-    // Strip defensivo de ```json ... ```
     const jsonStr = rawText
       .replace(/^```(?:json)?\s*/i, '')
       .replace(/\s*```\s*$/i, '')
@@ -143,10 +128,10 @@ serve(async (req: Request) => {
       marca:  sanitize(parsed?.marca),
       modelo: sanitize(parsed?.modelo),
       serie:  sanitize(parsed?.serie),
-      modelo_ia: 'gemini-2.5-flash',
+      modelo_ia: 'claude-haiku-4-5',
     })
   } catch (e) {
-    return json({ error: 'falha ao chamar Gemini API', detail: String(e) }, 500)
+    return json({ error: 'falha ao chamar Anthropic API', detail: String(e) }, 500)
   }
 })
 
@@ -163,7 +148,7 @@ function uint8ToBase64(bytes: Uint8Array): string {
   for (let i = 0; i < bytes.length; i += chunk) {
     bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)))
   }
-  // @ts-ignore — btoa existe no runtime Deno
+  // @ts-ignore — btoa existe no Deno runtime
   return btoa(bin)
 }
 
