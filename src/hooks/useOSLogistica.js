@@ -85,6 +85,10 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
           cliente:cliente_id(id, nome, telefone, endereco)
         `)
         .is('deleted_at', null)
+        // Espelha o Kanban: OS marcada como "Retirar do Kanban" tambem
+        // some da Logistica (visao operacional). Vendas/Relatorios continuam
+        // mostrando porque sao financeiro/historico.
+        .or('oculta_no_kanban.is.null,oculta_no_kanban.eq.false')
         .in('etapa', etapas)
         .order('data_agendamento', { ascending: true, nullsFirst: false })
         .order('criado_em', { ascending: false })
