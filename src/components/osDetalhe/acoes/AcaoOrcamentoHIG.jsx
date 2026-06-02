@@ -1609,6 +1609,7 @@ function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
   function resolver(novo) {
     setStatus(novo); setFase('normal'); persistir(novo)
     if (novo === 'confirmado') onMoverOS?.(os.numero, 'oficina')
+    else if (novo === 'recusado') onMoverOS?.(os.numero, 'recusado')
   }
 
   function reverter() {
@@ -2014,6 +2015,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
   function resolver(novo) {
     setStatus(novo); setFase('normal'); persistir(novo)
     if (novo === 'confirmado') onMoverOS?.(os.numero, 'oficina')
+    else if (novo === 'recusado') onMoverOS?.(os.numero, 'recusado')
   }
 
   function reverter() {
