@@ -14,6 +14,8 @@ import { corEtapa, corHero } from '../../utils/colors'
 import { TIPOS_OS } from '../../utils/osData'
 import { fmtBRL } from '../../utils/fmt'
 import { Modal, Input, Textarea, Button } from '../ui'
+import { useToast } from '../ui'
+import { criarOSDerivada } from '../../utils/osDerivada'
 
 function iniciais(nome) {
   return (nome || '')
@@ -243,6 +245,15 @@ export default function ClienteDetalheModal({
 // 13 digitos). Permite match de OSes importadas do Trello/Bling onde
 // `cliente_id` pode estar NULL mas o `fone` na OS bate com o `telefone`
 // do cliente quando ambos normalizados.
+// Checa se OS está dentro dos 90 dias de garantia a partir da conclusão
+function estaEmGarantia(os) {
+  const dias = os.garantia_dias || 90
+  const ref = os.data_conclusao || os.abertura
+  if (!ref) return false
+  const limite = new Date(ref).getTime() + dias * 86400000
+  return Date.now() <= limite
+}
+
 function normFone(s) {
   if (!s) return ''
   let d = String(s).replace(/\D/g, '')
@@ -251,7 +262,25 @@ function normFone(s) {
 }
 
 function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
+  const notify = useToast()
+  const [criandoGarantia, setCriandoGarantia] = useState(null) // id da OS em criação
   const azul = corEtapa('blue', dark)
+  const verde = corEtapa('green', dark)
+
+  async function abrirGarantia(e, os) {
+    e.stopPropagation()
+    setCriandoGarantia(os.id)
+    const { numero, error } = await criarOSDerivada(os.id, {
+      tipo: 'atendimento',
+      etapa: 'aguardando_agendamento',
+      garantia: true,
+      valor_total: 0,
+      garantia_dias: os.garantia_dias || 90,
+    })
+    setCriandoGarantia(null)
+    if (error) { notify('erro', 'Erro ao abrir OS de garantia'); return }
+    notify('ok', `OS de garantia #${numero} aberta`)
+  }
 
   const osCliente = useMemo(() => {
     const foneClienteN = normFone(clienteFone)
@@ -369,6 +398,28 @@ function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
                     fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
                     fontVariantNumeric: 'tabular-nums',
                   }}>{fmtBRL(os.valor)}</span>
+                  {os.etapa === 'concluido' && !os.garantia && os.tipo === 'atendimento' && estaEmGarantia(os) && (
+                    <button
+                      type="button"
+                      disabled={criandoGarantia === os.id}
+                      onClick={e => abrirGarantia(e, os)}
+                      title="Abrir OS de garantia"
+                      style={{
+                        height: 26, padding: '0 9px', borderRadius: 6,
+                        border: `1px solid ${verde}55`,
+                        background: dark ? 'rgba(0,200,100,0.10)' : '#edfaf3',
+                        color: verde, cursor: 'pointer',
+                        fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        WebkitTapHighlightColor: 'transparent',
+                        opacity: criandoGarantia === os.id ? 0.6 : 1,
+                      }}
+                    >
+                      <i className={`ti ${criandoGarantia === os.id ? 'ti-loader-2' : 'ti-shield-check'}`}
+                         style={{ fontSize: 12 }} aria-hidden="true" />
+                      Garantia
+                    </button>
+                  )}
                   {clickable && (
                     <i className="ti ti-chevron-right"
                        style={{ fontSize: 14, color: T.textDim }} aria-hidden="true" />
