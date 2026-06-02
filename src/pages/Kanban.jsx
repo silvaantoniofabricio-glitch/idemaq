@@ -49,7 +49,7 @@ export default function Kanban({ T, dark, user }) {
   // Sincroniza buscaAtiva para que useOS saiba se deve mostrar concluídas >24h
   useEffect(() => { setBuscaAtiva(busca.trim().length > 0) }, [busca])
   const [statusF, setStatusF]         = useState('todos')
-  const [verRecusados, setVerRecusados] = useState(false)
+  const [verRecusados, setVerRecusados] = useState(true)
   const [verAgPeca, setVerAgPeca]       = useState(false)
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
@@ -233,7 +233,6 @@ export default function Kanban({ T, dark, user }) {
   const porEtapa = {}
   etapasVisiveis.forEach(e => porEtapa[e.id] = [])
   osFiltradas.forEach(os => {
-    if (os.etapa === 'recusado') return
     const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
     if (ec) porEtapa[ec.id].push(os)
   })
