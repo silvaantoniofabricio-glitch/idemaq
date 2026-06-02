@@ -115,8 +115,10 @@ function dataCompetenciaIso(os) {
   // "Saida de entrega" = entrada cuja anterior tinha etapa === 'entrega'.
   // Atencao: dbEtapaToUI mapeia 'entrega' DB -> 'entregue' UI quando tipo=venda.
   // Cobre as duas variantes.
+  // OS pode entrar/sair de "entrega" varias vezes (revisoes, falhas, retornos
+  // ao teste). A entrega REAL e a ULTIMA saida — itera de tras pra frente.
   const isEntrega = (et) => et === 'entrega' || et === 'entregue'
-  for (let i = 1; i < hist.length; i++) {
+  for (let i = hist.length - 1; i >= 1; i--) {
     if (isEntrega(hist[i - 1]?.etapa) && !isEntrega(hist[i]?.etapa)) {
       const d = hist[i].data
       if (d) return String(d).slice(0, 10)
