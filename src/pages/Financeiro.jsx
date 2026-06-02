@@ -279,8 +279,38 @@ export default function Financeiro({ T, dark }) {
   // ─── Ações comuns ────────────────────────────────────────────────────────
   // Quando `usandoBanco`: chamam hook real (darBaixa/excluirReal) e o refetch
   // sincroniza a UI. Quando em modo demo: comportamento in-memory de sempre.
-  async function baixarReceber(item) {
+  async function baixarReceber(item, opts = {}) {
     if (usandoBanco) {
+      const valorTotal = Number(item.valor) || 0
+      const valorRecebido = opts.valorRecebido != null
+        ? Math.min(Number(opts.valorRecebido) || 0, valorTotal)
+        : valorTotal
+      const ehParcial = valorRecebido > 0 && valorRecebido < valorTotal
+
+      if (ehParcial) {
+        // Parcial: reduz o original e cria um lancamento novo ja pago com o
+        // valor recebido. O original continua em "A receber" pelo restante.
+        const restante = valorTotal - valorRecebido
+        const { error: errUpd } = await atualizarLanc(item.id, { valor: restante })
+        if (errUpd) { notify('erro', `Falha ao reduzir o lancamento: ${errUpd.message}`); return }
+        const { error: errCria } = await criarLanc({
+          tipo: 'receita',
+          valor: valorRecebido,
+          conta_id: item.conta_id || null,
+          categoria: item.categoria || null,
+          descricao: `${item.descricao || ''} (parcial)`.trim(),
+          vencimento: item.vencimentoIso || item.vencimento || new Date().toISOString().slice(0,10),
+          pago_em: new Date().toISOString().slice(0,10),
+          forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+          taxa_pct: item.taxa_pct || 0,
+          os_id: item.os_id || null,
+        })
+        if (errCria) { notify('erro', `Parcial salvo, mas baixa falhou: ${errCria.message}`); return }
+        notify('ok', `Parcial de ${fmtBRL(valorRecebido, { fr: true })} recebido — sobra ${fmtBRL(restante, { fr: true })}`)
+        setSelecionado(null)
+        return
+      }
+
       const { error } = await darBaixa(item.id, {
         forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
         taxa_pct: item.taxa_pct || 0,
@@ -303,8 +333,36 @@ export default function Financeiro({ T, dark }) {
     setSelecionado(null)
   }
 
-  async function baixarPagar(item) {
+  async function baixarPagar(item, opts = {}) {
     if (usandoBanco) {
+      const valorTotal = Number(item.valor) || 0
+      const valorPago = opts.valorRecebido != null
+        ? Math.min(Number(opts.valorRecebido) || 0, valorTotal)
+        : valorTotal
+      const ehParcial = valorPago > 0 && valorPago < valorTotal
+
+      if (ehParcial) {
+        const restante = valorTotal - valorPago
+        const { error: errUpd } = await atualizarLanc(item.id, { valor: restante })
+        if (errUpd) { notify('erro', `Falha ao reduzir: ${errUpd.message}`); return }
+        const { error: errCria } = await criarLanc({
+          tipo: 'despesa',
+          valor: valorPago,
+          conta_id: item.conta_id || null,
+          categoria: item.categoria || null,
+          descricao: `${item.descricao || ''} (parcial)`.trim(),
+          vencimento: item.vencimentoIso || item.vencimento || new Date().toISOString().slice(0,10),
+          pago_em: new Date().toISOString().slice(0,10),
+          forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+          taxa_pct: item.taxa_pct || 0,
+          os_id: item.os_id || null,
+        })
+        if (errCria) { notify('erro', `Parcial salvo, mas baixa falhou: ${errCria.message}`); return }
+        notify('ok', `Parcial de ${fmtBRL(valorPago, { fr: true })} pago — sobra ${fmtBRL(restante, { fr: true })}`)
+        setSelecionado(null)
+        return
+      }
+
       const { error } = await darBaixa(item.id, {
         forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
         taxa_pct: item.taxa_pct || 0,

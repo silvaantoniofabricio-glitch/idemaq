@@ -89,7 +89,7 @@ export default function LancamentoDetalheModal({
   tipo,                  // 'receber' | 'pagar' | 'caixa'
   contas = [],           // [{ id, nome, tipo }] — pro select de conta no modo edição
   onClose,
-  onBaixar,              // (lancamento) → registra baixa (receber/pagar)
+  onBaixar,              // (lancamento, opts?) → registra baixa. opts.valorRecebido permite parcial
   onSalvarEdicao,        // async (id, patch) → { error? } — edição inline
   onExcluir,             // (lancamento) → remove
   mobile = false,
@@ -398,8 +398,8 @@ export default function LancamentoDetalheModal({
           corDestaque={pendente === 'excluir' ? vermelho : cfg.cor}
           bgDestaque={pendente === 'excluir' ? bgEtapa('red', dark) : bgEtapa('yellow', dark)}
           onVoltar={() => setPendente(null)}
-          onConfirmar={() => {
-            if (pendente === 'baixar') onBaixar?.(lancamento)
+          onConfirmar={(opts) => {
+            if (pendente === 'baixar') onBaixar?.(lancamento, opts)
             else if (pendente === 'excluir') onExcluir?.(lancamento)
           }}
         />
@@ -450,16 +450,32 @@ function ConfirmacaoFooter({
   corDestaque, bgDestaque, onVoltar, onConfirmar,
 }) {
   const ehExcluir = pendente === 'excluir'
+  // Permite ajustar o valor recebido/pago (pagamentos parciais).
+  // Default = valor total. Se < total: cria entrada paga parcial e mantem o
+  // restante em aberto. Se >= total: baixa integral (comportamento de sempre).
+  const [valorRecebidoStr, setValorRecebidoStr] = useState(
+    Number(valor || 0).toFixed(2).replace('.', ',')
+  )
+  const valorRecebido = Number(String(valorRecebidoStr).replace(',', '.')) || 0
+  const ehParcial = !ehExcluir && valorRecebido > 0 && valorRecebido < Number(valor || 0)
+  const restante = Math.max(0, Number(valor || 0) - valorRecebido)
+
   const titulo = ehExcluir
     ? 'Excluir este lançamento?'
     : tipo === 'receber'
-      ? `Confirmar recebimento de ${fmtBRL(valor)}?`
-      : `Confirmar pagamento de ${fmtBRL(valor)}?`
+      ? (ehParcial
+          ? `Recebimento parcial de ${fmtBRL(valorRecebido, { fr: true })}?`
+          : `Confirmar recebimento de ${fmtBRL(valor)}?`)
+      : (ehParcial
+          ? `Pagamento parcial de ${fmtBRL(valorRecebido, { fr: true })}?`
+          : `Confirmar pagamento de ${fmtBRL(valor)}?`)
   const subtitulo = ehExcluir
     ? 'O lançamento será removido. Esta ação não pode ser desfeita.'
-    : tipo === 'receber'
-      ? 'Vai sair da lista de "A receber" e entrar no Caixa como receita confirmada.'
-      : 'Vai sair da lista de "A pagar" e entrar no Caixa como despesa confirmada.'
+    : ehParcial
+      ? `Sobra ${fmtBRL(restante, { fr: true })} em aberto pra cobrar depois.`
+      : tipo === 'receber'
+        ? 'Vai sair da lista de "A receber" e entrar no Caixa como receita confirmada.'
+        : 'Vai sair da lista de "A pagar" e entrar no Caixa como despesa confirmada.'
 
   return (
     <div style={{
@@ -482,6 +498,34 @@ function ConfirmacaoFooter({
           </div>
         </div>
       </div>
+
+      {/* Input de valor — so na baixa (receber/pagar), nao na exclusao */}
+      {!ehExcluir && (
+        <div style={{
+          padding: '4px 20px 4px 48px',
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        }}>
+          <label style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>
+            {tipo === 'receber' ? 'Valor recebido' : 'Valor pago'}
+          </label>
+          <input
+            type="text" inputMode="decimal"
+            value={valorRecebidoStr}
+            onChange={e => setValorRecebidoStr(e.target.value)}
+            style={{
+              width: 110,
+              background: T.card, border: `1px solid ${T.border}`,
+              borderRadius: 6, padding: '5px 8px',
+              color: T.textPrimary, fontSize: 13, fontWeight: 600,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          />
+          <span style={{ fontSize: 11, color: T.textDim }}>
+            de {fmtBRL(valor, { fr: true })}
+          </span>
+        </div>
+      )}
+
       <div style={{
         padding: '10px 20px 12px',
         display: 'flex', justifyContent: 'flex-end', gap: 8,
@@ -495,8 +539,13 @@ function ConfirmacaoFooter({
           variant={ehExcluir ? 'danger' : 'primary'}
           size="sm"
           iconLeft={ehExcluir ? 'ti-trash' : (acaoIcon || 'ti-check')}
-          onClick={onConfirmar}>
-          {ehExcluir ? 'Sim, excluir' : `Sim, ${acaoLabel?.toLowerCase() || 'confirmar'}`}
+          disabled={!ehExcluir && valorRecebido <= 0}
+          onClick={() => onConfirmar(ehExcluir ? undefined : { valorRecebido })}>
+          {ehExcluir
+            ? 'Sim, excluir'
+            : ehParcial
+              ? `Sim, baixar ${fmtBRL(valorRecebido, { fr: true })}`
+              : `Sim, ${acaoLabel?.toLowerCase() || 'confirmar'}`}
         </Button>
       </div>
     </div>
