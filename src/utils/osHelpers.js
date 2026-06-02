@@ -135,12 +135,21 @@ export function ordenarColuna(etapaId, lista) {
   }
 }
 
-// OS concluída no MÊS DO CALENDÁRIO atual (não 30 dias corridos)
+// OS concluída no MÊS DO CALENDÁRIO atual (não 30 dias corridos).
+// Prefere os.data_conclusao (sempre atualizado quando a OS é concluida).
+// Fallback: ULTIMA transicao pra concluido no historico (OS pode ter sido
+// concluida/revertida varias vezes — a 1a entrada pode ser de mes antigo).
 export function dentroMesCorrente(os) {
   if (os.etapa !== 'concluido') return true
-  const reg = (os.historico || []).find(h => h.etapa === 'concluido')
-  if (!reg) return true
-  const d = new Date(reg.data)
+  let dataRef = os.data_conclusao
+  if (!dataRef) {
+    const hist = os.historico || []
+    for (let i = hist.length - 1; i >= 0; i--) {
+      if (hist[i].etapa === 'concluido') { dataRef = hist[i].data; break }
+    }
+  }
+  if (!dataRef) return true
+  const d = new Date(dataRef)
   const hoje = new Date()
   return d.getFullYear() === hoje.getFullYear() && d.getMonth() === hoje.getMonth()
 }
