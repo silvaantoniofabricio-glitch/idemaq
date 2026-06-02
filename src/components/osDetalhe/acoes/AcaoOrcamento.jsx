@@ -894,6 +894,8 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
     persistirStatus(novo)
     if (novo === 'confirmado') {
       onMoverOS?.(os.numero, 'oficina')
+    } else if (novo === 'recusado') {
+      onMoverOS?.(os.numero, 'recusado')
     }
   }
 
