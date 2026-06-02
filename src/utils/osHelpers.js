@@ -56,8 +56,8 @@ export function podeMoverOS(os, etapaAlvo, opts = {}) {
     }
     return { ok: true }
   }
-  if (os.etapa === 'recusado' && etapaAlvo !== 'diagnostico') {
-    return { ok: false, motivo: 'De Recusado só é possível voltar para Diagnóstico ou converter em Fabricação' }
+  if (os.etapa === 'recusado' && etapaAlvo !== 'diagnostico' && etapaAlvo !== 'entrega') {
+    return { ok: false, motivo: 'De Recusado só é possível ir para Entrega (devolver) ou Diagnóstico' }
   }
 
   // recusado é etapa lateral — pode vir de qualquer etapa

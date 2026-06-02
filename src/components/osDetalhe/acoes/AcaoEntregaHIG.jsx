@@ -335,8 +335,8 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
         entrega: { ...entregaSalva, realizada_em: new Date().toISOString() },
       },
     })
-    const destino = jaPaga ? 'concluido' : 'pagamento'
-    const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === destino)
+    const destino = os.recusada ? 'recusado' : (jaPaga ? 'concluido' : 'pagamento')
+    const proxima = ETAPAS_TODOS.find(e => e.id === destino || e.match?.[os.tipo] === destino)
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
 
