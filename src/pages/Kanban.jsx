@@ -122,8 +122,8 @@ export default function Kanban({ T, dark, user }) {
       // Marca data_conclusao ao concluir; limpa ao sair de concluido (raro,
       // mas garante o filtro "some 24h após" se a OS for reaberta).
       const patch = { etapa: dbEtapa }
-      if (etapaFinal === 'concluido') patch.data_conclusao = new Date().toISOString()
-      else if (os.etapa === 'concluido') patch.data_conclusao = null
+      if (etapaFinal === 'concluido' || etapaFinal === 'recusado') patch.data_conclusao = new Date().toISOString()
+      else if (os.etapa === 'concluido' || os.etapa === 'recusado') patch.data_conclusao = null
       const { error: errUp } = await supabase.from('os').update(patch).eq('id', os.id)
       if (errUp) throw errUp
     } catch {
