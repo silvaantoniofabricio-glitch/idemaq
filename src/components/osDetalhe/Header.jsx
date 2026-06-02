@@ -335,6 +335,23 @@ export default function Header({
                     {duplicando ? 'Duplicando…' : 'Duplicar OS'}
                   </MenuItem>
                 )}
+                {onUpdateOS && (
+                  <MenuItem T={T}
+                    icon={os.oculta_no_kanban ? 'ti-eye' : 'ti-eye-off'}
+                    onClick={async () => {
+                      try {
+                        await onUpdateOS(os.numero, { oculta_no_kanban: !os.oculta_no_kanban })
+                        notify('ok', os.oculta_no_kanban
+                          ? `OS #${os.numero} voltou pro Kanban`
+                          : `OS #${os.numero} retirada do Kanban (continua em Vendas)`)
+                        setMenuAberto(false)
+                      } catch (e) {
+                        notify('erro', `Erro: ${e?.message || 'desconhecido'}`)
+                      }
+                    }}>
+                    {os.oculta_no_kanban ? 'Voltar pro Kanban' : 'Retirar do Kanban'}
+                  </MenuItem>
+                )}
                 {admin && (
                   <>
                     <div style={{ height: 1, background: T.border, margin: '4px 0' }} />

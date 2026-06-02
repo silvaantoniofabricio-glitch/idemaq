@@ -37,6 +37,8 @@ const COLUNAS_SAFE = new Set([
   'pre_diagnostico',
   // observacoes livres da OS (header + detalhe)
   'observacoes',
+  // Flag pra esconder do Kanban sem sumir de Vendas/Relatorios (sql/76).
+  'oculta_no_kanban',
 ])
 
 /**

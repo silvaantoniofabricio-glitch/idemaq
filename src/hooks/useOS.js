@@ -64,7 +64,7 @@ export function useOS(buscando = false) {
           cliente_id,
           marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado,
           tipo_equipamento,
-          pre_diagnostico, observacoes,
+          pre_diagnostico, observacoes, oculta_no_kanban,
           cliente:cliente_id(id, nome, telefone, endereco, deleted_at),
           os_item(count),
           os_historico(id, etapa_de, etapa_para, funcionario_id, data)
@@ -125,6 +125,7 @@ export function useOS(buscando = false) {
           // Flags
           recusada: os.recusada || false,
           aguardando_peca: os.aguardando_peca || false,
+          oculta_no_kanban: os.oculta_no_kanban || false,
           // Pré-diagnóstico: jsonb com testes + observacoes + foto (marker
           // 'storage' OU base64 legacy). Resolve via resolverFotoUrl().
           pre_diagnostico: os.pre_diagnostico || null,

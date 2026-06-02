@@ -206,6 +206,9 @@ export default function Kanban({ T, dark, user }) {
   const tipoBg  = bgEtapa(corPaleta, dark)
 
   const osFiltradas = todasUniverso
+    // OS marcada manualmente como "retirar do kanban" some daqui mas
+    // continua aparecendo em Vendas/Relatorios. Escapa pela busca.
+    .filter(o => buscando ? true : !o.oculta_no_kanban)
     .filter(o => verRecusados ? true : o.etapa !== 'recusado')
     .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
     .filter(o => {
