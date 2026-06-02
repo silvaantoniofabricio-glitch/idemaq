@@ -60,6 +60,9 @@ export function podeMoverOS(os, etapaAlvo, opts = {}) {
     return { ok: false, motivo: 'De Recusado só é possível voltar para Diagnóstico ou converter em Fabricação' }
   }
 
+  // recusado é etapa lateral — pode vir de qualquer etapa
+  if (etapaAlvo === 'recusado') return { ok: true }
+
   const config = TIPOS_OS[os.tipo]
   const idxAtual = config.etapas.findIndex(e => e.id === os.etapa)
   const idxAlvo  = config.etapas.findIndex(e => e.id === etapaAlvo)
