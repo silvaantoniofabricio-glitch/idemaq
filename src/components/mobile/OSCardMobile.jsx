@@ -96,13 +96,13 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.005em',
           }}>#{os.numero}</span>
-          {os.criado_em && (
+          {os.abertura && (
             <span style={{
               marginLeft: 'auto', flexShrink: 0,
               fontSize: 10, color: T.textDim,
               fontVariantNumeric: 'tabular-nums',
             }}>
-              {Math.floor((Date.now() - new Date(os.criado_em).getTime()) / 86400000)}d
+              {Math.floor((Date.now() - new Date(os.abertura).getTime()) / 86400000)}d
             </span>
           )}
         </div>
