@@ -31,17 +31,22 @@ function NotasDoDia({ T, dark, onClose }) {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
   const chave = `kanban_notas_${hoje}`
-  const [texto, setTexto] = useState('')
-  const [status, setStatus] = useState('idle')
-  const [pronto, setPronto] = useState(false)
-  const [menuCtx, setMenuCtx] = useState(null) // {x, y, cursorPos}
-  const timerRef = useRef(null)
-  const textareaRef = useRef(null)
 
-  function agendarSave(val) {
+  const [linhas, setLinhas] = useState([''])
+  const [status, setStatus]   = useState('idle')
+  const [pronto, setPronto]   = useState(false)
+  const [menuCtx, setMenuCtx] = useState(null)   // {x, y, idx}
+  const [dragIdx, setDragIdx] = useState(null)
+  const [dragOver, setDragOver] = useState(null)
+
+  const timerRef  = useRef(null)
+  const inputRefs = useRef({})
+
+  function agendarSave(novas) {
     setStatus('saving')
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(async () => {
+      const val = novas.join('\n')
       const { error } = await supabase
         .from('configuracoes')
         .upsert({ chave, valor: val, descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
@@ -58,43 +63,75 @@ function NotasDoDia({ T, dark, onClose }) {
         .from('configuracoes').select('valor')
         .eq('chave', chave).is('deleted_at', null).maybeSingle()
       if (!cancelado) {
-        if (data?.valor != null) setTexto(typeof data.valor === 'string' ? data.valor : '')
+        const val = data?.valor
+        setLinhas(val && typeof val === 'string' && val.length > 0 ? val.split('\n') : [''])
         setPronto(true)
       }
     })()
     return () => { cancelado = true }
   }, [chave])
 
-  function handleChange(e) {
-    const val = e.target.value
-    setTexto(val)
-    if (!pronto) return
-    agendarSave(val)
+  function atualizar(novas) {
+    setLinhas(novas)
+    if (pronto) agendarSave(novas)
   }
 
-  function handleContextMenu(e) {
-    e.preventDefault()
-    setMenuCtx({ x: e.clientX, y: e.clientY, cursorPos: e.target.selectionStart })
+  function editarLinha(idx, val) {
+    const novas = [...linhas]; novas[idx] = val; atualizar(novas)
   }
 
-  function inserirTarefa() {
-    const ta = textareaRef.current
-    const pos = menuCtx?.cursorPos ?? texto.length
-    const before = texto.slice(0, pos)
-    const after = texto.slice(pos)
-    const sep = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
-    const novo = before + sep + '☐ ' + after
-    setTexto(novo)
-    agendarSave(novo)
+  function handleKeyDown(idx, e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const prefixo = linhas[idx].startsWith('☐ ') ? '☐ ' : ''
+      const novas = [...linhas]
+      novas.splice(idx + 1, 0, prefixo)
+      atualizar(novas)
+      setTimeout(() => {
+        const el = inputRefs.current[idx + 1]
+        if (el) { el.focus(); el.setSelectionRange(prefixo.length, prefixo.length) }
+      }, 20)
+    } else if (e.key === 'Backspace' && linhas[idx] === '' && linhas.length > 1) {
+      e.preventDefault()
+      const novas = linhas.filter((_, i) => i !== idx)
+      atualizar(novas)
+      setTimeout(() => inputRefs.current[Math.max(0, idx - 1)]?.focus(), 20)
+    }
+  }
+
+  function inserirTarefaEm(idx) {
+    const novas = [...linhas]
+    novas.splice(idx + 1, 0, '☐ ')
+    atualizar(novas)
     setMenuCtx(null)
     setTimeout(() => {
-      if (ta) {
-        ta.focus()
-        const novoCursor = before.length + sep.length + 2 // depois de "☐ "
-        ta.setSelectionRange(novoCursor, novoCursor)
-      }
-    }, 30)
+      const el = inputRefs.current[idx + 1]
+      if (el) { el.focus(); el.setSelectionRange(2, 2) }
+    }, 20)
   }
+
+  // ─── Drag-and-drop ──────────────────────────────────────────────────────
+  function onDragStart(e, idx) {
+    setDragIdx(idx)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  function onDragOver(e, idx) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOver !== idx) setDragOver(idx)
+  }
+  function onDrop(e, idx) {
+    e.preventDefault()
+    if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setDragOver(null); return }
+    const novas = [...linhas]
+    const [item] = novas.splice(dragIdx, 1)
+    novas.splice(dragIdx < idx ? idx - 1 : idx, 0, item)
+    atualizar(novas)
+    setDragIdx(null); setDragOver(null)
+  }
+  function onDragEnd() { setDragIdx(null); setDragOver(null) }
+
+  const ehTarefa = (l) => l.startsWith('☐ ') || l.startsWith('✓ ')
 
   return (
     <div style={{
@@ -102,19 +139,17 @@ function NotasDoDia({ T, dark, onClose }) {
       width: 320, borderRadius: 12,
       background: T.card, border: `1px solid ${T.border}`,
       boxShadow: dark ? '0 8px 32px rgba(0,0,0,.6)' : '0 8px 32px rgba(0,0,0,.18)',
-      display: 'flex', flexDirection: 'column',
-      overflow: 'hidden',
+      display: 'flex', flexDirection: 'column', maxHeight: 480,
     }}>
       {/* Header */}
       <div style={{
-        padding: '10px 12px', borderBottom: `1px solid ${T.border}`,
+        padding: '10px 12px', borderBottom: `1px solid ${T.border}`, flexShrink: 0,
         display: 'flex', alignItems: 'center', gap: 8,
         background: dark ? 'rgba(91,155,213,.10)' : 'rgba(91,155,213,.08)',
+        borderRadius: '12px 12px 0 0',
       }}>
         <i className="ti ti-notes" style={{ fontSize: 15, color: '#5B9BD5' }} aria-hidden="true" />
-        <span style={{ fontWeight: 700, fontSize: 13, color: T.textPrimary, flex: 1 }}>
-          Notas do Dia
-        </span>
+        <span style={{ fontWeight: 700, fontSize: 13, color: T.textPrimary, flex: 1 }}>Notas do Dia</span>
         {status === 'saving' && <span style={{ fontSize: 10.5, color: T.textDim }}>salvando…</span>}
         {status === 'saved' && (
           <span style={{ fontSize: 10.5, color: '#4CAF50', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -131,46 +166,94 @@ function NotasDoDia({ T, dark, onClose }) {
         </button>
       </div>
 
-      {/* Textarea */}
-      <textarea
-        ref={textareaRef}
-        value={texto}
-        onChange={handleChange}
-        onContextMenu={handleContextMenu}
-        placeholder="Tarefas do dia, lembretes, anotações…"
-        style={{
-          width: '100%', minHeight: 180, maxHeight: 360,
-          padding: '10px 12px',
-          background: 'transparent', border: 'none', outline: 'none',
-          resize: 'vertical', fontSize: 13, color: T.textPrimary,
-          fontFamily: 'inherit', lineHeight: 1.65,
-          boxSizing: 'border-box',
-        }}
-      />
+      {/* Lista de linhas */}
+      <div style={{ overflowY: 'auto', flex: 1, padding: '6px 0' }}>
+        {linhas.map((linha, idx) => (
+          <div
+            key={idx}
+            onDragOver={e => onDragOver(e, idx)}
+            onDrop={e => onDrop(e, idx)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '1px 8px 1px 4px',
+              borderTop: dragOver === idx && dragIdx !== null && dragIdx !== idx
+                ? '2px solid #5B9BD5' : '2px solid transparent',
+              opacity: dragIdx === idx ? 0.4 : 1,
+              transition: 'opacity .15s',
+            }}
+          >
+            {/* Alça de arrasto */}
+            <span
+              draggable
+              onDragStart={e => onDragStart(e, idx)}
+              onDragEnd={onDragEnd}
+              title="Arrastar para reordenar"
+              style={{
+                cursor: 'grab', color: T.textDim, flexShrink: 0,
+                display: 'flex', alignItems: 'center', padding: '4px 2px',
+                opacity: 0.4,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#5B9BD5' }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = T.textDim }}
+            >
+              <i className="ti ti-grip-vertical" style={{ fontSize: 13 }} aria-hidden="true" />
+            </span>
+
+            {/* Input da linha */}
+            <input
+              ref={el => { inputRefs.current[idx] = el }}
+              value={linha}
+              onChange={e => editarLinha(idx, e.target.value)}
+              onKeyDown={e => handleKeyDown(idx, e)}
+              onContextMenu={e => { e.preventDefault(); setMenuCtx({ x: e.clientX, y: e.clientY, idx }) }}
+              placeholder={idx === 0 ? 'Anotação ou ☐ tarefa…' : ''}
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                fontSize: 13, color: ehTarefa(linha) ? T.textPrimary : T.textSecondary,
+                fontFamily: 'inherit', lineHeight: 1.7,
+                padding: '2px 0',
+              }}
+            />
+          </div>
+        ))}
+
+        {/* Botão adicionar tarefa */}
+        <button
+          onClick={() => inserirTarefaEm(linhas.length - 1)}
+          style={{
+            width: '100%', padding: '6px 12px',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            textAlign: 'left', fontSize: 12, color: T.textDim,
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontFamily: 'inherit', marginTop: 2,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#5B9BD5' }}
+          onMouseLeave={e => { e.currentTarget.style.color = T.textDim }}
+        >
+          <i className="ti ti-plus" style={{ fontSize: 12 }} aria-hidden="true" />
+          Nova tarefa
+        </button>
+      </div>
 
       {/* Context menu */}
       {menuCtx && (
         <>
-          <div onClick={() => setMenuCtx(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
+          <div onClick={() => setMenuCtx(null)} style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
           <div style={{
             position: 'fixed', top: menuCtx.y, left: menuCtx.x, zIndex: 71,
-            minWidth: 170, padding: 4,
-            background: T.card, border: `1px solid ${T.border}`,
-            borderRadius: 9,
+            minWidth: 160, padding: 4,
+            background: T.card, border: `1px solid ${T.border}`, borderRadius: 9,
             boxShadow: dark ? '0 8px 24px rgba(0,0,0,.55)' : '0 8px 24px rgba(0,0,0,.14)',
           }}>
-            <button onClick={inserirTarefa} style={{
-              width: '100%', padding: '8px 11px',
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              textAlign: 'left', fontSize: 13, color: T.textPrimary,
-              display: 'flex', alignItems: 'center', gap: 9,
-              borderRadius: 6, fontFamily: 'inherit',
+            <button onClick={() => inserirTarefaEm(menuCtx.idx)} style={{
+              width: '100%', padding: '8px 11px', background: 'transparent', border: 'none',
+              cursor: 'pointer', textAlign: 'left', fontSize: 13, color: T.textPrimary,
+              display: 'flex', alignItems: 'center', gap: 9, borderRadius: 6, fontFamily: 'inherit',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.07)' : '#f0f4ff' }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
               <i className="ti ti-checkbox" style={{ fontSize: 14, color: '#5B9BD5' }} aria-hidden="true" />
-              Nova tarefa
+              Nova tarefa abaixo
             </button>
           </div>
         </>
