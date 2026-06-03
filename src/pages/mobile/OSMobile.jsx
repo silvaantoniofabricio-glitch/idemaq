@@ -35,6 +35,125 @@ import NovaOSMobile from '../../components/os/NovaOSMobile'
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const ATL_RADIUS = 4
 
+// ─── Bottom sheet Notas do Dia (mobile) ────────────────────────────────────
+function NotasDoDiaMobile({ T, dark, onClose }) {
+  const hoje = new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).split('/').reverse().join('-')
+  const chave = `kanban_notas_${hoje}`
+  const [texto, setTexto] = useState('')
+  const [status, setStatus] = useState('idle')
+  const timerRef = useRef(null)
+  const prontoRef = useRef(false)
+
+  useEffect(() => {
+    let cancelado = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', chave)
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (!cancelado) {
+        if (data?.valor != null) setTexto(typeof data.valor === 'string' ? data.valor : '')
+        prontoRef.current = true
+      }
+    })()
+    return () => { cancelado = true }
+  }, [chave])
+
+  function handleChange(e) {
+    const val = e.target.value
+    setTexto(val)
+    if (!prontoRef.current) return
+    setStatus('saving')
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      const { error } = await supabase
+        .from('configuracoes')
+        .upsert({ chave, valor: val, descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
+      if (error) { setStatus('error'); return }
+      setStatus('saved')
+      setTimeout(() => setStatus('idle'), 2000)
+    }, 800)
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 70,
+          background: 'rgba(0,0,0,0.45)',
+        }}
+      />
+      {/* Sheet */}
+      <div style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 71,
+        background: T.card,
+        borderRadius: '16px 16px 0 0',
+        boxShadow: '0 -8px 32px rgba(0,0,0,0.35)',
+        display: 'flex', flexDirection: 'column',
+        maxHeight: '70vh',
+      }}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border }} />
+        </div>
+
+        {/* Header */}
+        <div style={{
+          padding: '8px 16px 10px',
+          display: 'flex', alignItems: 'center', gap: 8,
+          borderBottom: `1px solid ${T.border}`,
+        }}>
+          <i className="ti ti-notes" style={{ fontSize: 16, color: '#5B9BD5' }} aria-hidden="true" />
+          <span style={{ fontWeight: 700, fontSize: 15, color: T.textPrimary, flex: 1 }}>
+            Notas do Dia
+          </span>
+          {status === 'saving' && (
+            <span style={{ fontSize: 11, color: T.textDim }}>salvando…</span>
+          )}
+          {status === 'saved' && (
+            <span style={{ fontSize: 11, color: '#4CAF50', display: 'flex', alignItems: 'center', gap: 3 }}>
+              <i className="ti ti-check" style={{ fontSize: 11 }} /> salvo
+            </span>
+          )}
+          {status === 'error' && (
+            <span style={{ fontSize: 11, color: '#FF6B6B' }}>erro ao salvar</span>
+          )}
+          <button onClick={onClose} style={{
+            width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0',
+            color: T.textSecondary,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
+          </button>
+        </div>
+
+        {/* Textarea */}
+        <textarea
+          value={texto}
+          onChange={handleChange}
+          placeholder="Tarefas do dia, lembretes, anotações…"
+          autoFocus
+          style={{
+            flex: 1, minHeight: 200,
+            padding: '14px 16px 32px',
+            background: 'transparent', border: 'none', outline: 'none',
+            resize: 'none', fontSize: 15, color: T.textPrimary,
+            fontFamily: ATL_FONT, lineHeight: 1.7,
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+    </>
+  )
+}
+
 export default function OSMobile({ T, dark, user }) {
   const { osList, setOsList, loading, refetch } = useOS(false)
   const { usuarios } = useUsuarios()
@@ -64,6 +183,7 @@ export default function OSMobile({ T, dark, user }) {
   })
   const [osAberta, setOsAberta] = useState(null)
   const [modalNova, setModalNova] = useState(false)
+  const [notasAbertas, setNotasAbertas] = useState(false)
 
   // Reidratacao sincrona via useMemo — referencia sempre do osList atualizado
   const osVigente = useMemo(
@@ -354,6 +474,29 @@ export default function OSMobile({ T, dark, user }) {
         </div>
       )}
 
+      {/* FAB Notas */}
+      {!loading && (
+        <button
+          onClick={() => setNotasAbertas(v => !v)}
+          aria-label="Notas do dia"
+          title="Notas do dia"
+          style={{
+            position: 'absolute',
+            right: 16, bottom: 136,
+            width: 44, height: 44, borderRadius: ATL_RADIUS,
+            background: notasAbertas ? '#5B9BD5' : (dark ? '#1e293b' : '#fff'),
+            color: notasAbertas ? '#fff' : '#5B9BD5',
+            border: `2px solid #5B9BD5`,
+            cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(9,30,66,0.25)',
+            zIndex: 50,
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <i className="ti ti-notes" style={{ fontSize: 20 }} aria-hidden="true" />
+        </button>
+      )}
+
       {/* FAB toggle compact/normal */}
       {!loading && (
         <button
@@ -375,6 +518,9 @@ export default function OSMobile({ T, dark, user }) {
              style={{ fontSize: 20 }} aria-hidden="true" />
         </button>
       )}
+
+      {/* Notas do dia — bottom sheet */}
+      {notasAbertas && <NotasDoDiaMobile T={T} dark={dark} onClose={() => setNotasAbertas(false)} />}
 
       {/* OSDetalhe modal */}
       {osVigente && (
