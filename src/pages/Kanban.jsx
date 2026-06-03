@@ -25,6 +25,106 @@ import KanbanColumn from '../components/kanban/KanbanColumn'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
+// ─── Painel Notas do Dia ──────────────────────────────────────────────────────
+function NotasDoDia({ T, dark, onClose }) {
+  const hoje = new Date().toLocaleDateString('pt-BR', {
+    timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).split('/').reverse().join('-')
+  const chave = `kanban_notas_${hoje}`
+  const [texto, setTexto] = useState('')
+  const [status, setStatus] = useState('idle') // idle | saving | saved | error
+  const timerRef = useRef(null)
+  const prontoRef = useRef(false)
+
+  useEffect(() => {
+    let cancelado = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', chave)
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (!cancelado) {
+        if (data?.valor != null) setTexto(typeof data.valor === 'string' ? data.valor : '')
+        prontoRef.current = true
+      }
+    })()
+    return () => { cancelado = true }
+  }, [chave])
+
+  function handleChange(e) {
+    const val = e.target.value
+    setTexto(val)
+    if (!prontoRef.current) return
+    setStatus('saving')
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      const { error } = await supabase
+        .from('configuracoes')
+        .upsert({ chave, valor: val, descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
+      if (error) { setStatus('error'); return }
+      setStatus('saved')
+      setTimeout(() => setStatus('idle'), 2000)
+    }, 800)
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, right: 20, zIndex: 60,
+      width: 320, borderRadius: 12,
+      background: T.card, border: `1px solid ${T.border}`,
+      boxShadow: dark ? '0 8px 32px rgba(0,0,0,.6)' : '0 8px 32px rgba(0,0,0,.18)',
+      display: 'flex', flexDirection: 'column',
+      overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '10px 12px', borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: dark ? 'rgba(91,155,213,.10)' : 'rgba(91,155,213,.08)',
+      }}>
+        <i className="ti ti-notes" style={{ fontSize: 15, color: '#5B9BD5' }} aria-hidden="true" />
+        <span style={{ fontWeight: 700, fontSize: 13, color: T.textPrimary, flex: 1 }}>
+          Notas do Dia
+        </span>
+        {status === 'saving' && (
+          <span style={{ fontSize: 10.5, color: T.textDim }}>salvando…</span>
+        )}
+        {status === 'saved' && (
+          <span style={{ fontSize: 10.5, color: '#4CAF50', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <i className="ti ti-check" style={{ fontSize: 11 }} /> salvo
+          </span>
+        )}
+        {status === 'error' && (
+          <span style={{ fontSize: 10.5, color: '#FF6B6B' }}>erro ao salvar</span>
+        )}
+        <button onClick={onClose} style={{
+          width: 22, height: 22, borderRadius: 6, border: 'none', cursor: 'pointer',
+          background: 'transparent', color: T.textDim, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <i className="ti ti-x" style={{ fontSize: 13 }} aria-hidden="true" />
+        </button>
+      </div>
+
+      {/* Textarea */}
+      <textarea
+        value={texto}
+        onChange={handleChange}
+        placeholder={"Tarefas do dia, lembretes, anotações…"}
+        style={{
+          width: '100%', minHeight: 180, maxHeight: 360,
+          padding: '10px 12px',
+          background: 'transparent', border: 'none', outline: 'none',
+          resize: 'vertical', fontSize: 13, color: T.textPrimary,
+          fontFamily: 'inherit', lineHeight: 1.65,
+          boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  )
+}
+
 export default function Kanban({ T, dark, user }) {
   const cor = (d, c) => dark ? d : c
   const role = getRole(user)
@@ -53,6 +153,7 @@ export default function Kanban({ T, dark, user }) {
   const [verAgPeca, setVerAgPeca]       = useState(false)
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
+  const [notasAbertas, setNotasAbertas] = useState(false)
   // Dropdown aberto na barra de filtros: 'prazo' | 'resp' | 'tipos' | null
   const [menuAberto, setMenuAberto] = useState(null)
   const barraRef = useRef(null)
@@ -474,12 +575,20 @@ export default function Kanban({ T, dark, user }) {
                 </button>
               )}
 
-              {/* Nova OS — alinhado à direita */}
-              <button onClick={() => setModalNova(true)}
-                style={{ marginLeft: 'auto', padding: '0 14px', height: 30, borderRadius: 100, border: 'none', cursor: 'pointer', background: azul, color: dark ? '#0b1220' : '#ffffff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
-                <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
-                Nova OS
-              </button>
+              {/* Nova OS + Notas — alinhados à direita */}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button onClick={() => setNotasAbertas(v => !v)}
+                  title="Notas do dia"
+                  style={notasAbertas ? chipAtivo : chipNormal}>
+                  <i className="ti ti-notes" style={{ fontSize: 12 }} aria-hidden="true" />
+                  Notas
+                </button>
+                <button onClick={() => setModalNova(true)}
+                  style={{ padding: '0 14px', height: 30, borderRadius: 100, border: 'none', cursor: 'pointer', background: azul, color: dark ? '#0b1220' : '#ffffff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                  <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
+                  Nova OS
+                </button>
+              </div>
             </div>
           )
         })()}
@@ -511,6 +620,7 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
+      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} />}
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />}
       {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList} usuarios={usuarios}
         onClose={()=>setDetalhe(null)}
