@@ -97,7 +97,7 @@ export default function KanbanCard({
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
 
-        {/* Linha 1: tipo + número | prazo pill */}
+        {/* Linha 1: tipo + número + dias aberto | prazo pill */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
           {modoTodos && (
             <i className={`ti ${tipoCfg.icon}`}
@@ -109,6 +109,15 @@ export default function KanbanCard({
             fontFamily: '"SF Mono", ui-monospace, Menlo, monospace',
             fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em',
           }}>#{os.numero}</span>
+          {os.criado_em && (
+            <span style={{
+              marginLeft: 'auto', flexShrink: 0,
+              fontSize: 10, color: T.textDim,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {Math.floor((Date.now() - new Date(os.criado_em).getTime()) / 86400000)}d
+            </span>
+          )}
         </div>
         {prazoPillText ? (
           <span style={{

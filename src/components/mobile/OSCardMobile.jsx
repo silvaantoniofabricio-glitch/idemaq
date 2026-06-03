@@ -83,13 +83,11 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
         columnGap: compact ? 6 : 10, rowGap: compact ? 2 : 3,
         alignItems: 'baseline',
       }}>
-        {/* Linha 1: tipo + numero | prazo pill */}
+        {/* Linha 1: tipo + numero + dias aberto | prazo pill */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
           {tipoCfg.icon && (
             <i className={`ti ${tipoCfg.icon}`}
-               style={{
-                 fontSize: 12, color: corEtapa(tipoCfg.cor, dark), flexShrink: 0,
-               }}
+               style={{ fontSize: 12, color: corEtapa(tipoCfg.cor, dark), flexShrink: 0 }}
                aria-hidden="true" title={tipoCfg.label} />
           )}
           <span style={{
@@ -98,6 +96,15 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.005em',
           }}>#{os.numero}</span>
+          {os.criado_em && (
+            <span style={{
+              marginLeft: 'auto', flexShrink: 0,
+              fontSize: 10, color: T.textDim,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {Math.floor((Date.now() - new Date(os.criado_em).getTime()) / 86400000)}d
+            </span>
+          )}
         </div>
         {prazoPillText ? (
           <span style={{
