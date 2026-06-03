@@ -97,9 +97,9 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
         <button
           onClick={() => setMaisOpen(true)}
           style={{
-            flex: 1, minWidth: 0, minHeight: 30,
+            flex: '0 0 auto', minHeight: 30,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            padding: '5px 4px',
+            padding: '5px 8px',
             borderRadius: 3, border: 'none',
             background: maisAtivo ? (dark ? '#22272B' : '#FFFFFF') : 'transparent',
             color: maisAtivo ? T.textPrimary : T.textMuted,
@@ -107,9 +107,7 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
             fontFamily: ATL_FONT, cursor: 'pointer',
             position: 'relative',
             boxShadow: maisAtivo
-              ? (dark
-                  ? '0 1px 2px rgba(0,0,0,.4)'
-                  : '0 1px 2px rgba(9,30,66,0.18)')
+              ? (dark ? '0 1px 2px rgba(0,0,0,.4)' : '0 1px 2px rgba(9,30,66,0.18)')
               : 'none',
             letterSpacing: '-0.005em',
             WebkitTapHighlightColor: 'transparent',
@@ -129,6 +127,22 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
               fontVariantNumeric: 'tabular-nums',
             }}>{contadorMais}</span>
           )}
+        </button>
+
+        {/* Botão + Nova OS */}
+        <button
+          onClick={onNova}
+          aria-label="Nova OS"
+          style={{
+            flex: '0 0 30px', minHeight: 30,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 3, border: 'none',
+            background: azul, color: '#fff',
+            cursor: 'pointer', fontFamily: ATL_FONT,
+            WebkitTapHighlightColor: 'transparent',
+            marginLeft: 2,
+          }}>
+          <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
         </button>
       </div>
 
