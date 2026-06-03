@@ -31,38 +31,70 @@ function NotasDoDiaMobile({ T, dark, onClose }) {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
   const chave = `kanban_notas_${hoje}`
-  const [texto, setTexto] = useState('')
+
+  const [linhas, setLinhas] = useState([''])
   const [status, setStatus] = useState('idle')
-  const timerRef = useRef(null)
-  const prontoRef = useRef(false)
+  const [pronto, setPronto] = useState(false)
+  const timerRef  = useRef(null)
+  const inputRefs = useRef({})
+
+  function agendarSave(novas) {
+    setStatus('saving')
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      const { error } = await supabase.from('configuracoes')
+        .upsert({ chave, valor: novas.join('\n'), descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
+      if (error) { setStatus('error'); return }
+      setStatus('saved')
+      setTimeout(() => setStatus('idle'), 2000)
+    }, 800)
+  }
 
   useEffect(() => {
     let cancelado = false
     ;(async () => {
-      const { data } = await supabase
-        .from('configuracoes').select('valor')
+      const { data } = await supabase.from('configuracoes').select('valor')
         .eq('chave', chave).is('deleted_at', null).maybeSingle()
       if (!cancelado) {
-        if (data?.valor != null) setTexto(typeof data.valor === 'string' ? data.valor : '')
-        prontoRef.current = true
+        const val = data?.valor
+        setLinhas(val && typeof val === 'string' && val.length > 0 ? val.split('\n') : [''])
+        setPronto(true)
       }
     })()
     return () => { cancelado = true }
   }, [chave])
 
-  function handleChange(e) {
-    const val = e.target.value
-    setTexto(val)
-    if (!prontoRef.current) return
-    setStatus('saving')
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(async () => {
-      const { error } = await supabase.from('configuracoes')
-        .upsert({ chave, valor: val, descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
-      if (error) { setStatus('error'); return }
-      setStatus('saved')
-      setTimeout(() => setStatus('idle'), 2000)
-    }, 800)
+  function atualizar(novas) { setLinhas(novas); if (pronto) agendarSave(novas) }
+  function editarLinha(idx, val) { const n = [...linhas]; n[idx] = val; atualizar(n) }
+
+  function toggleCheck(idx) {
+    const l = linhas[idx]
+    if (l.startsWith('☐ '))      editarLinha(idx, '✓ ' + l.slice(2))
+    else if (l.startsWith('✓ ')) editarLinha(idx, '☐ ' + l.slice(2))
+  }
+
+  function handleKeyDown(idx, e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const prefixo = (linhas[idx].startsWith('☐ ') || linhas[idx].startsWith('✓ ')) ? '☐ ' : ''
+      const novas = [...linhas]; novas.splice(idx + 1, 0, prefixo); atualizar(novas)
+      setTimeout(() => {
+        const el = inputRefs.current[idx + 1]
+        if (el) { el.focus(); el.setSelectionRange(prefixo.length, prefixo.length) }
+      }, 20)
+    } else if (e.key === 'Backspace' && linhas[idx] === '' && linhas.length > 1) {
+      e.preventDefault()
+      atualizar(linhas.filter((_, i) => i !== idx))
+      setTimeout(() => inputRefs.current[Math.max(0, idx - 1)]?.focus(), 20)
+    }
+  }
+
+  function inserirTarefa() {
+    const novas = [...linhas]; novas.push('☐ '); atualizar(novas)
+    setTimeout(() => {
+      const el = inputRefs.current[novas.length - 1]
+      if (el) { el.focus(); el.setSelectionRange(2, 2) }
+    }, 20)
   }
 
   return (
@@ -72,11 +104,13 @@ function NotasDoDiaMobile({ T, dark, onClose }) {
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 71,
         background: T.card, borderRadius: '16px 16px 0 0',
         boxShadow: '0 -8px 32px rgba(0,0,0,0.35)',
-        display: 'flex', flexDirection: 'column', maxHeight: '70vh',
+        display: 'flex', flexDirection: 'column', maxHeight: '72vh',
       }}>
+        {/* Handle */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border }} />
         </div>
+        {/* Header */}
         <div style={{ padding: '8px 16px 10px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${T.border}` }}>
           <i className="ti ti-notes" style={{ fontSize: 16, color: '#5B9BD5' }} aria-hidden="true" />
           <span style={{ fontWeight: 700, fontSize: 15, color: T.textPrimary, flex: 1 }}>Notas do Dia</span>
@@ -87,10 +121,50 @@ function NotasDoDiaMobile({ T, dark, onClose }) {
             <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
           </button>
         </div>
-        <textarea value={texto} onChange={handleChange}
-          placeholder="Tarefas do dia, lembretes, anotações…" autoFocus
-          style={{ flex: 1, minHeight: 200, padding: '14px 16px 32px', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: 15, color: T.textPrimary, lineHeight: 1.7, boxSizing: 'border-box' }}
-        />
+        {/* Lista */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0 4px' }}>
+          {linhas.map((linha, idx) => {
+            const isTarefa = linha.startsWith('☐ ') || linha.startsWith('✓ ')
+            const checked  = linha.startsWith('✓ ')
+            const textoDisplay = isTarefa ? linha.slice(2) : linha
+            return (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 16px' }}>
+                {/* Checkbox */}
+                {isTarefa && (
+                  <button onClick={() => toggleCheck(idx)} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '4px 2px', flexShrink: 0, display: 'flex', alignItems: 'center',
+                    color: checked ? '#5B9BD5' : T.textDim,
+                    WebkitTapHighlightColor: 'transparent',
+                  }}>
+                    <i className={`ti ${checked ? 'ti-square-check-filled' : 'ti-square'}`} style={{ fontSize: 20 }} aria-hidden="true" />
+                  </button>
+                )}
+                <input ref={el => { inputRefs.current[idx] = el }}
+                  value={textoDisplay}
+                  onChange={e => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + e.target.value : e.target.value)}
+                  onKeyDown={e => handleKeyDown(idx, e)}
+                  placeholder={idx === 0 ? 'Anotação ou tarefa…' : ''}
+                  style={{
+                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                    fontSize: 15, fontFamily: 'inherit', lineHeight: 1.75, padding: '4px 0',
+                    color: checked ? T.textDim : T.textPrimary,
+                    textDecoration: checked ? 'line-through' : 'none',
+                  }}
+                />
+              </div>
+            )
+          })}
+          {/* Botão nova tarefa */}
+          <button onClick={inserirTarefa} style={{
+            width: '100%', padding: '10px 16px', background: 'transparent', border: 'none',
+            cursor: 'pointer', textAlign: 'left', fontSize: 14, color: T.textDim,
+            display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'inherit',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" /> Nova tarefa
+          </button>
+        </div>
       </div>
     </>
   )

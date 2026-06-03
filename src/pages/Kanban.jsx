@@ -71,10 +71,16 @@ function NotasDoDia({ T, dark, onClose }) {
   function atualizar(novas) { setLinhas(novas); if (pronto) agendarSave(novas) }
   function editarLinha(idx, val) { const n = [...linhas]; n[idx] = val; atualizar(n) }
 
+  function toggleCheck(idx) {
+    const l = linhas[idx]
+    if (l.startsWith('☐ '))      editarLinha(idx, '✓ ' + l.slice(2))
+    else if (l.startsWith('✓ ')) editarLinha(idx, '☐ ' + l.slice(2))
+  }
+
   function handleKeyDown(idx, e) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      const prefixo = linhas[idx].startsWith('☐ ') ? '☐ ' : ''
+      const prefixo = (linhas[idx].startsWith('☐ ') || linhas[idx].startsWith('✓ ')) ? '☐ ' : ''
       const novas = [...linhas]; novas.splice(idx + 1, 0, prefixo); atualizar(novas)
       setTimeout(() => {
         const el = inputRefs.current[idx + 1]
@@ -129,29 +135,52 @@ function NotasDoDia({ T, dark, onClose }) {
       </div>
 
       <div style={{ overflowY: 'auto', flex: 1, padding: '6px 0' }}>
-        {linhas.map((linha, idx) => (
-          <div key={idx}
-            onDragOver={e => onDragOver(e, idx)} onDrop={e => onDrop(e, idx)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4, padding: '1px 8px 1px 4px',
-              borderTop: dragOver === idx && dragIdx !== null && dragIdx !== idx ? '2px solid #5B9BD5' : '2px solid transparent',
-              opacity: dragIdx === idx ? 0.4 : 1,
-            }}>
-            <span draggable onDragStart={e => onDragStart(e, idx)} onDragEnd={() => { setDragIdx(null); setDragOver(null) }}
-              style={{ cursor: 'grab', color: T.textDim, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '4px 2px', opacity: 0.4 }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#5B9BD5' }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = T.textDim }}>
-              <i className="ti ti-grip-vertical" style={{ fontSize: 13 }} aria-hidden="true" />
-            </span>
-            <input ref={el => { inputRefs.current[idx] = el }}
-              value={linha} onChange={e => editarLinha(idx, e.target.value)}
-              onKeyDown={e => handleKeyDown(idx, e)}
-              onContextMenu={e => { e.preventDefault(); setMenuCtx({ x: e.clientX, y: e.clientY, idx }) }}
-              placeholder={idx === 0 ? 'Anotação ou ☐ tarefa…' : ''}
-              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: T.textPrimary, fontFamily: 'inherit', lineHeight: 1.7, padding: '2px 0' }}
-            />
-          </div>
-        ))}
+        {linhas.map((linha, idx) => {
+          const isTarefa = linha.startsWith('☐ ') || linha.startsWith('✓ ')
+          const checked  = linha.startsWith('✓ ')
+          const textoDisplay = isTarefa ? linha.slice(2) : linha
+          return (
+            <div key={idx}
+              onDragOver={e => onDragOver(e, idx)} onDrop={e => onDrop(e, idx)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '1px 8px 1px 4px',
+                borderTop: dragOver === idx && dragIdx !== null && dragIdx !== idx ? '2px solid #5B9BD5' : '2px solid transparent',
+                opacity: dragIdx === idx ? 0.4 : 1,
+              }}>
+              {/* Alça de arrasto */}
+              <span draggable onDragStart={e => onDragStart(e, idx)} onDragEnd={() => { setDragIdx(null); setDragOver(null) }}
+                style={{ cursor: 'grab', color: T.textDim, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '4px 2px', opacity: 0.4 }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#5B9BD5' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = T.textDim }}>
+                <i className="ti ti-grip-vertical" style={{ fontSize: 13 }} aria-hidden="true" />
+              </span>
+              {/* Checkbox clicável — só em linhas de tarefa */}
+              {isTarefa && (
+                <button onClick={() => toggleCheck(idx)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '2px 1px',
+                  flexShrink: 0, display: 'flex', alignItems: 'center',
+                  color: checked ? '#5B9BD5' : T.textDim,
+                }}>
+                  <i className={`ti ${checked ? 'ti-square-check-filled' : 'ti-square'}`} style={{ fontSize: 15 }} aria-hidden="true" />
+                </button>
+              )}
+              {/* Input */}
+              <input ref={el => { inputRefs.current[idx] = el }}
+                value={textoDisplay}
+                onChange={e => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + e.target.value : e.target.value)}
+                onKeyDown={e => handleKeyDown(idx, e)}
+                onContextMenu={e => { e.preventDefault(); setMenuCtx({ x: e.clientX, y: e.clientY, idx }) }}
+                placeholder={idx === 0 ? 'Anotação ou ☐ tarefa…' : ''}
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 13, fontFamily: 'inherit', lineHeight: 1.7, padding: '2px 0',
+                  color: checked ? T.textDim : T.textPrimary,
+                  textDecoration: checked ? 'line-through' : 'none',
+                }}
+              />
+            </div>
+          )
+        })}
         <button onClick={() => inserirTarefaEm(linhas.length - 1)}
           style={{ width: '100%', padding: '6px 12px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, color: T.textDim, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', marginTop: 2 }}
           onMouseEnter={e => { e.currentTarget.style.color = '#5B9BD5' }}
