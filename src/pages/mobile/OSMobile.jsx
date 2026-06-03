@@ -152,6 +152,13 @@ function NotasDoDiaMobile({ T, dark, onClose }) {
                     textDecoration: checked ? 'line-through' : 'none',
                   }}
                 />
+                {/* Botão excluir */}
+                <button
+                  onClick={() => atualizar(linhas.filter((_, i) => i !== idx))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 4px', flexShrink: 0, display: 'flex', alignItems: 'center', color: T.textDim, WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
+                </button>
               </div>
             )
           })}

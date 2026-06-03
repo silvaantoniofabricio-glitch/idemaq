@@ -178,6 +178,16 @@ function NotasDoDia({ T, dark, onClose }) {
                   textDecoration: checked ? 'line-through' : 'none',
                 }}
               />
+              {/* Botão excluir linha */}
+              <button
+                onClick={() => atualizar(linhas.filter((_, i) => i !== idx))}
+                title="Excluir"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px', flexShrink: 0, display: 'flex', alignItems: 'center', color: T.textDim, opacity: 0, transition: 'opacity .15s' }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#FF6B6B' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.color = T.textDim }}
+              >
+                <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+              </button>
             </div>
           )
         })}
