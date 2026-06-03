@@ -1,13 +1,17 @@
 // idemaq-src/pages/mobile/FinanceiroMobile.jsx
-// Versão mobile-first da página Financeiro.
-// Reutiliza useFinanceiro + LancamentoDetalheModal + NovoLancamentoModal sem
-// modificações. Substitui tabelas por cards touch-friendly, filtros em chips
-// colapsáveis e abas horizontais com scroll. Sem checkboxes nem tabelas.
+// Redesign inspirado no Atlassian Design System:
+//   - Abas com underline indicator (sem background fill)
+//   - Lozenge de status (radius 3px, uppercase — padrão Atlassian)
+//   - Linhas de transação estilo Jira issue row
+//   - Filtros em chip rows com scroll horizontal
+//   - KPI strip separado por bordas verticais
+//   - Section headers uppercase com ícone
+//   - Espaçamento grid 8px, paleta Deutan mantida
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { fmtBRL, fmtPrazoCurto } from '../../utils/fmt'
-import { Card, Input, EmptyState, useToast } from '../../components/ui'
+import { Input, useToast } from '../../components/ui'
 import LancamentoDetalheModal from '../../components/financeiro/LancamentoDetalheModal'
 import NovoLancamentoModal from '../../components/financeiro/NovoLancamentoModal'
 import { useFinanceiro } from '../../hooks/useFinanceiro'
@@ -16,24 +20,21 @@ import { useFinanceiro } from '../../hooks/useFinanceiro'
 const LABEL_FORMA = {
   pix: 'PIX', dinheiro: 'Dinheiro', debito: 'Débito',
   credito_1x: 'Cartão 1x', credito_parcelado: 'Cartão parcelado',
-  link_pagamento: 'Link InfinitePay', boleto: 'Boleto',
+  link_pagamento: 'InfinitePay', boleto: 'Boleto',
   transferencia: 'Transferência', a_prazo: 'A prazo',
 }
 function labelForma(v) { return LABEL_FORMA[v] || v || '' }
 
-const MAPA_FORMA = {
-  'pix': 'pix', 'dinheiro': 'dinheiro', 'débito': 'debito', 'debito': 'debito',
-  'cartão 1x': 'credito_1x', 'cartao 1x': 'credito_1x',
-  'cartão parcelado': 'credito_parcelado', 'cartao parcelado': 'credito_parcelado',
-  'link infinitepay': 'link_pagamento', 'link pagamento': 'link_pagamento',
-  'boleto': 'boleto', 'transferência': 'transferencia', 'transferencia': 'transferencia',
-  'a prazo': 'a_prazo',
-}
-function mapearFormaUIparaEnum(f) {
+function mapearFormaEnum(f) {
   if (!f) return null
+  const m = {
+    'pix':'pix','dinheiro':'dinheiro','débito':'debito','debito':'debito',
+    'cartão 1x':'credito_1x','cartão parcelado':'credito_parcelado',
+    'link infinitepay':'link_pagamento','boleto':'boleto',
+    'transferência':'transferencia','a prazo':'a_prazo',
+  }
   const k = String(f).toLowerCase().trim()
-  if (Object.values(MAPA_FORMA).includes(k)) return k
-  return MAPA_FORMA[k] || 'pix'
+  return m[k] || 'pix'
 }
 
 function adaptarBancoParaUI(lanc) {
@@ -42,52 +43,52 @@ function adaptarBancoParaUI(lanc) {
   return {
     id: lanc.id, osNum: null,
     cliente: ehReceita ? (lanc.descricao || '').split('—')[0]?.trim() : null,
-    descricao: lanc.descricao || '', fornecedor: null,
+    descricao: lanc.descricao || '',
     categoria: lanc.categoria || 'Outros',
     conta: lanc.conta?.nome || '', conta_id: lanc.conta_id || null,
     valor: Number(lanc.valor) || 0, vencimento: lanc.vencimento,
     forma: labelForma(lanc.forma_pagamento), forma_enum: lanc.forma_pagamento || null,
     taxa_pct: Number(lanc.taxa_pct) || 0,
     status: pago ? 'pago' : 'aberto', dataPag: lanc.pago_em || null,
-    recorrente: false, tipo: lanc.tipo,
+    tipo: lanc.tipo,
   }
 }
 
-function statusVencimento(isoData) {
+function statusVenc(isoData) {
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const d = new Date(isoData + 'T00:00:00')
   const diff = Math.round((d - hoje) / 86400000)
-  if (diff < 0)  return { tipo: 'vencido', label: `Venceu há ${-diff}d` }
-  if (diff === 0) return { tipo: 'hoje',   label: 'Vence hoje' }
-  if (diff === 1) return { tipo: 'amanha', label: 'Amanhã' }
-  return               { tipo: 'futuro',  label: `Em ${diff}d` }
+  if (diff < 0)   return { tipo: 'vencido', label: `Venceu há ${-diff}d` }
+  if (diff === 0) return { tipo: 'hoje',    label: 'Vence hoje' }
+  if (diff === 1) return { tipo: 'amanha',  label: 'Amanhã' }
+  return               { tipo: 'futuro',   label: `Em ${diff}d` }
 }
 
 const PERIODOS = [
-  { id: '7d',    label: '7d',    dias: 7 },
-  { id: 'mes',   label: 'Mês',   mes: true },
-  { id: '30d',   label: '30d',   dias: 30, futuro: true },
-  { id: '90d',   label: '90d',   dias: 90, futuro: true },
-  { id: 'todos', label: 'Todos', all: true },
+  { id: '7d',    label: '7d' },
+  { id: 'mes',   label: 'Mês' },
+  { id: '30d',   label: '30d' },
+  { id: '90d',   label: '90d' },
+  { id: 'todos', label: 'Todos' },
 ]
 
-function filtrarPorPeriodo(itens, periodoId, campoData) {
-  if (periodoId === 'todos') return itens
-  const cfg = PERIODOS.find(p => p.id === periodoId) || PERIODOS[1]
-  if (cfg.all) return itens
+function filtrarPorPeriodo(itens, periodoId, campo) {
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  if (periodoId === 'todos') return itens
   let de, ate
-  if (cfg.mes) {
+  if (periodoId === 'mes') {
     de  = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
     ate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59)
-  } else if (cfg.futuro) {
-    de = hoje; ate = new Date(hoje); ate.setDate(ate.getDate() + cfg.dias)
+  } else if (periodoId === '30d') {
+    de = hoje; ate = new Date(hoje); ate.setDate(ate.getDate() + 30)
+  } else if (periodoId === '90d') {
+    de = hoje; ate = new Date(hoje); ate.setDate(ate.getDate() + 90)
   } else {
-    ate = hoje; de = new Date(hoje); de.setDate(de.getDate() - cfg.dias)
+    ate = hoje; de = new Date(hoje); de.setDate(de.getDate() - 7)
   }
   return itens.filter(it => {
-    if (!it[campoData]) return true
-    const d = new Date(it[campoData] + 'T00:00:00')
+    if (!it[campo]) return true
+    const d = new Date(it[campo] + 'T00:00:00')
     if (de  && d < de)  return false
     if (ate && d > ate) return false
     return true
@@ -97,118 +98,177 @@ function filtrarPorPeriodo(itens, periodoId, campoData) {
 const META_MES = 20000
 const isoHoje = () => new Date().toISOString().slice(0, 10)
 
-// ─── Status chip ──────────────────────────────────────────────────────────────
-function StatusChip({ item, dark }) {
-  if (item.status === 'pago') {
-    const azul = corEtapa('blue', dark)
-    return (
-      <span style={{
-        fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 10,
-        background: bgEtapa('blue', dark), color: azul,
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-      }}>
-        <i className="ti ti-circle-check" style={{ fontSize: 11 }} aria-hidden="true" /> Pago
-      </span>
-    )
-  }
-  const st = statusVencimento(item.vencimento)
-  const map = {
-    vencido: { bg: bgEtapa('red', dark),    cor: corEtapa('red', dark),    icon: 'ti-alert-triangle' },
-    hoje:    { bg: bgEtapa('yellow', dark), cor: corEtapa('yellow', dark), icon: 'ti-clock' },
-    amanha:  { bg: bgEtapa('yellow', dark), cor: corEtapa('yellow', dark), icon: 'ti-calendar-due' },
-    futuro:  { bg: bgEtapa('blue', dark),   cor: corEtapa('blue', dark),   icon: 'ti-calendar-event' },
-  }
-  const cfg = map[st.tipo] || map.futuro
+// ─── Primitivos Atlassian ─────────────────────────────────────────────────────
+
+function Lozenge({ cor, bg, children }) {
   return (
     <span style={{
-      fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 10,
-      background: cfg.bg, color: cfg.cor,
-      display: 'inline-flex', alignItems: 'center', gap: 4,
+      display: 'inline-flex', alignItems: 'center',
+      padding: '2px 7px', borderRadius: 3,
+      fontSize: 10.5, fontWeight: 700, letterSpacing: '.02em',
+      background: bg, color: cor,
+      textTransform: 'uppercase', whiteSpace: 'nowrap',
     }}>
-      <i className={`ti ${cfg.icon}`} style={{ fontSize: 11 }} aria-hidden="true" /> {st.label}
+      {children}
     </span>
   )
 }
 
-// ─── Card de lançamento mobile ────────────────────────────────────────────────
-function LancamentoCard({ T, dark, item, tipo, onAbrir, onBaixar }) {
-  const azul   = corEtapa('blue', dark)
+function StatusLozenge({ item, dark }) {
+  if (item.status === 'pago') {
+    return <Lozenge cor={corEtapa('blue', dark)} bg={bgEtapa('blue', dark)}>Pago</Lozenge>
+  }
+  const st = statusVenc(item.vencimento)
+  const map = {
+    vencido: { cor: corEtapa('red', dark),    bg: bgEtapa('red', dark)    },
+    hoje:    { cor: corEtapa('yellow', dark), bg: bgEtapa('yellow', dark) },
+    amanha:  { cor: corEtapa('yellow', dark), bg: bgEtapa('yellow', dark) },
+    futuro:  { cor: corEtapa('blue', dark),   bg: bgEtapa('blue', dark)   },
+  }
+  const c = map[st.tipo]
+  return <Lozenge cor={c.cor} bg={c.bg}>{st.label}</Lozenge>
+}
+
+function TabBar({ abas, value, onChange, T, dark }) {
+  const azul = corEtapa('blue', dark)
+  return (
+    <div style={{ display: 'flex', borderBottom: `2px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+      {abas.map(a => {
+        const ativo = a.id === value
+        return (
+          <button key={a.id} onClick={() => onChange(a.id)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '10px 16px', border: 'none', background: 'transparent',
+              color: ativo ? azul : T.textMuted,
+              fontWeight: ativo ? 700 : 500, fontSize: 13.5,
+              cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+              borderBottom: ativo ? `2px solid ${azul}` : '2px solid transparent',
+              marginBottom: -2, transition: 'color .12s',
+            }}>
+            {a.label}
+            {a.count != null && a.count > 0 && (
+              <span style={{
+                background: ativo ? azul : T.cardAlt,
+                color: ativo ? '#fff' : T.textSecondary,
+                fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 10,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{a.count}</span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function Chip({ label, ativo, onClick, azul, T }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        padding: '5px 12px', borderRadius: 20,
+        border: `1px solid ${ativo ? azul : T.border}`,
+        background: ativo ? azul : 'transparent',
+        color: ativo ? '#fff' : T.textSecondary,
+        fontSize: 12, fontWeight: ativo ? 600 : 400,
+        cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+        transition: 'all .1s',
+      }}>
+      {label}
+    </button>
+  )
+}
+
+function KpiCard({ label, valor, cor, icon, iconCor, T }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 9.5, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4,
+        display: 'flex', alignItems: 'center', gap: 4,
+      }}>
+        {icon && <i className={`ti ${icon}`} style={{ fontSize: 11, color: iconCor }} aria-hidden="true" />}
+        {label}
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: cor, fontVariantNumeric: 'tabular-nums' }}>
+        {valor}
+      </div>
+    </div>
+  )
+}
+
+function Section({ T, title, icon, iconCor, right, children }) {
+  return (
+    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, marginBottom: 8, overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '11px 16px', borderBottom: `1px solid ${T.border}`,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 700, color: T.textSecondary, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+          <i className={`ti ${icon}`} style={{ fontSize: 13, color: iconCor || T.textMuted }} aria-hidden="true" />
+          {title}
+        </div>
+        {right}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+// ─── Linha de transação estilo Jira ───────────────────────────────────────────
+function TxRow({ item, tipo, dark, T, onAbrir, onBaixar }) {
+  const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
-  const corT   = tipo === 'receber' ? azul : amarelo
-  const icone  = tipo === 'receber' ? 'ti-arrow-down-circle' : 'ti-arrow-up-circle'
-  const pago   = item.status === 'pago'
+  const corT    = tipo === 'receber' ? azul : amarelo
+  const icone   = tipo === 'receber' ? 'ti-arrow-down-circle' : 'ti-arrow-up-circle'
+  const pago    = item.status === 'pago'
+  const titulo  = tipo === 'receber' ? (item.cliente || item.descricao) : item.descricao
 
   return (
-    <div
-      onClick={() => onAbrir(item)}
-      role="button"
-      tabIndex={0}
+    <div onClick={() => onAbrir(item)}
       style={{
-        background: T.card, border: `1px solid ${T.border}`,
-        borderRadius: 12, padding: '12px 14px',
-        display: 'flex', gap: 12, cursor: 'pointer',
-        WebkitTapHighlightColor: 'transparent',
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 16px', borderBottom: `1px solid ${T.border}`,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       }}
+      onTouchStart={e => e.currentTarget.style.background = T.cardAlt}
+      onTouchEnd={e => e.currentTarget.style.background = 'transparent'}
     >
-      {/* Ícone lateral */}
       <div style={{
-        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+        width: 32, height: 32, borderRadius: 6, flexShrink: 0,
         background: bgEtapa(tipo === 'receber' ? 'blue' : 'yellow', dark),
-        border: `1px solid ${corT}33`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <i className={`ti ${icone}`} style={{ fontSize: 18, color: corT }} aria-hidden="true" />
+        <i className={`ti ${icone}`} style={{ fontSize: 16, color: corT }} aria-hidden="true" />
       </div>
-
-      {/* Conteúdo central */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 13.5, fontWeight: 700, color: corHero(dark),
+          fontSize: 13.5, fontWeight: 600, color: pago ? T.textMuted : corHero(dark),
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {tipo === 'receber' ? (item.cliente || item.descricao) : item.descricao}
-        </div>
-        <div style={{
-          fontSize: 11, color: T.textMuted, marginTop: 3,
-          display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap',
-        }}>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPrazoCurto(item.vencimento)}</span>
-          {item.categoria && (
-            <span style={{
-              background: T.cardAlt, border: `1px solid ${T.border}`,
-              borderRadius: 8, padding: '1px 6px', fontSize: 10.5,
-            }}>{item.categoria}</span>
-          )}
-        </div>
-        <div style={{ marginTop: 7 }}>
-          <StatusChip item={item} dark={dark} />
+          textDecoration: pago ? 'line-through' : 'none',
+        }}>{titulo}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+            {fmtPrazoCurto(item.vencimento)}
+          </span>
+          {item.categoria && <span style={{ fontSize: 11, color: T.textMuted }}>· {item.categoria}</span>}
+          <StatusLozenge item={item} dark={dark} />
         </div>
       </div>
-
-      {/* Valor + ação rápida */}
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
-        justifyContent: 'space-between', gap: 6, flexShrink: 0,
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
         <span style={{
-          fontSize: 14.5, fontWeight: 800, color: pago ? T.textDim : corHero(dark),
-          fontVariantNumeric: 'tabular-nums',
-          textDecoration: pago ? 'line-through' : 'none',
+          fontSize: 14, fontWeight: 700, color: pago ? T.textMuted : corHero(dark),
+          fontVariantNumeric: 'tabular-nums', textDecoration: pago ? 'line-through' : 'none',
         }}>
           {fmtBRL(item.valor)}
         </span>
         {!pago && (
-          <button
-            onClick={e => { e.stopPropagation(); onBaixar(item) }}
+          <button onClick={e => { e.stopPropagation(); onBaixar(item) }}
             style={{
-              background: corT, color: '#fff', border: 'none',
-              borderRadius: 8, padding: '6px 11px',
-              fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 4,
-              fontFamily: 'inherit', flexShrink: 0,
-            }}
-          >
-            <i className="ti ti-check" style={{ fontSize: 12 }} aria-hidden="true" />
+              background: corT, color: '#fff', border: 'none', borderRadius: 4,
+              padding: '4px 10px', fontSize: 11, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
             {tipo === 'receber' ? 'Receber' : 'Pagar'}
           </button>
         )}
@@ -217,219 +277,52 @@ function LancamentoCard({ T, dark, item, tipo, onAbrir, onBaixar }) {
   )
 }
 
-// ─── Filtros colapsáveis ──────────────────────────────────────────────────────
-function FiltrosMobile({ T, dark, tipo, periodo, setPeriodo, statusFilt, setStatusFilt, busca, setBusca }) {
-  const [aberto, setAberto] = useState(false)
-  const azul = corEtapa('blue', dark)
-  const cor  = (d, c) => dark ? d : c
-
-  const defaultStatus = tipo === 'caixa' ? 'todos' : 'aberto'
-  const statusOpts = tipo === 'caixa'
-    ? [{ id: 'todos', label: 'Todos' }, { id: 'receita', label: 'Entradas' }, { id: 'despesa', label: 'Saídas' }]
-    : [
-        { id: 'todos',   label: 'Todos' },
-        { id: 'aberto',  label: tipo === 'receber' ? 'A receber' : 'A pagar' },
-        { id: 'vencido', label: 'Vencidas' },
-        { id: 'pago',    label: 'Pagas' },
-      ]
-
-  const temFiltroAtivo = periodo !== 'mes' || statusFilt !== defaultStatus || busca.trim()
-
-  const placeholderBusca = tipo === 'receber' ? 'Cliente ou descrição…'
-                         : tipo === 'caixa'   ? 'Descrição…'
-                         : 'Descrição…'
-
+// ─── Linha de caixa ───────────────────────────────────────────────────────────
+function CaixaRow({ m, dark, T, onAbrir }) {
+  const azul    = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const vermelho = corEtapa('red', dark)
+  const ehR = m.tipo === 'receita'
+  const corT = ehR ? azul : amarelo
   return (
-    <div>
-      {/* Linha: busca + botao Filtros (icone) */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-          <i className="ti ti-search" aria-hidden="true" style={{
-            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 14, color: T.textMuted, pointerEvents: 'none',
-          }} />
-          <input
-            type="search"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={placeholderBusca}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              height: 34,
-              padding: '0 32px 0 32px',
-              borderRadius: 3,
-              border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-              color: T.textPrimary,
-              fontSize: 13, fontFamily: 'inherit',
-              outline: 'none', letterSpacing: '-0.005em',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = azul
-              e.currentTarget.style.boxShadow = `0 0 0 2px ${azul}33`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = T.border
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          />
-          {busca && (
-            <button
-              type="button"
-              onClick={() => setBusca('')}
-              aria-label="Limpar busca"
-              style={{
-                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                width: 18, height: 18, borderRadius: 9,
-                background: T.textMuted + '88', color: '#fff',
-                border: 'none', cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-              <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setAberto(o => !o)}
-          aria-label={aberto ? 'Fechar filtros' : 'Abrir filtros'}
-          style={{
-            width: 34, height: 34, borderRadius: 3,
-            border: `1px solid ${temFiltroAtivo ? azul : T.border}`,
-            background: temFiltroAtivo
-              ? azul + '22'
-              : (dark ? 'rgba(255,255,255,0.04)' : '#fff'),
-            color: temFiltroAtivo ? azul : T.textPrimary,
-            cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, position: 'relative',
-            fontFamily: 'inherit',
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          <i className="ti ti-adjustments-horizontal"
-             style={{ fontSize: 16 }} aria-hidden="true" />
-          {temFiltroAtivo && (
-            <span style={{
-              position: 'absolute', top: -3, right: -3,
-              width: 8, height: 8, borderRadius: '50%',
-              background: azul, border: `2px solid ${T.bg}`,
-            }} />
-          )}
-        </button>
+    <div onClick={() => onAbrir(m)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 16px', borderBottom: `1px solid ${T.border}`,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      }}
+      onTouchStart={e => e.currentTarget.style.background = T.cardAlt}
+      onTouchEnd={e => e.currentTarget.style.background = 'transparent'}
+    >
+      <div style={{
+        width: 32, height: 32, borderRadius: 6, flexShrink: 0,
+        background: bgEtapa(ehR ? 'blue' : 'yellow', dark),
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <i className={`ti ${ehR ? 'ti-arrow-down-circle' : 'ti-arrow-up-circle'}`} style={{ fontSize: 16, color: corT }} aria-hidden="true" />
       </div>
-
-      {aberto && (
-        <div style={{
-          background: T.card, border: `1px solid ${T.border}`,
-          borderRadius: 10, padding: '12px 14px', marginTop: 4,
-          display: 'flex', flexDirection: 'column', gap: 12,
-        }}>
-          {/* Período */}
-          <div>
-            <div style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 7 }}>
-              Período
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {PERIODOS.map(p => {
-                const ativo = periodo === p.id
-                return (
-                  <button key={p.id} onClick={() => setPeriodo(p.id)}
-                    style={{
-                      padding: '6px 13px', borderRadius: 8,
-                      border: `1px solid ${ativo ? azul : T.border}`,
-                      background: ativo ? cor('#0d2035', '#e6f1fb') : T.cardAlt,
-                      color: ativo ? azul : T.textSecondary,
-                      fontSize: 12.5, fontWeight: ativo ? 700 : 500,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
-                    {p.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Status */}
-          <div>
-            <div style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 7 }}>
-              Status
-            </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {statusOpts.map(s => {
-                const ativo = statusFilt === s.id
-                return (
-                  <button key={s.id} onClick={() => setStatusFilt(s.id)}
-                    style={{
-                      padding: '6px 13px', borderRadius: 8,
-                      border: `1px solid ${ativo ? azul : T.border}`,
-                      background: ativo ? cor('#0d2035', '#e6f1fb') : T.cardAlt,
-                      color: ativo ? azul : T.textSecondary,
-                      fontSize: 12.5, fontWeight: ativo ? 700 : 500,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                    }}>
-                    {s.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {temFiltroAtivo && (
-            <button
-              onClick={() => { setPeriodo('mes'); setStatusFilt(defaultStatus); setBusca('') }}
-              style={{
-                background: 'transparent', border: `1px solid ${T.border}`,
-                color: T.textMuted, borderRadius: 8, padding: '7px 13px',
-                fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-              }}>
-              <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" /> Limpar filtros
-            </button>
-          )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: corHero(dark), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {m.descricao}
         </div>
-      )}
+        <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3 }}>
+          {fmtPrazoCurto(m.data)}{m.forma ? ` · ${m.forma}` : ''}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: corT, fontVariantNumeric: 'tabular-nums' }}>
+          {ehR ? '+' : '−'} {fmtBRL(m.valor)}
+        </span>
+        <span style={{ fontSize: 10.5, color: m.saldo >= 0 ? T.textMuted : vermelho, fontVariantNumeric: 'tabular-nums' }}>
+          saldo {fmtBRL(m.saldo)}
+        </span>
+      </div>
     </div>
   )
 }
 
-// ─── KPI grid 2×2 ─────────────────────────────────────────────────────────────
-function KpiGrid({ T, dark, kpis }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      {kpis.map((k, i) => (
-        <div key={i} style={{
-          background: T.card, border: `1px solid ${T.border}`,
-          borderRadius: 10, padding: '11px 13px',
-        }}>
-          <div style={{
-            fontSize: 10, color: T.textMuted, fontWeight: 600,
-            textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4,
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}>
-            {k.icon && <i className={`ti ${k.icon}`} style={{ fontSize: 12, color: k.iconCor || T.textMuted }} aria-hidden="true" />}
-            {k.label}
-          </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: k.cor, fontVariantNumeric: 'tabular-nums' }}>
-            {k.valor}
-          </div>
-          {k.sub && (
-            <div style={{ fontSize: 10, color: T.textMuted, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{k.sub}</div>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Visão Geral mobile ───────────────────────────────────────────────────────
-function VisaoGeralMobile({
-  T, dark,
-  recebidoMes, pagoMes, saldoCaixa,
-  pctMeta, faltaMeta, meta,
-  vencidos, totalVencido, totalReceber, totalPagar,
-  onIrParaReceber,
-}) {
+// ─── Visão Geral ──────────────────────────────────────────────────────────────
+function VisaoGeralMobile({ T, dark, recebidoMes, pagoMes, saldoCaixa, pctMeta, faltaMeta, meta, vencidos, totalVencido, totalReceber, totalPagar, onIrParaReceber }) {
   const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
@@ -439,137 +332,119 @@ function VisaoGeralMobile({
   const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
   let diasUteis = 0
   for (let d = new Date(hoje); d <= ultimoDia; d.setDate(d.getDate() + 1)) {
-    const dia = d.getDay()
-    if (dia !== 0 && dia !== 6) diasUteis++
+    if (d.getDay() !== 0 && d.getDay() !== 6) diasUteis++
   }
   const metaDiaria = diasUteis > 0 ? Math.ceil(faltaMeta / diasUteis) : 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Card meta do mês */}
-      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: T.textSecondary }}>
-            <i className="ti ti-target" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-            Meta do mês
+    <div>
+      <Section T={T} title="Meta do mês" icon="ti-target" iconCor={azul}
+        right={<span style={{ fontSize: 11, color: T.textMuted }}>{diasUteis} dias úteis</span>}>
+        <div style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 26, fontWeight: 800, color: corHero(dark), fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+              {fmtBRL(recebidoMes)}
+            </span>
+            <span style={{ fontSize: 12, color: T.textMuted }}>de {fmtBRL(meta)}</span>
           </div>
-          <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-            {diasUteis} {diasUteis === 1 ? 'dia útil' : 'dias úteis'} restantes
-          </span>
+          <div style={{ height: 6, borderRadius: 3, background: T.cardAlt, overflow: 'hidden', marginBottom: 6 }}>
+            <div style={{ width: `${pctMeta}%`, height: '100%', background: `linear-gradient(90deg, ${azul}, ${corEtapa('blueLight', dark)})` }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.textMuted, marginBottom: 14 }}>
+            <span style={{ color: azul, fontWeight: 700 }}>{pctMeta}%</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>faltam {fmtBRL(faltaMeta)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: T.cardAlt, border: `1px solid ${T.border}` }}>
+            <span style={{ fontSize: 12, color: T.textMuted }}>
+              <i className="ti ti-calendar-stats" style={{ marginRight: 5 }} aria-hidden="true" />
+              Meta diária
+            </span>
+            <span style={{ fontSize: 20, fontWeight: 800, color: azul, fontVariantNumeric: 'tabular-nums' }}>
+              {fmtBRL(metaDiaria)}<span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted }}>/dia</span>
+            </span>
+          </div>
         </div>
+      </Section>
 
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
-          <span style={{ fontSize: 24, fontWeight: 800, color: corHero(dark), fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
-            {fmtBRL(recebidoMes)}
-          </span>
-          <span style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-            de {fmtBRL(meta)}
-          </span>
+      <Section T={T} title="Resumo do mês" icon="ti-chart-arcs" iconCor={azul}>
+        <div>
+          <div style={{ display: 'flex' }}>
+            <div style={{ flex: 1, padding: '12px 16px', borderRight: `1px solid ${T.border}`, borderBottom: `1px solid ${T.border}` }}>
+              <KpiCard T={T} label="Recebido" valor={fmtBRL(recebidoMes)} cor={azul} icon="ti-arrow-down-circle" iconCor={azul} />
+            </div>
+            <div style={{ flex: 1, padding: '12px 16px', borderBottom: `1px solid ${T.border}` }}>
+              <KpiCard T={T} label="Pago" valor={fmtBRL(pagoMes)} cor={amarelo} icon="ti-arrow-up-circle" iconCor={amarelo} />
+            </div>
+          </div>
+          <div style={{ display: 'flex' }}>
+            <div style={{ flex: 1, padding: '12px 16px', borderRight: `1px solid ${T.border}` }}>
+              <KpiCard T={T} label="Saldo caixa" valor={fmtBRL(saldoCaixa)} cor={saldoCaixa >= 0 ? corHero(dark) : vermelho} icon="ti-cash-banknote" iconCor={saldoCaixa >= 0 ? verde : vermelho} />
+            </div>
+            <div style={{ flex: 1, padding: '12px 16px' }}>
+              <KpiCard T={T} label="Vencidos" valor={vencidos.length} cor={vencidos.length > 0 ? vermelho : T.textDim} icon="ti-alert-triangle" iconCor={vencidos.length > 0 ? vermelho : T.textMuted} />
+            </div>
+          </div>
         </div>
+      </Section>
 
-        <div style={{
-          width: '100%', height: 8, borderRadius: 5,
-          background: T.cardAlt, border: `1px solid ${T.border}`, overflow: 'hidden', marginBottom: 6,
-        }}>
-          <div style={{
-            width: `${pctMeta}%`, height: '100%',
-            background: `linear-gradient(90deg, ${azul}, ${corEtapa('blueLight', dark)})`,
-            transition: 'width .4s',
-          }} />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.textMuted, marginBottom: 12 }}>
-          <span style={{ color: azul, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{pctMeta}% concluído</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>Faltam {fmtBRL(faltaMeta)}</span>
-        </div>
-
-        <div style={{
-          background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 8,
-          padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 11.5, color: T.textMuted }}>Meta diária pra bater</span>
-          <span style={{ fontSize: 18, fontWeight: 800, color: azul, fontVariantNumeric: 'tabular-nums' }}>
-            {fmtBRL(metaDiaria)}
-            <span style={{ fontSize: 10.5, fontWeight: 500, color: T.textMuted }}>/dia</span>
-          </span>
-        </div>
-      </div>
-
-      {/* KPIs 2×2 */}
-      <KpiGrid T={T} dark={dark} kpis={[
-        { label: 'Recebido', valor: fmtBRL(recebidoMes), cor: azul,   icon: 'ti-arrow-down-circle', iconCor: azul },
-        { label: 'Pago',     valor: fmtBRL(pagoMes),     cor: amarelo, icon: 'ti-arrow-up-circle',  iconCor: amarelo },
-        { label: 'Saldo',    valor: fmtBRL(saldoCaixa),  cor: saldoCaixa >= 0 ? corHero(dark) : vermelho, icon: 'ti-cash-banknote', iconCor: saldoCaixa >= 0 ? verde : vermelho },
-        { label: 'Vencidos', valor: vencidos.length,      cor: vencidos.length > 0 ? vermelho : T.textDim, icon: 'ti-alert-triangle', iconCor: vencidos.length > 0 ? vermelho : T.textMuted, sub: vencidos.length > 0 ? fmtBRL(totalVencido) : '' },
-      ]} />
-
-      {/* Alerta vencidos — clicável */}
       {vencidos.length > 0 && (
-        <button
-          onClick={onIrParaReceber}
+        <button onClick={onIrParaReceber}
           style={{
-            background: bgEtapa('red', dark), border: `1px solid ${vermelho}44`,
-            borderRadius: 10, padding: '12px 14px', width: '100%',
-            display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
-            fontFamily: 'inherit', textAlign: 'left',
-          }}
-        >
-          <i className="ti ti-alert-triangle" style={{ fontSize: 20, color: vermelho, flexShrink: 0 }} aria-hidden="true" />
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 16px', width: '100%', marginBottom: 8,
+            background: bgEtapa('red', dark), border: `1px solid ${vermelho}33`, borderRadius: 8,
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          }}>
+          <i className="ti ti-alert-circle" style={{ fontSize: 20, color: vermelho, flexShrink: 0 }} aria-hidden="true" />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: vermelho }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: vermelho }}>
               {vencidos.length} conta{vencidos.length > 1 ? 's' : ''} vencida{vencidos.length > 1 ? 's' : ''}
             </div>
             <div style={{ fontSize: 11.5, color: T.textSecondary, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-              {fmtBRL(totalVencido)} a receber — toque pra ver
+              {fmtBRL(totalVencido)} em aberto — toque pra ver
             </div>
           </div>
-          <i className="ti ti-chevron-right" style={{ fontSize: 16, color: T.textMuted }} aria-hidden="true" />
+          <i className="ti ti-chevron-right" style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
         </button>
       )}
 
-      {/* Resumo pendências */}
-      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 16px' }}>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: T.textSecondary, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <i className="ti ti-chart-arcs" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-          Pendências
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: T.textSecondary, display: 'flex', alignItems: 'center', gap: 7 }}>
-              <i className="ti ti-arrow-down-circle" style={{ fontSize: 15, color: azul }} aria-hidden="true" /> A receber
-            </span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: azul, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(totalReceber)}</span>
+      <Section T={T} title="Pendências" icon="ti-clock" iconCor={T.textMuted}>
+        <div style={{ display: 'flex' }}>
+          <div style={{ flex: 1, padding: '12px 16px', borderRight: `1px solid ${T.border}` }}>
+            <KpiCard T={T} label="A receber" valor={fmtBRL(totalReceber)} cor={azul} icon="ti-arrow-down-circle" iconCor={azul} />
           </div>
-          <div style={{ height: 1, background: T.border }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: T.textSecondary, display: 'flex', alignItems: 'center', gap: 7 }}>
-              <i className="ti ti-arrow-up-circle" style={{ fontSize: 15, color: amarelo }} aria-hidden="true" /> A pagar
-            </span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: amarelo, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(totalPagar)}</span>
+          <div style={{ flex: 1, padding: '12px 16px' }}>
+            <KpiCard T={T} label="A pagar" valor={fmtBRL(totalPagar)} cor={amarelo} icon="ti-arrow-up-circle" iconCor={amarelo} />
           </div>
         </div>
-      </div>
+      </Section>
     </div>
   )
 }
 
-// ─── Lista mobile (A Receber / A Pagar) ──────────────────────────────────────
+// ─── Lista lançamentos ────────────────────────────────────────────────────────
 function ListaMobile({ T, dark, itens, tipo, onAbrir, onBaixar }) {
-  const [periodo, setPeriodo]       = useState('mes')
-  const [statusFilt, setStatusFilt] = useState('aberto')
-  const [busca, setBusca]           = useState('')
+  const [periodo, setPeriodo]         = useState('mes')
+  const [statusFilt, setStatusFilt]   = useState('aberto')
+  const [busca, setBusca]             = useState('')
+  const [buscaAberta, setBuscaAberta] = useState(false)
 
-  const azul   = corEtapa('blue', dark)
+  const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
-  const corT   = tipo === 'receber' ? azul : amarelo
+  const corT    = tipo === 'receber' ? azul : amarelo
+
+  const statusOpts = [
+    { id: 'todos',   label: 'Todos' },
+    { id: 'aberto',  label: tipo === 'receber' ? 'A receber' : 'A pagar' },
+    { id: 'vencido', label: 'Vencidas' },
+    { id: 'pago',    label: 'Pagas' },
+  ]
 
   const filtrados = useMemo(() => {
     let arr = filtrarPorPeriodo(itens, periodo, 'vencimento')
-    if (statusFilt === 'aberto')  arr = arr.filter(i => i.status === 'aberto')
-    else if (statusFilt === 'pago') arr = arr.filter(i => i.status === 'pago')
-    else if (statusFilt === 'vencido') arr = arr.filter(i =>
-      i.status === 'aberto' && statusVencimento(i.vencimento).tipo === 'vencido'
-    )
+    if (statusFilt === 'aberto')       arr = arr.filter(i => i.status === 'aberto')
+    else if (statusFilt === 'pago')    arr = arr.filter(i => i.status === 'pago')
+    else if (statusFilt === 'vencido') arr = arr.filter(i => i.status === 'aberto' && statusVenc(i.vencimento).tipo === 'vencido')
     if (busca.trim()) {
       const q = busca.trim().toLowerCase()
       arr = arr.filter(i =>
@@ -581,38 +456,51 @@ function ListaMobile({ T, dark, itens, tipo, onAbrir, onBaixar }) {
     return [...arr].sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''))
   }, [itens, periodo, statusFilt, busca])
 
-  const totalFiltrado = filtrados.reduce((s, i) => s + i.valor, 0)
+  const total = filtrados.reduce((s, i) => s + i.valor, 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <FiltrosMobile T={T} dark={dark} tipo={tipo}
-        periodo={periodo} setPeriodo={setPeriodo}
-        statusFilt={statusFilt} setStatusFilt={setStatusFilt}
-        busca={busca} setBusca={setBusca}
-      />
-
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '2px 2px', fontSize: 11.5, color: T.textMuted,
-        fontVariantNumeric: 'tabular-nums',
-      }}>
-        <span>{filtrados.length} lançamento{filtrados.length !== 1 ? 's' : ''}</span>
-        <span style={{ fontWeight: 700, color: corT }}>{fmtBRL(totalFiltrado)}</span>
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '10px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {PERIODOS.map(p => (
+            <Chip key={p.id} label={p.label} azul={azul} T={T}
+              ativo={periodo === p.id} onClick={() => setPeriodo(p.id)} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {statusOpts.map(s => (
+            <Chip key={s.id} label={s.label} azul={azul} T={T}
+              ativo={statusFilt === s.id} onClick={() => setStatusFilt(s.id)} />
+          ))}
+          <button onClick={() => setBuscaAberta(o => !o)}
+            style={{ marginLeft: 'auto', flexShrink: 0, background: 'transparent', border: 'none', color: buscaAberta ? azul : T.textMuted, cursor: 'pointer', padding: 4 }}>
+            <i className="ti ti-search" style={{ fontSize: 16 }} aria-hidden="true" />
+          </button>
+        </div>
+        {buscaAberta && (
+          <div style={{ padding: '8px 12px', borderBottom: `1px solid ${T.border}` }}>
+            <Input T={T} dark={dark} value={busca} onChange={setBusca} icon="ti-search"
+              placeholder={tipo === 'receber' ? 'Buscar cliente ou descrição…' : 'Buscar descrição…'} />
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', fontSize: 11.5, color: T.textMuted }}>
+          <span>{filtrados.length} lançamento{filtrados.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontWeight: 700, color: corT, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(total)}</span>
+        </div>
       </div>
 
       {filtrados.length === 0 ? (
-        <EmptyState T={T} icon="ti-search-off"
-          title="Nenhum lançamento"
-          description="Ajuste os filtros ou o período."
-          compact height="auto"
-        />
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: '32px 16px', textAlign: 'center' }}>
+          <i className="ti ti-search-off" style={{ fontSize: 28, color: T.textDim, display: 'block', marginBottom: 8 }} aria-hidden="true" />
+          <div style={{ fontSize: 13, color: T.textMuted }}>Nenhum lançamento com esses filtros</div>
+        </div>
       ) : (
-        filtrados.map(it => (
-          <LancamentoCard key={it.id} T={T} dark={dark}
-            item={it} tipo={tipo}
-            onAbrir={onAbrir} onBaixar={onBaixar}
-          />
-        ))
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}>
+          {filtrados.map(it => (
+            <TxRow key={it.id} item={it} tipo={tipo} dark={dark} T={T}
+              onAbrir={onAbrir} onBaixar={onBaixar} />
+          ))}
+        </div>
       )}
     </div>
   )
@@ -620,9 +508,10 @@ function ListaMobile({ T, dark, itens, tipo, onAbrir, onBaixar }) {
 
 // ─── Caixa mobile ─────────────────────────────────────────────────────────────
 function CaixaMobile({ T, dark, itens, onAbrir }) {
-  const [periodo, setPeriodo]       = useState('mes')
-  const [statusFilt, setStatusFilt] = useState('todos')
-  const [busca, setBusca]           = useState('')
+  const [periodo, setPeriodo]         = useState('mes')
+  const [tipoFilt, setTipoFilt]       = useState('todos')
+  const [busca, setBusca]             = useState('')
+  const [buscaAberta, setBuscaAberta] = useState(false)
 
   const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
@@ -631,112 +520,84 @@ function CaixaMobile({ T, dark, itens, onAbrir }) {
 
   const filtrados = useMemo(() => {
     let arr = filtrarPorPeriodo(itens, periodo, 'data')
-    if (statusFilt !== 'todos') arr = arr.filter(m => m.tipo === statusFilt)
+    if (tipoFilt !== 'todos') arr = arr.filter(m => m.tipo === tipoFilt)
     if (busca.trim()) {
       const q = busca.trim().toLowerCase()
-      arr = arr.filter(m =>
-        m.descricao.toLowerCase().includes(q) ||
-        (m.categoria || '').toLowerCase().includes(q)
-      )
+      arr = arr.filter(m => m.descricao.toLowerCase().includes(q))
     }
     return [...arr].sort((a, b) => (b.data || '').localeCompare(a.data || ''))
-  }, [itens, periodo, statusFilt, busca])
+  }, [itens, periodo, tipoFilt, busca])
 
   const comSaldo = useMemo(() => {
     const asc = [...filtrados].reverse()
-    let acc = 0
-    const map = new Map()
-    asc.forEach(m => {
-      acc += m.tipo === 'receita' ? m.valor : -m.valor
-      map.set(m.id, acc)
-    })
+    let acc = 0; const map = new Map()
+    asc.forEach(m => { acc += m.tipo === 'receita' ? m.valor : -m.valor; map.set(m.id, acc) })
     return filtrados.map(m => ({ ...m, saldo: map.get(m.id) }))
   }, [filtrados])
 
-  const totalReceitas = filtrados.filter(m => m.tipo === 'receita').reduce((s, m) => s + m.valor, 0)
-  const totalDespesas = filtrados.filter(m => m.tipo === 'despesa').reduce((s, m) => s + m.valor, 0)
-  const saldo = totalReceitas - totalDespesas
+  const totalRec = filtrados.filter(m => m.tipo === 'receita').reduce((s, m) => s + m.valor, 0)
+  const totalDes = filtrados.filter(m => m.tipo === 'despesa').reduce((s, m) => s + m.valor, 0)
+  const saldo    = totalRec - totalDes
+
+  const tipoOpts = [
+    { id: 'todos',   label: 'Todos' },
+    { id: 'receita', label: 'Entradas' },
+    { id: 'despesa', label: 'Saídas' },
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <FiltrosMobile T={T} dark={dark} tipo="caixa"
-        periodo={periodo} setPeriodo={setPeriodo}
-        statusFilt={statusFilt} setStatusFilt={setStatusFilt}
-        busca={busca} setBusca={setBusca}
-      />
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, display: 'flex' }}>
+        <div style={{ flex: 1, padding: '12px 16px', borderRight: `1px solid ${T.border}` }}>
+          <KpiCard T={T} label="Saldo" valor={fmtBRL(saldo)} cor={saldo >= 0 ? corHero(dark) : vermelho} icon={saldo >= 0 ? 'ti-trending-up' : 'ti-trending-down'} iconCor={saldo >= 0 ? verde : vermelho} />
+        </div>
+        <div style={{ flex: 1, padding: '12px 16px', borderRight: `1px solid ${T.border}` }}>
+          <KpiCard T={T} label="Entradas" valor={fmtBRL(totalRec)} cor={azul} icon="ti-arrow-down-circle" iconCor={azul} />
+        </div>
+        <div style={{ flex: 1, padding: '12px 16px' }}>
+          <KpiCard T={T} label="Saídas" valor={fmtBRL(totalDes)} cor={amarelo} icon="ti-arrow-up-circle" iconCor={amarelo} />
+        </div>
+      </div>
 
-      <KpiGrid T={T} dark={dark} kpis={[
-        { label: 'Saldo',      valor: fmtBRL(saldo),         cor: saldo >= 0 ? corHero(dark) : vermelho, icon: saldo >= 0 ? 'ti-trending-up' : 'ti-trending-down', iconCor: saldo >= 0 ? verde : vermelho },
-        { label: 'Entradas',   valor: fmtBRL(totalReceitas),  cor: azul,   icon: 'ti-arrow-down-circle', iconCor: azul },
-        { label: 'Saídas',     valor: fmtBRL(totalDespesas),  cor: amarelo, icon: 'ti-arrow-up-circle',  iconCor: amarelo },
-        { label: 'Movimentos', valor: filtrados.length,        cor: corHero(dark), icon: 'ti-arrows-exchange', iconCor: T.textMuted },
-      ]} />
-
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 12px', borderRadius: 8,
-        background: T.cardAlt, border: `1px solid ${T.border}`,
-        fontSize: 11.5, color: T.textMuted,
-      }}>
-        <i className="ti ti-lock" style={{ fontSize: 14 }} aria-hidden="true" />
-        Movimentações confirmadas — somente leitura.
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '10px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {PERIODOS.map(p => (
+            <Chip key={p.id} label={p.label} azul={azul} T={T} ativo={periodo === p.id} onClick={() => setPeriodo(p.id)} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {tipoOpts.map(t => (
+            <Chip key={t.id} label={t.label} azul={azul} T={T} ativo={tipoFilt === t.id} onClick={() => setTipoFilt(t.id)} />
+          ))}
+          <button onClick={() => setBuscaAberta(o => !o)}
+            style={{ marginLeft: 'auto', flexShrink: 0, background: 'transparent', border: 'none', color: buscaAberta ? azul : T.textMuted, cursor: 'pointer', padding: 4 }}>
+            <i className="ti ti-search" style={{ fontSize: 16 }} aria-hidden="true" />
+          </button>
+        </div>
+        {buscaAberta && (
+          <div style={{ padding: '8px 12px', borderBottom: `1px solid ${T.border}` }}>
+            <Input T={T} dark={dark} value={busca} onChange={setBusca} icon="ti-search" placeholder="Buscar movimentação…" />
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', fontSize: 11.5, color: T.textMuted }}>
+          <span>{filtrados.length} movimento{filtrados.length !== 1 ? 's' : ''}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+            <i className="ti ti-lock" style={{ fontSize: 12 }} aria-hidden="true" /> Read-only
+          </span>
+        </div>
       </div>
 
       {comSaldo.length === 0 ? (
-        <EmptyState T={T} icon="ti-search-off"
-          title="Sem movimentações"
-          description="Ajuste os filtros ou o período."
-          compact height="auto"
-        />
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: '32px 16px', textAlign: 'center' }}>
+          <i className="ti ti-search-off" style={{ fontSize: 28, color: T.textDim, display: 'block', marginBottom: 8 }} aria-hidden="true" />
+          <div style={{ fontSize: 13, color: T.textMuted }}>Sem movimentações nesse período</div>
+        </div>
       ) : (
-        comSaldo.map(m => {
-          const ehReceita = m.tipo === 'receita'
-          const corT  = ehReceita ? azul : amarelo
-          const icone = ehReceita ? 'ti-arrow-down-circle' : 'ti-arrow-up-circle'
-          return (
-            <div key={m.id}
-              onClick={() => onAbrir(m)}
-              role="button"
-              tabIndex={0}
-              style={{
-                background: T.card, border: `1px solid ${T.border}`,
-                borderRadius: 12, padding: '12px 14px',
-                display: 'flex', gap: 12, cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              <div style={{
-                width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                background: bgEtapa(ehReceita ? 'blue' : 'yellow', dark),
-                border: `1px solid ${corT}33`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <i className={`ti ${icone}`} style={{ fontSize: 16, color: corT }} aria-hidden="true" />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 13, fontWeight: 600, color: corHero(dark),
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{m.descricao}</div>
-                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 3, display: 'flex', gap: 5 }}>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtPrazoCurto(m.data)}</span>
-                  {m.forma && <span>· {m.forma}</span>}
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: corT, fontVariantNumeric: 'tabular-nums' }}>
-                  {ehReceita ? '+' : '−'} {fmtBRL(m.valor)}
-                </span>
-                <span style={{
-                  fontSize: 10.5, fontWeight: 600, fontVariantNumeric: 'tabular-nums',
-                  color: m.saldo >= 0 ? corHero(dark) : vermelho,
-                }}>
-                  saldo {fmtBRL(m.saldo)}
-                </span>
-              </div>
-            </div>
-          )
-        })
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}>
+          {comSaldo.map(m => (
+            <CaixaRow key={m.id} m={m} dark={dark} T={T} onAbrir={onAbrir} />
+          ))}
+        </div>
       )}
     </div>
   )
@@ -768,13 +629,12 @@ export default function FinanceiroMobile({ T, dark }) {
     setCaixa(reais.filter(r => r.status === 'pago').map(r => ({ ...r, data: r.dataPag || r.vencimento })))
   }, [lancsReal, loadingHook])
 
-  // KPIs globais
   const recebidoMes  = caixa.filter(m => m.tipo === 'receita').reduce((s, m) => s + m.valor, 0)
   const pagoMes      = caixa.filter(m => m.tipo === 'despesa').reduce((s, m) => s + m.valor, 0)
   const saldoCaixa   = recebidoMes - pagoMes
   const totalReceber = receber.reduce((s, r) => s + r.valor, 0)
   const totalPagar   = pagar.reduce((s, p) => s + p.valor, 0)
-  const vencidos     = receber.filter(r => statusVencimento(r.vencimento).tipo === 'vencido')
+  const vencidos     = receber.filter(r => statusVenc(r.vencimento).tipo === 'vencido')
   const totalVencido = vencidos.reduce((s, r) => s + r.valor, 0)
   const pctMeta      = Math.min(100, Math.round((recebidoMes / META_MES) * 100))
   const faltaMeta    = Math.max(0, META_MES - recebidoMes)
@@ -782,219 +642,151 @@ export default function FinanceiroMobile({ T, dark }) {
   const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
-  const cor     = (d, c) => dark ? d : c
 
-  // ─── Ações ──────────────────────────────────────────────────────────────────
   async function baixarReceber(item) {
     if (usandoBanco) {
-      const { error } = await darBaixa(item.id, { forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma), taxa_pct: item.taxa_pct || 0 })
-      if (error) { notify('erro', `Não foi possível baixar: ${error.message}`); return }
-      notify('ok', `Recebimento de ${fmtBRL(item.valor)} confirmado`)
-      setSelecionado(null); return
+      const { error } = await darBaixa(item.id, { forma_pagamento: item.forma_enum || mapearFormaEnum(item.forma), taxa_pct: item.taxa_pct || 0 })
+      if (error) { notify('erro', `Erro: ${error.message}`); return }
+      notify('ok', `${fmtBRL(item.valor)} recebido`); setSelecionado(null); return
     }
     setReceber(prev => prev.filter(r => r.id !== item.id))
     setCaixa(prev => [{ ...item, status: 'pago', dataPag: isoHoje(), data: isoHoje() }, ...prev])
-    notify('ok', `Recebimento de ${fmtBRL(item.valor)} confirmado`)
-    setSelecionado(null)
+    notify('ok', `${fmtBRL(item.valor)} recebido`); setSelecionado(null)
   }
 
   async function baixarPagar(item) {
     if (usandoBanco) {
-      const { error } = await darBaixa(item.id, { forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma), taxa_pct: item.taxa_pct || 0 })
-      if (error) { notify('erro', `Não foi possível pagar: ${error.message}`); return }
-      notify('ok', `Pagamento de ${fmtBRL(item.valor)} registrado`)
-      setSelecionado(null); return
+      const { error } = await darBaixa(item.id, { forma_pagamento: item.forma_enum || mapearFormaEnum(item.forma), taxa_pct: item.taxa_pct || 0 })
+      if (error) { notify('erro', `Erro: ${error.message}`); return }
+      notify('ok', `${fmtBRL(item.valor)} pago`); setSelecionado(null); return
     }
     setPagar(prev => prev.filter(p => p.id !== item.id))
     setCaixa(prev => [{ ...item, tipo: 'despesa', status: 'pago', dataPag: isoHoje(), data: isoHoje() }, ...prev])
-    notify('ok', `Pagamento de ${fmtBRL(item.valor)} registrado`)
-    setSelecionado(null)
+    notify('ok', `${fmtBRL(item.valor)} pago`); setSelecionado(null)
   }
 
   async function excluirLancamento(item, tipo) {
     if (usandoBanco) {
       const { error } = await excluirReal(item.id)
-      if (error) { notify('erro', `Não foi possível excluir: ${error.message}`); return }
+      if (error) { notify('erro', `Erro: ${error.message}`); return }
     } else {
-      if (tipo === 'receber') setReceber(prev => prev.filter(r => r.id !== item.id))
+      if (tipo === 'receber')    setReceber(prev => prev.filter(r => r.id !== item.id))
       else if (tipo === 'pagar') setPagar(prev => prev.filter(p => p.id !== item.id))
-      else setCaixa(prev => prev.filter(m => m.id !== item.id))
+      else                       setCaixa(prev => prev.filter(m => m.id !== item.id))
     }
-    notify('ok', 'Lançamento excluído')
-    setSelecionado(null)
+    notify('ok', 'Excluído'); setSelecionado(null)
   }
 
-  // ─── Abas ───────────────────────────────────────────────────────────────────
   const ABAS = [
-    { id: 'visao',   label: 'Visão geral', icon: 'ti-layout-dashboard' },
-    { id: 'receber', label: 'A receber',   icon: 'ti-arrow-down-circle', count: receber.length },
-    { id: 'pagar',   label: 'A pagar',     icon: 'ti-arrow-up-circle',   count: pagar.length },
-    { id: 'caixa',   label: 'Caixa',       icon: 'ti-cash-banknote' },
+    { id: 'visao',   label: 'Visão geral' },
+    { id: 'receber', label: 'A receber',  count: receber.length },
+    { id: 'pagar',   label: 'A pagar',    count: pagar.length },
+    { id: 'caixa',   label: 'Caixa' },
   ]
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', flex: 1,
-      padding: '14px 14px 80px', gap: 12,
-      overflowY: 'auto', background: T.bg,
-    }}>
-      {/* ── KPIs (titulo "Financeiro" ja esta na topbar) ────────────────── */}
-      <div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', background: T.bg, paddingBottom: 80 }}>
+
+      {/* Header */}
+      <div style={{ background: T.card, borderBottom: `1px solid ${T.border}`, padding: '16px 16px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: corHero(dark), margin: 0, letterSpacing: '-0.01em' }}>
+              Financeiro
+            </h1>
+            <p style={{ fontSize: 11.5, color: T.textMuted, margin: '3px 0 0' }}>
+              Contas a receber, pagar e caixa
+            </p>
+          </div>
+          <button
+            onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}
+            style={{
+              background: azul, color: '#fff', border: 'none', borderRadius: 4,
+              padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+            }}
+          >
+            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" /> Novo
+          </button>
+        </div>
+
         {/* KPI strip 3 colunas */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
+        <div style={{ display: 'flex', paddingBottom: 12 }}>
           {[
-            { label: 'Saldo caixa', valor: fmtBRL(saldoCaixa), cor: corHero(dark) },
-            { label: 'A receber',   valor: fmtBRL(totalReceber), cor: azul },
-            { label: 'A pagar',     valor: fmtBRL(totalPagar),   cor: amarelo },
+            { label: 'Saldo',     valor: fmtBRL(saldoCaixa),  cor: corHero(dark) },
+            { label: 'A receber', valor: fmtBRL(totalReceber), cor: azul },
+            { label: 'A pagar',   valor: fmtBRL(totalPagar),   cor: amarelo },
           ].map((k, i) => (
             <div key={i} style={{
-              background: T.card, border: `1px solid ${T.border}`,
-              borderRadius: 10, padding: '10px 10px',
+              flex: 1, paddingLeft: i > 0 ? 14 : 0,
+              borderLeft: i > 0 ? `1px solid ${T.border}` : 'none',
+              marginLeft: i > 0 ? 14 : 0,
             }}>
-              <div style={{
-                fontSize: 9.5, color: T.textMuted, fontWeight: 600,
-                textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 3,
-              }}>
+              <div style={{ fontSize: 9.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 3 }}>
                 {k.label}
               </div>
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: k.cor, fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: k.cor, fontVariantNumeric: 'tabular-nums' }}>
                 {k.valor}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Badge de vencidos */}
         {vencidos.length > 0 && (
-          <div style={{
-            marginTop: 8, padding: '6px 10px', borderRadius: 8,
-            background: bgEtapa('red', dark), border: `1px solid ${vermelho}44`,
-            display: 'flex', alignItems: 'center', gap: 6,
-            fontSize: 11.5, color: vermelho, fontWeight: 700,
-          }}>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} aria-hidden="true" />
-            {vencidos.length} vencido{vencidos.length > 1 ? 's' : ''}
-            <span style={{ fontWeight: 500, color: T.textMuted }}>· {fmtBRL(totalVencido)}</span>
+          <div style={{ paddingBottom: 10 }}>
+            <Lozenge cor={vermelho} bg={bgEtapa('red', dark)}>
+              <i className="ti ti-alert-triangle" style={{ fontSize: 10, marginRight: 3 }} aria-hidden="true" />
+              {vencidos.length} vencido{vencidos.length > 1 ? 's' : ''} · {fmtBRL(totalVencido)}
+            </Lozenge>
           </div>
+        )}
+
+        <TabBar abas={ABAS} value={aba} onChange={setAba} T={T} dark={dark} />
+      </div>
+
+      {tabelaAusente && (
+        <div style={{
+          margin: '8px 16px 0', background: bgEtapa('yellow', dark),
+          border: `1px solid ${amarelo}44`, borderRadius: 6, padding: '8px 12px',
+          display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: T.textSecondary,
+        }}>
+          <i className="ti ti-database-off" style={{ fontSize: 14, color: amarelo, flexShrink: 0 }} aria-hidden="true" />
+          <span>
+            <strong style={{ color: corHero(dark) }}>Modo demo</strong> — aplique{' '}
+            <code style={{ fontSize: 10.5 }}>sql/01-lancamento-financeiro.sql</code> para dados reais.
+          </span>
+        </div>
+      )}
+
+      <div style={{ padding: '12px 16px', flex: 1 }}>
+        {aba === 'visao' && (
+          <VisaoGeralMobile T={T} dark={dark}
+            recebidoMes={recebidoMes} pagoMes={pagoMes} saldoCaixa={saldoCaixa}
+            pctMeta={pctMeta} faltaMeta={faltaMeta} meta={META_MES}
+            vencidos={vencidos} totalVencido={totalVencido}
+            totalReceber={totalReceber} totalPagar={totalPagar}
+            onIrParaReceber={() => setAba('receber')}
+          />
+        )}
+        {aba === 'receber' && (
+          <ListaMobile T={T} dark={dark} itens={receber} tipo="receber"
+            onAbrir={item => setSelecionado({ tipo: 'receber', item })}
+            onBaixar={baixarReceber}
+          />
+        )}
+        {aba === 'pagar' && (
+          <ListaMobile T={T} dark={dark} itens={pagar} tipo="pagar"
+            onAbrir={item => setSelecionado({ tipo: 'pagar', item })}
+            onBaixar={baixarPagar}
+          />
+        )}
+        {aba === 'caixa' && (
+          <CaixaMobile T={T} dark={dark} itens={caixa}
+            onAbrir={item => setSelecionado({ tipo: 'caixa', item })}
+          />
         )}
       </div>
 
-      {/* Banner demo */}
-      {tabelaAusente && (
-        <div style={{
-          background: bgEtapa('yellow', dark), border: `1px solid ${amarelo}44`,
-          borderRadius: 10, padding: '10px 12px',
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <i className="ti ti-database-off" style={{ fontSize: 16, color: amarelo, flexShrink: 0 }} aria-hidden="true" />
-          <div style={{ fontSize: 11.5, color: T.textSecondary, lineHeight: 1.5 }}>
-            <strong style={{ color: corHero(dark) }}>Modo demo</strong> — dados reais chegam após aplicar{' '}
-            <code style={{ fontSize: 10.5 }}>sql/01-lancamento-financeiro.sql</code> no Supabase.
-          </div>
-        </div>
-      )}
-
-      {/* ── Abas — segmented Atlassian + botao Novo ──────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{
-          flex: 1, minWidth: 0,
-          display: 'flex',
-          background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
-          borderRadius: 3, padding: 2, gap: 0,
-        }}>
-          {ABAS.map(a => {
-            const ativo = a.id === aba
-            return (
-              <button key={a.id} onClick={() => setAba(a.id)}
-                style={{
-                  flex: 1, minWidth: 0, minHeight: 30,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                  padding: '4px 6px',
-                  borderRadius: 3, border: 'none',
-                  background: ativo ? (dark ? '#22272B' : '#FFFFFF') : 'transparent',
-                  color: ativo ? T.textPrimary : T.textMuted,
-                  fontSize: 12, fontWeight: ativo ? 600 : 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  letterSpacing: '-0.005em',
-                  boxShadow: ativo
-                    ? (dark
-                        ? '0 1px 2px rgba(0,0,0,.4)'
-                        : '0 1px 2px rgba(9,30,66,0.18)')
-                    : 'none',
-                  transition: 'background .12s, box-shadow .12s',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  WebkitTapHighlightColor: 'transparent',
-                }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {a.label}
-                </span>
-                {a.count != null && a.count > 0 && (
-                  <span style={{
-                    background: ativo
-                      ? (dark ? 'rgba(255,255,255,0.10)' : '#DFE1E6')
-                      : 'transparent',
-                    color: ativo ? T.textPrimary : T.textMuted,
-                    fontSize: 10.5, fontWeight: 700, padding: '1px 6px',
-                    borderRadius: 99, minWidth: 16, textAlign: 'center',
-                    fontVariantNumeric: 'tabular-nums',
-                    flexShrink: 0,
-                  }}>{a.count}</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-        <button
-          type="button"
-          onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}
-          aria-label="Novo lançamento"
-          style={{
-            width: 34, height: 34, borderRadius: 3,
-            border: 'none', background: azul, color: '#fff',
-            cursor: 'pointer', flexShrink: 0,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'inherit',
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
-        </button>
-      </div>
-
-      {/* ── Conteúdo da aba ───────────────────────────────────────────────── */}
-      {aba === 'visao' && (
-        <VisaoGeralMobile T={T} dark={dark}
-          recebidoMes={recebidoMes} pagoMes={pagoMes} saldoCaixa={saldoCaixa}
-          pctMeta={pctMeta} faltaMeta={faltaMeta} meta={META_MES}
-          vencidos={vencidos} totalVencido={totalVencido}
-          totalReceber={totalReceber} totalPagar={totalPagar}
-          onIrParaReceber={() => setAba('receber')}
-        />
-      )}
-
-      {aba === 'receber' && (
-        <ListaMobile T={T} dark={dark}
-          itens={receber} tipo="receber"
-          onAbrir={item => setSelecionado({ tipo: 'receber', item })}
-          onBaixar={baixarReceber}
-        />
-      )}
-
-      {aba === 'pagar' && (
-        <ListaMobile T={T} dark={dark}
-          itens={pagar} tipo="pagar"
-          onAbrir={item => setSelecionado({ tipo: 'pagar', item })}
-          onBaixar={baixarPagar}
-        />
-      )}
-
-      {aba === 'caixa' && (
-        <CaixaMobile T={T} dark={dark}
-          itens={caixa}
-          onAbrir={item => setSelecionado({ tipo: 'caixa', item })}
-        />
-      )}
-
-      {/* ── Modais reutilizados do desktop ────────────────────────────────── */}
       {selecionado && (
         <LancamentoDetalheModal T={T} dark={dark}
           lancamento={selecionado.item} tipo={selecionado.tipo}
@@ -1012,11 +804,9 @@ export default function FinanceiroMobile({ T, dark }) {
           onExcluir={item => excluirLancamento(item, selecionado.tipo)}
         />
       )}
-
       {novoLancTipo && (
         <NovoLancamentoModal T={T} dark={dark}
-          tipoInicial={novoLancTipo}
-          contas={contasReais}
+          tipoInicial={novoLancTipo} contas={contasReais}
           onCriar={async payload => {
             const res = await criarLanc(payload)
             if (!res.error) await refetch()
