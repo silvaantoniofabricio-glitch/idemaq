@@ -26,7 +26,7 @@ import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 // ─── Painel Notas do Dia ──────────────────────────────────────────────────────
-function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
+function NotasDoDia({ T, dark, onClose }) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
@@ -34,6 +34,7 @@ function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
   const [texto, setTexto] = useState('')
   const [status, setStatus] = useState('idle')
   const [pronto, setPronto] = useState(false)
+  const [menuCtx, setMenuCtx] = useState(null) // {x, y, cursorPos}
   const timerRef = useRef(null)
   const textareaRef = useRef(null)
 
@@ -54,11 +55,8 @@ function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
     let cancelado = false
     ;(async () => {
       const { data } = await supabase
-        .from('configuracoes')
-        .select('valor')
-        .eq('chave', chave)
-        .is('deleted_at', null)
-        .maybeSingle()
+        .from('configuracoes').select('valor')
+        .eq('chave', chave).is('deleted_at', null).maybeSingle()
       if (!cancelado) {
         if (data?.valor != null) setTexto(typeof data.valor === 'string' ? data.valor : '')
         setPronto(true)
@@ -67,27 +65,35 @@ function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
     return () => { cancelado = true }
   }, [chave])
 
-  // Aplica pendingInsert após o texto ser carregado do banco
-  useEffect(() => {
-    if (!pronto || !pendingInsert) return
-    const novo = texto + (texto.length > 0 && !texto.endsWith('\n') ? '\n' : '') + pendingInsert
-    setTexto(novo)
-    agendarSave(novo)
-    onPendingConsumed?.()
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus()
-        textareaRef.current.setSelectionRange(novo.length, novo.length)
-      }
-    }, 30)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pronto, pendingInsert])
-
   function handleChange(e) {
     const val = e.target.value
     setTexto(val)
     if (!pronto) return
     agendarSave(val)
+  }
+
+  function handleContextMenu(e) {
+    e.preventDefault()
+    setMenuCtx({ x: e.clientX, y: e.clientY, cursorPos: e.target.selectionStart })
+  }
+
+  function inserirTarefa() {
+    const ta = textareaRef.current
+    const pos = menuCtx?.cursorPos ?? texto.length
+    const before = texto.slice(0, pos)
+    const after = texto.slice(pos)
+    const sep = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
+    const novo = before + sep + '☐ ' + after
+    setTexto(novo)
+    agendarSave(novo)
+    setMenuCtx(null)
+    setTimeout(() => {
+      if (ta) {
+        ta.focus()
+        const novoCursor = before.length + sep.length + 2 // depois de "☐ "
+        ta.setSelectionRange(novoCursor, novoCursor)
+      }
+    }, 30)
   }
 
   return (
@@ -109,20 +115,17 @@ function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
         <span style={{ fontWeight: 700, fontSize: 13, color: T.textPrimary, flex: 1 }}>
           Notas do Dia
         </span>
-        {status === 'saving' && (
-          <span style={{ fontSize: 10.5, color: T.textDim }}>salvando…</span>
-        )}
+        {status === 'saving' && <span style={{ fontSize: 10.5, color: T.textDim }}>salvando…</span>}
         {status === 'saved' && (
           <span style={{ fontSize: 10.5, color: '#4CAF50', display: 'flex', alignItems: 'center', gap: 3 }}>
             <i className="ti ti-check" style={{ fontSize: 11 }} /> salvo
           </span>
         )}
-        {status === 'error' && (
-          <span style={{ fontSize: 10.5, color: '#FF6B6B' }}>erro ao salvar</span>
-        )}
+        {status === 'error' && <span style={{ fontSize: 10.5, color: '#FF6B6B' }}>erro ao salvar</span>}
         <button onClick={onClose} style={{
           width: 22, height: 22, borderRadius: 6, border: 'none', cursor: 'pointer',
-          background: 'transparent', color: T.textDim, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'transparent', color: T.textDim,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <i className="ti ti-x" style={{ fontSize: 13 }} aria-hidden="true" />
         </button>
@@ -133,6 +136,7 @@ function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
         ref={textareaRef}
         value={texto}
         onChange={handleChange}
+        onContextMenu={handleContextMenu}
         placeholder="Tarefas do dia, lembretes, anotações…"
         style={{
           width: '100%', minHeight: 180, maxHeight: 360,
@@ -143,6 +147,34 @@ function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
           boxSizing: 'border-box',
         }}
       />
+
+      {/* Context menu */}
+      {menuCtx && (
+        <>
+          <div onClick={() => setMenuCtx(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
+          <div style={{
+            position: 'fixed', top: menuCtx.y, left: menuCtx.x, zIndex: 71,
+            minWidth: 170, padding: 4,
+            background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 9,
+            boxShadow: dark ? '0 8px 24px rgba(0,0,0,.55)' : '0 8px 24px rgba(0,0,0,.14)',
+          }}>
+            <button onClick={inserirTarefa} style={{
+              width: '100%', padding: '8px 11px',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              textAlign: 'left', fontSize: 13, color: T.textPrimary,
+              display: 'flex', alignItems: 'center', gap: 9,
+              borderRadius: 6, fontFamily: 'inherit',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.07)' : '#f0f4ff' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+              <i className="ti ti-checkbox" style={{ fontSize: 14, color: '#5B9BD5' }} aria-hidden="true" />
+              Nova tarefa
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -176,8 +208,6 @@ export default function Kanban({ T, dark, user }) {
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
   const [notasAbertas, setNotasAbertas] = useState(false)
-  const [notasPendingInsert, setNotasPendingInsert] = useState(null)
-  const [menuContextoNotas, setMenuContextoNotas] = useState(null) // {x, y} | null
   // Dropdown aberto na barra de filtros: 'prazo' | 'resp' | 'tipos' | null
   const [menuAberto, setMenuAberto] = useState(null)
   const barraRef = useRef(null)
@@ -603,8 +633,7 @@ export default function Kanban({ T, dark, user }) {
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <button
                   onClick={() => setNotasAbertas(v => !v)}
-                  onContextMenu={(e) => { e.preventDefault(); setMenuContextoNotas({ x: e.clientX, y: e.clientY }) }}
-                  title="Notas do dia (botão direito = nova tarefa)"
+                  title="Notas do dia"
                   style={notasAbertas ? chipAtivo : chipNormal}>
                   <i className="ti ti-notes" style={{ fontSize: 12 }} aria-hidden="true" />
                   Notas
@@ -646,47 +675,7 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
-      {/* Context menu do botão Notas */}
-      {menuContextoNotas && (
-        <>
-          <div onClick={() => setMenuContextoNotas(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 65 }} />
-          <div style={{
-            position: 'fixed',
-            top: menuContextoNotas.y, left: menuContextoNotas.x,
-            zIndex: 66, minWidth: 190,
-            background: T.card, border: `1px solid ${T.border}`,
-            borderRadius: 9, padding: 4,
-            boxShadow: dark ? '0 8px 24px rgba(0,0,0,.55)' : '0 8px 24px rgba(0,0,0,.14)',
-          }}>
-            {[
-              { icon: 'ti-checkbox', label: 'Nova tarefa', action: () => { setNotasAbertas(true); setNotasPendingInsert('☐ '); setMenuContextoNotas(null) } },
-              { icon: 'ti-notes',    label: 'Abrir notas', action: () => { setNotasAbertas(true); setMenuContextoNotas(null) } },
-            ].map(item => (
-              <button key={item.label} onClick={item.action} style={{
-                width: '100%', padding: '8px 11px',
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                textAlign: 'left', fontSize: 13, color: T.textPrimary,
-                display: 'flex', alignItems: 'center', gap: 9,
-                borderRadius: 6, fontFamily: 'inherit',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.07)' : '#f0f4ff' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                <i className={`ti ${item.icon}`} style={{ fontSize: 14, color: '#5B9BD5' }} aria-hidden="true" />
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {notasAbertas && (
-        <NotasDoDia T={T} dark={dark}
-          onClose={() => setNotasAbertas(false)}
-          pendingInsert={notasPendingInsert}
-          onPendingConsumed={() => setNotasPendingInsert(null)}
-        />
-      )}
+      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} />}
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />}
       {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList} usuarios={usuarios}
         onClose={()=>setDetalhe(null)}
