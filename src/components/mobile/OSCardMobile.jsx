@@ -96,15 +96,20 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.005em',
           }}>#{os.numero}</span>
-          {os.abertura && (
-            <span style={{
-              marginLeft: 'auto', flexShrink: 0,
-              fontSize: 10, color: T.textDim,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {Math.floor((Date.now() - new Date(os.abertura).getTime()) / 86400000)}d
-            </span>
-          )}
+          {(() => {
+            const recebido = os.historico?.find(h => h.etapa === 'recebido')
+            const base = recebido?.data || os.abertura
+            if (!base) return null
+            const dias = Math.floor((Date.now() - new Date(base).getTime()) / 86400000)
+            if (dias < 0) return null
+            return (
+              <span style={{
+                marginLeft: 'auto', flexShrink: 0,
+                fontSize: 10, color: T.textDim,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{dias}d</span>
+            )
+          })()}
         </div>
         {prazoPillText ? (
           <span style={{

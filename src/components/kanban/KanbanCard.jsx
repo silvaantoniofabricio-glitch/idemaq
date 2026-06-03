@@ -109,15 +109,22 @@ export default function KanbanCard({
             fontFamily: '"SF Mono", ui-monospace, Menlo, monospace',
             fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em',
           }}>#{os.numero}</span>
-          {os.abertura && (
-            <span style={{
-              marginLeft: 'auto', flexShrink: 0,
-              fontSize: 10, color: T.textDim,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {Math.floor((Date.now() - new Date(os.abertura).getTime()) / 86400000)}d
-            </span>
-          )}
+          {(() => {
+            // Conta a partir da confirmação de coleta (entrada em 'recebido').
+            // Para fabricação/venda sem recebido, usa a abertura da OS.
+            const recebido = os.historico?.find(h => h.etapa === 'recebido')
+            const base = recebido?.data || os.abertura
+            if (!base) return null
+            const dias = Math.floor((Date.now() - new Date(base).getTime()) / 86400000)
+            if (dias < 0) return null
+            return (
+              <span style={{
+                marginLeft: 'auto', flexShrink: 0,
+                fontSize: 10, color: T.textDim,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{dias}d</span>
+            )
+          })()}
         </div>
         {prazoPillText ? (
           <span style={{
