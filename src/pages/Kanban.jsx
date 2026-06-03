@@ -26,15 +26,29 @@ import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 // ─── Painel Notas do Dia ──────────────────────────────────────────────────────
-function NotasDoDia({ T, dark, onClose }) {
+function NotasDoDia({ T, dark, onClose, pendingInsert, onPendingConsumed }) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
   const chave = `kanban_notas_${hoje}`
   const [texto, setTexto] = useState('')
-  const [status, setStatus] = useState('idle') // idle | saving | saved | error
+  const [status, setStatus] = useState('idle')
+  const [pronto, setPronto] = useState(false)
   const timerRef = useRef(null)
-  const prontoRef = useRef(false)
+  const textareaRef = useRef(null)
+
+  function agendarSave(val) {
+    setStatus('saving')
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      const { error } = await supabase
+        .from('configuracoes')
+        .upsert({ chave, valor: val, descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
+      if (error) { setStatus('error'); return }
+      setStatus('saved')
+      setTimeout(() => setStatus('idle'), 2000)
+    }, 800)
+  }
 
   useEffect(() => {
     let cancelado = false
@@ -47,26 +61,33 @@ function NotasDoDia({ T, dark, onClose }) {
         .maybeSingle()
       if (!cancelado) {
         if (data?.valor != null) setTexto(typeof data.valor === 'string' ? data.valor : '')
-        prontoRef.current = true
+        setPronto(true)
       }
     })()
     return () => { cancelado = true }
   }, [chave])
 
+  // Aplica pendingInsert após o texto ser carregado do banco
+  useEffect(() => {
+    if (!pronto || !pendingInsert) return
+    const novo = texto + (texto.length > 0 && !texto.endsWith('\n') ? '\n' : '') + pendingInsert
+    setTexto(novo)
+    agendarSave(novo)
+    onPendingConsumed?.()
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(novo.length, novo.length)
+      }
+    }, 30)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pronto, pendingInsert])
+
   function handleChange(e) {
     const val = e.target.value
     setTexto(val)
-    if (!prontoRef.current) return
-    setStatus('saving')
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(async () => {
-      const { error } = await supabase
-        .from('configuracoes')
-        .upsert({ chave, valor: val, descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
-      if (error) { setStatus('error'); return }
-      setStatus('saved')
-      setTimeout(() => setStatus('idle'), 2000)
-    }, 800)
+    if (!pronto) return
+    agendarSave(val)
   }
 
   return (
@@ -109,9 +130,10 @@ function NotasDoDia({ T, dark, onClose }) {
 
       {/* Textarea */}
       <textarea
+        ref={textareaRef}
         value={texto}
         onChange={handleChange}
-        placeholder={"Tarefas do dia, lembretes, anotações…"}
+        placeholder="Tarefas do dia, lembretes, anotações…"
         style={{
           width: '100%', minHeight: 180, maxHeight: 360,
           padding: '10px 12px',
@@ -154,6 +176,8 @@ export default function Kanban({ T, dark, user }) {
   const [modalNova, setModalNova] = useState(false)
   const [detalhe, setDetalhe]     = useState(null)
   const [notasAbertas, setNotasAbertas] = useState(false)
+  const [notasPendingInsert, setNotasPendingInsert] = useState(null)
+  const [menuContextoNotas, setMenuContextoNotas] = useState(null) // {x, y} | null
   // Dropdown aberto na barra de filtros: 'prazo' | 'resp' | 'tipos' | null
   const [menuAberto, setMenuAberto] = useState(null)
   const barraRef = useRef(null)
@@ -577,8 +601,10 @@ export default function Kanban({ T, dark, user }) {
 
               {/* Nova OS + Notas — alinhados à direita */}
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button onClick={() => setNotasAbertas(v => !v)}
-                  title="Notas do dia"
+                <button
+                  onClick={() => setNotasAbertas(v => !v)}
+                  onContextMenu={(e) => { e.preventDefault(); setMenuContextoNotas({ x: e.clientX, y: e.clientY }) }}
+                  title="Notas do dia (botão direito = nova tarefa)"
                   style={notasAbertas ? chipAtivo : chipNormal}>
                   <i className="ti ti-notes" style={{ fontSize: 12 }} aria-hidden="true" />
                   Notas
@@ -620,7 +646,47 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
-      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} />}
+      {/* Context menu do botão Notas */}
+      {menuContextoNotas && (
+        <>
+          <div onClick={() => setMenuContextoNotas(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 65 }} />
+          <div style={{
+            position: 'fixed',
+            top: menuContextoNotas.y, left: menuContextoNotas.x,
+            zIndex: 66, minWidth: 190,
+            background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 9, padding: 4,
+            boxShadow: dark ? '0 8px 24px rgba(0,0,0,.55)' : '0 8px 24px rgba(0,0,0,.14)',
+          }}>
+            {[
+              { icon: 'ti-checkbox', label: 'Nova tarefa', action: () => { setNotasAbertas(true); setNotasPendingInsert('☐ '); setMenuContextoNotas(null) } },
+              { icon: 'ti-notes',    label: 'Abrir notas', action: () => { setNotasAbertas(true); setMenuContextoNotas(null) } },
+            ].map(item => (
+              <button key={item.label} onClick={item.action} style={{
+                width: '100%', padding: '8px 11px',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                textAlign: 'left', fontSize: 13, color: T.textPrimary,
+                display: 'flex', alignItems: 'center', gap: 9,
+                borderRadius: 6, fontFamily: 'inherit',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.07)' : '#f0f4ff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                <i className={`ti ${item.icon}`} style={{ fontSize: 14, color: '#5B9BD5' }} aria-hidden="true" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {notasAbertas && (
+        <NotasDoDia T={T} dark={dark}
+          onClose={() => setNotasAbertas(false)}
+          pendingInsert={notasPendingInsert}
+          onPendingConsumed={() => setNotasPendingInsert(null)}
+        />
+      )}
       {modalNova && <NovaOSModal T={T} dark={dark} onClose={()=>setModalNova(false)} tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />}
       {osDetalheAtual && <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user} osBase={osList} usuarios={usuarios}
         onClose={()=>setDetalhe(null)}
