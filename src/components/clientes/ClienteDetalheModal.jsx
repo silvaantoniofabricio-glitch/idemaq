@@ -2,13 +2,11 @@
 //
 // Ficha do cliente — 2 modos:
 //   Visualização: layout Atlassian (label/valor em grid, somente leitura).
-//   Edição:       mesmo formulário e padrão do NovoClienteModal desktop.
+//   Edição:       formulário único (sem divisões por seção), padrão NovoCliente OS.
 //
-// Após salvar com sucesso: volta ao modo visualização SEM fechar o modal.
-// onSalvar deve retornar { data, error } — Clientes.jsx atualizado pra isso.
-//
-// Schema DB: nome, telefone, telefone2, email, endereco, endereco2, observacoes
-//   telefone2 adicionado via sql/78 · endereco2 via sql/81
+// Schema DB: nome, telefone, telefone2, cpf_cnpj,
+//            endereco, endereco2, endereco3, email, observacoes
+//   telefone2 → sql/78 · endereco2 → sql/81 · cpf_cnpj + endereco3 → sql/82
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
@@ -19,7 +17,7 @@ import { useToast } from '../ui'
 import { criarOSDerivada } from '../../utils/osDerivada'
 import AddressInput from '../logistica/AddressInput'
 
-// ─── Helpers puros ────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function iniciais(nome) {
   return (nome || '')
@@ -39,12 +37,6 @@ function fmtCriacao(iso) {
   const d = new Date(typeof iso === 'string' ? iso.replace(' ', 'T') : iso)
   if (isNaN(d)) return null
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-}
-
-// Extrai rua do endereço concatenado "rua — cidade/uf — cep"
-function parseRua(endereco) {
-  if (!endereco) return ''
-  return endereco.split(' — ')[0] || endereco
 }
 
 function normFone(s) {
@@ -67,58 +59,34 @@ function labelEtapa(os) {
   return e?.curto || e?.label || os.etapa
 }
 
-// Converte cliente para estado de formulário de edição
+// Extrai array de endereços do cliente (filtra vazios, sempre ao menos 1 slot)
+function parseEnderecos(c) {
+  const arr = [c.endereco, c.endereco2, c.endereco3].filter(Boolean)
+  return arr.length > 0 ? arr : ['']
+}
+
 function toForm(c) {
   return {
     nome:        c.nome        || '',
     telefone:    c.telefone    || '',
     telefone2:   c.telefone2   || '',
     email:       c.email       || '',
-    // Separa rua do sufixo cidade/uf/cep concatenado por criarClientePersist
-    endereco:    parseRua(c.endereco),
-    cidade:      'Naviraí',
-    uf:          'MS',
-    cep:         '',
-    endereco2:   c.endereco2   || '',
+    cpf_cnpj:    c.cpf_cnpj    || '',
     observacoes: c.observacoes || '',
   }
 }
 
 // ─── Sub-componentes: modo visualização ───────────────────────────────────────
 
-function SectionLabel({ icon, title, T, azul }) {
-  return (
-    <div style={{
-      fontSize: 11, fontWeight: 700, letterSpacing: '.5px',
-      textTransform: 'uppercase', color: T.textMuted,
-      marginBottom: 12,
-      display: 'flex', alignItems: 'center', gap: 6,
-    }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-      {title}
-    </div>
-  )
-}
-
 function InfoRow({ label, value, icon, T, azul }) {
   if (!value) return null
   return (
-    <div style={{
-      display: 'grid', gridTemplateColumns: '130px 1fr',
-      gap: 8, alignItems: 'flex-start',
-    }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 8, alignItems: 'flex-start' }}>
       <span style={{ fontSize: 12, color: T.textMuted, paddingTop: 2, lineHeight: 1.5 }}>
         {label}
       </span>
-      <span style={{
-        fontSize: 13.5, color: T.textPrimary, lineHeight: 1.5,
-        display: 'flex', alignItems: 'flex-start', gap: 6,
-      }}>
-        {icon && (
-          <i className={`ti ${icon}`}
-             style={{ fontSize: 13, color: azul, flexShrink: 0, marginTop: 2 }}
-             aria-hidden="true" />
-        )}
+      <span style={{ fontSize: 13.5, color: T.textPrimary, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+        {icon && <i className={`ti ${icon}`} style={{ fontSize: 13, color: azul, flexShrink: 0, marginTop: 2 }} aria-hidden="true" />}
         <span>{value}</span>
       </span>
     </div>
@@ -127,14 +95,16 @@ function InfoRow({ label, value, icon, T, azul }) {
 
 function InfoSection({ title, icon, children, T, azul, border }) {
   return (
-    <div style={{
-      padding: '18px 24px',
-      borderTop: border ? `1px solid ${T.border}` : 'none',
-    }}>
-      <SectionLabel title={title} icon={icon} T={T} azul={azul} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {children}
+    <div style={{ padding: '18px 24px', borderTop: border ? `1px solid ${T.border}` : 'none' }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '.5px',
+        textTransform: 'uppercase', color: T.textMuted,
+        marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 12, color: azul }} aria-hidden="true" />
+        {title}
       </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
     </div>
   )
 }
@@ -150,7 +120,6 @@ function ClienteHeader({ T, dark, azul, cliente, modoEdicao, onEditar, onClose }
       background: dark ? '#0b1d2e' : '#eef4fb',
       display: 'flex', alignItems: 'flex-start', gap: 16,
     }}>
-      {/* Avatar */}
       <div style={{
         width: 56, height: 56, borderRadius: 14, flexShrink: 0,
         background: `linear-gradient(135deg, ${azul}, ${dark ? '#3a7bbf' : '#2860a0'})`,
@@ -161,7 +130,6 @@ function ClienteHeader({ T, dark, azul, cliente, modoEdicao, onEditar, onClose }
         {iniciais(cliente.nome)}
       </div>
 
-      {/* Nome + subtítulo */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 18, fontWeight: 700, color: corHero(dark),
@@ -187,7 +155,6 @@ function ClienteHeader({ T, dark, azul, cliente, modoEdicao, onEditar, onClose }
         </div>
       </div>
 
-      {/* Ações */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 2 }}>
         {!modoEdicao && (
           <Button T={T} dark={dark} variant="secondary" size="sm" iconLeft="ti-edit" onClick={onEditar}>
@@ -215,6 +182,37 @@ function ClienteHeader({ T, dark, azul, cliente, modoEdicao, onEditar, onClose }
   )
 }
 
+// ─── Label de endereço (padrão foto OS) ───────────────────────────────────────
+
+function EnderecoLabel({ idx, onRemove, T, azul, vermelho }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', marginBottom: 6,
+    }}>
+      <div style={{
+        fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px',
+        textTransform: 'uppercase', color: T.textMuted,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <i className="ti ti-map-pin" style={{ fontSize: 11, color: azul }} aria-hidden="true" />
+        Endereço {idx + 1}
+        {idx === 0 && (
+          <span style={{ color: vermelho, marginLeft: 2 }}>Obrigatório</span>
+        )}
+      </div>
+      {idx > 0 && onRemove && (
+        <button onClick={onRemove} title="Remover endereço" style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: T.textMuted, padding: '2px 4px', borderRadius: 4, lineHeight: 0,
+        }}>
+          <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Componente principal ──────────────────────────────────────────────────────
 
 export default function ClienteDetalheModal({
@@ -225,21 +223,36 @@ export default function ClienteDetalheModal({
   onExcluir,
   onAbrirOS,
 }) {
-  const azul = corEtapa('blue', dark)
+  const azul     = corEtapa('blue',  dark)
+  const vermelho = corEtapa('red',   dark)
 
   const [modoEdicao, setModoEdicao]     = useState(false)
   const [clienteLocal, setClienteLocal] = useState(cliente)
   const [form, setForm]                 = useState(() => toForm(cliente))
+  const [enderecos, setEnderecos]       = useState(() => parseEnderecos(cliente))
+  const [infoExtra, setInfoExtra]       = useState(() => !!(cliente.email || cliente.cpf_cnpj))
   const [salvando, setSalvando]         = useState(false)
 
-  // Sincroniza se o prop mudar externamente (pai faz refetch)
   useEffect(() => { setClienteLocal(cliente) }, [cliente])
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  function updateEndereco(idx, val) {
+    setEnderecos(prev => prev.map((e, i) => i === idx ? val : e))
+  }
+  function addEndereco() {
+    if (enderecos.length < 3) setEnderecos(prev => [...prev, ''])
+  }
+  function removeEndereco(idx) {
+    setEnderecos(prev => prev.filter((_, i) => i !== idx))
+  }
+
   const podeSalvar = !!form.nome.trim() && !!form.telefone.trim() && !salvando
 
   function entrarEdicao() {
     setForm(toForm(clienteLocal))
+    setEnderecos(parseEnderecos(clienteLocal))
+    setInfoExtra(!!(clienteLocal.email || clienteLocal.cpf_cnpj))
     setModoEdicao(true)
   }
 
@@ -247,38 +260,22 @@ export default function ClienteDetalheModal({
     if (!podeSalvar) return
     setSalvando(true)
 
-    // Preserva endereço original se o campo rua não foi alterado
-    // (evita dobrar "Naviraí/MS" em clientes já com endereço completo)
-    const ruaOriginal = parseRua(clienteLocal.endereco)
-    let enderecoFinal
-    if (
-      form.endereco.trim() === ruaOriginal.trim() &&
-      !form.cep.trim() &&
-      form.cidade === 'Naviraí' &&
-      form.uf === 'MS'
-    ) {
-      enderecoFinal = clienteLocal.endereco || null
-    } else {
-      const sufixo = [form.cidade?.trim(), form.uf?.trim()].filter(Boolean).join('/')
-      const partes = [form.endereco.trim(), sufixo, form.cep?.trim()].filter(Boolean)
-      enderecoFinal = partes.length ? partes.join(' — ') : null
-    }
-
     const patch = {
       id:          clienteLocal.id,
       nome:        form.nome.trim(),
       telefone:    form.telefone.trim()    || null,
       telefone2:   form.telefone2.trim()   || null,
+      cpf_cnpj:    form.cpf_cnpj.trim()    || null,
       email:       form.email.trim()       || null,
-      endereco:    enderecoFinal,
-      endereco2:   form.endereco2.trim()   || null,
+      endereco:    enderecos[0]?.trim()    || null,
+      endereco2:   enderecos[1]?.trim()    || null,
+      endereco3:   enderecos[2]?.trim()    || null,
       observacoes: form.observacoes.trim() || null,
     }
 
     const result = await onSalvar?.(patch)
     setSalvando(false)
-
-    if (result?.error) return // Clientes.jsx já exibiu o toast de erro
+    if (result?.error) return
 
     const atualizado = result?.data || { ...clienteLocal, ...patch }
     setClienteLocal(atualizado)
@@ -289,7 +286,6 @@ export default function ClienteDetalheModal({
   return (
     <Modal T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={680}>
 
-      {/* Header */}
       <ClienteHeader
         T={T} dark={dark} azul={azul}
         cliente={clienteLocal}
@@ -298,7 +294,6 @@ export default function ClienteDetalheModal({
         onClose={onClose}
       />
 
-      {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
 
         {/* ── MODO VISUALIZAÇÃO ── */}
@@ -308,7 +303,8 @@ export default function ClienteDetalheModal({
               <InfoRow T={T} azul={azul} label="Telefone"   value={clienteLocal.telefone}  icon="ti-brand-whatsapp" />
               <InfoRow T={T} azul={azul} label="Telefone 2" value={clienteLocal.telefone2} icon="ti-phone" />
               <InfoRow T={T} azul={azul} label="E-mail"     value={clienteLocal.email}     icon="ti-mail" />
-              {!clienteLocal.telefone && !clienteLocal.telefone2 && !clienteLocal.email && (
+              <InfoRow T={T} azul={azul} label="CPF/CNPJ"   value={clienteLocal.cpf_cnpj}  icon="ti-id-badge" />
+              {!clienteLocal.telefone && !clienteLocal.telefone2 && !clienteLocal.email && !clienteLocal.cpf_cnpj && (
                 <span style={{ fontSize: 12.5, color: T.textMuted, fontStyle: 'italic' }}>
                   Nenhum contato registrado
                 </span>
@@ -318,7 +314,8 @@ export default function ClienteDetalheModal({
             <InfoSection T={T} azul={azul} title="Endereços" icon="ti-map-pin" border>
               <InfoRow T={T} azul={azul} label="Principal"  value={clienteLocal.endereco}  icon="ti-map-pin" />
               <InfoRow T={T} azul={azul} label="Secundário" value={clienteLocal.endereco2} icon="ti-map-pin" />
-              {!clienteLocal.endereco && !clienteLocal.endereco2 && (
+              <InfoRow T={T} azul={azul} label="Endereço 3" value={clienteLocal.endereco3} icon="ti-map-pin" />
+              {!clienteLocal.endereco && !clienteLocal.endereco2 && !clienteLocal.endereco3 && (
                 <span style={{ fontSize: 12.5, color: T.textMuted, fontStyle: 'italic' }}>
                   Nenhum endereço registrado
                 </span>
@@ -327,10 +324,7 @@ export default function ClienteDetalheModal({
 
             {clienteLocal.observacoes && (
               <InfoSection T={T} azul={azul} title="Observações" icon="ti-notes" border>
-                <p style={{
-                  margin: 0, fontSize: 13.5, color: T.textPrimary,
-                  lineHeight: 1.65, whiteSpace: 'pre-wrap',
-                }}>
+                <p style={{ margin: 0, fontSize: 13.5, color: T.textPrimary, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
                   {clienteLocal.observacoes}
                 </p>
               </InfoSection>
@@ -348,126 +342,144 @@ export default function ClienteDetalheModal({
           </>
         )}
 
-        {/* ── MODO EDIÇÃO ── */}
+        {/* ── MODO EDIÇÃO ── formulário único, sem divisões ── */}
         {modoEdicao && (
-          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-            {/* IDENTIFICAÇÃO */}
-            <div>
-              <SectionLabel T={T} azul={azul} icon="ti-user" title="Identificação" />
+            {/* Nome */}
+            <Input T={T} dark={dark}
+              label="Nome completo *"
+              value={form.nome}
+              onChange={v => update('nome', v)}
+              placeholder="Ex: Maria Silva"
+              autoFocus
+            />
+
+            {/* Telefones */}
+            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+              <Input T={T} dark={dark}
+                label="Telefone *" type="tel"
+                value={form.telefone}
+                onChange={v => update('telefone', v)}
+                icon="ti-brand-whatsapp"
+                placeholder="(67) 9 0000-0000"
+              />
+              <Input T={T} dark={dark}
+                label="Telefone 2" type="tel"
+                value={form.telefone2}
+                onChange={v => update('telefone2', v)}
+                icon="ti-phone"
+                placeholder="(67) 9 0000-0000"
+              />
+            </div>
+
+            {/* E-mail + CPF/CNPJ — colapsável */}
+            {!infoExtra ? (
+              <button
+                type="button"
+                onClick={() => setInfoExtra(true)}
+                style={{
+                  alignSelf: 'flex-start',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: azul, fontSize: 12.5, fontWeight: 500,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '2px 0', fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <i className="ti ti-plus" style={{ fontSize: 12 }} aria-hidden="true" />
+                E-mail e CPF/CNPJ
+              </button>
+            ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <Input T={T} dark={dark}
-                  label="Nome completo *"
-                  value={form.nome}
-                  onChange={v => update('nome', v)}
-                  placeholder="Ex: Maria Silva"
-                  autoFocus
-                />
                 <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
                   <Input T={T} dark={dark}
-                    label="Telefone *" type="tel"
-                    value={form.telefone}
-                    onChange={v => update('telefone', v)}
-                    icon="ti-brand-whatsapp"
-                    placeholder="(67) 9 0000-0000"
+                    label="E-mail" type="email"
+                    value={form.email}
+                    onChange={v => update('email', v)}
+                    icon="ti-mail"
+                    placeholder="cliente@email.com"
                   />
                   <Input T={T} dark={dark}
-                    label="Telefone 2" type="tel"
-                    value={form.telefone2}
-                    onChange={v => update('telefone2', v)}
-                    icon="ti-phone"
-                    placeholder="(67) 9 0000-0000"
+                    label="CPF/CNPJ"
+                    value={form.cpf_cnpj}
+                    onChange={v => update('cpf_cnpj', v)}
+                    icon="ti-id-badge"
+                    placeholder="000.000.000-00"
                   />
                 </div>
-                <Input T={T} dark={dark}
-                  label="E-mail" type="email"
-                  value={form.email}
-                  onChange={v => update('email', v)}
-                  icon="ti-mail"
-                  placeholder="cliente@email.com"
-                />
+                {/* Ocultar só se ambos estiverem vazios */}
+                {!form.email && !form.cpf_cnpj && (
+                  <button
+                    type="button"
+                    onClick={() => setInfoExtra(false)}
+                    style={{
+                      alignSelf: 'flex-start',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: T.textMuted, fontSize: 11.5,
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '0', fontFamily: 'inherit',
+                    }}
+                  >
+                    <i className="ti ti-minus" style={{ fontSize: 11 }} aria-hidden="true" />
+                    Ocultar
+                  </button>
+                )}
               </div>
-            </div>
+            )}
 
-            <div style={{ height: 1, background: T.border }} />
-
-            {/* ENDEREÇO PRINCIPAL */}
-            <div>
-              <SectionLabel T={T} azul={azul} icon="ti-map-pin" title="Endereço principal" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <AddressInput
-                  T={T} dark={dark}
-                  label="Endereço"
-                  value={form.endereco}
-                  onChange={({ endereco }) => update('endereco', endereco)}
-                  placeholder="Rua, número, bairro"
-                />
-                <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '2fr 1fr 1fr', gap: 10 }}>
-                  <Input T={T} dark={dark}
-                    label="Cidade"
-                    value={form.cidade}
-                    onChange={v => update('cidade', v)}
-                    placeholder="Naviraí"
+            {/* Endereços — dinâmico (até 3) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 6 }}>
+              {enderecos.map((end, idx) => (
+                <div key={idx}>
+                  <EnderecoLabel
+                    idx={idx}
+                    T={T} azul={azul} vermelho={vermelho}
+                    onRemove={idx > 0 ? () => removeEndereco(idx) : null}
                   />
-                  <Input T={T} dark={dark}
-                    label="UF"
-                    value={form.uf}
-                    onChange={v => update('uf', v)}
-                    placeholder="MS"
-                  />
-                  <Input T={T} dark={dark}
-                    label="CEP"
-                    value={form.cep}
-                    onChange={v => update('cep', v)}
-                    placeholder="79950-000"
+                  <AddressInput
+                    T={T} dark={dark}
+                    value={end}
+                    onChange={({ endereco }) => updateEndereco(idx, endereco)}
+                    placeholder="Rua, número, bairro — cidade/UF"
                   />
                 </div>
-              </div>
+              ))}
+
+              {/* Botão adicionar + hint */}
+              {enderecos.length < 3 && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '4px 0' }}>
+                  <button
+                    type="button"
+                    onClick={addEndereco}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: azul, fontSize: 13, fontWeight: 500,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '4px 8px', fontFamily: 'inherit',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
+                    Adicionar outro endereço
+                  </button>
+                  <span style={{ fontSize: 11, color: T.textMuted, textAlign: 'center' }}>
+                    até 3 endereços — útil pra clientes com casa e comércio
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div style={{ height: 1, background: T.border }} />
+            {/* Observações */}
+            <Textarea T={T} dark={dark}
+              label="Observações"
+              value={form.observacoes}
+              onChange={v => update('observacoes', v)}
+              placeholder="Ex: cliente recorrente, prefere atendimento pela manhã…"
+              rows={3}
+            />
 
-            {/* ENDEREÇO SECUNDÁRIO */}
-            <div>
-              <div style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: '.5px',
-                textTransform: 'uppercase', color: T.textMuted,
-                marginBottom: 12,
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <i className="ti ti-map-pin" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-                Endereço secundário
-                <span style={{
-                  fontSize: 10.5, fontWeight: 400, textTransform: 'none',
-                  letterSpacing: 0, color: T.textMuted,
-                }}>— opcional</span>
-              </div>
-              <AddressInput
-                T={T} dark={dark}
-                label="Endereço 2"
-                value={form.endereco2}
-                onChange={({ endereco }) => update('endereco2', endereco)}
-                placeholder="Ex: endereço do trabalho ou entrega"
-              />
-            </div>
-
-            <div style={{ height: 1, background: T.border }} />
-
-            {/* OBSERVAÇÕES */}
-            <div>
-              <SectionLabel T={T} azul={azul} icon="ti-notes" title="Observações" />
-              <Textarea T={T} dark={dark}
-                value={form.observacoes}
-                onChange={v => update('observacoes', v)}
-                placeholder="Ex: cliente recorrente, prefere atendimento pela manhã…"
-                rows={3}
-              />
-            </div>
-
-            <div style={{
-              fontSize: 11, color: T.textMuted,
-              padding: '8px 12px', borderRadius: 6, background: T.cardAlt,
-            }}>
+            <div style={{ fontSize: 11, color: T.textMuted, padding: '6px 10px', borderRadius: 6, background: T.cardAlt }}>
               <i className="ti ti-info-circle" style={{ fontSize: 12, marginRight: 5, color: azul }} aria-hidden="true" />
               Campos com <strong style={{ color: corHero(dark) }}>*</strong> são obrigatórios.
             </div>
@@ -513,8 +525,6 @@ export default function ClienteDetalheModal({
 }
 
 // ─── Histórico de OS ──────────────────────────────────────────────────────────
-// Recebe osList completa do pai (via useOS) e filtra em memória.
-// Matching: cliente_id exato OU telefone normalizado (cobre OS do Trello/Bling).
 
 function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
   const notify = useToast()
@@ -557,10 +567,7 @@ function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
       }}>
         <i className="ti ti-history" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
         Histórico de OS
-        <span style={{
-          fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
-          fontWeight: 400, textTransform: 'none', letterSpacing: 0,
-        }}>
+        <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
           — {osCliente.length} {osCliente.length === 1 ? 'ordem' : 'ordens'}
         </span>
       </div>
@@ -573,12 +580,8 @@ function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
         }}>
           <i className="ti ti-clipboard-off" style={{ fontSize: 18, color: T.textMuted }} aria-hidden="true" />
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: T.textSecondary }}>
-              Sem OS registrada
-            </div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-              Este cliente ainda não passou pela oficina.
-            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: T.textSecondary }}>Sem OS registrada</div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>Este cliente ainda não passou pela oficina.</div>
           </div>
         </div>
       )}
@@ -611,25 +614,20 @@ function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
               >
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{
-                      fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>OS #{os.numero}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+                      OS #{os.numero}
+                    </span>
                     <span style={{ fontSize: 11, color: T.textMuted }}>·</span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 600, color: T.textSecondary,
-                      textTransform: 'capitalize',
-                    }}>{cfg?.label || os.tipo}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: T.textSecondary, textTransform: 'capitalize' }}>
+                      {cfg?.label || os.tipo}
+                    </span>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
                       background: etapaCor + '22', color: etapaCor,
                       textTransform: 'uppercase', letterSpacing: '.3px',
                     }}>{labelEtapa(os)}</span>
                   </div>
-                  <div style={{
-                    fontSize: 10.5, color: T.textMuted, marginTop: 4,
-                    display: 'flex', alignItems: 'center', gap: 8,
-                  }}>
+                  <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                       <i className="ti ti-calendar" style={{ fontSize: 11, marginRight: 3 }} aria-hidden="true" />
                       {fmtDataCurta(os.abertura)}
@@ -637,10 +635,9 @@ function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <span style={{
-                    fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>{fmtBRL(os.valor)}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtBRL(os.valor)}
+                  </span>
                   {os.etapa === 'concluido' && !os.garantia && os.tipo === 'atendimento' && estaEmGarantia(os) && (
                     <button
                       type="button"
@@ -658,14 +655,12 @@ function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
                         opacity: criandoGarantia === os.id ? 0.6 : 1,
                       }}
                     >
-                      <i className={`ti ${criandoGarantia === os.id ? 'ti-loader-2' : 'ti-shield-check'}`}
-                         style={{ fontSize: 12 }} aria-hidden="true" />
+                      <i className={`ti ${criandoGarantia === os.id ? 'ti-loader-2' : 'ti-shield-check'}`} style={{ fontSize: 12 }} aria-hidden="true" />
                       Garantia
                     </button>
                   )}
                   {clickable && (
-                    <i className="ti ti-chevron-right"
-                       style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
+                    <i className="ti ti-chevron-right" style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
                   )}
                 </div>
               </div>

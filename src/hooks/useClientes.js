@@ -17,28 +17,32 @@ import { supabase } from '../supabase'
  * Usado por consumidores que precisam só criar (ex: NovaOSModal inline)
  * e não querem pagar o custo de carregar os 782 clientes do useClientes.
  *
- * Schema real: nome, telefone, telefone2, endereco (text concat), endereco2, email, observacoes.
+ * Schema real: nome, telefone, telefone2, cpf_cnpj,
+ *              endereco, endereco2, endereco3 (campos diretos, sem concat),
+ *              email, observacoes.
  * Aceita payload com nomes antigos (fone/obs) e novos (telefone/observacoes).
- * telefone2 adicionado via sql/78; endereco2 via sql/81.
+ * telefone2 → sql/78 · endereco2 → sql/81 · cpf_cnpj + endereco3 → sql/82.
+ *
+ * Compatibilidade legada: se payload.enderecos[] vier do _legacy/,
+ * concatena no endereco. Se payload.cidade/uf/cep vierem, concatena também.
  */
 export async function criarClientePersist(payload) {
-  const enderecos = Array.isArray(payload.enderecos)
-    ? payload.enderecos.map(e => (e || '').trim()).filter(Boolean)
-    : []
-  const enderecoBase = enderecos.length > 0
-    ? enderecos.join(' | ')
-    : (payload.endereco?.trim() || '')
-
-  const sufixoLocal = [payload.cidade?.trim(), payload.uf?.trim()].filter(Boolean).join('/')
-  const partes = [enderecoBase, sufixoLocal, payload.cep?.trim()].filter(Boolean)
-  const enderecoFinal = partes.length ? partes.join(' — ') : null
+  // Compatibilidade com chamadas legadas que passam enderecos[] ou cidade/uf/cep
+  let enderecoFinal = payload.endereco?.trim() || null
+  if (payload.cidade || payload.uf || payload.cep) {
+    const sufixo = [payload.cidade?.trim(), payload.uf?.trim()].filter(Boolean).join('/')
+    const partes = [enderecoFinal, sufixo, payload.cep?.trim()].filter(Boolean)
+    enderecoFinal = partes.length ? partes.join(' — ') : null
+  }
 
   const limpo = {
     nome:        payload.nome?.trim(),
     telefone:    (payload.telefone || payload.fone)?.trim() || null,
     telefone2:   payload.telefone2?.trim() || null,
+    cpf_cnpj:    payload.cpf_cnpj?.trim() || null,
     endereco:    enderecoFinal,
     endereco2:   payload.endereco2?.trim() || null,
+    endereco3:   payload.endereco3?.trim() || null,
     email:       payload.email?.trim() || null,
     observacoes: (payload.observacoes || payload.obs)?.trim() || null,
   }

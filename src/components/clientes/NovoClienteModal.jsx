@@ -1,50 +1,62 @@
 // idemaq-src/components/clientes/NovoClienteModal.jsx
 // Modal de cadastro de cliente — tela /clientes (desktop).
-// Segue o mesmo padrão visual do modo edição do ClienteDetalheModal.
-// NÃO é usado pela NovaOSModal (que usa o _legacy/) — pode ser alterado livremente.
-//
-// Campos: nome*, telefone*, telefone2, endereço (AddressInput + cidade/uf/cep),
-//         endereço 2 (opcional), e-mail, observações.
-// telefone2 → sql/78 · endereco2 → sql/81
+// Mesmo padrão do modo edição do ClienteDetalheModal:
+//   - Formulário único sem divisões por seção
+//   - 2 telefones · E-mail+CPF/CNPJ colapsáveis · até 3 endereços dinâmicos
+// NÃO é usado pela NovaOSModal (_legacy/) — pode ser alterado livremente.
 
 import React, { useState } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
-import {
-  Modal, ModalHeader, Button, Input, Textarea, useToast,
-} from '../ui'
+import { Modal, ModalHeader, Button, Input, Textarea, useToast } from '../ui'
 import AddressInput from '../logistica/AddressInput'
 
 export default function NovoClienteModal({
   T, dark, mobile,
   nomeInicial = '',
   onClose,
-  onCriado,   // (cliente) => void · chamado após cadastro
-  criar,      // hook.criar do useClientes — passado por quem abre o modal
+  onCriado,
+  criar,
 }) {
-  const notify = useToast()
-  const azul = corEtapa('blue', dark)
+  const notify   = useToast()
+  const azul     = corEtapa('blue', dark)
+  const vermelho = corEtapa('red',  dark)
 
   const [form, setForm] = useState({
     nome:        nomeInicial,
     telefone:    '',
     telefone2:   '',
-    endereco:    '',
-    cidade:      'Naviraí',
-    uf:          'MS',
-    cep:         '',
-    endereco2:   '',
     email:       '',
+    cpf_cnpj:    '',
     observacoes: '',
   })
-  const [salvando, setSalvando] = useState(false)
+  const [enderecos, setEnderecos] = useState([''])
+  const [infoExtra, setInfoExtra] = useState(false)
+  const [salvando, setSalvando]   = useState(false)
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  function updateEndereco(idx, val) {
+    setEnderecos(prev => prev.map((e, i) => i === idx ? val : e))
+  }
+  function addEndereco() {
+    if (enderecos.length < 3) setEnderecos(prev => [...prev, ''])
+  }
+  function removeEndereco(idx) {
+    setEnderecos(prev => prev.filter((_, i) => i !== idx))
+  }
+
   const podeSalvar = !!form.nome.trim() && !!form.telefone.trim() && !salvando
 
   async function salvar() {
     if (!podeSalvar) return
     setSalvando(true)
-    const { data, error } = await criar(form)
+    const payload = {
+      ...form,
+      endereco:  enderecos[0]?.trim() || '',
+      endereco2: enderecos[1]?.trim() || '',
+      endereco3: enderecos[2]?.trim() || '',
+    }
+    const { data, error } = await criar(payload)
     setSalvando(false)
     if (error) {
       notify('erro', error.message || 'Erro ao cadastrar cliente')
@@ -55,140 +67,164 @@ export default function NovoClienteModal({
     onClose?.()
   }
 
-  const divider = <div style={{ height: 1, background: T.border }} />
-
-  const SectionLabel = ({ icon, children }) => (
-    <div style={{
-      fontSize: 11, fontWeight: 700, letterSpacing: '.5px',
-      textTransform: 'uppercase', color: T.textMuted,
-      marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6,
-    }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-      {children}
-    </div>
-  )
-
   return (
     <Modal T={T} dark={dark} mobile={mobile} onClose={onClose} maxWidth={560}>
       <ModalHeader T={T} title="Novo cliente" icon="ti-user-plus" onClose={onClose} />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-        {/* IDENTIFICAÇÃO */}
-        <div>
-          <SectionLabel icon="ti-user">Identificação</SectionLabel>
+        {/* Nome */}
+        <Input T={T} dark={dark}
+          label="Nome completo *"
+          value={form.nome}
+          onChange={v => update('nome', v)}
+          placeholder="Ex: Maria Silva"
+          autoFocus
+        />
+
+        {/* Telefones */}
+        <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
+          <Input T={T} dark={dark}
+            label="Telefone *" type="tel"
+            value={form.telefone}
+            onChange={v => update('telefone', v)}
+            icon="ti-brand-whatsapp"
+            placeholder="(67) 9 0000-0000"
+          />
+          <Input T={T} dark={dark}
+            label="Telefone 2" type="tel"
+            value={form.telefone2}
+            onChange={v => update('telefone2', v)}
+            icon="ti-phone"
+            placeholder="(67) 9 0000-0000"
+          />
+        </div>
+
+        {/* E-mail + CPF/CNPJ — colapsável */}
+        {!infoExtra ? (
+          <button
+            type="button"
+            onClick={() => setInfoExtra(true)}
+            style={{
+              alignSelf: 'flex-start',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: azul, fontSize: 12.5, fontWeight: 500,
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '2px 0', fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <i className="ti ti-plus" style={{ fontSize: 12 }} aria-hidden="true" />
+            E-mail e CPF/CNPJ
+          </button>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Input T={T} dark={dark}
-              label="Nome completo *"
-              value={form.nome}
-              onChange={v => update('nome', v)}
-              placeholder="Ex: Maria Silva"
-              autoFocus
-            />
             <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 10 }}>
               <Input T={T} dark={dark}
-                label="Telefone *" type="tel"
-                value={form.telefone}
-                onChange={v => update('telefone', v)}
-                icon="ti-brand-whatsapp"
-                placeholder="(67) 9 0000-0000"
+                label="E-mail" type="email"
+                value={form.email}
+                onChange={v => update('email', v)}
+                icon="ti-mail"
+                placeholder="cliente@email.com"
               />
               <Input T={T} dark={dark}
-                label="Telefone 2" type="tel"
-                value={form.telefone2}
-                onChange={v => update('telefone2', v)}
-                icon="ti-phone"
-                placeholder="(67) 9 0000-0000"
+                label="CPF/CNPJ"
+                value={form.cpf_cnpj}
+                onChange={v => update('cpf_cnpj', v)}
+                icon="ti-id-badge"
+                placeholder="000.000.000-00"
               />
             </div>
-            <Input T={T} dark={dark}
-              label="E-mail" type="email"
-              value={form.email}
-              onChange={v => update('email', v)}
-              icon="ti-mail"
-              placeholder="cliente@email.com"
-            />
+            {!form.email && !form.cpf_cnpj && (
+              <button
+                type="button"
+                onClick={() => setInfoExtra(false)}
+                style={{
+                  alignSelf: 'flex-start',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: T.textMuted, fontSize: 11.5,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '0', fontFamily: 'inherit',
+                }}
+              >
+                <i className="ti ti-minus" style={{ fontSize: 11 }} aria-hidden="true" />
+                Ocultar
+              </button>
+            )}
           </div>
-        </div>
+        )}
 
-        {divider}
-
-        {/* ENDEREÇO PRINCIPAL */}
-        <div>
-          <SectionLabel icon="ti-map-pin">Endereço principal</SectionLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <AddressInput
-              T={T} dark={dark}
-              label="Endereço"
-              value={form.endereco}
-              onChange={({ endereco }) => update('endereco', endereco)}
-              placeholder="Rua, número, bairro"
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '2fr 1fr 1fr', gap: 10 }}>
-              <Input T={T} dark={dark}
-                label="Cidade"
-                value={form.cidade}
-                onChange={v => update('cidade', v)}
-                placeholder="Naviraí"
-              />
-              <Input T={T} dark={dark}
-                label="UF"
-                value={form.uf}
-                onChange={v => update('uf', v)}
-                placeholder="MS"
-              />
-              <Input T={T} dark={dark}
-                label="CEP"
-                value={form.cep}
-                onChange={v => update('cep', v)}
-                placeholder="79950-000"
+        {/* Endereços — dinâmico até 3 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 6 }}>
+          {enderecos.map((end, idx) => (
+            <div key={idx}>
+              {/* Label do endereço */}
+              <div style={{
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', marginBottom: 6,
+              }}>
+                <div style={{
+                  fontSize: 10.5, fontWeight: 700, letterSpacing: '.5px',
+                  textTransform: 'uppercase', color: T.textMuted,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <i className="ti ti-map-pin" style={{ fontSize: 11, color: azul }} aria-hidden="true" />
+                  Endereço {idx + 1}
+                  {idx === 0 && (
+                    <span style={{ color: vermelho, marginLeft: 2 }}>Obrigatório</span>
+                  )}
+                </div>
+                {idx > 0 && (
+                  <button onClick={() => removeEndereco(idx)} title="Remover" style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: T.textMuted, padding: '2px 4px', borderRadius: 4, lineHeight: 0,
+                  }}>
+                    <i className="ti ti-x" style={{ fontSize: 14 }} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+              <AddressInput
+                T={T} dark={dark}
+                value={end}
+                onChange={({ endereco }) => updateEndereco(idx, endereco)}
+                placeholder="Rua, número, bairro — cidade/UF"
               />
             </div>
-          </div>
+          ))}
+
+          {enderecos.length < 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '2px 0' }}>
+              <button
+                type="button"
+                onClick={addEndereco}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: azul, fontSize: 13, fontWeight: 500,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '4px 8px', fontFamily: 'inherit',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <i className="ti ti-plus" style={{ fontSize: 13 }} aria-hidden="true" />
+                Adicionar outro endereço
+              </button>
+              <span style={{ fontSize: 11, color: T.textMuted, textAlign: 'center' }}>
+                até 3 endereços — útil pra clientes com casa e comércio
+              </span>
+            </div>
+          )}
         </div>
 
-        {divider}
+        {/* Observações */}
+        <Textarea T={T} dark={dark}
+          label="Observações"
+          value={form.observacoes}
+          onChange={v => update('observacoes', v)}
+          placeholder="Ex: cliente recorrente, prefere atendimento pela manhã, etc."
+          rows={3}
+        />
 
-        {/* ENDEREÇO SECUNDÁRIO */}
-        <div>
-          <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '.5px',
-            textTransform: 'uppercase', color: T.textMuted,
-            marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <i className="ti ti-map-pin" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-            Endereço secundário
-            <span style={{
-              fontSize: 10.5, fontWeight: 400, textTransform: 'none',
-              letterSpacing: 0, color: T.textMuted,
-            }}>— opcional</span>
-          </div>
-          <AddressInput
-            T={T} dark={dark}
-            label="Endereço 2"
-            value={form.endereco2}
-            onChange={({ endereco }) => update('endereco2', endereco)}
-            placeholder="Ex: endereço do trabalho ou entrega"
-          />
-        </div>
-
-        {divider}
-
-        {/* OBSERVAÇÕES */}
-        <div>
-          <SectionLabel icon="ti-notes">Observações</SectionLabel>
-          <Textarea T={T} dark={dark}
-            value={form.observacoes}
-            onChange={v => update('observacoes', v)}
-            placeholder="Ex: cliente recorrente, prefere atendimento pela manhã, etc."
-            rows={3}
-          />
-        </div>
-
-        <div style={{
-          fontSize: 11, color: T.textMuted,
-          padding: '8px 12px', borderRadius: 6, background: T.cardAlt,
-        }}>
+        <div style={{ fontSize: 11, color: T.textMuted, padding: '6px 10px', borderRadius: 6, background: T.cardAlt }}>
           <i className="ti ti-info-circle" style={{ fontSize: 12, marginRight: 5, color: azul }} aria-hidden="true" />
           Campos com <strong style={{ color: corHero(dark) }}>*</strong> são obrigatórios.
           Você pode completar os outros depois pela ficha do cliente.
