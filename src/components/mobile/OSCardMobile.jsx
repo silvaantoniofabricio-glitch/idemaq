@@ -163,11 +163,11 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
           </div>
         )}
 
-        {/* Linha 4: endereco — oculto em compact */}
-        {!compact && endResumido && (
+        {/* Linha 4: endereco */}
+        {endResumido && (
           <div style={{
             gridColumn: '1 / -1',
-            fontSize: 11.5, color: T.textMuted,
+            fontSize: compact ? 10.5 : 11.5, color: T.textMuted,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             marginTop: 1,
           }}>{endResumido}</div>
