@@ -4,6 +4,7 @@ import { TI, PALETA } from '../_shared/PrimitivasMobile';
 import { ETAPAS_TODOS } from '../../utils/osData';
 import FormEquipamentoEdit from './FormEquipamentoEdit';
 import { higType, HIG_FONT, HIG_COLOR } from '../../theme-hig';
+import { useToast } from '../ui';
 
 // Apple HIG — aplicado em TODAS as etapas (decisao 2026-05-27).
 
@@ -51,7 +52,6 @@ const MONO_STACK = 'ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, mon
 const HeaderMobile = ({
   os,
   onClose,
-  onMore,
   onHistory,
   onShowHistorico,
   onAdicionarEquipamento,
@@ -59,14 +59,21 @@ const HeaderMobile = ({
   aba,
   setAba,
   onUpdateOS,
+  onExcluir,
+  onDuplicar,
+  admin = false,
 }) => {
   const { T, dark } = useTheme();
+  const notify = useToast();
   // Flag `m3` mantida no codigo mas sempre true — HIG aplicado em tudo.
   const m3 = true;
   // Modal de edicao de equipamento — gerenciado aqui dentro porque o
   // OSDetalhe nao passa onAdicionarEquipamento. Mesma logica do Header
   // desktop (que tambem mantem estado proprio).
   const [modalEquipamento, setModalEquipamento] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [duplicando, setDuplicando] = useState(false);
   const [foneCopied, setFoneCopied] = useState(false);
   const [endCopied, setEndCopied] = useState(false);
   const historicoHandler = onShowHistorico || onHistory;
@@ -104,6 +111,62 @@ const HeaderMobile = ({
   }
 
   const endResumido = os?.endereco ? os.endereco.split('—')[0].trim() : null
+
+  // ── Funções do menu "Mais ações" (espelham o Header desktop) ────────────
+  async function copiarNumeroOS() {
+    setMenuAberto(false)
+    try {
+      await navigator.clipboard.writeText(String(os.numero))
+      notify('ok', `OS #${os.numero} copiada`)
+    } catch {
+      notify('erro', 'Não consegui copiar')
+    }
+  }
+
+  async function duplicarOSHandler() {
+    if (duplicando || !onDuplicar) return
+    setMenuAberto(false)
+    setDuplicando(true)
+    try {
+      const res = await onDuplicar(os)
+      if (res?.error) throw res.error
+      notify('ok', `OS #${res?.numero} criada como duplicata`)
+    } catch (e) {
+      notify('erro', `Erro ao duplicar: ${e?.message || 'desconhecido'}`)
+    } finally {
+      setDuplicando(false)
+    }
+  }
+
+  async function ocultarNoKanban() {
+    if (!onUpdateOS) return
+    setMenuAberto(false)
+    try {
+      await onUpdateOS(os.numero, { oculta_no_kanban: !os.oculta_no_kanban })
+      notify('ok', os.oculta_no_kanban
+        ? `OS #${os.numero} voltou pro Kanban`
+        : `OS #${os.numero} retirada do Kanban (continua em Vendas)`)
+    } catch (e) {
+      notify('erro', `Erro: ${e?.message || 'desconhecido'}`)
+    }
+  }
+
+  async function excluirOS() {
+    if (excluindo) return
+    setMenuAberto(false)
+    if (!window.confirm(
+      `Excluir OS #${os.numero}?\n\n` +
+      `Cliente: ${os.cliente || '—'}\n` +
+      `A OS some do Kanban mas fica no banco (soft-delete).`
+    )) return
+    setExcluindo(true)
+    try {
+      await onExcluir?.(os.numero)
+      onClose?.()
+    } finally {
+      setExcluindo(false)
+    }
+  }
 
   const atrasoLabel = formatAtraso(os?.diasAtraso);
   const isLate = !!atrasoLabel;
@@ -224,7 +287,7 @@ const HeaderMobile = ({
             )}
           </button>
           <button
-            onClick={onMore}
+            onClick={() => setMenuAberto(true)}
             aria-label="Mais opções"
             style={m3 ? {
               border: 'none', background: 'transparent',
@@ -447,8 +510,136 @@ const HeaderMobile = ({
           onUpdateOS={onUpdateOS}
         />
       )}
+
+      {/* ── Action sheet "Mais ações" (bottom sheet iOS-style) ────────────── */}
+      {menuAberto && (
+        <>
+          {/* Overlay */}
+          <div
+            onClick={() => setMenuAberto(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 300,
+              background: 'rgba(0,0,0,0.45)',
+            }}
+          />
+          {/* Sheet */}
+          <div style={{
+            position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 301,
+            background: T.card,
+            borderRadius: '16px 16px 0 0',
+            boxShadow: '0 -4px 24px rgba(0,0,0,0.3)',
+            overflow: 'hidden',
+          }}>
+            {/* Handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border }} />
+            </div>
+
+            {/* Título */}
+            <div style={{
+              padding: '4px 20px 10px',
+              ...higType('headline'),
+              color: T.textPrimary, fontFamily: HIG_FONT,
+              borderBottom: `1px solid ${T.border}`,
+            }}>
+              OS #{os?.numero}
+            </div>
+
+            {/* Itens */}
+            <div style={{ padding: '6px 0 8px' }}>
+              <SheetItem icon="copy" label="Copiar nº da OS" T={T} dark={dark} onClick={copiarNumeroOS} />
+              {onDuplicar && (
+                <SheetItem
+                  icon="copy-plus"
+                  label={duplicando ? 'Duplicando…' : 'Duplicar OS'}
+                  T={T} dark={dark}
+                  onClick={duplicarOSHandler}
+                  disabled={duplicando}
+                />
+              )}
+              {onUpdateOS && (
+                <SheetItem
+                  icon={os?.oculta_no_kanban ? 'eye' : 'eye-off'}
+                  label={os?.oculta_no_kanban ? 'Voltar pro Kanban' : 'Retirar do Kanban'}
+                  T={T} dark={dark}
+                  onClick={ocultarNoKanban}
+                />
+              )}
+              {admin && onExcluir && (
+                <>
+                  <div style={{ height: 1, background: T.border, margin: '6px 16px' }} />
+                  <SheetItem
+                    icon="trash"
+                    label={excluindo ? 'Excluindo…' : 'Excluir OS'}
+                    T={T} dark={dark}
+                    onClick={excluirOS}
+                    disabled={excluindo}
+                    danger
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Botão cancelar */}
+            <div style={{ padding: '0 16px 20px' }}>
+              <button
+                onClick={() => setMenuAberto(false)}
+                style={{
+                  width: '100%', minHeight: 48,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 12,
+                  background: dark ? 'rgba(255,255,255,0.06)' : '#f4f5f7',
+                  color: T.textSecondary,
+                  ...higType('bodyLarge'),
+                  fontFamily: HIG_FONT, fontWeight: 600,
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
+
+// Item de linha dentro do action sheet
+function SheetItem({ icon, label, onClick, disabled, danger, T, dark }) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        width: '100%', minHeight: 52,
+        padding: '0 20px',
+        border: 'none', background: 'transparent',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        WebkitTapHighlightColor: 'transparent',
+        fontFamily: 'inherit',
+      }}
+    >
+      <i
+        className={`ti ti-${icon}`}
+        style={{
+          fontSize: 20, flexShrink: 0,
+          color: danger ? PALETA.redStrong : T.textSecondary,
+        }}
+        aria-hidden="true"
+      />
+      <span style={{
+        fontSize: 16, fontWeight: 500,
+        color: danger ? PALETA.redStrong : T.textPrimary,
+        textAlign: 'left',
+      }}>
+        {label}
+      </span>
+    </button>
+  )
+}
 
 export default HeaderMobile;
