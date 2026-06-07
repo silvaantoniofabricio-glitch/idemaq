@@ -840,7 +840,7 @@ export function RotaAccordion({
     try {
       const texto = await gerarMensagemRota(slot)
       if (!texto) { notify('info', 'Rota sem paradas para enviar'); return }
-      const url = `https://wa.me/${funcionario.fone}?text=${encodeURIComponent(texto)}`
+      const url = `whatsapp://send?phone=${funcionario.fone}&text=${encodeURIComponent(texto)}`
       window.location.href = url
     } catch (err) {
       notify('erro', 'Erro ao gerar mensagem da rota')
