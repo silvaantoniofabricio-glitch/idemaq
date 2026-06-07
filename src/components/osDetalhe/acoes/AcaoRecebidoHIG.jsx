@@ -422,11 +422,11 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
         </div>
       </AtlPanel>
 
-      {/* 4. Observacoes */}
+      {/* 4. Observacoes da avaliacao */}
       <AtlPanel
         T={T} dark={dark}
-        title="Observações"
-        footer="Visível em todas as etapas. Ex: chegou sem capa, painel arranhado.">
+        title="Observações da Avaliação"
+        footer="Exclusivo desta etapa. Ex: chegou sem capa, painel arranhado, cabo arrancado.">
         <div style={{ padding: '10px 14px' }}>
           <textarea
             placeholder="Ex: máquina chegou com cabo arrancado, painel arranhado…"
