@@ -81,7 +81,7 @@ async function gerarMensagemRota(slot) {
   }
 
   const dataStr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Cuiaba' })
-  const linhas = [`📋 *${rota.nome} — ${dataStr}*`, '']
+  const linhas = [`*${rota.nome} — ${dataStr}*`, '']
 
   paradas.forEach((p, idx) => {
     const os = p.os_id ? osMap[p.os_id] : null
@@ -92,16 +92,19 @@ async function gerarMensagemRota(slot) {
       tipo === 'receber' ? 'A receber' : 'Visita'
 
     linhas.push(`*${idx + 1}. ${tipoLabel}*`)
-    linhas.push(`👤 ${p.cliente_nome || '—'}`)
-    if (p.cliente_fone) linhas.push(`📞 ${p.cliente_fone}`)
-    if (p.endereco) linhas.push(`📍 ${p.endereco}`)
+    linhas.push(`Cliente: ${p.cliente_nome || '—'}`)
+    if (p.cliente_fone) linhas.push(`Telefone: ${p.cliente_fone}`)
+    if (p.endereco) {
+      linhas.push(`Endereco: ${p.endereco}`)
+      linhas.push(`Maps: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.endereco)}`)
+    }
     if (os) {
       const maquina = [os.marca_equipamento, os.modelo_equipamento].filter(Boolean).join(' ')
-      const serie = os.numero_serie ? ` · Série: ${os.numero_serie}` : ''
-      if (maquina || os.numero_serie) linhas.push(`🔧 ${maquina}${serie}`)
+      const serie = os.numero_serie ? ` - Serie: ${os.numero_serie}` : ''
+      if (maquina || os.numero_serie) linhas.push(`Maquina: ${maquina}${serie}`)
     }
     const horario = p.horario_previsto || (os?.data_agendamento ? horaLocalStr(os.data_agendamento) : null)
-    if (horario) linhas.push(`⏰ ${horario}`)
+    if (horario) linhas.push(`Horario: ${horario}`)
     linhas.push('')
   })
 
@@ -838,7 +841,7 @@ export function RotaAccordion({
       const texto = await gerarMensagemRota(slot)
       if (!texto) { notify('info', 'Rota sem paradas para enviar'); return }
       const url = `https://wa.me/${funcionario.fone}?text=${encodeURIComponent(texto)}`
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.location.href = url
     } catch (err) {
       notify('erro', 'Erro ao gerar mensagem da rota')
       console.error('[EnviarRota]', err)
