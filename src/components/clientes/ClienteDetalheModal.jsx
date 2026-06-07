@@ -16,6 +16,7 @@ import { Modal, Input, Textarea, Button } from '../ui'
 import { useToast } from '../ui'
 import { criarOSDerivada } from '../../utils/osDerivada'
 import AddressInput from '../logistica/AddressInput'
+import { supabase } from '../../supabase'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -216,24 +217,51 @@ function EnderecoLabel({ idx, onRemove, T, azul, vermelho }) {
 // ─── Componente principal ──────────────────────────────────────────────────────
 
 export default function ClienteDetalheModal({
-  T, dark, cliente, mobile,
+  T, dark,
+  cliente: clienteProp,   // objeto completo — use este OU clienteId
+  clienteId,              // alternativa: busca o cliente internamente
+  mobile,
   osList = [],
   onClose,
   onSalvar,   // (patch com .id) => Promise<{ data, error }>
-  onExcluir,
+  onExcluir,  // se não passado, botão "Excluir" não aparece
   onAbrirOS,
 }) {
   const azul     = corEtapa('blue',  dark)
   const vermelho = corEtapa('red',   dark)
 
-  const [modoEdicao, setModoEdicao]     = useState(false)
-  const [clienteLocal, setClienteLocal] = useState(cliente)
-  const [form, setForm]                 = useState(() => toForm(cliente))
-  const [enderecos, setEnderecos]       = useState(() => parseEnderecos(cliente))
-  const [infoExtra, setInfoExtra]       = useState(() => !!(cliente.email || cliente.cpf_cnpj))
-  const [salvando, setSalvando]         = useState(false)
+  // Se vier clienteId sem o objeto, faz fetch interno
+  const [clienteLocal, setClienteLocal] = useState(clienteProp || null)
+  const [loadingFetch, setLoadingFetch] = useState(!clienteProp && !!clienteId)
+  const [erroFetch, setErroFetch]       = useState(null)
 
-  useEffect(() => { setClienteLocal(cliente) }, [cliente])
+  useEffect(() => {
+    if (clienteProp) { setClienteLocal(clienteProp); return }
+    if (!clienteId)  return
+    setLoadingFetch(true); setErroFetch(null)
+    supabase.from('cliente').select('*').eq('id', clienteId).is('deleted_at', null).single()
+      .then(({ data, error }) => {
+        if (error || !data) setErroFetch(error?.message || 'Cliente não encontrado')
+        else { setClienteLocal(data); inicializarForm(data) }
+        setLoadingFetch(false)
+      })
+  }, [clienteId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [modoEdicao, setModoEdicao] = useState(false)
+  const [form, setForm]             = useState(() => toForm(clienteProp || {}))
+  const [enderecos, setEnderecos]   = useState(() => parseEnderecos(clienteProp || {}))
+  const [infoExtra, setInfoExtra]   = useState(() => !!(clienteProp?.email || clienteProp?.cpf_cnpj))
+  const [salvando, setSalvando]     = useState(false)
+
+  function inicializarForm(c) {
+    setForm(toForm(c))
+    setEnderecos(parseEnderecos(c))
+    setInfoExtra(!!(c.email || c.cpf_cnpj))
+  }
+
+  useEffect(() => {
+    if (clienteProp) setClienteLocal(clienteProp)
+  }, [clienteProp])
 
   const update = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -283,6 +311,30 @@ export default function ClienteDetalheModal({
   }
 
   // ── Render ────────────────────────────────────────────────────
+
+  // Loading / erro quando clienteId foi passado sem o objeto completo
+  if (loadingFetch || (!clienteLocal && !erroFetch)) {
+    return (
+      <Modal T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={680}>
+        <div style={{ padding: '40px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: T.textMuted, fontSize: 13 }}>
+          <i className="ti ti-loader-2" style={{ fontSize: 18, color: azul, animation: 'idemaq-spin .8s linear infinite' }} aria-hidden="true" />
+          Carregando dados do cliente…
+        </div>
+      </Modal>
+    )
+  }
+
+  if (erroFetch) {
+    return (
+      <Modal T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={680}>
+        <div style={{ padding: '32px 24px', display: 'flex', alignItems: 'center', gap: 10, color: corEtapa('red', dark), fontSize: 13 }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 18 }} aria-hidden="true" />
+          {erroFetch}
+        </div>
+      </Modal>
+    )
+  }
+
   return (
     <Modal T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={680}>
 
@@ -500,9 +552,11 @@ export default function ClienteDetalheModal({
       }}>
         {!modoEdicao ? (
           <>
-            <Button T={T} dark={dark} variant="ghost" iconLeft="ti-trash" onClick={onExcluir}>
-              Excluir cliente
-            </Button>
+            {onExcluir ? (
+              <Button T={T} dark={dark} variant="ghost" iconLeft="ti-trash" onClick={onExcluir}>
+                Excluir cliente
+              </Button>
+            ) : <div />}
             <Button T={T} dark={dark} variant="secondary" onClick={onClose}>
               Fechar
             </Button>
