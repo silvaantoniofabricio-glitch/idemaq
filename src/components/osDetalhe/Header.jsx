@@ -206,6 +206,20 @@ export default function Header({
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`,
       '_blank', 'noopener,noreferrer')
   }
+  async function copiarFone() {
+    if (!os.fone) return
+    try {
+      await navigator.clipboard.writeText(os.fone)
+      notify('ok', 'Telefone copiado')
+    } catch { notify('erro', 'Não consegui copiar') }
+  }
+  async function copiarEndereco() {
+    if (!os.endereco) return
+    try {
+      await navigator.clipboard.writeText(os.endereco)
+      notify('ok', 'Endereço copiado')
+    } catch { notify('erro', 'Não consegui copiar') }
+  }
 
   const isRecusado = os.etapa === 'recusado'
   const status = calcStatusPrazo(os.prazo, os.etapa)
@@ -471,26 +485,28 @@ export default function Header({
         <div style={{
           display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0,
         }}>
-          {/* Linha 1 — Nome cliente em destaque */}
+          {/* Linha 1 — Nome cliente + telefone + WhatsApp */}
           <NomeCliente T={T} azul={azul}
             nome={os.cliente}
-            onClick={abrirCadastroCliente}
+            fone={os.fone}
+            onNomeClick={abrirCadastroCliente}
+            onWhats={() => abrirWhatsApp(os.fone)}
+            onCopiarFone={copiarFone}
           />
 
-          {/* Linha 2 — Equipamento + fone (fundidos) */}
+          {/* Linha 2 — Equipamento (sem fone — foi pro nome) */}
           <LinhaEquipamento T={T} azul={azul}
             equipamento={equipamentoLabel}
             serie={os.serie}
             defeito={os.defeito}
-            fone={os.fone}
             onClick={abrirCadastroEquipamento}
-            onWhats={() => abrirWhatsApp(os.fone)}
           />
 
-          {/* Linha 3 — Endereço */}
+          {/* Linha 3 — Endereço com copy + Maps */}
           <LinhaEndereco T={T} azul={azul}
             endereco={os.endereco}
-            onClick={() => abrirMapa(os.endereco)}
+            onMapa={() => abrirMapa(os.endereco)}
+            onCopiar={copiarEndereco}
           />
         </div>
       </div>
@@ -583,29 +599,61 @@ function Pill({ cor, bg, children }) {
   )
 }
 
-function NomeCliente({ T, azul, nome, onClick }) {
-  const [hover, setHover] = useState(false)
+function NomeCliente({ T, azul, nome, fone, onNomeClick, onWhats, onCopiarFone }) {
+  const [hoverNome, setHoverNome] = useState(false)
+  const [hoverFone, setHoverFone] = useState(false)
   const vazio = !nome
+  const MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
   return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      title="Abrir cadastro do cliente"
-      style={{
-        fontSize: 17, fontWeight: 700, lineHeight: 1.2,
-        color: vazio ? T.textMuted : (hover ? azul : T.textPrimary),
-        fontStyle: vazio ? 'italic' : 'normal',
-        cursor: 'pointer', transition: 'color .12s',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}
-    >
-      {nome || 'Cliente não definido'}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      {/* Nome — clicável pra editar o cadastro do cliente */}
+      <div
+        onClick={onNomeClick}
+        onMouseEnter={() => setHoverNome(true)}
+        onMouseLeave={() => setHoverNome(false)}
+        title="Abrir cadastro do cliente"
+        style={{
+          flex: 1, minWidth: 0,
+          fontSize: 17, fontWeight: 700, lineHeight: 1.2,
+          color: vazio ? T.textMuted : (hoverNome ? azul : T.textPrimary),
+          fontStyle: vazio ? 'italic' : 'normal',
+          cursor: 'pointer', transition: 'color .12s',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}
+      >
+        {nome || 'Cliente não definido'}
+      </div>
+      {/* Telefone + WhatsApp */}
+      {fone && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          <span
+            onClick={onCopiarFone}
+            onMouseEnter={() => setHoverFone(true)}
+            onMouseLeave={() => setHoverFone(false)}
+            title="Copiar número"
+            style={{
+              fontFamily: MONO, fontSize: 11.5, fontWeight: 600,
+              color: hoverFone ? azul : T.textMuted,
+              cursor: 'pointer', transition: 'color .12s',
+              userSelect: 'none',
+            }}
+          >
+            {fone}
+          </span>
+          <span
+            onClick={onWhats}
+            title="Abrir conversa no WhatsApp"
+            style={{ cursor: 'pointer', lineHeight: 0, display: 'inline-flex' }}
+          >
+            <i className="ti ti-brand-whatsapp" style={{ fontSize: 16, color: '#25D366' }} aria-hidden="true" />
+          </span>
+        </div>
+      )}
     </div>
   )
 }
 
-function LinhaEquipamento({ T, azul, equipamento, serie, defeito, fone, onClick, onWhats }) {
+function LinhaEquipamento({ T, azul, equipamento, serie, defeito, onClick }) {
   const [hover, setHover] = useState(false)
   const vazio = !equipamento
   return (
@@ -655,7 +703,6 @@ function LinhaEquipamento({ T, azul, equipamento, serie, defeito, fone, onClick,
         </strong>
       )}
 
-      {/* S/N e defeito só fazem sentido quando tem equipamento */}
       {!vazio && serie && (
         <span style={{
           color: T.textMuted, fontSize: 10.5,
@@ -674,50 +721,52 @@ function LinhaEquipamento({ T, azul, equipamento, serie, defeito, fone, onClick,
           </span>
         </>
       )}
-
-      {/* Telefone aparece SEMPRE quando existir — independente do equipamento.
-          Antes ficava dentro do else do "vazio" e sumia quando OS nao tinha
-          equipamento cadastrado. */}
-      {fone && (
-        <>
-          <SeparadorPonto />
-          <ChunkClicavel T={T} azul={azul}
-            icon="ti-phone" texto={fone}
-            onClick={onWhats} title="Abrir conversa no WhatsApp"
-          />
-        </>
-      )}
     </div>
   )
 }
 
-function LinhaEndereco({ T, azul, endereco, onClick }) {
-  const [hover, setHover] = useState(false)
-  if (!endereco) return null
+function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
+  const [hoverEnd, setHoverEnd] = useState(false)
+  const [hoverMapa, setHoverMapa] = useState(false)
+  const endResumido = endereco ? endereco.split('—')[0].trim() : null
+  if (!endResumido) return null
   return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      title="Abrir no Google Maps"
-      style={{
-        marginTop: 3,
-        fontSize: 11.5,
-        color: hover ? azul : T.textMuted,
-        display: 'flex', alignItems: 'center', gap: 5,
-        cursor: 'pointer', transition: 'color .12s',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}
-    >
+    <div style={{
+      marginTop: 3,
+      display: 'flex', alignItems: 'center', gap: 5, minWidth: 0,
+    }}>
       <i className="ti ti-map-pin"
+        style={{ fontSize: 11, flexShrink: 0, opacity: 0.7, color: T.textDim }}
+        aria-hidden="true" />
+      {/* Texto — click copia */}
+      <span
+        onClick={onCopiar}
+        onMouseEnter={() => setHoverEnd(true)}
+        onMouseLeave={() => setHoverEnd(false)}
+        title="Copiar endereço"
         style={{
-          fontSize: 11, flexShrink: 0, opacity: 0.7,
-          color: hover ? azul : T.textDim,
-          transition: 'color .12s',
-        }} aria-hidden="true" />
-      <span style={{
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{endereco}</span>
+          flex: 1, minWidth: 0,
+          fontSize: 11.5,
+          color: hoverEnd ? azul : T.textMuted,
+          cursor: 'pointer', transition: 'color .12s',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          userSelect: 'none',
+        }}
+      >
+        {endResumido}
+      </span>
+      {/* Ícone Maps — click abre Google Maps */}
+      <span
+        onClick={onMapa}
+        onMouseEnter={() => setHoverMapa(true)}
+        onMouseLeave={() => setHoverMapa(false)}
+        title="Abrir no Google Maps"
+        style={{ cursor: 'pointer', lineHeight: 0, display: 'inline-flex', flexShrink: 0 }}
+      >
+        <i className="ti ti-map-2"
+          style={{ fontSize: 14, color: hoverMapa ? azul : T.textDim, transition: 'color .12s' }}
+          aria-hidden="true" />
+      </span>
     </div>
   )
 }
