@@ -307,66 +307,82 @@ const HeaderMobile = ({
         </div>
       </div>
 
-      {/* Linha 2 · nome do cliente + telefone + WhatsApp */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px 0', gap: 8, minWidth: 0 }}>
-        <div
+      {/* Linha 2 · nome + fone (mesma fonte) + WA colado */}
+      <div style={{
+        display: 'flex', alignItems: 'center', flexWrap: 'nowrap',
+        padding: '4px 16px 0', gap: 6, overflow: 'hidden',
+      }}>
+        {/* Nome — encolhe se necessário */}
+        <span
           title={nome}
           style={m3 ? {
-            flex: 1, minWidth: 0,
+            flexShrink: 1, minWidth: 0,
             ...higType('titleLarge'),
             color: T.textPrimary,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           } : {
-            flex: 1, minWidth: 0,
+            flexShrink: 1, minWidth: 0,
             fontSize: 17, fontWeight: 700,
-            color: T.textPrimary, letterSpacing: '-.01em',
-            lineHeight: 1.15,
+            color: T.textPrimary, letterSpacing: '-.01em', lineHeight: 1.15,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}
         >
           {nome}
-        </div>
+        </span>
+        {/* Fone — mesma fonte/tamanho do nome, não encolhe */}
         {os?.fone && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <>
             <button
               onClick={copiarFone}
               title="Tocar para copiar número"
-              style={{
+              style={m3 ? {
                 border: 'none', background: 'transparent', cursor: 'pointer',
-                padding: '2px 0', fontFamily: MONO_STACK,
-                fontSize: 12, fontWeight: 600,
-                color: foneCopied ? (dark ? '#4ade80' : '#16a34a') : T.textMuted,
+                padding: 0, flexShrink: 0,
+                ...higType('titleLarge'),
+                color: foneCopied ? (dark ? '#4ade80' : '#16a34a') : T.textSecondary,
                 WebkitTapHighlightColor: 'transparent',
-                transition: 'color .15s',
+                transition: 'color .15s', whiteSpace: 'nowrap',
+              } : {
+                border: 'none', background: 'transparent', cursor: 'pointer',
+                padding: 0, flexShrink: 0,
+                fontSize: 17, fontWeight: 700, lineHeight: 1.15,
+                color: foneCopied ? (dark ? '#4ade80' : '#16a34a') : T.textSecondary,
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'color .15s', whiteSpace: 'nowrap',
               }}
             >
               {foneCopied ? 'Copiado!' : os.fone}
             </button>
+            {/* WA colado no fone */}
             <button
               onClick={abrirWhatsApp}
               title="Abrir conversa no WhatsApp"
               aria-label="WhatsApp"
               style={{
                 border: 'none', background: 'transparent', cursor: 'pointer',
-                padding: 4, lineHeight: 0, display: 'inline-flex',
+                padding: 0, lineHeight: 0, display: 'inline-flex', flexShrink: 0,
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
               <TI name="brand-whatsapp" size={20} color="#25D366" />
             </button>
-          </div>
+          </>
         )}
       </div>
 
-      {/* Linha 2b · endereço com copy + ícone Maps */}
+      {/* Linha 2b · endereço com copy + ícone Maps colado */}
       {endResumido && (
-        <div style={{ display: 'flex', alignItems: 'center', padding: '3px 16px 0', gap: 6, minWidth: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'nowrap',
+          padding: '3px 16px 0', gap: 5, overflow: 'hidden',
+        }}>
           <TI name="map-pin" size={14} color={T.textMuted} />
+          {/* Texto — encolhe com ellipsis */}
           <button
             onClick={copiarEndereco}
             title="Tocar para copiar endereço"
             style={{
-              flex: 1, minWidth: 0,
+              flexShrink: 1, minWidth: 0,
               border: 'none', background: 'transparent', cursor: 'pointer',
               textAlign: 'left', fontFamily: 'inherit',
               ...higType('bodyMedium'),
@@ -378,13 +394,14 @@ const HeaderMobile = ({
           >
             {endCopied ? 'Copiado!' : endResumido}
           </button>
+          {/* Ícone Maps — colado logo após o texto */}
           <button
             onClick={abrirMapa}
             title="Abrir no Google Maps"
             aria-label="Abrir no Google Maps"
             style={{
               border: 'none', background: 'transparent', cursor: 'pointer',
-              padding: 4, lineHeight: 0, display: 'inline-flex', flexShrink: 0,
+              padding: 0, lineHeight: 0, display: 'inline-flex', flexShrink: 0,
               WebkitTapHighlightColor: 'transparent',
             }}
           >

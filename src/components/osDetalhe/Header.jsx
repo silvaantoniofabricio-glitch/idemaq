@@ -381,50 +381,57 @@ function NomeCliente({ T, azul, nome, fone, onNomeClick, onWhats, onCopiarFone }
   const [hoverNome, setHoverNome] = useState(false)
   const [hoverFone, setHoverFone] = useState(false)
   const vazio = !nome
+  const NOME_STYLE = {
+    fontSize: 17, fontWeight: 700, lineHeight: 1.2,
+    whiteSpace: 'nowrap', cursor: 'pointer', transition: 'color .12s',
+  }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px 0', minWidth: 0 }}>
-      {/* Nome */}
-      <div
+    <div style={{
+      display: 'flex', alignItems: 'center', flexWrap: 'nowrap',
+      padding: '4px 16px 0', gap: 6, overflow: 'hidden',
+    }}>
+      {/* Nome — encolhe se necessário para dar espaço ao fone */}
+      <span
         onClick={onNomeClick}
         onMouseEnter={() => setHoverNome(true)}
         onMouseLeave={() => setHoverNome(false)}
-        title="Abrir cadastro do cliente"
+        title={nome || 'Cliente não definido'}
         style={{
-          flex: 1, minWidth: 0,
-          fontSize: 17, fontWeight: 700, lineHeight: 1.2,
+          ...NOME_STYLE,
+          flexShrink: 1, minWidth: 0,
+          overflow: 'hidden', textOverflow: 'ellipsis',
           color: vazio ? T.textMuted : (hoverNome ? azul : T.textPrimary),
           fontStyle: vazio ? 'italic' : 'normal',
-          cursor: 'pointer', transition: 'color .12s',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}
       >
         {nome || 'Cliente não definido'}
-      </div>
-      {/* Fone + WA */}
+      </span>
+      {/* Fone — mesma fonte/tamanho do nome, não encolhe */}
       {fone && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+        <>
           <span
             onClick={onCopiarFone}
             onMouseEnter={() => setHoverFone(true)}
             onMouseLeave={() => setHoverFone(false)}
             title="Copiar número"
             style={{
-              fontFamily: MONO, fontSize: 11.5, fontWeight: 600,
-              color: hoverFone ? azul : T.textMuted,
-              cursor: 'pointer', transition: 'color .12s',
+              ...NOME_STYLE,
+              flexShrink: 0,
+              color: hoverFone ? azul : T.textSecondary,
               userSelect: 'none',
             }}
           >
             {fone}
           </span>
+          {/* WA — colado no fone */}
           <span
             onClick={onWhats}
             title="Abrir conversa no WhatsApp"
-            style={{ cursor: 'pointer', lineHeight: 0, display: 'inline-flex' }}
+            style={{ cursor: 'pointer', lineHeight: 0, display: 'inline-flex', flexShrink: 0 }}
           >
-            <i className="ti ti-brand-whatsapp" style={{ fontSize: 16, color: '#25D366' }} aria-hidden="true" />
+            <i className="ti ti-brand-whatsapp" style={{ fontSize: 18, color: '#25D366' }} aria-hidden="true" />
           </span>
-        </div>
+        </>
       )}
     </div>
   )
@@ -438,18 +445,19 @@ function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center',
-      padding: '3px 16px 0', gap: 5, minWidth: 0,
+      padding: '3px 16px 0', gap: 5, overflow: 'hidden', flexWrap: 'nowrap',
     }}>
       <i className="ti ti-map-pin"
         style={{ fontSize: 12, flexShrink: 0, color: T.textDim }}
         aria-hidden="true" />
+      {/* Texto — encolhe com ellipsis se necessário */}
       <span
         onClick={onCopiar}
         onMouseEnter={() => setHoverEnd(true)}
         onMouseLeave={() => setHoverEnd(false)}
         title="Copiar endereço"
         style={{
-          flex: 1, minWidth: 0,
+          flexShrink: 1, minWidth: 0,
           fontSize: 12, color: hoverEnd ? azul : T.textMuted,
           cursor: 'pointer', transition: 'color .12s',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -458,6 +466,7 @@ function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
       >
         {endResumido}
       </span>
+      {/* Ícone Maps — colado logo após o texto */}
       <span
         onClick={onMapa}
         onMouseEnter={() => setHoverMapa(true)}
