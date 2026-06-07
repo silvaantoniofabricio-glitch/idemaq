@@ -5,6 +5,8 @@ import { ETAPAS_TODOS } from '../../utils/osData';
 import FormEquipamentoEdit from './FormEquipamentoEdit';
 import { higType, HIG_FONT, HIG_COLOR } from '../../theme-hig';
 import { useToast } from '../ui';
+import { supabase } from '../../supabase';
+import ClienteDetalheModal from '../clientes/ClienteDetalheModal';
 
 // Apple HIG — aplicado em TODAS as etapas (decisao 2026-05-27).
 
@@ -59,6 +61,7 @@ const HeaderMobile = ({
   aba,
   setAba,
   onUpdateOS,
+  onRefetchOS,
   onExcluir,
   onDuplicar,
   admin = false,
@@ -71,6 +74,7 @@ const HeaderMobile = ({
   // OSDetalhe nao passa onAdicionarEquipamento. Mesma logica do Header
   // desktop (que tambem mantem estado proprio).
   const [modalEquipamento, setModalEquipamento] = useState(false);
+  const [modalCliente, setModalCliente] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
@@ -312,23 +316,32 @@ const HeaderMobile = ({
         display: 'flex', alignItems: 'center', flexWrap: 'nowrap',
         padding: '4px 16px 0', gap: 6, overflow: 'hidden',
       }}>
-        {/* Nome — encolhe se necessário */}
-        <span
-          title={nome}
+        {/* Nome — toca pra abrir ficha do cliente */}
+        <button
+          title={os?.cliente_id ? 'Ver ficha do cliente' : nome}
+          onClick={os?.cliente_id ? () => setModalCliente(true) : undefined}
           style={m3 ? {
             flexShrink: 1, minWidth: 0,
             ...higType('titleLarge'),
             color: T.textPrimary,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            background: 'none', border: 'none', padding: 0,
+            cursor: os?.cliente_id ? 'pointer' : 'default',
+            fontFamily: 'inherit', textAlign: 'left',
+            WebkitTapHighlightColor: 'transparent',
           } : {
             flexShrink: 1, minWidth: 0,
             fontSize: 17, fontWeight: 700,
             color: T.textPrimary, letterSpacing: '-.01em', lineHeight: 1.15,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            background: 'none', border: 'none', padding: 0,
+            cursor: os?.cliente_id ? 'pointer' : 'default',
+            fontFamily: 'inherit', textAlign: 'left',
+            WebkitTapHighlightColor: 'transparent',
           }}
         >
           {nome}
-        </span>
+        </button>
         {/* Fone — mesma fonte/tamanho do nome, não encolhe */}
         {os?.fone && (
           <>
@@ -525,6 +538,24 @@ const HeaderMobile = ({
           os={os}
           onClose={() => setModalEquipamento(false)}
           onUpdateOS={onUpdateOS}
+        />
+      )}
+
+      {/* Ficha do cliente — mesmo modal da página Clientes */}
+      {modalCliente && (
+        <ClienteDetalheModal
+          T={T} dark={dark} mobile={true}
+          clienteId={os.cliente_id}
+          osList={[os]}
+          onClose={() => setModalCliente(false)}
+          onSalvar={async (patch) => {
+            const { id, ...campos } = patch;
+            const { data, error } = await supabase
+              .from('cliente').update(campos).eq('id', id).select().single();
+            if (error) notify('erro', error.message || 'Erro ao salvar cliente');
+            else { notify('ok', 'Cliente atualizado'); onRefetchOS?.(); }
+            return { data, error };
+          }}
         />
       )}
 

@@ -577,14 +577,14 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
     setResultados([])
   }
 
-  async function clienteCadastrado(novo) {
-    // Mesmo fluxo do legacy: novo vem do NovoClienteModal já persistido
+  function clienteCadastrado(novo) {
+    // novo = linha real retornada pelo Supabase após o NovoClienteModal salvar
     escolher({
-      id: novo.id,
-      nome: novo.nome,
-      fone: novo.telefone || '',
+      id:       novo.id,
+      nome:     novo.nome,
+      fone:     novo.telefone || '',
       endereco: novo.endereco || '',
-      enderecos: novo.endereco ? [novo.endereco] : [],
+      enderecos: [novo.endereco, novo.endereco2, novo.endereco3].filter(Boolean),
     })
     setModalNovoCli(false)
   }
