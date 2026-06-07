@@ -1,38 +1,49 @@
 // src/components/osDetalhe/Header.jsx
-// Header do OSDetalhe — redesenhado 18/05/2026 (foto da máquina + nome cliente em destaque).
+// Header do OSDetalhe — layout idêntico ao mobile (07/06/2026).
 // Linhas:
-//  1. badges (tipo + OS# + status) à esquerda · ícones (histórico+badge, ⋯, X) à direita
-//  2. FOTO 72x72 + bloco info (nome cliente big, contato pequeno, equipamento)
-//  3. Timeline compacta (com border-top sutil)
-//  4. 3 abas (Etapa · Resumo · Pagamento)
-//
-// Foto lê de os.pre_diagnostico.foto (marker 'storage' OU base64 legacy).
-// Click no placeholder vazio abre input file pra escolher imagem. Click numa
-// foto existente abre FotoAmpliadaModal. Storage privado em idemaq-privado/
-// os/{id}/coleta.jpg — signed URL gerada on-demand.
+//  1. X · OS# · etapa-badge | histórico-badge · ⋯-dropdown
+//  2. Nome cliente + fone + ícone WhatsApp
+//  3. Endereço (click copia · ícone Maps abre Google Maps)
+//  4. Equipamento (marca · modelo · S/N)
+//  5. 3 abas (Etapa · Resumo · A receber)
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { P } from '../../theme'
-import { TIPOS_OS } from '../../utils/osData'
-import { corEtapa } from '../../utils/colors'
-import {
-  estaPagaTotal, estaPagaParcial,
-  calcStatusPrazo, diasPrazo,
-} from '../../utils/osHelpers'
-import {
-  uploadFotoColeta, removerFotoColeta, resolverFotoUrl, FOTO_STORAGE_MARKER,
-} from '../../utils/osStorage'
+import { ETAPAS_TODOS } from '../../utils/osData'
+import { calcStatusPrazo, diasPrazo } from '../../utils/osHelpers'
 import { useToast } from '../ui'
-import Timeline from './Timeline'
-import FotoAmpliadaModal from './FotoAmpliadaModal'
 import FormClienteEdit from './FormClienteEdit'
 import FormEquipamentoEdit from './FormEquipamentoEdit'
 
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
-  { id: 'relatorio', label: 'Resumo', icon: 'ti-report' },
+  { id: 'relatorio', label: 'Resumo',    icon: 'ti-report' },
   { id: 'pagamento', label: 'A receber', icon: 'ti-cash-banknote' },
 ]
+
+const MONO = 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace'
+
+// ── Badge de etapa ────────────────────────────────────────────────────────────
+function resolverEtapaLabel(os) {
+  if (!os?.etapa) return 'Etapa'
+  const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
+  return uni?.curto || uni?.label || os.etapaLabel || os.etapa
+}
+
+function badgeTone(os, status) {
+  if (status === 'vencido') return 'red'
+  if (status === 'hoje' || status === 'amanha') return 'yellow'
+  const e = os?.etapa
+  if (['diagnostico', 'orcamento', 'oficina', 'em_oficina'].includes(e)) return 'yellow'
+  if (e === 'concluido' || e === 'entrega' || e === 'entregue') return 'green'
+  if (e === 'recusado') return 'red'
+  return 'blue'
+}
+
+const BADGE_BG_DARK  = { blue: 'rgba(91,155,213,0.18)', yellow: 'rgba(255,217,102,0.18)', red: 'rgba(192,66,66,0.18)', green: 'rgba(46,125,94,0.18)' }
+const BADGE_BG_LIGHT = { blue: '#E3F2FD', yellow: '#FFF8DC', red: '#FDE8E8', green: '#E8F5EC' }
+const BADGE_FG_DARK  = { blue: '#5B9BD5', yellow: '#FFD966', red: '#FF8888', green: '#7FCEA8' }
+const BADGE_FG_LIGHT = { blue: '#1565C0', yellow: '#7A5900', red: '#c04242', green: '#2e7d5e' }
 
 export default function Header({
   T, dark, os, admin,
@@ -43,34 +54,10 @@ export default function Header({
   mobile = false,
 }) {
   const cor = (d, c) => dark ? d : c
-  const config = TIPOS_OS[os.tipo]
-  const tipoCor = corEtapa(config.cor, dark)
   const azul = cor(P.blue, P.blueDark)
   const notify = useToast()
 
-  // === Foto ===
-  // `fotoRef` é o que está salvo no banco ('storage' marker OU base64 legacy).
-  // `fotoUrl` é a URL exibível (signed URL do Storage OU base64 inline).
-  const fotoRef = os.pre_diagnostico?.foto || os.foto || null
-  const [fotoUrl, setFotoUrl] = useState(null)
-  const [fotoAmpliada, setFotoAmpliada] = useState(false)
-  const [fotoHover, setFotoHover] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const inputFotoRef = useRef(null)
-
-  // Resolve URL exibível ao montar/trocar a foto
-  useEffect(() => {
-    let cancelado = false
-    async function carregar() {
-      const url = await resolverFotoUrl(fotoRef, os.id)
-      if (!cancelado) setFotoUrl(url)
-    }
-    if (fotoRef) carregar()
-    else setFotoUrl(null)
-    return () => { cancelado = true }
-  }, [fotoRef, os.id])
-
-  // === Dropdown "Mais ações" ===
+  // ── Dropdown "Mais ações" ─────────────────────────────────────────────────
   const [menuAberto, setMenuAberto] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [duplicando, setDuplicando] = useState(false)
@@ -115,9 +102,6 @@ export default function Header({
     }
   }
 
-  // Soft-delete delegado pro Kanban (que faz optimistic remove + rollback).
-  // O Header só fecha o modal — o filter local do osList já faz a OS sumir
-  // instantaneamente sem depender do Realtime.
   async function excluirOS() {
     if (excluindo) return
     setMenuAberto(false)
@@ -136,65 +120,16 @@ export default function Header({
     }
   }
 
-  async function escolherFoto(file) {
-    if (!file) return
-    if (!file.type?.startsWith('image/')) {
-      notify('erro', 'Selecione uma imagem (JPG/PNG).')
-      return
-    }
-    setUploading(true)
-    const res = await uploadFotoColeta(os.id, file)
-    setUploading(false)
-    if (!res.ok) {
-      notify('erro', `Falha ao enviar foto: ${res.error}`)
-      return
-    }
-    setFotoUrl(res.url)
-    // Persiste marker 'storage' (URL é gerada on-demand via resolverFotoUrl)
-    onUpdateOS?.(os.numero, {
-      pre_diagnostico: { ...(os.pre_diagnostico || {}), foto: FOTO_STORAGE_MARKER },
-    })
-    notify('ok', 'Foto adicionada')
-  }
-  function clicarFoto() {
-    if (uploading) return
-    if (fotoUrl) setFotoAmpliada(true)
-    else inputFotoRef.current?.click()
-  }
-
-  async function removerFoto(e) {
-    e?.stopPropagation()
-    if (!window.confirm('Remover a foto da coleta?')) return
-    const res = await removerFotoColeta(os.id)
-    if (!res.ok) {
-      notify('erro', `Falha ao remover: ${res.error}`)
-      return
-    }
-    setFotoUrl(null)
-    // Limpa o marker no banco (mantém o resto do pre_diagnostico)
-    const { foto, ...resto } = os.pre_diagnostico || {}
-    onUpdateOS?.(os.numero, { pre_diagnostico: resto })
-    notify('ok', 'Foto removida')
-  }
-
-  function trocarFoto(e) {
-    e?.stopPropagation()
-    inputFotoRef.current?.click()
-  }
-
-  // === Modais de edição inline (cliente + equipamento) ===
+  // ── Modais de edição ──────────────────────────────────────────────────────
   const [modalCliente, setModalCliente] = useState(false)
   const [modalEquipamento, setModalEquipamento] = useState(false)
   function abrirCadastroCliente() {
-    if (!os?.cliente_id) {
-      notify('info', 'Esta OS não tem cliente vinculado')
-      return
-    }
+    if (!os?.cliente_id) { notify('info', 'Esta OS não tem cliente vinculado'); return }
     setModalCliente(true)
   }
-  function abrirCadastroEquipamento() {
-    setModalEquipamento(true)
-  }
+  function abrirCadastroEquipamento() { setModalEquipamento(true) }
+
+  // ── Ações de contato ──────────────────────────────────────────────────────
   function abrirWhatsApp(fone) {
     const digits = (fone || '').replace(/\D/g, '')
     if (!digits) return
@@ -203,140 +138,126 @@ export default function Header({
   }
   function abrirMapa(endereco) {
     if (!endereco) return
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`,
-      '_blank', 'noopener,noreferrer')
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endereco)}`,
+      '_blank', 'noopener,noreferrer'
+    )
   }
   async function copiarFone() {
     if (!os.fone) return
-    try {
-      await navigator.clipboard.writeText(os.fone)
-      notify('ok', 'Telefone copiado')
-    } catch { notify('erro', 'Não consegui copiar') }
+    try { await navigator.clipboard.writeText(os.fone); notify('ok', 'Telefone copiado') }
+    catch { notify('erro', 'Não consegui copiar') }
   }
   async function copiarEndereco() {
     if (!os.endereco) return
-    try {
-      await navigator.clipboard.writeText(os.endereco)
-      notify('ok', 'Endereço copiado')
-    } catch { notify('erro', 'Não consegui copiar') }
+    try { await navigator.clipboard.writeText(os.endereco); notify('ok', 'Endereço copiado') }
+    catch { notify('erro', 'Não consegui copiar') }
   }
 
-  const isRecusado = os.etapa === 'recusado'
-  const status = calcStatusPrazo(os.prazo, os.etapa)
-  const dias = diasPrazo(os.prazo)
-  const pagoTotal = estaPagaTotal(os)
-  const pagoParcial = !pagoTotal && estaPagaParcial(os)
-  const historicoCount = (os.historico || []).length
+  // ── Etapa badge ───────────────────────────────────────────────────────────
+  const status       = calcStatusPrazo(os.prazo, os.etapa)
+  const dias         = diasPrazo(os.prazo)
+  const etapaLabel   = resolverEtapaLabel(os)
+  const tone         = badgeTone(os, status)
+  const badgeText    = status === 'vencido'
+    ? `${etapaLabel} · ${Math.abs(dias)}d atr.`
+    : etapaLabel
+  const badgeBg = dark ? BADGE_BG_DARK[tone] : BADGE_BG_LIGHT[tone]
+  const badgeFg = dark ? BADGE_FG_DARK[tone] : BADGE_FG_LIGHT[tone]
 
+  const historicoCount = (os.historico || []).length
   const equipamentoLabel = [os.marca, os.modelo].filter(Boolean).join(' · ') || os.equipamento
 
   return (
-    <div style={{
-      flexShrink: 0,
-      borderBottom: `1px solid ${T.border}`,
-    }}>
-      {/* === LINHA 1 — badges + ícones === */}
+    <div style={{ flexShrink: 0, borderBottom: `1px solid ${T.border}` }}>
+
+      {/* ── Linha 1: X · OS# · badge | histórico · ⋯ ── */}
       <div style={{
-        padding: '13px 20px 6px',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 8px', gap: 8, minHeight: 56,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          {/* Tipo */}
+        {/* Esquerda: X + OS# + badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            style={{
+              border: 'none', background: 'transparent',
+              color: T.textPrimary, width: 40, height: 40, borderRadius: 999,
+              cursor: 'pointer', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <i className="ti ti-x" style={{ fontSize: 22 }} aria-hidden="true" />
+          </button>
           <span style={{
-            padding: '3px 9px', borderRadius: 6,
-            background: tipoCor + '22', color: tipoCor,
-            fontSize: 11, fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 5,
-            textTransform: 'uppercase', letterSpacing: '.3px',
+            fontFamily: MONO,
+            fontSize: 12, fontWeight: 600, color: T.textMuted,
+            letterSpacing: '.04em', flexShrink: 0,
+            fontVariantNumeric: 'tabular-nums',
           }}>
-            <i className={`ti ${config.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
-            {config.label}
+            OS #{os?.numero}
           </span>
           <span style={{
-            fontSize: 15, fontWeight: 700, color: T.textPrimary,
-            fontVariantNumeric: 'tabular-nums',
-          }}>OS #{os.numero}</span>
-
-          {os.garantia && (
-            <Pill cor={azul} bg={cor('#0d2035', '#e6f1fb')}>
-              <i className="ti ti-shield-check" style={{ fontSize: 11 }} aria-hidden="true" /> Garantia
-            </Pill>
-          )}
-          {pagoTotal && (
-            <Pill cor={cor(P.green, P.greenDark)} bg={cor('#0f2a15', '#e8f5ec')}>
-              <i className="ti ti-check" style={{ fontSize: 11 }} aria-hidden="true" /> Pago
-            </Pill>
-          )}
-          {pagoParcial && (
-            <Pill cor={cor(P.yellow, P.yellowDark)} bg={cor('#2a2000', '#fdf6dc')}>Parcial</Pill>
-          )}
-          {!isRecusado && status === 'vencido' && (
-            <Pill cor={cor(P.red, P.redDark)} bg={cor('#2a1515', '#fde8e8')}>
-              {Math.abs(dias)}d atraso
-            </Pill>
-          )}
-          {status === 'hoje' && (
-            <Pill cor={cor(P.yellow, P.yellowDark)} bg={cor('#2a2000', '#fdf6dc')}>Vence hoje</Pill>
-          )}
-          {status === 'amanha' && (
-            <Pill cor={cor(P.yellow, P.yellowDark)} bg={cor('#2a2000', '#fdf6dc')}>Vence amanhã</Pill>
-          )}
-          {isRecusado && (
-            <Pill cor={cor(P.red, P.redDark)} bg={cor('#2a1515', '#fde8e8')}>Recusada</Pill>
-          )}
-          {os.aguardando_peca && (
-            <Pill cor="#ff9800" bg={cor('#3a2200', '#fff4e0')}>
-              <i className="ti ti-package" style={{ fontSize: 11 }} aria-hidden="true" /> Ag. peça
-            </Pill>
-          )}
+            display: 'inline-flex', alignItems: 'center',
+            minHeight: 24, padding: '0 10px', borderRadius: 999,
+            background: badgeBg, color: badgeFg,
+            fontSize: 12, fontWeight: 600,
+            whiteSpace: 'nowrap', flexShrink: 0,
+          }}>
+            {badgeText}
+          </span>
         </div>
 
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+        {/* Direita: histórico + ⋯ */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <button
             onClick={onShowHistorico}
             title={`Histórico (${historicoCount} ${historicoCount === 1 ? 'evento' : 'eventos'})`}
             aria-label="Ver histórico"
             style={{
               position: 'relative',
-              background: 'transparent', border: `1px solid ${T.border}`,
+              background: dark ? 'rgba(91,155,213,0.18)' : '#E3F2FD',
+              color: azul,
+              border: 'none', borderRadius: 999,
+              width: 40, height: 40,
               cursor: 'pointer',
-              color: T.textSecondary, padding: '6px 8px', borderRadius: 6,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            <i className="ti ti-history" style={{ fontSize: 16 }} aria-hidden="true" />
+            }}
+          >
+            <i className="ti ti-history" style={{ fontSize: 18 }} aria-hidden="true" />
             {historicoCount > 0 && (
               <span style={{
-                position: 'absolute', top: -5, right: -5,
-                minWidth: 16, height: 16, padding: '0 4px',
-                borderRadius: 8,
+                position: 'absolute', top: -3, right: -3,
                 background: azul, color: '#fff',
-                fontSize: 9.5, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                lineHeight: 1, border: `1.5px solid ${T.card}`,
-                fontVariantNumeric: 'tabular-nums',
+                fontSize: 9, fontWeight: 700,
+                borderRadius: 99, padding: '1px 4px',
+                minWidth: 15, textAlign: 'center', lineHeight: 1.4,
               }}>{historicoCount > 99 ? '99+' : historicoCount}</span>
             )}
           </button>
+
           <div data-mais-acoes style={{ position: 'relative' }}>
             <button
               onClick={() => setMenuAberto(v => !v)}
               title="Mais ações" aria-label="Mais ações"
               aria-expanded={menuAberto}
               style={{
-                background: menuAberto ? cor('#0d2035', '#e6f1fb') : 'transparent',
-                border: `1px solid ${menuAberto ? azul : T.border}`,
+                border: 'none',
+                background: menuAberto ? (dark ? 'rgba(91,155,213,0.18)' : '#E3F2FD') : 'transparent',
+                color: menuAberto ? azul : T.textPrimary,
+                width: 40, height: 40, borderRadius: 999,
                 cursor: 'pointer',
-                color: menuAberto ? azul : T.textSecondary,
-                padding: '6px 8px', borderRadius: 6,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background .12s, border-color .12s, color .12s',
-              }}>
-              <i className="ti ti-dots-vertical" style={{ fontSize: 16 }} aria-hidden="true" />
+                transition: 'background .12s, color .12s',
+              }}
+            >
+              <i className="ti ti-dots-vertical" style={{ fontSize: 20 }} aria-hidden="true" />
             </button>
             {menuAberto && (
               <div role="menu" style={{
                 position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50,
-                background: T.cardAlt, border: `1px solid ${T.border}`, borderRadius: 8,
+                background: T.cardAlt || T.card, border: `1px solid ${T.border}`, borderRadius: 8,
                 padding: 5, minWidth: 200,
                 boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.12)',
               }}>
@@ -344,8 +265,7 @@ export default function Header({
                   Copiar nº da OS
                 </MenuItem>
                 {onDuplicar && (
-                  <MenuItem T={T} icon="ti-copy-plus"
-                    onClick={duplicarOSHandler} disabled={duplicando}>
+                  <MenuItem T={T} icon="ti-copy-plus" onClick={duplicarOSHandler} disabled={duplicando}>
                     {duplicando ? 'Duplicando…' : 'Duplicar OS'}
                   </MenuItem>
                 )}
@@ -359,9 +279,7 @@ export default function Header({
                           ? `OS #${os.numero} voltou pro Kanban`
                           : `OS #${os.numero} retirada do Kanban (continua em Vendas)`)
                         setMenuAberto(false)
-                      } catch (e) {
-                        notify('erro', `Erro: ${e?.message || 'desconhecido'}`)
-                      }
+                      } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
                     }}>
                     {os.oculta_no_kanban ? 'Voltar pro Kanban' : 'Retirar do Kanban'}
                   </MenuItem>
@@ -369,8 +287,7 @@ export default function Header({
                 {admin && (
                   <>
                     <div style={{ height: 1, background: T.border, margin: '4px 0' }} />
-                    <MenuItem T={T} icon="ti-trash" danger
-                      onClick={excluirOS} disabled={excluindo}>
+                    <MenuItem T={T} icon="ti-trash" danger onClick={excluirOS} disabled={excluindo}>
                       {excluindo ? 'Excluindo…' : 'Excluir OS'}
                     </MenuItem>
                   </>
@@ -378,151 +295,34 @@ export default function Header({
               </div>
             )}
           </div>
-          <button
-            onClick={onClose} aria-label="Fechar"
-            style={{
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              color: T.textMuted, padding: '6px 6px', borderRadius: 6,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            <i className="ti ti-x" style={{ fontSize: 20 }} aria-hidden="true" />
-          </button>
         </div>
       </div>
 
-      {/* === LINHA 2 — Foto + bloco info === */}
-      <div style={{
-        padding: '8px 20px 14px',
-        display: 'flex', alignItems: 'center', gap: 14,
-      }}>
-        {/* Foto */}
-        <div
-          onClick={clicarFoto}
-          onMouseEnter={() => setFotoHover(true)}
-          onMouseLeave={() => setFotoHover(false)}
-          title={fotoUrl ? 'Ver foto ampliada' : 'Adicionar foto'}
-          style={{
-            position: 'relative',
-            width: 64, height: 64, flexShrink: 0,
-            borderRadius: 8,
-            border: `1px solid ${fotoHover ? azul : T.border}`,
-            background: fotoUrl
-              ? `url(${fotoUrl}) center/cover no-repeat`
-              : 'linear-gradient(135deg, #2c4257, #3a5a7a)',
-            cursor: 'pointer',
-            transition: 'border-color .15s',
-            overflow: 'hidden',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          {!fotoUrl && (
-            <i className={`ti ${fotoHover ? 'ti-camera-plus' : 'ti-photo'}`}
-              style={{ fontSize: 24, color: '#5B9BD5', opacity: 0.6 }}
-              aria-hidden="true" />
-          )}
-          {fotoUrl && (
-            <>
-              {/* Ícone "ampliar" no canto inferior — sempre visível */}
-              <div style={{
-                position: 'absolute', bottom: 4, right: 4,
-                width: 18, height: 18, borderRadius: 4,
-                background: 'rgba(0,0,0,0.7)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                pointerEvents: 'none',
-              }}>
-                <i className="ti ti-arrows-maximize" style={{ fontSize: 10 }} aria-hidden="true" />
-              </div>
+      {/* ── Linha 2: nome do cliente + fone + WhatsApp ── */}
+      <NomeCliente T={T} azul={azul}
+        nome={os.cliente}
+        fone={os.fone}
+        onNomeClick={abrirCadastroCliente}
+        onWhats={() => abrirWhatsApp(os.fone)}
+        onCopiarFone={copiarFone}
+      />
 
-              {/* Botões trocar / excluir — só no hover */}
-              {fotoHover && (
-                <div style={{
-                  position: 'absolute', top: 4, right: 4,
-                  display: 'flex', gap: 3,
-                }}>
-                  <button
-                    type="button"
-                    onClick={trocarFoto}
-                    disabled={uploading}
-                    title={uploading ? 'Enviando...' : 'Trocar foto'}
-                    style={{
-                      width: 22, height: 22, borderRadius: 4,
-                      background: 'rgba(0,0,0,0.75)', color: '#fff',
-                      border: 'none', cursor: uploading ? 'wait' : 'pointer',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      padding: 0,
-                    }}>
-                    <i className={`ti ${uploading ? 'ti-loader-2' : 'ti-camera'}`} style={{ fontSize: 12 }} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={removerFoto}
-                    title="Remover foto"
-                    style={{
-                      width: 22, height: 22, borderRadius: 4,
-                      background: 'rgba(192,66,66,0.85)', color: '#fff',
-                      border: 'none', cursor: 'pointer',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      padding: 0,
-                    }}>
-                    <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+      {/* ── Linha 3: endereço com copy + Maps ── */}
+      <LinhaEndereco T={T} azul={azul}
+        endereco={os.endereco}
+        onMapa={() => abrirMapa(os.endereco)}
+        onCopiar={copiarEndereco}
+      />
 
-          <input
-            ref={inputFotoRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => escolherFoto(e.target.files?.[0])}
-            style={{ display: 'none' }}
-          />
-        </div>
+      {/* ── Linha 4: equipamento ── */}
+      <LinhaEquipamento T={T} azul={azul}
+        equipamento={equipamentoLabel}
+        serie={os.serie}
+        defeito={os.defeito}
+        onClick={abrirCadastroEquipamento}
+      />
 
-        {/* Bloco info */}
-        <div style={{
-          display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0,
-        }}>
-          {/* Linha 1 — Nome cliente + telefone + WhatsApp */}
-          <NomeCliente T={T} azul={azul}
-            nome={os.cliente}
-            fone={os.fone}
-            onNomeClick={abrirCadastroCliente}
-            onWhats={() => abrirWhatsApp(os.fone)}
-            onCopiarFone={copiarFone}
-          />
-
-          {/* Linha 2 — Equipamento (sem fone — foi pro nome) */}
-          <LinhaEquipamento T={T} azul={azul}
-            equipamento={equipamentoLabel}
-            serie={os.serie}
-            defeito={os.defeito}
-            onClick={abrirCadastroEquipamento}
-          />
-
-          {/* Linha 3 — Endereço com copy + Maps */}
-          <LinhaEndereco T={T} azul={azul}
-            endereco={os.endereco}
-            onMapa={() => abrirMapa(os.endereco)}
-            onCopiar={copiarEndereco}
-          />
-        </div>
-      </div>
-
-      {/* === LINHA 3 — Timeline === remove na versão desktop (só aparece no
-          mobile via HeaderMobile, que tem seu próprio renderização). */}
-      {false && !isRecusado && (
-        <div style={{
-          padding: '14px 20px 14px',
-          borderTop: `1px solid ${T.border}`,
-        }}>
-          <Timeline T={T} dark={dark} os={os} config={config} admin={admin} mobile={mobile} />
-        </div>
-      )}
-
-      {/* === LINHA 4 — Abas === */}
+      {/* ── Linha 5: abas ── */}
       <div style={{
         display: 'flex', padding: '0 8px', marginTop: 4,
         borderTop: `1px solid ${T.border}`,
@@ -534,8 +334,7 @@ export default function Header({
               key={a.id}
               onClick={() => setAba(a.id)}
               style={{
-                flex: 1,
-                padding: '11px 8px',
+                flex: 1, padding: '11px 8px',
                 border: 'none',
                 borderBottom: `2px solid ${ativo ? azul : 'transparent'}`,
                 background: 'transparent',
@@ -546,7 +345,8 @@ export default function Header({
                 transition: 'border-color .12s, color .12s',
                 fontFamily: 'inherit',
                 marginTop: -1,
-              }}>
+              }}
+            >
               <i className={`ti ${a.icon}`} style={{ fontSize: 14 }} aria-hidden="true" />
               {a.label}
             </button>
@@ -554,16 +354,7 @@ export default function Header({
         })}
       </div>
 
-      {/* Modal de foto ampliada */}
-      {fotoAmpliada && fotoUrl && (
-        <FotoAmpliadaModal
-          src={fotoUrl}
-          alt={`Foto da OS #${os.numero}`}
-          onClose={() => setFotoAmpliada(false)}
-        />
-      )}
-
-      {/* Modal de edição do cliente vinculado */}
+      {/* ── Modais ── */}
       {modalCliente && (
         <FormClienteEdit
           T={T} dark={dark} mobile={mobile}
@@ -572,8 +363,6 @@ export default function Header({
           onSalvarOk={() => onRefetchOS?.()}
         />
       )}
-
-      {/* Modal de edição do equipamento da OS */}
       {modalEquipamento && (
         <FormEquipamentoEdit
           T={T} dark={dark} mobile={mobile}
@@ -586,27 +375,15 @@ export default function Header({
   )
 }
 
-// ─── Sub-componentes ─────────────────────────────────────────────────────────
-function Pill({ cor, bg, children }) {
-  return (
-    <span style={{
-      padding: '2px 8px', borderRadius: 5,
-      background: bg, color: cor, border: `1px solid ${cor}33`,
-      fontSize: 10.5, fontWeight: 700,
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      whiteSpace: 'nowrap',
-    }}>{children}</span>
-  )
-}
+// ─── Sub-componentes ──────────────────────────────────────────────────────────
 
 function NomeCliente({ T, azul, nome, fone, onNomeClick, onWhats, onCopiarFone }) {
   const [hoverNome, setHoverNome] = useState(false)
   const [hoverFone, setHoverFone] = useState(false)
   const vazio = !nome
-  const MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-      {/* Nome — clicável pra editar o cadastro do cliente */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 16px 0', minWidth: 0 }}>
+      {/* Nome */}
       <div
         onClick={onNomeClick}
         onMouseEnter={() => setHoverNome(true)}
@@ -623,7 +400,7 @@ function NomeCliente({ T, azul, nome, fone, onNomeClick, onWhats, onCopiarFone }
       >
         {nome || 'Cliente não definido'}
       </div>
-      {/* Telefone + WhatsApp */}
+      {/* Fone + WA */}
       {fone && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
           <span
@@ -653,78 +430,6 @@ function NomeCliente({ T, azul, nome, fone, onNomeClick, onWhats, onCopiarFone }
   )
 }
 
-function LinhaEquipamento({ T, azul, equipamento, serie, defeito, onClick }) {
-  const [hover, setHover] = useState(false)
-  const vazio = !equipamento
-  return (
-    <div
-      style={{
-        marginTop: 4,
-        fontSize: 12, color: T.textSecondary,
-        display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-      }}
-    >
-      <i className="ti ti-device-washing-machine"
-        onClick={onClick}
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
-        title="Abrir cadastro do equipamento"
-        style={{
-          fontSize: 13, color: azul, flexShrink: 0,
-          cursor: 'pointer',
-        }} aria-hidden="true" />
-
-      {/* Equipamento (ou placeholder) */}
-      {vazio ? (
-        <span
-          onClick={onClick}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          title="Abrir cadastro do equipamento"
-          style={{
-            color: hover ? azul : T.textMuted,
-            fontStyle: 'italic',
-            cursor: 'pointer', transition: 'color .12s',
-          }}>
-          Equipamento não preenchido — clique pra adicionar
-        </span>
-      ) : (
-        <strong
-          onClick={onClick}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          title="Abrir cadastro do equipamento"
-          style={{
-            color: hover ? azul : T.textPrimary,
-            fontWeight: 700,
-            cursor: 'pointer', transition: 'color .12s',
-          }}>
-          {equipamento}
-        </strong>
-      )}
-
-      {!vazio && serie && (
-        <span style={{
-          color: T.textMuted, fontSize: 10.5,
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        }}>S/N {serie}</span>
-      )}
-      {!vazio && defeito && (
-        <>
-          <SeparadorPonto />
-          <span style={{
-            color: T.textMuted,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            minWidth: 0, flex: '0 1 auto',
-          }}>
-            {defeito}
-          </span>
-        </>
-      )}
-    </div>
-  )
-}
-
 function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
   const [hoverEnd, setHoverEnd] = useState(false)
   const [hoverMapa, setHoverMapa] = useState(false)
@@ -732,13 +437,12 @@ function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
   if (!endResumido) return null
   return (
     <div style={{
-      marginTop: 3,
-      display: 'flex', alignItems: 'center', gap: 5, minWidth: 0,
+      display: 'flex', alignItems: 'center',
+      padding: '3px 16px 0', gap: 5, minWidth: 0,
     }}>
       <i className="ti ti-map-pin"
-        style={{ fontSize: 11, flexShrink: 0, opacity: 0.7, color: T.textDim }}
+        style={{ fontSize: 12, flexShrink: 0, color: T.textDim }}
         aria-hidden="true" />
-      {/* Texto — click copia */}
       <span
         onClick={onCopiar}
         onMouseEnter={() => setHoverEnd(true)}
@@ -746,8 +450,7 @@ function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
         title="Copiar endereço"
         style={{
           flex: 1, minWidth: 0,
-          fontSize: 11.5,
-          color: hoverEnd ? azul : T.textMuted,
+          fontSize: 12, color: hoverEnd ? azul : T.textMuted,
           cursor: 'pointer', transition: 'color .12s',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           userSelect: 'none',
@@ -755,7 +458,6 @@ function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
       >
         {endResumido}
       </span>
-      {/* Ícone Maps — click abre Google Maps */}
       <span
         onClick={onMapa}
         onMouseEnter={() => setHoverMapa(true)}
@@ -771,41 +473,59 @@ function LinhaEndereco({ T, azul, endereco, onMapa, onCopiar }) {
   )
 }
 
-function ChunkClicavel({ T, azul, icon, texto, onClick, title, truncar }) {
+function LinhaEquipamento({ T, azul, equipamento, serie, defeito, onClick }) {
   const [hover, setHover] = useState(false)
+  const vazio = !equipamento
   return (
-    <span
-      onClick={onClick ? (e) => { e.stopPropagation(); onClick() } : undefined}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      title={title}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        color: hover && onClick ? azul : 'inherit',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'color .12s',
-        ...(truncar ? {
-          maxWidth: 260,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        } : {}),
-      }}
-    >
-      <i className={`ti ${icon}`}
-        style={{
-          fontSize: 11,
-          color: hover && onClick ? azul : T.textDim,
-          flexShrink: 0,
-          transition: 'color .12s',
-        }} aria-hidden="true" />
-      <span style={{
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{texto}</span>
-    </span>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+      padding: '3px 16px 12px',
+      fontSize: 12, color: T.textSecondary,
+    }}>
+      <i className="ti ti-device-washing-machine"
+        onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        title="Abrir cadastro do equipamento"
+        style={{ fontSize: 13, color: azul, flexShrink: 0, cursor: 'pointer' }}
+        aria-hidden="true" />
+      {vazio ? (
+        <span
+          onClick={onClick}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          title="Abrir cadastro do equipamento"
+          style={{ color: hover ? azul : T.textMuted, fontStyle: 'italic', cursor: 'pointer', transition: 'color .12s' }}
+        >
+          Equipamento não preenchido — clique pra adicionar
+        </span>
+      ) : (
+        <strong
+          onClick={onClick}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          title="Abrir cadastro do equipamento"
+          style={{ color: hover ? azul : T.textPrimary, fontWeight: 700, cursor: 'pointer', transition: 'color .12s' }}
+        >
+          {equipamento}
+        </strong>
+      )}
+      {!vazio && serie && (
+        <span style={{
+          color: T.textMuted, fontSize: 10.5,
+          fontFamily: MONO,
+        }}>S/N {serie}</span>
+      )}
+      {!vazio && defeito && (
+        <>
+          <span style={{ color: '#4a4a50', opacity: 0.7 }} aria-hidden="true">·</span>
+          <span style={{ color: T.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: '0 1 auto' }}>
+            {defeito}
+          </span>
+        </>
+      )}
+    </div>
   )
-}
-
-function SeparadorPonto() {
-  return <span style={{ color: '#4a4a50', opacity: 0.7 }} aria-hidden="true">·</span>
 }
 
 function MenuItem({ T, icon, onClick, disabled, danger, children }) {
