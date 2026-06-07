@@ -17,8 +17,9 @@ import { supabase } from '../supabase'
  * Usado por consumidores que precisam só criar (ex: NovaOSModal inline)
  * e não querem pagar o custo de carregar os 782 clientes do useClientes.
  *
- * Schema real: nome, telefone, endereco (text concat), email, observacoes.
+ * Schema real: nome, telefone, telefone2, endereco (text concat), endereco2, email, observacoes.
  * Aceita payload com nomes antigos (fone/obs) e novos (telefone/observacoes).
+ * telefone2 adicionado via sql/78; endereco2 via sql/81.
  */
 export async function criarClientePersist(payload) {
   const enderecos = Array.isArray(payload.enderecos)
@@ -35,7 +36,9 @@ export async function criarClientePersist(payload) {
   const limpo = {
     nome:        payload.nome?.trim(),
     telefone:    (payload.telefone || payload.fone)?.trim() || null,
+    telefone2:   payload.telefone2?.trim() || null,
     endereco:    enderecoFinal,
+    endereco2:   payload.endereco2?.trim() || null,
     email:       payload.email?.trim() || null,
     observacoes: (payload.observacoes || payload.obs)?.trim() || null,
   }

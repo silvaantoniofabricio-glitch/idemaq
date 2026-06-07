@@ -86,13 +86,16 @@ export default function Clientes({ T, dark }) {
 
   async function salvarCliente(atualizado) {
     const { id, ...patch } = atualizado
-    const { error: err } = await atualizar(id, patch)
+    const { data, error: err } = await atualizar(id, patch)
     if (err) {
       notify('erro', err.message || 'Erro ao atualizar cliente')
-      return
+      return { error: err }
     }
-    setClienteAberto(null)
     notify('ok', 'Cliente atualizado')
+    // Atualiza clienteAberto com dados novos — modal não fecha após salvar,
+    // apenas volta pro modo visualização com as informações atualizadas.
+    if (data) setClienteAberto(data)
+    return { data }
   }
 
   async function excluirCliente(c) {
