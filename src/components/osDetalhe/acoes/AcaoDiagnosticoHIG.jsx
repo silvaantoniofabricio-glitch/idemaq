@@ -408,7 +408,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
       </AtlPanel>
 
       {/* 2. Resumo da avaliacao */}
-      {(naoLiga || locaisVaz.length > 0 || testesComResultado.length > 0) && (
+      {(naoLiga || locaisVaz.length > 0 || testesComResultado.length > 0 || os?.observacoes) && (
         <AtlPanel T={T} dark={dark} title="Resumo da avaliação">
           {naoLiga && (
             <ResumoRow T={T} dark={dark}
@@ -434,6 +434,14 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
               first={!naoLiga && locaisVaz.length === 0 && i === 0}
             />
           ))}
+          {os?.observacoes && (
+            <ResumoRow T={T} dark={dark}
+              first={!naoLiga && locaisVaz.length === 0 && testesComResultado.length === 0}
+              icon="notes" iconCor={azul}
+              label="Observações da avaliação"
+              sub={os.observacoes}
+            />
+          )}
         </AtlPanel>
       )}
 
