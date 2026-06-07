@@ -44,6 +44,7 @@ export const CATEGORIAS_PECA = [
   { id: 'capacitor',         label: 'Capacitor',            grupo: 'eletrico' },
   { id: 'sensor',            label: 'Sensor',               grupo: 'eletrico' },
   { id: 'termostato',        label: 'Termostato',           grupo: 'eletrico' },
+  { id: 'chicote_eletrico',  label: 'Chicote elétrico',     grupo: 'eletrico' },
 
   // Estrutura interna
   { id: 'cesto',             label: 'Cesto',                grupo: 'estrutura' },
