@@ -106,16 +106,20 @@ export default function NovoClienteModal({
             type="button"
             onClick={() => setInfoExtra(true)}
             style={{
-              alignSelf: 'flex-start',
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: azul, fontSize: 12.5, fontWeight: 500,
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '2px 0', fontFamily: 'inherit',
+              width: '100%', textAlign: 'left',
+              background: 'transparent', cursor: 'pointer',
+              border: `1px dashed ${T.border}`, borderRadius: 7,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 12px', fontFamily: 'inherit',
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <i className="ti ti-plus" style={{ fontSize: 12 }} aria-hidden="true" />
-            E-mail e CPF/CNPJ
+            <span style={{ fontSize: 12.5, color: T.textMuted }}>
+              E-mail · CPF/CNPJ
+            </span>
+            <span style={{ fontSize: 12, color: azul, fontWeight: 600 }}>
+              mais
+            </span>
           </button>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
