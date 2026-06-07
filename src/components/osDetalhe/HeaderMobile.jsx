@@ -67,8 +67,43 @@ const HeaderMobile = ({
   // OSDetalhe nao passa onAdicionarEquipamento. Mesma logica do Header
   // desktop (que tambem mantem estado proprio).
   const [modalEquipamento, setModalEquipamento] = useState(false);
+  const [foneCopied, setFoneCopied] = useState(false);
+  const [endCopied, setEndCopied] = useState(false);
   const historicoHandler = onShowHistorico || onHistory;
   const abrirEquipamento = onAdicionarEquipamento || (() => setModalEquipamento(true));
+
+  function abrirWhatsApp() {
+    const digits = (os?.fone || '').replace(/\D/g, '')
+    if (!digits) return
+    const numero = digits.startsWith('55') ? digits : '55' + digits
+    window.location.href = `whatsapp://send?phone=${numero}`
+  }
+
+  function abrirMapa() {
+    const end = os?.endereco
+    if (!end) return
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(end)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  function copiarFone() {
+    const fone = os?.fone || ''
+    if (!fone) return
+    navigator.clipboard?.writeText(fone).then(() => {
+      setFoneCopied(true)
+      setTimeout(() => setFoneCopied(false), 2000)
+    })
+  }
+
+  function copiarEndereco() {
+    const end = os?.endereco || ''
+    if (!end) return
+    navigator.clipboard?.writeText(end).then(() => {
+      setEndCopied(true)
+      setTimeout(() => setEndCopied(false), 2000)
+    })
+  }
+
+  const endResumido = os?.endereco ? os.endereco.split('—')[0].trim() : null
 
   const atrasoLabel = formatAtraso(os?.diasAtraso);
   const isLate = !!atrasoLabel;
@@ -209,24 +244,91 @@ const HeaderMobile = ({
         </div>
       </div>
 
-      {/* Linha 2 · nome do cliente — M3 title-large 22sp */}
-      <div
-        title={nome}
-        style={m3 ? {
-          padding: '4px 16px 0',
-          ...higType('titleLarge'),
-          color: T.textPrimary,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        } : {
-          padding: '0 12px 1px',
-          fontSize: 17, fontWeight: 700,
-          color: T.textPrimary, letterSpacing: '-.01em',
-          lineHeight: 1.15,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}
-      >
-        {nome}
+      {/* Linha 2 · nome do cliente + telefone + WhatsApp */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '4px 16px 0', gap: 8, minWidth: 0 }}>
+        <div
+          title={nome}
+          style={m3 ? {
+            flex: 1, minWidth: 0,
+            ...higType('titleLarge'),
+            color: T.textPrimary,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          } : {
+            flex: 1, minWidth: 0,
+            fontSize: 17, fontWeight: 700,
+            color: T.textPrimary, letterSpacing: '-.01em',
+            lineHeight: 1.15,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}
+        >
+          {nome}
+        </div>
+        {os?.fone && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            <button
+              onClick={copiarFone}
+              title="Tocar para copiar número"
+              style={{
+                border: 'none', background: 'transparent', cursor: 'pointer',
+                padding: '2px 0', fontFamily: MONO_STACK,
+                fontSize: 12, fontWeight: 600,
+                color: foneCopied ? (dark ? '#4ade80' : '#16a34a') : T.textMuted,
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'color .15s',
+              }}
+            >
+              {foneCopied ? 'Copiado!' : os.fone}
+            </button>
+            <button
+              onClick={abrirWhatsApp}
+              title="Abrir conversa no WhatsApp"
+              aria-label="WhatsApp"
+              style={{
+                border: 'none', background: 'transparent', cursor: 'pointer',
+                padding: 4, lineHeight: 0, display: 'inline-flex',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <TI name="brand-whatsapp" size={20} color="#25D366" />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Linha 2b · endereço com copy + ícone Maps */}
+      {endResumido && (
+        <div style={{ display: 'flex', alignItems: 'center', padding: '3px 16px 0', gap: 6, minWidth: 0 }}>
+          <TI name="map-pin" size={14} color={T.textMuted} />
+          <button
+            onClick={copiarEndereco}
+            title="Tocar para copiar endereço"
+            style={{
+              flex: 1, minWidth: 0,
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              textAlign: 'left', fontFamily: 'inherit',
+              ...higType('bodyMedium'),
+              color: endCopied ? (dark ? '#4ade80' : '#16a34a') : T.textMuted,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'color .15s',
+            }}
+          >
+            {endCopied ? 'Copiado!' : endResumido}
+          </button>
+          <button
+            onClick={abrirMapa}
+            title="Abrir no Google Maps"
+            aria-label="Abrir no Google Maps"
+            style={{
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              padding: 4, lineHeight: 0, display: 'inline-flex', flexShrink: 0,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <TI name="map-2" size={18} color={PALETA.blueStrong} />
+          </button>
+        </div>
+      )}
 
       {/* Linha 3 · equipamento (M3 text button pill quando vazio) */}
       {hasEquipamento ? (
