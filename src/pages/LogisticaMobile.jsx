@@ -16,6 +16,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useToast } from '../components/ui'
 import { corEtapa, corHero } from '../utils/colors'
+import { supabase } from '../supabase'
 import { useRotas } from '../hooks/useRotas'
 import { useOSLogistica, FILTROS_ETAPA_LOGISTICA } from '../hooks/useOSLogistica'
 import { useGeocodeEnderecos } from '../hooks/useGeocodeEnderecos'
@@ -46,6 +47,66 @@ export function filtrarPorAgenda(osList, filtro) {
 }
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const ATL_RADIUS = 4
+
+const FUNCIONARIOS_WPP = [
+  { nome: 'Guilherme', fone: '556798015187' },
+  { nome: 'Alessandro', fone: '556796113427' },
+]
+
+function horaLocalStr(iso) {
+  if (!iso) return null
+  try {
+    return new Date(iso).toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Cuiaba', hour: '2-digit', minute: '2-digit',
+    })
+  } catch { return null }
+}
+
+async function gerarMensagemRota(slot) {
+  const rota = slot.rota
+  if (!rota) return null
+  const paradas = rota.paradas || []
+  if (paradas.length === 0) return null
+
+  const osIds = paradas.filter(p => p.os_id).map(p => p.os_id)
+  let osMap = {}
+  if (osIds.length > 0) {
+    const { data } = await supabase
+      .from('os')
+      .select('id, marca_equipamento, modelo_equipamento, numero_serie, data_agendamento')
+      .in('id', osIds)
+    if (data) {
+      for (const os of data) osMap[os.id] = os
+    }
+  }
+
+  const dataStr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Cuiaba' })
+  const linhas = [`📋 *${rota.nome} — ${dataStr}*`, '']
+
+  paradas.forEach((p, idx) => {
+    const os = p.os_id ? osMap[p.os_id] : null
+    const tipo = normalizarTipoUi(p.tipo)
+    const tipoLabel =
+      tipo === 'coleta'  ? 'Coleta'    :
+      tipo === 'entrega' ? 'Entrega'   :
+      tipo === 'receber' ? 'A receber' : 'Visita'
+
+    linhas.push(`*${idx + 1}. ${tipoLabel}*`)
+    linhas.push(`👤 ${p.cliente_nome || '—'}`)
+    if (p.cliente_fone) linhas.push(`📞 ${p.cliente_fone}`)
+    if (p.endereco) linhas.push(`📍 ${p.endereco}`)
+    if (os) {
+      const maquina = [os.marca_equipamento, os.modelo_equipamento].filter(Boolean).join(' ')
+      const serie = os.numero_serie ? ` · Série: ${os.numero_serie}` : ''
+      if (maquina || os.numero_serie) linhas.push(`🔧 ${maquina}${serie}`)
+    }
+    const horario = p.horario_previsto || (os?.data_agendamento ? horaLocalStr(os.data_agendamento) : null)
+    if (horario) linhas.push(`⏰ ${horario}`)
+    linhas.push('')
+  })
+
+  return linhas.join('\n').trim()
+}
 
 export const NOMES_SLOT = ['Rota A', 'Rota B', 'Rota C']
 export const LETRA_POR_SLOT = { 'Rota A': 'A', 'Rota B': 'B', 'Rota C': 'C' }
@@ -763,9 +824,28 @@ export function RotaAccordion({
   const azul = corEtapa('blue', dark)
   const paradas = slot.rota?.paradas || []
   const indisponivel = !slot.rota
+  const notify = useToast()
   const [avulsaAberta, setAvulsaAberta] = useState(false)
   const [avulsaNome, setAvulsaNome] = useState('')
   const [avulsaEnd, setAvulsaEnd] = useState('')
+  const [picker, setPicker] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+
+  async function handleEnviar(funcionario) {
+    setPicker(false)
+    setEnviando(true)
+    try {
+      const texto = await gerarMensagemRota(slot)
+      if (!texto) { notify('info', 'Rota sem paradas para enviar'); return }
+      const url = `https://wa.me/${funcionario.fone}?text=${encodeURIComponent(texto)}`
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      notify('erro', 'Erro ao gerar mensagem da rota')
+      console.error('[EnviarRota]', err)
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   // Drag-and-drop de reordenação interna
   const dragSrcIdx = useRef(null)
@@ -820,59 +900,138 @@ export function RotaAccordion({
         background: bgHover,
         transition: 'background .12s',
       }}>
-      <button
-        onClick={indisponivel ? undefined : onToggle}
-        disabled={indisponivel}
-        style={{
-          width: '100%', minHeight: 48,
-          padding: '10px 14px',
-          background: 'transparent', border: 'none',
-          display: 'flex', alignItems: 'center', gap: 10,
-          cursor: indisponivel ? 'not-allowed' : 'pointer',
-          fontFamily: ATL_FONT,
-          WebkitTapHighlightColor: 'transparent',
-        }}>
-        <div style={{
-          width: 30, height: 30, borderRadius: ATL_RADIUS,
-          background: expandida ? azul : (dark ? 'rgba(91,155,213,0.16)' : '#E6F1FB'),
-          color: expandida ? '#fff' : azul,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 700,
-          flexShrink: 0, letterSpacing: '-0.01em',
-          transition: 'background .15s',
-        }}>{letra}</div>
-
-        <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
-          <div style={{
-            fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
-            letterSpacing: '-0.005em', lineHeight: 1.2,
+      {/* Header: toggle accordion + botão Enviar Rota */}
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <button
+          onClick={indisponivel ? undefined : onToggle}
+          disabled={indisponivel}
+          style={{
+            flex: 1, minWidth: 0, minHeight: 48,
+            padding: '10px 14px',
+            background: 'transparent', border: 'none',
+            display: 'flex', alignItems: 'center', gap: 10,
+            cursor: indisponivel ? 'not-allowed' : 'pointer',
+            fontFamily: ATL_FONT,
+            WebkitTapHighlightColor: 'transparent',
           }}>
-            Rota {letra}
-            {indisponivel && (
-              <span style={{
-                fontSize: 11, color: T.textMuted, fontWeight: 500, marginLeft: 6,
-              }}>· pendente</span>
+          <div style={{
+            width: 30, height: 30, borderRadius: ATL_RADIUS,
+            background: expandida ? azul : (dark ? 'rgba(91,155,213,0.16)' : '#E6F1FB'),
+            color: expandida ? '#fff' : azul,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, fontWeight: 700,
+            flexShrink: 0, letterSpacing: '-0.01em',
+            transition: 'background .15s',
+          }}>{letra}</div>
+
+          <div style={{ flex: 1, textAlign: 'left', minWidth: 0 }}>
+            <div style={{
+              fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
+              letterSpacing: '-0.005em', lineHeight: 1.2,
+            }}>
+              Rota {letra}
+              {indisponivel && (
+                <span style={{
+                  fontSize: 11, color: T.textMuted, fontWeight: 500, marginLeft: 6,
+                }}>· pendente</span>
+              )}
+            </div>
+            <div style={{
+              fontSize: 11.5, color: T.textMuted,
+              fontVariantNumeric: 'tabular-nums', marginTop: 1,
+            }}>
+              {paradas.length === 0
+                ? 'Sem paradas'
+                : `${paradas.length} ${paradas.length === 1 ? 'parada' : 'paradas'}`}
+            </div>
+          </div>
+
+          {!indisponivel && (
+            <i className="ti ti-chevron-right" style={{
+              fontSize: 13, color: T.textDim,
+              transform: expandida ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform .2s cubic-bezier(0.32, 0.72, 0, 1)',
+              flexShrink: 0,
+            }} aria-hidden="true" />
+          )}
+        </button>
+
+        {/* Botão Enviar Rota — só aparece quando tem paradas */}
+        {!indisponivel && paradas.length > 0 && (
+          <div style={{ position: 'relative', flexShrink: 0, paddingRight: 10 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setPicker(v => !v) }}
+              disabled={enviando}
+              title="Enviar rota por WhatsApp"
+              aria-label="Enviar rota por WhatsApp"
+              style={{
+                height: 30, padding: '0 9px',
+                borderRadius: ATL_RADIUS,
+                border: `1px solid ${T.border}`,
+                background: 'transparent',
+                color: azul,
+                cursor: enviando ? 'wait' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 12, fontWeight: 600,
+                fontFamily: ATL_FONT,
+                WebkitTapHighlightColor: 'transparent',
+                letterSpacing: '-0.005em',
+              }}>
+              <i className="ti ti-brand-whatsapp" style={{ fontSize: 14 }} aria-hidden="true" />
+              {enviando ? '…' : 'Enviar'}
+            </button>
+
+            {picker && (
+              <>
+                {/* Overlay pra fechar ao clicar fora */}
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 29 }}
+                  onClick={() => setPicker(false)}
+                />
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, zIndex: 30,
+                  background: T.card,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: ATL_RADIUS,
+                  boxShadow: '0 4px 16px rgba(9,30,66,0.22)',
+                  marginTop: 4, minWidth: 165,
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    padding: '7px 12px',
+                    borderBottom: `1px solid ${T.border}`,
+                    fontSize: 11, fontWeight: 700, color: T.textMuted,
+                    textTransform: 'uppercase', letterSpacing: '0.05em',
+                  }}>Enviar para</div>
+                  {FUNCIONARIOS_WPP.map((f, idx) => (
+                    <button
+                      key={f.nome}
+                      onClick={() => handleEnviar(f)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        width: '100%', padding: '9px 12px',
+                        background: 'transparent', border: 'none',
+                        borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+                        color: T.textPrimary,
+                        fontSize: 13, fontWeight: 500,
+                        cursor: 'pointer',
+                        fontFamily: ATL_FONT,
+                        letterSpacing: '-0.005em',
+                        WebkitTapHighlightColor: 'transparent',
+                        textAlign: 'left',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#F4F5F7' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
+                      <i className="ti ti-user-circle" style={{ fontSize: 15, color: azul, flexShrink: 0 }} aria-hidden="true" />
+                      {f.nome}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
-          <div style={{
-            fontSize: 11.5, color: T.textMuted,
-            fontVariantNumeric: 'tabular-nums', marginTop: 1,
-          }}>
-            {paradas.length === 0
-              ? 'Sem paradas'
-              : `${paradas.length} ${paradas.length === 1 ? 'parada' : 'paradas'}`}
-          </div>
-        </div>
-
-        {!indisponivel && (
-          <i className="ti ti-chevron-right" style={{
-            fontSize: 13, color: T.textDim,
-            transform: expandida ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform .2s cubic-bezier(0.32, 0.72, 0, 1)',
-            flexShrink: 0,
-          }} aria-hidden="true" />
         )}
-      </button>
+      </div>
 
       {expandida && !indisponivel && (
         <div style={{ borderTop: `1px solid ${T.border}` }}>
