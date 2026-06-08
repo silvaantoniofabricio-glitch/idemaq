@@ -80,10 +80,13 @@ async function resolverContaId(nome) {
  *
  * @returns {Promise<Array<object>>} payloads prontos pra useFinanceiro.criar()
  */
-export async function montarLancamentosDoPagamento(os, { valor, forma, taxa_pct = 0, parcelasAPrazo = [] }) {
+export async function montarLancamentosDoPagamento(os, { valor, forma, taxa_pct = 0, parcelasAPrazo = [], dataPagamento = null }) {
   const classe = classificarForma(forma)
   const categoria = categoriaPorTipoOS(os.tipo)
-  const hoje = new Date().toISOString().slice(0, 10)
+  // Data do recebimento: a escolhida no form (pré-preenchida com hoje) ou hoje.
+  const hoje = (dataPagamento && /^\d{4}-\d{2}-\d{2}$/.test(dataPagamento))
+    ? dataPagamento
+    : new Date().toISOString().slice(0, 10)
   const payloads = []
 
   // ─── A prazo: N receitas em aberto, uma por parcela ─────────────────────────

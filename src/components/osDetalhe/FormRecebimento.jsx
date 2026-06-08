@@ -67,6 +67,7 @@ export default function FormRecebimento({
   const notify = useToast()
 
   const [valor, setValor] = useState(saldo)
+  const [dataPagamento, setDataPagamento] = useState(dataMaisDiasISO(0)) // hoje, editável
   const [forma, setForma] = useState('pix')          // 'pix' | 'cartao' | 'dinheiro' | 'aprazo'
   const [subCartao, setSubCartao] = useState(null)   // null antes de escolher
   const [parcelas, setParcelas] = useState(1)        // 1x a 12x (crédito e link)
@@ -148,7 +149,7 @@ export default function FormRecebimento({
     if (forma === 'aprazo') {
       onConfirmar({
         valor, forma: formaIdFinal(), modo: 'total',
-        taxa_pct: taxa,
+        taxa_pct: taxa, data_pagamento: dataPagamento,
         parcelas: parcelasAPrazo.map(p => ({ ...p, valor: Number(p.valor) || 0 })),
       })
       return
@@ -156,17 +157,17 @@ export default function FormRecebimento({
     if (isParcial) {
       setPartialDialog(true)
     } else {
-      onConfirmar({ valor, forma: formaIdFinal(), modo: 'total', taxa_pct: taxa })
+      onConfirmar({ valor, forma: formaIdFinal(), modo: 'total', taxa_pct: taxa, data_pagamento: dataPagamento })
     }
   }
 
   function confirmarParcial() {
-    onConfirmar({ valor, forma: formaIdFinal(), modo: 'parcial', taxa_pct: taxa })
+    onConfirmar({ valor, forma: formaIdFinal(), modo: 'parcial', taxa_pct: taxa, data_pagamento: dataPagamento })
     setPartialDialog(false)
   }
 
   function confirmarComDesconto() {
-    onConfirmar({ valor, forma: formaIdFinal(), modo: 'desconto', taxa_pct: taxa })
+    onConfirmar({ valor, forma: formaIdFinal(), modo: 'desconto', taxa_pct: taxa, data_pagamento: dataPagamento })
     setPartialDialog(false)
   }
 
@@ -274,6 +275,32 @@ export default function FormRecebimento({
           </div>
         )}
       </div>
+
+      {/* Data do pagamento — pré-preenchida com hoje (à vista; a prazo usa as datas das parcelas) */}
+      {forma !== 'aprazo' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 10px', borderRadius: 8,
+          border: `1px solid ${T.border}`, background: T.bg,
+        }}>
+          <i className="ti ti-calendar-event" style={{ fontSize: 15, color: azul, flexShrink: 0 }} aria-hidden="true" />
+          <span style={{
+            fontSize: 11, color: T.textMuted, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '.4px', flex: 1,
+          }}>Data do pagamento</span>
+          <input
+            type="date"
+            value={dataPagamento}
+            onChange={(e) => setDataPagamento(e.target.value || dataMaisDiasISO(0))}
+            style={{
+              padding: '6px 8px', borderRadius: 6,
+              border: `1px solid ${T.border}`, background: T.card || T.bg, color: T.textPrimary,
+              fontSize: 12.5, fontWeight: 600, outline: 'none', fontFamily: 'inherit',
+              colorScheme: dark ? 'dark' : 'light', fontVariantNumeric: 'tabular-nums',
+            }}
+          />
+        </div>
+      )}
 
       {/* Sub-leque do Cartão */}
       {forma === 'cartao' && (

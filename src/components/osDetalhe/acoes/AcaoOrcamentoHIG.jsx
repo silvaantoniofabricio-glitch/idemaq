@@ -2249,7 +2249,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
       <FormRecebimento
         T={T} dark={dark}
         saldo={Math.max(0, total - (os?.valor_pago || 0))}
-        onConfirmar={({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) => {
+        onConfirmar={({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo, data_pagamento }) => {
           const valorAtual = Number(os?.valor_pago || 0)
           const novoValorPago = valorAtual + valor
           let novoPago = 'total'
@@ -2266,7 +2266,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
             forma_pagamento: forma,
             ...(novasObs !== os?.observacoes ? { observacoes: novasObs } : {}),
           })
-          persistirLancamentosDoPagamento(os, { valor, forma, taxa_pct, parcelasAPrazo: parcelasAPrazo || [] })
+          persistirLancamentosDoPagamento(os, { valor, forma, taxa_pct, parcelasAPrazo: parcelasAPrazo || [], dataPagamento: data_pagamento || null })
         }}
         onEnviarLink={() => {}}
         onGerarPix={() => {}}

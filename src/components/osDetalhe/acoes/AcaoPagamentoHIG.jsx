@@ -37,7 +37,7 @@ export default function AcaoPagamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const quitado = aPagar <= 0
   const formaAnterior = os.forma_pagamento
 
-  function handleConfirmar({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo }) {
+  function handleConfirmar({ valor, forma, modo, taxa_pct, parcelas: parcelasAPrazo, data_pagamento }) {
     const novoValorPago = valorPago + valor
     let novoDesconto = descontoAtual
     let novoPago = 'total'
@@ -67,6 +67,7 @@ export default function AcaoPagamentoHIG({ os, onUpdateOS, onMoverOS }) {
     persistirLancamentosDoPagamento(os, {
       valor, forma, taxa_pct,
       parcelasAPrazo: parcelasAPrazo || [],
+      dataPagamento: data_pagamento || null,
     })
     if (novoPago === 'total') {
       const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
