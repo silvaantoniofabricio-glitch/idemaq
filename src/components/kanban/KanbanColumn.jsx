@@ -32,6 +32,11 @@ export default function KanbanColumn({
   const bg = bgEtapa(etapa.cor, dark)
   const isHover = colunaHover === etapa.id && arrastando
 
+  // Colapso automático (estilo Jira): coluna vazia vira um filete vertical.
+  // Enquanto arrasta um card, todas expandem pra facilitar o drop.
+  const vazia     = !loading && osList.length === 0
+  const colapsada = vazia && !arrastando
+
   // Cores da coluna — estilo Atlassian: fundo sólido neutro
   const colBg = dark
     ? (isHover ? 'rgba(91,155,213,0.08)' : 'rgba(255,255,255,0.04)')
@@ -40,6 +45,77 @@ export default function KanbanColumn({
   const colBorder = isHover
     ? `1.5px dashed ${c}`
     : `1.5px solid ${dark ? 'rgba(255,255,255,0.08)' : '#e4e5e9'}`
+
+  // ── Coluna colapsada: filete vertical ────────────────────────────────────
+  if (colapsada) {
+    return (
+      <div
+        onDragOver={e => { e.preventDefault(); onDragOverCol?.(etapa.id) }}
+        onDragLeave={() => { if (colunaHover === etapa.id) onDragOverCol?.(null) }}
+        onDrop={e => { e.preventDefault(); onDropCol?.(etapa.id) }}
+        title={`${etapa.label} — vazio`}
+        style={{
+          minWidth: 44, maxWidth: 44, flexShrink: 0,
+          background: colBg,
+          borderRadius: 6,
+          border: colBorder,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          maxHeight: '100%',
+          padding: '10px 0',
+          gap: 8,
+          transition: 'background .15s, border-color .15s',
+          overflow: 'hidden',
+          cursor: 'default',
+        }}>
+        {/* Badge de contagem (0) */}
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          padding: '1px 6px', borderRadius: 10,
+          background: dark ? 'rgba(255,255,255,0.07)' : '#e4e5e9',
+          color: T.textDim,
+          minWidth: 20, textAlign: 'center',
+          fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+        }}>0</span>
+
+        {/* Dot da etapa */}
+        <div style={{
+          width: 8, height: 8, borderRadius: 2,
+          background: c, flexShrink: 0, opacity: 0.45,
+        }} />
+
+        {/* Label na vertical */}
+        <span style={{
+          writingMode: 'vertical-rl',
+          fontSize: 11, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '0.04em',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          maxHeight: '100%',
+        }}>{etapa.label}</span>
+
+        {/* Ícones de contexto (na base) */}
+        <div style={{
+          marginTop: 'auto',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+        }}>
+          {etapa.prazo24h && (
+            <i className="ti ti-clock-exclamation"
+              style={{ fontSize: 11, color: dark ? P.yellow : P.yellowDark }}
+              aria-hidden="true" title="Prazo de 24h" />
+          )}
+          {etapa.adminOnly && (
+            <i className="ti ti-lock"
+              style={{ fontSize: 10, color: T.textDim }}
+              aria-hidden="true" title="Só o dono vê" />
+          )}
+          {concluidoMesAtual && (
+            <i className="ti ti-calendar-stats"
+              style={{ fontSize: 10, color: T.textDim }}
+              aria-hidden="true" title="Mês corrente" />
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
