@@ -16,7 +16,7 @@
 //
 // Nome do arquivo permanece *HIG por compat com imports do EtapaTab.
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 import { ETAPAS_TODOS } from '../../../utils/osData'
@@ -24,6 +24,26 @@ import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import {
   AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
 } from './_AtlassianUI'
+
+// ─── Autocomplete de causas (mesmo histórico do Diagnóstico) ───────────────
+const CAUSAS_KEY = 'idemaq:diagnostico:causas_historico'
+const CAUSAS_MAX = 80
+
+function lerCausas() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(CAUSAS_KEY) || '[]')
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : []
+  } catch { return [] }
+}
+function salvarCausa(frase) {
+  const f = (frase || '').trim()
+  if (f.length < 4) return
+  try {
+    const atual = lerCausas()
+    const novo = [f, ...atual.filter(x => x.toLowerCase() !== f.toLowerCase())].slice(0, CAUSAS_MAX)
+    localStorage.setItem(CAUSAS_KEY, JSON.stringify(novo))
+  } catch {}
+}
 
 // ─── Dados ────────────────────────────────────────────────────────────────
 const TESTES = [
@@ -189,6 +209,9 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   const [naoLiga, setNaoLiga]        = useState(false)
   const [motivoNaoLiga, setMotivo]   = useState('')
   const [vazamentos, setVazamentos]  = useState({ entrada: false, saida: false, agitacao: false })
+  const [causa, setCausa]            = useState(os?.pre_diagnostico?.causa_diagnostico || '')
+  const [causaFocada, setCausaFocada] = useState(false)
+  const [historicoCausas, setHistorico] = useState(() => lerCausas())
   const [hidratado, setHidratado]    = useState(false)
   const [salvando, setSalvando]      = useState(false)
 
@@ -204,6 +227,37 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
     os?.pre_diagnostico?.equipamento_nao_liga,
     os?.pre_diagnostico?.motivo_nao_liga,
     os?.pre_diagnostico?.vazamentos])
+
+  // Hidrata causa só ao trocar de OS (evita pular o cursor enquanto digita)
+  useEffect(() => {
+    setCausa(os?.pre_diagnostico?.causa_diagnostico || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [os?.id])
+
+  // Sugestões do autocomplete (mesmo histórico do Diagnóstico)
+  const sugestoes = useMemo(() => {
+    const q = causa.trim().toLowerCase()
+    const base = historicoCausas.filter(f => f.toLowerCase() !== q)
+    return q ? base.filter(f => f.toLowerCase().includes(q)).slice(0, 5)
+             : base.slice(0, 5)
+  }, [causa, historicoCausas])
+
+  function persistirCausaBlur() {
+    setCausaFocada(false)
+    if (!causa.trim()) return
+    salvarCausa(causa)
+    setHistorico(lerCausas())
+  }
+
+  function aplicarSugestao(frase) {
+    setCausa(frase)
+    setCausaFocada(false)
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: { ...(os.pre_diagnostico || {}), causa_diagnostico: frase },
+    })
+    salvarCausa(frase)
+    setHistorico(lerCausas())
+  }
 
   useEffect(() => {
     if (loadingChk || hidratado) return
@@ -257,12 +311,13 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
           equipamento_nao_liga: naoLiga,
           motivo_nao_liga:      naoLiga ? motivoNaoLiga : null,
           vazamentos,
+          causa_diagnostico:    causa.trim() || null,
         },
       })
     }, 500)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [naoLiga, motivoNaoLiga, vazamentos, hidratado])
+  }, [naoLiga, motivoNaoLiga, vazamentos, causa, hidratado])
 
   async function avancar() {
     setSalvando(true)
@@ -272,6 +327,16 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
       valor:   naoLiga ? 'na'  : (testes[t.id] || null),
     })), null)
     if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
+    if (causa.trim()) salvarCausa(causa)
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: {
+        ...(os.pre_diagnostico || {}),
+        equipamento_nao_liga: naoLiga,
+        motivo_nao_liga:      naoLiga ? motivoNaoLiga : null,
+        vazamentos,
+        causa_diagnostico:    causa.trim() || null,
+      },
+    })
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'diagnostico')
     setSalvando(false)
     if (proxima) onMoverOS(os.numero, proxima.id)
@@ -446,6 +511,73 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
             }}
           />
         </div>
+      </AtlPanel>
+
+      {/* 4b. Causa identificada (opcional — adianta o diagnóstico) */}
+      <AtlPanel
+        T={T} dark={dark}
+        title="Causa identificada"
+        footer="Opcional. Se já descobriu o problema na avaliação, adiante aqui — vai pronto pro Diagnóstico.">
+        <div style={{ padding: '10px 14px' }}>
+          <textarea
+            placeholder="Ex: Rolamento do tambor desgastado, correia rompida…"
+            value={causa}
+            onChange={e => setCausa(e.target.value)}
+            onFocus={() => setCausaFocada(true)}
+            onBlur={() => setTimeout(persistirCausaBlur, 150)}
+            rows={3}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '8px 10px',
+              borderRadius: 3,
+              border: `1px solid ${T.border}`,
+              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+              color: T.textPrimary,
+              fontSize: 13, fontFamily: ATL_FONT,
+              outline: 'none', resize: 'vertical',
+              letterSpacing: '-0.005em', lineHeight: 1.45,
+            }}
+          />
+        </div>
+
+        {causaFocada && sugestoes.length > 0 && (
+          <div style={{
+            borderTop: `1px solid ${T.border}`,
+            background: atlSurfaceSunken(dark),
+          }}>
+            <div style={{
+              padding: '8px 14px 4px',
+              display: 'flex', alignItems: 'center', gap: 4,
+              fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+            }}>
+              <i className="ti ti-history" style={{ fontSize: 11 }} aria-hidden="true" />
+              {causa.trim() ? 'Sugestões' : 'Usadas recentemente'}
+            </div>
+            {sugestoes.map((f, i) => (
+              <button key={i} type="button"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => aplicarSugestao(f)}
+                style={{
+                  width: '100%',
+                  padding: '8px 14px',
+                  borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+                  background: 'transparent', border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', textAlign: 'left', fontFamily: ATL_FONT,
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <i className="ti ti-corner-down-left"
+                   style={{ fontSize: 13, color: azul, flexShrink: 0 }} aria-hidden="true" />
+                <span style={{
+                  flex: 1, fontSize: 13, color: T.textPrimary,
+                  letterSpacing: '-0.005em',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{f}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </AtlPanel>
 
       {/* 5. CTA */}
