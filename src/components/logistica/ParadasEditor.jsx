@@ -19,6 +19,7 @@ import React, { useState } from 'react'
 import { Input, Select, Button, Badge } from '../ui'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import AddressInput from './AddressInput'
+import { supabase } from '../../supabase'
 
 // Tipos canônicos do jsonb `paradas` — alinhados com MapaLogistica.jsx e
 // AdicionarOSARotaModal.jsx (sessão geral 20/05 noite). NÃO alterar sem
@@ -70,6 +71,38 @@ export default function ParadasEditor({
   const neutro = T?.textMuted || '#9CA3AF'
   const [dragIdx, setDragIdx] = useState(null)
   const [hoverIdx, setHoverIdx] = useState(null)
+  // Endereços salvos do cliente por parada: { [paradaId]: string[] }
+  const [enderecosMap, setEnderecosMap] = useState({})
+  // Qual parada tem o dropdown de endereços aberto
+  const [dropdownEnd, setDropdownEnd] = useState(null)
+  const [carregandoEnd, setCarregandoEnd] = useState(null)
+
+  async function verEnderecos(paradaId, osId) {
+    if (dropdownEnd === paradaId) { setDropdownEnd(null); return }
+    if (enderecosMap[paradaId]) { setDropdownEnd(paradaId); return }
+    setCarregandoEnd(paradaId)
+    try {
+      const { data } = await supabase
+        .from('os')
+        .select('cliente:cliente_id(endereco, endereco2, endereco3)')
+        .eq('id', osId)
+        .single()
+      const c = data?.cliente
+      const lista = [c?.endereco, c?.endereco2, c?.endereco3].filter(Boolean)
+      setEnderecosMap(prev => ({ ...prev, [paradaId]: lista }))
+      setDropdownEnd(paradaId)
+    } catch {
+      setEnderecosMap(prev => ({ ...prev, [paradaId]: [] }))
+      setDropdownEnd(paradaId)
+    } finally {
+      setCarregandoEnd(null)
+    }
+  }
+
+  function escolherEndereco(idx, paradaId, endereco) {
+    alterarParada(idx, { endereco, lat: null, lng: null })
+    setDropdownEnd(null)
+  }
 
   function corTipo(tipo) {
     if (tipo === 'coleta')   return azul
@@ -260,13 +293,92 @@ export default function ParadasEditor({
                 />
               </div>
 
-              <AddressInput
-                T={T} dark={dark}
-                value={p.endereco || ''}
-                onChange={({ endereco, lat, lng }) => alterarParada(idx, { endereco, lat, lng })}
-                label={null}
-                placeholder="Endereço da parada"
-              />
+              {/* Endereço + botão de endereços salvos do cliente */}
+              <div style={{ position: 'relative' }}>
+                <AddressInput
+                  T={T} dark={dark}
+                  value={p.endereco || ''}
+                  onChange={({ endereco, lat, lng }) => alterarParada(idx, { endereco, lat, lng })}
+                  label={null}
+                  placeholder="Endereço da parada"
+                />
+                {p.os_id && (
+                  <button
+                    type="button"
+                    onClick={() => verEnderecos(p.id, p.os_id)}
+                    disabled={carregandoEnd === p.id}
+                    style={{
+                      marginTop: 3,
+                      background: 'transparent', border: 'none', padding: '1px 0',
+                      color: azul, fontSize: 11.5, fontWeight: 500,
+                      cursor: carregandoEnd === p.id ? 'wait' : 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontFamily: 'inherit',
+                    }}>
+                    <i className={`ti ${carregandoEnd === p.id ? 'ti-loader-2' : 'ti-address-book'}`}
+                       style={{ fontSize: 12 }} aria-hidden="true" />
+                    {carregandoEnd === p.id ? 'Carregando…' : 'Endereços do cliente'}
+                  </button>
+                )}
+                {dropdownEnd === p.id && (
+                  <>
+                    <div
+                      style={{ position: 'fixed', inset: 0, zIndex: 29 }}
+                      onClick={() => setDropdownEnd(null)}
+                    />
+                    <div style={{
+                      position: 'absolute', left: 0, top: '100%', zIndex: 30,
+                      background: T?.card,
+                      border: `1px solid ${T?.border}`,
+                      borderRadius: 8,
+                      boxShadow: '0 4px 16px rgba(9,30,66,0.18)',
+                      marginTop: 2,
+                      minWidth: 260, maxWidth: '100%',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '6px 12px',
+                        borderBottom: `1px solid ${T?.border}`,
+                        fontSize: 11, fontWeight: 700, color: T?.textMuted,
+                        textTransform: 'uppercase', letterSpacing: '0.05em',
+                      }}>Endereços do cliente</div>
+                      {(enderecosMap[p.id] || []).length === 0 ? (
+                        <div style={{ padding: '10px 12px', fontSize: 12.5, color: T?.textMuted }}>
+                          Nenhum endereço salvo neste cliente
+                        </div>
+                      ) : (
+                        (enderecosMap[p.id] || []).map((end, i) => {
+                          const ativo = p.endereco === end
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => escolherEndereco(idx, p.id, end)}
+                              style={{
+                                display: 'flex', alignItems: 'flex-start', gap: 8,
+                                width: '100%', padding: '9px 12px',
+                                background: ativo ? (dark ? 'rgba(91,155,213,0.12)' : '#EBF3FB') : 'transparent',
+                                border: 'none',
+                                borderTop: i === 0 ? 'none' : `1px solid ${T?.border}`,
+                                color: ativo ? azul : T?.textPrimary,
+                                fontSize: 12.5, fontWeight: ativo ? 600 : 400,
+                                cursor: 'pointer', textAlign: 'left',
+                                fontFamily: 'inherit',
+                              }}
+                              onMouseEnter={(e) => { if (!ativo) e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7' }}
+                              onMouseLeave={(e) => { if (!ativo) e.currentTarget.style.background = 'transparent' }}>
+                              <i className="ti ti-map-pin"
+                                 style={{ fontSize: 13, color: azul, flexShrink: 0, marginTop: 1 }}
+                                 aria-hidden="true" />
+                              {end}
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
 
               <div style={{
                 display: 'grid',
