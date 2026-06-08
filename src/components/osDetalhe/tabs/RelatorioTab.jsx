@@ -800,14 +800,8 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
   const verde   = corEtapa('green', dark)
   const vermelho = corEtapa('red',  dark)
 
-  // Número de colunas: mobile empilha, desktop usa 4 colunas
-  // Col 3 (financeiro) só aparece pra admin
-  const colunas = admin ? (mobile ? 1 : 4) : (mobile ? 1 : 3)
-  const gridCols = mobile
-    ? '1fr'
-    : admin
-      ? '1fr 1fr 1fr 2fr'   // datas · fotos · financeiro · histórico (histórico mais largo)
-      : '1fr 1fr 2fr'        // datas · fotos · histórico
+  // Blocos empilhados verticalmente (um embaixo do outro).
+  // Col financeiro só aparece pra admin.
 
   return (
     <div style={{
@@ -816,12 +810,12 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
       fontFamily: ATL_FONT,
     }}>
 
-      {/* Grid 4 colunas */}
+      {/* Blocos empilhados: datas · fotos · financeiro · histórico */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: gridCols,
+        display: 'flex',
+        flexDirection: 'column',
         gap: 10,
-        alignItems: 'start',
+        alignItems: 'stretch',
       }}>
         <ColDatas T={T} dark={dark} os={os} />
         <ColFotos T={T} dark={dark} os={os} />
