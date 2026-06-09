@@ -10,6 +10,9 @@ export default function SubStatus({ label, status, T, dark }) {
     concluido:    { c: cor(P.green, P.greenDark),   bg: cor('#0f2a15', '#e8f5ec'), ico: 'ti-check' },
     em_andamento: { c: cor(P.yellow, P.yellowDark), bg: cor('#2a2000', '#fdf6dc'), ico: 'ti-loader-2' },
     aguardando:   { c: T.textMuted,                 bg: T.bg,                     ico: 'ti-clock' },
+    // Peça do orçamento (chip Manut.):
+    falta:        { c: cor(P.red, P.redDark),       bg: cor('#2a1515', '#fde8e8'), ico: 'ti-shopping-cart' },   // zerada, não comprada
+    comprado:     { c: cor(P.yellow, P.yellowDark), bg: cor('#2a2000', '#fdf6dc'), ico: 'ti-truck-delivery' },  // comprada, não chegou
   }
   const m = map[status] || map.aguardando
   return (

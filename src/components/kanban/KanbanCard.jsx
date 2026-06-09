@@ -184,7 +184,7 @@ export default function KanbanCard({
         {dual && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
             <SubStatus label="Limp."  status={os.limpeza}    T={T} dark={dark} />
-            <SubStatus label="Manut." status={os.manutencao} T={T} dark={dark} />
+            <SubStatus label="Manut." status={os.manutPecaStatus || os.manutencao} T={T} dark={dark} />
           </div>
         )}
 
