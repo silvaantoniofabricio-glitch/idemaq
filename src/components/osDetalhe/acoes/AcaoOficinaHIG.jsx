@@ -20,6 +20,7 @@ import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useOSItens } from '../../../hooks/useOSItens'
+import PecasComprarSection from './PecasComprarSection'
 import {
   AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
 } from './_AtlassianUI'
@@ -331,7 +332,7 @@ function BannerFalhas({ T, dark, falhas }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Componente principal
 // ═══════════════════════════════════════════════════════════════════════════
-export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }) {
+export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, admin = false }) {
   const { T, dark } = useTheme()
   const { itens } = useOSItens(os?.id)
   const vermelho = corEtapa('red', dark)
@@ -449,6 +450,12 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba }
 
       {/* 2. Banner falhas */}
       <BannerFalhas T={T} dark={dark} falhas={falhas} />
+
+      {/* 2b. Peças a comprar (estoque zerado) */}
+      <PecasComprarSection
+        T={T} dark={dark} os={os} itens={itens} admin={admin}
+        onUpdateOS={onUpdateOS}
+      />
 
       {/* 3. Aviso diagnostico vazio */}
       {temManutencao && manutChecks.length === 0 && (
