@@ -15,7 +15,7 @@
 //   · os.pre_diagnostico.oficina.limpeza_status / manutencao_status
 
 import React, { useMemo, useState, useEffect } from 'react'
-import { supabase } from '../../../supabase'
+import { fetchFaltaPecas } from '../../../utils/pecasStatus'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
@@ -342,24 +342,18 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   const azul     = corEtapa('blue', dark)
   const verde    = corEtapa('green', dark)
 
-  // Estoque atual das peças do orçamento (pro selo Falta/Em estoque no checklist).
-  const [stockMap, setStockMap] = useState({})
+  // Falta de peças — alocação GLOBAL do estoque entre todas as OS de conserto
+  // (considera qtd pedida e a mesma peça pedida por várias OS).
+  const [faltaSet, setFaltaSet] = useState(() => new Set())
   useEffect(() => {
-    const pecaIds = [...new Set((itens || [])
-      .filter(it => it.tipo === 'peca' && it.peca_id)
-      .map(it => it.peca_id))]
-    if (!pecaIds.length) { setStockMap({}); return }
     let cancel = false
     ;(async () => {
-      const { data, error } = await supabase
-        .from('peca').select('id, qtd_atual').in('id', pecaIds).is('deleted_at', null)
-      if (cancel || error || !data) return
-      const m = {}
-      for (const r of data) m[r.id] = r.qtd_atual ?? 0
-      setStockMap(m)
+      const { falta } = await fetchFaltaPecas()
+      if (!cancel) setFaltaSet(falta)
     })()
     return () => { cancel = true }
-  }, [itens])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [os?.id, os?.pre_diagnostico?.compra_pecas, itens])
 
   const temLimpeza = useMemo(
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
@@ -422,12 +416,12 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
       if (it.tipo !== 'peca') continue
       const qtd = Number(it.qtd) || 1
       const compraSt = compraPecas[it.id]?.status
-      const qtdAtual = it.peca_id ? stockMap[it.peca_id] : undefined
       let badge = null
       if (compraSt === 'entrega')        badge = { label: 'Comprada',   cor: amarelo }
       else if (compraSt === 'entregue')  badge = { label: 'Em estoque', cor: verde }
-      else if (qtdAtual != null && qtdAtual <= 0) badge = { label: 'Falta',      cor: vermelho }
-      else if (qtdAtual != null && qtdAtual > 0)  badge = { label: 'Em estoque', cor: verde }
+      else if (!it.peca_id)              badge = null // peça avulsa, sem estoque
+      else if (faltaSet.has(it.id))      badge = { label: 'Falta',      cor: vermelho }
+      else                               badge = { label: 'Em estoque', cor: verde }
       out.push({
         id: it.id,
         label: qtd > 1 ? `${it.nome} · ${qtd}x` : it.nome,
@@ -436,7 +430,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     }
 
     return out
-  }, [itens, stockMap, compraPecas, os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho, verde])
+  }, [itens, faltaSet, compraPecas, os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho, verde])
 
   // Manutenção ativa quando há itens de manutenção (peças/componentes) OU serviço.
   const temManutencao = useMemo(
@@ -527,9 +521,10 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
       {/* 2. Banner falhas */}
       <BannerFalhas T={T} dark={dark} falhas={falhas} />
 
-      {/* 2b. Peças a comprar (estoque zerado) */}
+      {/* 2b. Peças a comprar (em falta no estoque) */}
       <PecasComprarSection
         T={T} dark={dark} os={os} itens={itens} admin={admin}
+        faltaSet={faltaSet}
         onUpdateOS={onUpdateOS}
       />
 
