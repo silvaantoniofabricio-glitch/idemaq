@@ -455,7 +455,9 @@ function Chip({ T, dark, onClick, children }) {
 function dataMaisDiasISO(n) {
   const d = new Date()
   d.setDate(d.getDate() + n)
-  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+  // Fuso LOCAL (não UTC) — senão à noite cai no dia seguinte.
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10) // YYYY-MM-DD
 }
 function addDiasISO(iso, n) {
   if (!iso) return dataMaisDiasISO(n)

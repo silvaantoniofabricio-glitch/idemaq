@@ -7,7 +7,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
-import { fmtBRL, fmtPrazoCurto } from '../utils/fmt'
+import { fmtBRL, fmtPrazoCurto, hojeISO } from '../utils/fmt'
 import {
   Card, SubCard, Button, Badge, Input, Tabs,
   EmptyState, PageHeader, SectionHeader, ChipToggle,
@@ -299,8 +299,8 @@ export default function Financeiro({ T, dark }) {
           conta_id: item.conta_id || null,
           categoria: item.categoria || null,
           descricao: `${item.descricao || ''} (parcial)`.trim(),
-          vencimento: item.vencimentoIso || item.vencimento || new Date().toISOString().slice(0,10),
-          pago_em: opts.pago_em || new Date().toISOString().slice(0,10),
+          vencimento: item.vencimentoIso || item.vencimento || hojeISO(),
+          pago_em: opts.pago_em || hojeISO(),
           forma_pagamento: opts.forma_pagamento || item.forma_enum || mapearFormaUIparaEnum(item.forma),
           taxa_pct: item.taxa_pct || 0,
           os_id: item.os_id || null,
@@ -352,8 +352,8 @@ export default function Financeiro({ T, dark }) {
           conta_id: item.conta_id || null,
           categoria: item.categoria || null,
           descricao: `${item.descricao || ''} (parcial)`.trim(),
-          vencimento: item.vencimentoIso || item.vencimento || new Date().toISOString().slice(0,10),
-          pago_em: opts.pago_em || new Date().toISOString().slice(0,10),
+          vencimento: item.vencimentoIso || item.vencimento || hojeISO(),
+          pago_em: opts.pago_em || hojeISO(),
           forma_pagamento: opts.forma_pagamento || item.forma_enum || mapearFormaUIparaEnum(item.forma),
           taxa_pct: item.taxa_pct || 0,
           os_id: item.os_id || null,

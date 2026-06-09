@@ -21,6 +21,15 @@ function parseDataLocal(iso) {
   return new Date(iso)
 }
 
+// "Hoje" no fuso LOCAL como YYYY-MM-DD. Evita o +1 dia do
+// `new Date().toISOString().slice(0,10)`, que usa UTC e à noite (Cuiabá -4)
+// já caiu no dia seguinte.
+export function hojeISO() {
+  const d = new Date()
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10)
+}
+
 export function fmtPrazoCurto(prazoIso) {
   if (!prazoIso) return '—'
   const d = parseDataLocal(prazoIso)
