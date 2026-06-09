@@ -9,7 +9,7 @@
 import React, { useState, useEffect } from 'react'
 import { Modal, Button, Badge, SubCard, useToast } from '../ui'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
-import { fmtBRL, fmtPrazoCurto } from '../../utils/fmt'
+import { fmtBRL, fmtPrazoCurto, hojeISO } from '../../utils/fmt'
 import { CATEGORIAS_SUGESTAO } from '../../hooks/useFinanceiro'
 
 const FORMAS_EDIT = [
@@ -457,9 +457,9 @@ function ConfirmacaoFooter({
   const [valorRecebidoStr, setValorRecebidoStr] = useState(
     Number(valor || 0).toFixed(2).replace('.', ',')
   )
-  // Data do recebimento/pagamento — pré-preenchida com hoje, editável.
-  const hojeISO = new Date().toISOString().slice(0, 10)
-  const [pagoEm, setPagoEm] = useState(hojeISO)
+  // Data do recebimento/pagamento — pré-preenchida com hoje (fuso local), editável.
+  const hoje = hojeISO()
+  const [pagoEm, setPagoEm] = useState(hoje)
   // Forma de pagamento — default = a do lançamento, ou PIX.
   const [formaPag, setFormaPag] = useState(formaInicial || 'pix')
   const valorRecebido = Number(String(valorRecebidoStr).replace(',', '.')) || 0
@@ -544,7 +544,7 @@ function ConfirmacaoFooter({
           <input
             type="date"
             value={pagoEm}
-            onChange={e => setPagoEm(e.target.value || hojeISO)}
+            onChange={e => setPagoEm(e.target.value || hoje)}
             style={{
               background: T.card, border: `1px solid ${T.border}`,
               borderRadius: 6, padding: '5px 8px',

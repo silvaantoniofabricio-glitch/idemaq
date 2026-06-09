@@ -13,6 +13,7 @@
 
 import { supabase } from '../supabase'
 import { calcularD1UtilISO } from './financeiro'
+import { hojeISO } from './fmt'
 
 // Mapeamento forma → nome da conta bancária (sql/01 seedou 12 contas).
 // Lookup roda no insert; se a conta não existir, lança com conta_id=null.
@@ -86,7 +87,7 @@ export async function montarLancamentosDoPagamento(os, { valor, forma, taxa_pct 
   // Data do recebimento: a escolhida no form (pré-preenchida com hoje) ou hoje.
   const hoje = (dataPagamento && /^\d{4}-\d{2}-\d{2}$/.test(dataPagamento))
     ? dataPagamento
-    : new Date().toISOString().slice(0, 10)
+    : hojeISO()
   const payloads = []
 
   // ─── A prazo: N receitas em aberto, uma por parcela ─────────────────────────
