@@ -9,7 +9,7 @@ import React, { useState, useMemo } from 'react'
 import { corEtapa, corHero } from '../utils/colors'
 import { useIsMobile } from '../theme'
 import { useClientes } from '../hooks/useClientes'
-import { useOS } from '../hooks/useOS'
+import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import {
   Card, Button, Input,
   EmptyState, PageHeader, SectionHeader,
@@ -17,6 +17,7 @@ import {
 } from '../components/ui'
 import NovoClienteModal from '../components/clientes/NovoClienteModal'
 import ClienteDetalheModal from '../components/clientes/ClienteDetalheModal'
+import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 function iniciais(nome) {
   return (nome || '?')
@@ -50,9 +51,9 @@ export default function Clientes({ T, dark }) {
   const azul = corEtapa('blue', dark)
 
   const { clientes, loading, error, refetch, criar, atualizar, excluir } = useClientes()
-  // useOS com buscando=true: pega TODAS as OS (inclusive concluídas >24h)
-  // pra montar o histórico completo dentro do ClienteDetalheModal.
-  const { osList } = useOS(true)
+  // useOSDetalheModal com buscando=true: pega TODAS as OS (inclusive concluídas >24h)
+  // pra montar o histórico completo. Também expõe abrirOSPorId + modalProps.
+  const { abrirOSPorId, modalProps, osList } = useOSDetalheModal({ notify, buscando: true })
 
   const [busca, setBusca] = useState('')
   const [modalNovo, setModalNovo] = useState(false)
@@ -363,12 +364,18 @@ export default function Clientes({ T, dark }) {
       {clienteAberto && (
         <ClienteDetalheModal
           T={T} dark={dark}
+          mobile={isMobile}
           cliente={clienteAberto}
           osList={osList}
           onClose={() => setClienteAberto(null)}
           onSalvar={salvarCliente}
           onExcluir={() => excluirCliente(clienteAberto)}
+          onAbrirOS={abrirOSPorId}
         />
+      )}
+
+      {modalProps && (
+        <OSDetalhe {...modalProps} T={T} dark={dark} mobile={isMobile} />
       )}
     </div>
   )
