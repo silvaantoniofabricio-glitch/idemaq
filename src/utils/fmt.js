@@ -10,9 +10,20 @@ export function fmtBRL(v, opts = {}) {
   return (v < 0 ? '-' : '') + 'R$ ' + s
 }
 
+// Datas no formato YYYY-MM-DD (date-only) devem ser interpretadas como
+// horário LOCAL, não UTC. Sem isso, `new Date('2026-06-01')` vira meia-noite
+// UTC e no fuso de Cuiabá (-4) volta um dia (mostra 31/mai). Append 'T00:00:00'
+// força parsing local. Timestamps completos (com hora/fuso) passam direto.
+function parseDataLocal(iso) {
+  if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    return new Date(iso + 'T00:00:00')
+  }
+  return new Date(iso)
+}
+
 export function fmtPrazoCurto(prazoIso) {
   if (!prazoIso) return '—'
-  const d = new Date(prazoIso)
+  const d = parseDataLocal(prazoIso)
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '')
 }
 
