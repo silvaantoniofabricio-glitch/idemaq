@@ -236,21 +236,45 @@ export default function NovoClienteModal({
       </div>
 
       <div style={{
-        padding: 14, borderTop: `1px solid ${T.border}`,
-        display: 'flex', gap: 8, justifyContent: 'flex-end',
+        padding: mobile ? '12px 16px' : 14,
+        borderTop: `1px solid ${T.border}`,
+        display: 'flex',
+        flexDirection: mobile ? 'column' : 'row',
+        gap: 8,
+        justifyContent: mobile ? 'stretch' : 'flex-end',
         background: T.cardAlt, flexShrink: 0,
+        paddingBottom: mobile ? 'max(env(safe-area-inset-bottom, 0px), 12px)' : 14,
       }}>
-        <Button variant="secondary" T={T} dark={dark} onClick={onClose} disabled={salvando}>
-          Cancelar
-        </Button>
-        <Button
-          variant="primary"
-          iconLeft={salvando ? 'ti-loader-2' : 'ti-check'}
-          onClick={salvar}
-          disabled={!podeSalvar}
-        >
-          {salvando ? 'Salvando…' : 'Cadastrar cliente'}
-        </Button>
+        {mobile ? (
+          <>
+            <Button
+              variant="primary"
+              iconLeft={salvando ? 'ti-loader-2' : 'ti-check'}
+              onClick={salvar}
+              disabled={!podeSalvar}
+              fullWidth
+            >
+              {salvando ? 'Salvando…' : 'Cadastrar cliente'}
+            </Button>
+            <Button variant="secondary" T={T} dark={dark} onClick={onClose} disabled={salvando} fullWidth>
+              Cancelar
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="secondary" T={T} dark={dark} onClick={onClose} disabled={salvando}>
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              iconLeft={salvando ? 'ti-loader-2' : 'ti-check'}
+              onClick={salvar}
+              disabled={!podeSalvar}
+            >
+              {salvando ? 'Salvando…' : 'Cadastrar cliente'}
+            </Button>
+          </>
+        )}
       </div>
     </Modal>
   )

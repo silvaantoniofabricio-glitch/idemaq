@@ -3,6 +3,7 @@
 // overlay rgba(9,30,66,0.5) + container border 1 + radius 4 + shadow.
 
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 export default function Modal({
   T, dark,
@@ -52,7 +53,7 @@ export default function Modal({
     }
   }
 
-  return (
+  const modalContent = (
     <div
       onMouseDown={closeOnOverlay
         ? (e) => { mouseDownOnBackdrop.current = e.target === e.currentTarget }
@@ -61,7 +62,9 @@ export default function Modal({
         ? (e) => { if (e.target === e.currentTarget && mouseDownOnBackdrop.current) onClose?.() }
         : undefined}
       style={{
-        position: 'fixed', inset: 0, zIndex: 200,
+        position: 'fixed', inset: 0,
+        // mobile z-index: 300 — garante que fica acima de qualquer overlay pai (NovaOSMobile=250, OSDetalhe=200)
+        zIndex: mobile ? 300 : 200,
         background: 'rgba(0,0,0,0.6)',
         backdropFilter: 'blur(2px)',
         display: 'flex',
@@ -122,6 +125,10 @@ export default function Modal({
       `}</style>
     </div>
   )
+
+  // Portal garante que o modal escape qualquer stacking context pai
+  // (backdrop-filter / transform em ancestrais causam position:fixed ficar preso)
+  return createPortal(modalContent, document.body)
 }
 
 // ModalHeader — Atlassian: titulo 15px/600 + close radius 3

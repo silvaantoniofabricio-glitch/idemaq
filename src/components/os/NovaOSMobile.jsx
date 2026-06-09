@@ -211,7 +211,6 @@ export default function NovaOSMobile({
       style={{
         position: 'fixed', inset: 0, zIndex: 250,
         background: 'rgba(0,0,0,0.6)',
-        backdropFilter: 'blur(2px)',
         display: 'flex', alignItems: 'stretch', justifyContent: 'center',
         opacity: montado ? 1 : 0,
         transition: 'opacity .18s ease-out',
@@ -265,6 +264,8 @@ export default function NovaOSMobile({
           flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
           padding: '16px 16px 96px',
           background: T.bg,
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
         }}>
           {tipo === 'atendimento' && (
             <AtendimentoForm
