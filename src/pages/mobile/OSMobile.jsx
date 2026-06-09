@@ -192,7 +192,34 @@ export default function OSMobile({ T, dark, user }) {
   const [filtros, setFiltros] = useState({
     zona: 'todos',
     tipos: new Set(['atendimento', 'fabricacao', 'venda']),
+    limpeza: false,
+    manutencao: false,
   })
+
+  // Conjuntos de os_id com serviço de limpeza / manutenção (1 query separada —
+  // useOS só traz a contagem de itens e é "não mexer").
+  const [temLimpeza, setTemLimpeza]     = useState(() => new Set())
+  const [temManutencao, setTemManutencao] = useState(() => new Set())
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('os_item')
+        .select('os_id, nome')
+        .eq('categoria', 'servico')
+        .is('deleted_at', null)
+      if (cancel || error || !data) return
+      const limp = new Set(), manu = new Set()
+      for (const it of data) {
+        const n = (it.nome || '').toLowerCase()
+        if (n.includes('limpez')) limp.add(it.os_id)
+        if (n.includes('manuten')) manu.add(it.os_id)
+      }
+      setTemLimpeza(limp)
+      setTemManutencao(manu)
+    })()
+    return () => { cancel = true }
+  }, [osList.length])
 
   const VIEW_STORAGE_KEY = 'idemaq.osmobile.view'
   const [viewMode, setViewMode] = useState(() => {
@@ -223,6 +250,8 @@ export default function OSMobile({ T, dark, user }) {
     return (osList || []).filter(os => {
       if (os.deleted_at) return false
       if (!filtros.tipos.has(os.tipo)) return false
+      if (filtros.limpeza && !temLimpeza.has(os.id)) return false
+      if (filtros.manutencao && !temManutencao.has(os.id)) return false
       const etapaUni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
       if (etapaUni?.adminOnly && !admin) return false
       if (etapasZona && etapaUni && !etapasZona.has(etapaUni.id)) return false
@@ -237,7 +266,7 @@ export default function OSMobile({ T, dark, user }) {
       }
       return true
     })
-  }, [osList, busca, filtros, admin])
+  }, [osList, busca, filtros, admin, temLimpeza, temManutencao])
 
   // ─── Colunas ─────────────────────────────────────────────────────────────
   const colunas = useMemo(() => {
@@ -337,6 +366,7 @@ export default function OSMobile({ T, dark, user }) {
     const centro = root.scrollLeft + root.clientWidth / 2
     let maisProxima = null, menorDist = Infinity
     for (const col of colunas) {
+      if (col.count === 0) continue // colunas colapsadas não viram aba ativa
       const el = colunaRefs.current[col.id]
       if (!el) continue
       const dist = Math.abs(centro - (el.offsetLeft + el.offsetWidth / 2))
@@ -386,6 +416,42 @@ export default function OSMobile({ T, dark, user }) {
             // Cores idênticas ao KanbanColumn desktop
             const colBg     = dark ? 'rgba(255,255,255,0.04)' : '#f4f5f7'
             const colBorder = dark ? 'rgba(255,255,255,0.08)' : '#e4e5e9'
+
+            // Coluna vazia → filete vertical (estilo Jira), não vira alvo de snap.
+            if (col.count === 0) {
+              return (
+                <div key={col.id} ref={el => { if (el) colunaRefs.current[col.id] = el }}
+                  style={{
+                    flex: '0 0 auto', width: 46,
+                    scrollSnapAlign: 'none',
+                    display: 'flex', flexDirection: 'column',
+                    padding: idx === 0 ? '10px 3px 0 12px' : '10px 3px 0',
+                    minWidth: 0,
+                  }}>
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    flex: 1, minHeight: 0, background: colBg,
+                    border: `1.5px solid ${colBorder}`, borderRadius: 6,
+                    overflow: 'hidden', padding: '10px 0', gap: 8,
+                  }}>
+                    <span style={{
+                      padding: '1px 6px', borderRadius: 10,
+                      background: dark ? 'rgba(255,255,255,0.07)' : '#dfe1e6',
+                      color: T.textDim, fontSize: 10.5, fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                    }}>0</span>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: c, flexShrink: 0, opacity: 0.4 }} />
+                    <span style={{
+                      writingMode: 'vertical-rl',
+                      fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+                      textTransform: 'uppercase', letterSpacing: '0.04em',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      maxHeight: '100%',
+                    }}>{col.label}</span>
+                  </div>
+                </div>
+              )
+            }
 
             return (
               <div key={col.id} ref={el => { if (el) colunaRefs.current[col.id] = el }}
