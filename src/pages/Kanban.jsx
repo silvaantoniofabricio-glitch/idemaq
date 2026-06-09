@@ -38,6 +38,7 @@ function NotasDoDia({ T, dark, onClose }) {
 
   const timerRef  = useRef(null)
   const inputRefs = useRef({})
+  const _mdb      = useRef(false) // mousedown começou no backdrop? (evita fechar ao arrastar)
 
   function agendarSave(novas) {
     setStatus('saving')
@@ -111,21 +112,37 @@ function NotasDoDia({ T, dark, onClose }) {
   }
 
   return (
-    <div style={{
-      position: 'fixed', bottom: 24, right: 20, zIndex: 60,
-      width: 320, borderRadius: 8,
-      background: T.card, border: `1px solid ${T.border}`,
-      boxShadow: dark ? '0 8px 32px rgba(0,0,0,.6)' : '0 8px 32px rgba(0,0,0,.18)',
-      display: 'flex', flexDirection: 'column', maxHeight: 480,
-    }}>
+    <div
+      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '2rem',
+        animation: 'os-detalhe-fade .15s ease-out',
+      }}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="idemaq-card"
+      style={{
+        background: T.card, color: T.textPrimary,
+        borderRadius: 14,
+        width: '100%', maxWidth: 780,
+        height: 'auto', maxHeight: 'calc(100vh - 4rem)',
+        border: `1px solid ${T.border}`,
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        animation: 'os-detalhe-in .22s cubic-bezier(.2,.7,.2,1)',
+      }}>
       <div style={{
-        padding: '9px 12px', borderBottom: `1px solid ${T.border}`, flexShrink: 0,
+        padding: '12px 16px', borderBottom: `1px solid ${T.border}`, flexShrink: 0,
         display: 'flex', alignItems: 'center', gap: 8,
         background: dark ? 'rgba(91,155,213,.10)' : 'rgba(91,155,213,.06)',
-        borderRadius: '8px 8px 0 0',
+        borderRadius: '14px 14px 0 0',
       }}>
-        <i className="ti ti-notes" style={{ fontSize: 14, color: '#5B9BD5' }} aria-hidden="true" />
-        <span style={{ fontWeight: 700, fontSize: 13, color: T.textPrimary, flex: 1 }}>Notas do Dia</span>
+        <i className="ti ti-notes" style={{ fontSize: 16, color: '#5B9BD5' }} aria-hidden="true" />
+        <span style={{ fontWeight: 700, fontSize: 15, color: T.textPrimary, flex: 1 }}>Notas do Dia</span>
         {status === 'saving' && <span style={{ fontSize: 10.5, color: T.textDim }}>salvando…</span>}
         {status === 'saved' && <span style={{ fontSize: 10.5, color: '#4CAF50', display: 'flex', alignItems: 'center', gap: 3 }}><i className="ti ti-check" style={{ fontSize: 11 }} /> salvo</span>}
         {status === 'error' && <span style={{ fontSize: 10.5, color: '#FF6B6B' }}>erro ao salvar</span>}
@@ -211,6 +228,7 @@ function NotasDoDia({ T, dark, onClose }) {
           </div>
         </>
       )}
+    </div>
     </div>
   )
 }
