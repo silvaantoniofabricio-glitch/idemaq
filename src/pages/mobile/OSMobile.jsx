@@ -27,7 +27,7 @@ import NovaOSMobile from '../../components/os/NovaOSMobile'
 import MentionTextInput from '../../components/notas/MentionTextInput'
 
 // ─── Bottom sheet Notas do Dia ──────────────────────────────────────────────
-function NotasDoDiaMobile({ T, dark, onClose, osList = [] }) {
+function NotasDoDiaMobile({ T, dark, onClose, osList = [], pessoas = [] }) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
@@ -143,12 +143,12 @@ function NotasDoDiaMobile({ T, dark, onClose, osList = [] }) {
                   </button>
                 )}
                 <MentionTextInput
-                  T={T} dark={dark} osList={osList}
+                  T={T} dark={dark} osList={osList} pessoas={pessoas}
                   inputRef={el => { inputRefs.current[idx] = el }}
                   value={textoDisplay}
                   onChange={v => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + v : v)}
                   onKeyDown={e => handleKeyDown(idx, e)}
-                  placeholder={idx === 0 ? 'Anotação, tarefa ou @OS…' : ''}
+                  placeholder={idx === 0 ? 'Anotação, tarefa ou @pessoa/OS…' : ''}
                   style={{
                     background: 'transparent', border: 'none', outline: 'none',
                     fontSize: 15, fontFamily: 'inherit', lineHeight: 1.75, padding: '4px 0',
@@ -523,7 +523,7 @@ export default function OSMobile({ T, dark, user }) {
       )}
 
       {/* Notas bottom sheet */}
-      {notasAbertas && <NotasDoDiaMobile T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} />}
+      {notasAbertas && <NotasDoDiaMobile T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} />}
 
       {/* OSDetalhe modal */}
       {osVigente && (

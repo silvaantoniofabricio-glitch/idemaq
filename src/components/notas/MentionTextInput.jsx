@@ -16,8 +16,10 @@
 
 import React, { useMemo, useRef, useState } from 'react'
 
+const PAPEL_LABEL = { dono: 'Dono', logistica: 'Logística', oficina: 'Oficina' }
+
 export default function MentionTextInput({
-  value, onChange, osList = [], onKeyDown, inputRef, onPick,
+  value, onChange, osList = [], pessoas = [], onKeyDown, inputRef, onPick,
   T, dark, style, ...rest
 }) {
   const localRef = useRef(null)
@@ -35,15 +37,29 @@ export default function MentionTextInput({
   const suggestions = useMemo(() => {
     if (!mention) return []
     const q = (mention.query || '').toLowerCase()
-    return (osList || [])
+    // Pessoas (responsável pela tarefa) — vêm primeiro.
+    const pess = (pessoas || [])
+      .filter(p => !q || (p.nome || '').toLowerCase().includes(q))
+      .map(p => ({
+        tipo: 'pessoa', key: 'p-' + p.id,
+        nome: p.nome, papel: p.papel, cor: p.cor || '#5B9BD5',
+        token: `@${p.nome} `,
+      }))
+    // OS (vincular card) — por número ou nome do cliente.
+    const oss = (osList || [])
       .filter(o => {
         if (!q) return true
         const num = String(o.numero || '')
         const cli = (o.cliente || '').toLowerCase()
         return num.includes(q) || cli.includes(q)
       })
-      .slice(0, 6)
-  }, [mention, osList])
+      .map(o => ({
+        tipo: 'os', key: 'o-' + o.numero,
+        numero: o.numero, cliente: o.cliente, etapa: o.etapa,
+        token: `@${o.numero} `,
+      }))
+    return [...pess, ...oss].slice(0, 7)
+  }, [mention, osList, pessoas])
 
   // Detecta se o cursor está logo após um "@token" (sem espaço no meio).
   function detectar(el) {
@@ -63,16 +79,16 @@ export default function MentionTextInput({
     detectar(e.target)
   }
 
-  function escolher(os) {
-    if (!os || !mention) return
+  function escolher(item) {
+    if (!item || !mention) return
     const el = localRef.current
     const cur = el ? el.value : value
     const pos = el?.selectionStart ?? cur.length
-    const token = `@${os.numero} `
+    const token = item.token
     const novo = cur.slice(0, mention.start) + token + cur.slice(pos)
     onChange(novo)
     setMention(null)
-    onPick?.(os)
+    onPick?.(item)
     requestAnimationFrame(() => {
       if (el) {
         const np = mention.start + token.length
@@ -133,13 +149,13 @@ export default function MentionTextInput({
             display: 'flex', alignItems: 'center', gap: 4,
           }}>
             <i className="ti ti-at" style={{ fontSize: 11 }} aria-hidden="true" />
-            Vincular OS
+            Pessoa ou OS
           </div>
-          {suggestions.map((o, i) => (
-            <button key={o.numero}
+          {suggestions.map((s, i) => (
+            <button key={s.key}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => escolher(o)}
+              onClick={() => escolher(s)}
               onMouseEnter={() => setSugIdx(i)}
               style={{
                 width: '100%', padding: '7px 10px',
@@ -148,17 +164,38 @@ export default function MentionTextInput({
                 display: 'flex', alignItems: 'center', gap: 8,
                 fontFamily: 'inherit',
               }}>
-              <span style={{
-                fontSize: 11.5, fontWeight: 700, color: azul,
-                fontVariantNumeric: 'tabular-nums', flexShrink: 0,
-                background: dark ? 'rgba(91,155,213,0.14)' : 'rgba(91,155,213,0.10)',
-                padding: '1px 6px', borderRadius: 5,
-              }}>#{o.numero}</span>
-              <span style={{
-                flex: 1, minWidth: 0, fontSize: 13, color: T.textPrimary,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{o.cliente || 'Sem cliente'}</span>
-              <span style={{ fontSize: 10.5, color: T.textDim, flexShrink: 0 }}>{o.etapa}</span>
+              {s.tipo === 'pessoa' ? (
+                <>
+                  <span style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    background: (s.cor || azul) + '33', color: s.cor || azul,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <i className="ti ti-user" style={{ fontSize: 13 }} aria-hidden="true" />
+                  </span>
+                  <span style={{
+                    flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: T.textPrimary,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{s.nome}</span>
+                  <span style={{ fontSize: 10.5, color: T.textDim, flexShrink: 0 }}>
+                    {PAPEL_LABEL[s.papel] || s.papel || 'responsável'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span style={{
+                    fontSize: 11.5, fontWeight: 700, color: azul,
+                    fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                    background: dark ? 'rgba(91,155,213,0.14)' : 'rgba(91,155,213,0.10)',
+                    padding: '1px 6px', borderRadius: 5,
+                  }}>#{s.numero}</span>
+                  <span style={{
+                    flex: 1, minWidth: 0, fontSize: 13, color: T.textPrimary,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{s.cliente || 'Sem cliente'}</span>
+                  <span style={{ fontSize: 10.5, color: T.textDim, flexShrink: 0 }}>{s.etapa}</span>
+                </>
+              )}
             </button>
           ))}
         </div>
