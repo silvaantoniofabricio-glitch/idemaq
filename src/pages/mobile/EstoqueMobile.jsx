@@ -102,28 +102,22 @@ export default function EstoqueMobile({ T, dark, user }) {
   useEffect(() => {
     let alive = true
     async function fetchListaCompras() {
-      const { data: itens } = await supabase
-        .from('os_item')
-        .select('id, nome, quantidade, peca_id, os_id')
-        .is('deleted_at', null)
+      // Busca OS em conserto primeiro (evita pegar 1000+ os_item desnecessários)
+      const { data: osAtivas } = await supabase
+        .from('os').select('id, numero')
+        .eq('etapa', 'em_oficina').is('deleted_at', null)
 
       if (!alive) return
-      if (!itens?.length) { if (alive) setListaCompras([]); return }
+      if (!osAtivas?.length) { if (alive) setListaCompras([]); return }
 
-      const osIdsFiltro = [...new Set(itens.map(i => i.os_id))]
-      if (!osIdsFiltro.length) { if (alive) setListaCompras([]); return }
-
-      const { data: osData } = await supabase
-        .from('os').select('id, numero, etapa')
-        .in('id', osIdsFiltro).eq('etapa', 'em_oficina').is('deleted_at', null)
-
-      if (!alive) return
-      const osAtivas = osData || []
       const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
-      const osIds = new Set(osAtivas.map(o => o.id))
 
-      const itensFiltrados = itens.filter(i => osIds.has(i.os_id))
-      if (!itensFiltrados.length) { if (alive) setListaCompras([]); return }
+      const { data: itensFiltrados } = await supabase
+        .from('os_item').select('id, nome, quantidade, peca_id, os_id')
+        .in('os_id', osAtivas.map(o => o.id)).is('deleted_at', null)
+
+      if (!alive) return
+      if (!itensFiltrados?.length) { if (alive) setListaCompras([]); return }
 
       const pecaIds = [...new Set(itensFiltrados.filter(i => i.peca_id).map(i => i.peca_id))]
       const pecaMap = {}

@@ -176,34 +176,27 @@ export default function Estoque({ T, dark, user }) {
   useEffect(() => {
     let alive = true
     async function fetchListaCompras() {
-      // Passo 1: itens de OS (com ou sem peca_id vinculado)
-      const { data: itens } = await supabase
-        .from('os_item')
-        .select('id, nome, quantidade, peca_id, os_id')
-        .is('deleted_at', null)
-
-      if (!alive) return
-      if (!itens?.length) { if (alive) setListaCompras([]); return }
-
-      // Passo 2: somente OS em conserto (em_oficina)
-      const osIdsFiltro = [...new Set(itens.map(i => i.os_id))]
-      if (!osIdsFiltro.length) { if (alive) setListaCompras([]); return }
-
-      const { data: osData } = await supabase
+      // Passo 1: OS em conserto (em_oficina) — query pequena, sem risco de limite
+      const { data: osAtivas } = await supabase
         .from('os')
-        .select('id, numero, etapa')
-        .in('id', osIdsFiltro)
+        .select('id, numero')
         .eq('etapa', 'em_oficina')
         .is('deleted_at', null)
 
       if (!alive) return
-      const osAtivas = osData || []
-      const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
-      const osIds = new Set(osAtivas.map(o => o.id))
+      if (!osAtivas?.length) { if (alive) setListaCompras([]); return }
 
-      // Passo 3: filtra itens cujas OS estão em conserto
-      const itensFiltrados = itens.filter(i => osIds.has(i.os_id))
-      if (!itensFiltrados.length) { if (alive) setListaCompras([]); return }
+      const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
+
+      // Passo 2: itens dessas OS específicas (filtra no banco, evita limit 1000)
+      const { data: itensFiltrados } = await supabase
+        .from('os_item')
+        .select('id, nome, quantidade, peca_id, os_id')
+        .in('os_id', osAtivas.map(o => o.id))
+        .is('deleted_at', null)
+
+      if (!alive) return
+      if (!itensFiltrados?.length) { if (alive) setListaCompras([]); return }
 
       // Passo 4: verifica estoque das peças vinculadas ao catálogo
       const pecaIds = [...new Set(itensFiltrados.filter(i => i.peca_id).map(i => i.peca_id))]
