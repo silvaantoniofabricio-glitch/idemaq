@@ -213,6 +213,8 @@ export default function NovaOSMobile({
         background: 'rgba(9,30,66,0.5)',
         backdropFilter: 'blur(2px)',
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        // paddingTop garante que o grab handle nunca fique atrás da barra do navegador
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 52px)',
         opacity: montado ? 1 : 0,
         transition: 'opacity .18s ease-out',
       }}
@@ -221,7 +223,7 @@ export default function NovaOSMobile({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxHeight: '94vh',
+          maxHeight: 'calc(100dvh - max(env(safe-area-inset-top, 0px), 52px))',
           background: T.card,
           borderRadius: '8px 8px 0 0',
           display: 'flex', flexDirection: 'column',

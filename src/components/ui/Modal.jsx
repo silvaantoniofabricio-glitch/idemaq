@@ -67,7 +67,8 @@ export default function Modal({
         display: 'flex',
         alignItems: mobile ? 'flex-end' : 'center',
         justifyContent: 'center',
-        padding: mobile ? 0 : '2rem',
+        // paddingTop garante que o grab handle nunca fique atrás da barra do navegador
+        paddingTop: mobile ? 'max(env(safe-area-inset-top, 0px), 52px)' : '2rem',
         animation: 'idemaq-modal-fade .15s ease-out',
       }}
     >
@@ -79,7 +80,8 @@ export default function Modal({
           borderRadius: mobile ? '8px 8px 0 0' : 4,
           width: '100%',
           maxWidth: mobile ? '100%' : maxWidth,
-          maxHeight: mobile ? '92vh' : 'calc(100vh - 4rem)',
+          // dvh = viewport dinâmico (descontando barra do navegador); fallback vh pra browsers antigos
+          maxHeight: mobile ? 'calc(100dvh - max(env(safe-area-inset-top, 0px), 52px))' : 'calc(100vh - 4rem)',
           border: `1px solid ${T?.border || '#DFE1E6'}`,
           boxShadow: mobile
             ? '0 -8px 32px rgba(9,30,66,0.35)'
