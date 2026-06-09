@@ -169,6 +169,76 @@ export default function Estoque({ T, dark, user }) {
     return () => { alive = false }
   }, [refetchKey])
 
+  // Lista de compras: itens do catálogo em OS confirmadas sem estoque.
+  // "Confirmadas" = etapa != orcamento (rascunho) e != concluido/entrega/cancelado.
+  const [listaCompras, setListaCompras] = useState([])
+
+  useEffect(() => {
+    let alive = true
+    async function fetchListaCompras() {
+      // Passo 1: todos os os_item com peca vinculada (itens do catálogo)
+      const { data: itens } = await supabase
+        .from('os_item')
+        .select('id, nome, quantidade, peca_id, os_id')
+        .is('deleted_at', null)
+        .not('peca_id', 'is', null)
+
+      if (!alive) return
+      if (!itens?.length) { if (alive) setListaCompras([]); return }
+
+      // Passo 2: OS ativas e confirmadas
+      const ETAPAS_EXCLUIR = ['orcamento', 'concluido', 'entrega', 'cancelado']
+      const osIdsFiltro = [...new Set(itens.map(i => i.os_id))]
+      if (!osIdsFiltro.length) { if (alive) setListaCompras([]); return }
+
+      const { data: osData } = await supabase
+        .from('os')
+        .select('id, numero, etapa')
+        .in('id', osIdsFiltro)
+        .is('deleted_at', null)
+
+      if (!alive) return
+      const osAtivas = (osData || []).filter(o => !ETAPAS_EXCLUIR.includes(o.etapa))
+      const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
+      const osIds = new Set(osAtivas.map(o => o.id))
+
+      // Passo 3: itens cujas OS estão ativas
+      const itensFiltrados = itens.filter(i => osIds.has(i.os_id))
+      if (!itensFiltrados.length) { if (alive) setListaCompras([]); return }
+
+      // Passo 4: verifica estoque de cada peça vinculada
+      const pecaIds = [...new Set(itensFiltrados.map(i => i.peca_id))]
+      const { data: pecas } = await supabase
+        .from('peca')
+        .select('id, qtd_atual')
+        .in('id', pecaIds)
+        .is('deleted_at', null)
+      const pecaMap = Object.fromEntries((pecas || []).map(p => [p.id, p]))
+
+      // Passo 5: filtra somente sem estoque (peca inexistente, deletada ou qtd=0)
+      const semEstoque = itensFiltrados.filter(i => {
+        const p = pecaMap[i.peca_id]
+        return !p || (p.qtd_atual ?? 0) <= 0
+      })
+
+      // Passo 6: agrupa por peca_id, soma qtd, lista OS
+      const grupos = {}
+      for (const item of semEstoque) {
+        const k = item.peca_id
+        if (!grupos[k]) grupos[k] = { peca_id: k, nome: item.nome || '—', qtdTotal: 0, os: [] }
+        grupos[k].qtdTotal += Number(item.quantidade) || 1
+        const os = osMap[item.os_id]
+        if (os && !grupos[k].os.find(o => o.id === os.id)) grupos[k].os.push(os)
+      }
+
+      if (alive) setListaCompras(
+        Object.values(grupos).sort((a, b) => b.qtdTotal - a.qtdTotal)
+      )
+    }
+    fetchListaCompras()
+    return () => { alive = false }
+  }, [refetchKey])
+
   const [maquinas] = useState(MAQUINAS_MOCK)
 
   // CREATE — retorna { error } pro modal decidir se fecha ou continua
@@ -342,6 +412,11 @@ export default function Estoque({ T, dark, user }) {
           contagem={contagemCat}
           total={totalGlobal}
         />
+      )}
+
+      {/* Aviso de compras: itens de OS confirmadas que estão sem estoque */}
+      {onPecas && listaCompras.length > 0 && (
+        <ListaCompras T={T} dark={dark} itens={listaCompras} />
       )}
 
       {onPecas
@@ -753,6 +828,125 @@ function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = 
         )
       })}
     </div>
+  )
+}
+
+// =============================================================================
+// LISTA DE COMPRAS — itens de OS confirmadas sem estoque
+// =============================================================================
+// Aparece no topo da aba Peças quando há itens em OS ativas (confirmadas)
+// cujas peças vinculadas estão com qtd_atual = 0. Aviso visual amarelo
+// para o dono saber o que precisa comprar antes de começar os serviços.
+function ListaCompras({ T, dark, itens }) {
+  const amarelo = corEtapa('yellow', dark)
+  const [expandido, setExpandido] = useState(true)
+
+  return (
+    <Card T={T} dark={dark} padding={0} style={{ border: `1.5px solid ${amarelo}55` }}>
+      {/* Header */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpandido(v => !v)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandido(v => !v) } }}
+        style={{
+          padding: '10px 16px',
+          background: amarelo + '18',
+          borderBottom: expandido ? `1px solid ${amarelo}33` : 'none',
+          display: 'flex', alignItems: 'center', gap: 8,
+          cursor: 'pointer', outline: 'none',
+        }}
+      >
+        <i className="ti ti-shopping-cart" style={{ color: amarelo, fontSize: 15, flexShrink: 0 }} aria-hidden="true" />
+        <span style={{ fontWeight: 700, fontSize: 13, color: amarelo }}>
+          Precisa Comprar
+        </span>
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          padding: '1px 7px', borderRadius: 8,
+          background: amarelo + '33', color: amarelo,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {itens.length} {itens.length === 1 ? 'item' : 'itens'}
+        </span>
+        <span style={{ fontSize: 11, color: T.textMuted, marginLeft: 2 }}>
+          de orçamentos confirmados sem estoque
+        </span>
+        <i
+          className={`ti ti-chevron-${expandido ? 'up' : 'down'}`}
+          style={{ color: T.textMuted, fontSize: 13, marginLeft: 'auto' }}
+          aria-hidden="true"
+        />
+      </div>
+
+      {/* Linhas de itens */}
+      {expandido && itens.map((item, i) => (
+        <div key={item.peca_id} style={{
+          display: 'grid',
+          gridTemplateColumns: '24px 1fr auto auto',
+          alignItems: 'center',
+          gap: 10,
+          padding: '9px 16px',
+          borderTop: i > 0 ? `1px solid ${T.border}` : undefined,
+        }}>
+          {/* Bullet */}
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: amarelo, flexShrink: 0, margin: '0 auto',
+          }} />
+
+          {/* Nome */}
+          <div style={{ minWidth: 0 }}>
+            <span style={{
+              fontSize: 13, fontWeight: 600,
+              color: corHero(dark),
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              display: 'block',
+            }}>
+              {item.nome}
+            </span>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+              {item.os.map(o => (
+                <span key={o.id} style={{
+                  fontSize: 10.5, color: T.textMuted,
+                  background: T.cardAlt,
+                  border: `1px solid ${T.border}`,
+                  padding: '1px 6px', borderRadius: 4,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  OS #{o.numero}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Quantidade total necessária */}
+          <div style={{
+            fontSize: 13, fontWeight: 700,
+            color: amarelo,
+            fontVariantNumeric: 'tabular-nums',
+            flexShrink: 0,
+            textAlign: 'right',
+          }}>
+            × {item.qtdTotal}
+          </div>
+
+          {/* Indicador "sem estoque" */}
+          <div style={{ flexShrink: 0 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              padding: '2px 7px', borderRadius: 6,
+              background: '#FF6B6B22', color: '#FF6B6B',
+              border: '1px solid #FF6B6B55',
+              whiteSpace: 'nowrap',
+            }}>
+              <i className="ti ti-alert-octagon" style={{ fontSize: 9, marginRight: 3 }} aria-hidden="true" />
+              Sem estoque
+            </span>
+          </div>
+        </div>
+      ))}
+    </Card>
   )
 }
 
