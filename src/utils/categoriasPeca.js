@@ -27,6 +27,7 @@ export const CATEGORIAS_PECA = [
   { id: 'rolamento_motor',     label: 'Rolamento do Motor',     grupo: 'motor' },
   { id: 'rolamento_mecanismo', label: 'Rolamento do Mecanismo', grupo: 'motor' },
   { id: 'rolamento_eixo',      label: 'Rolamento do Eixo',      grupo: 'motor' },
+  { id: 'eixo_tripe',          label: 'Eixo tripé',             grupo: 'motor' },
   { id: 'retentor',          label: 'Retentor',             grupo: 'motor' },
   { id: 'braco_coinjetado',  label: 'Braço co-injetado',    grupo: 'motor' },
 
