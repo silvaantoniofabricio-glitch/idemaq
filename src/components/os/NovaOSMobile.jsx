@@ -28,6 +28,8 @@ import {
 } from '../../utils/osData'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import NovoClienteModal from '../clientes/NovoClienteModal'
+import { AtlPanel, ATL_FONT, atlSurfaceSunken, atlHover, AtlButton, ATL_RADIUS } from '../osDetalhe/acoes/_AtlassianUI'
+import { Input, Select, Textarea } from '../ui'
 
 const TIPOS_EQUIPAMENTO = ['Máquina de Lavar', 'Lava e Seca', 'Tanquinho', 'Micro-ondas']
 const MARCAS_EQUIPAMENTO = ['Brastemp', 'Electrolux', 'Consul', 'LG', 'Samsung', 'Outros']
@@ -323,11 +325,13 @@ function Header({ T, dark, okObg, totalObg, onClose }) {
       borderBottom: `1px solid ${T.border}`,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
       flexShrink: 0,
+      background: T.card,
+      fontFamily: ATL_FONT,
     }}>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{
           fontSize: 17, fontWeight: 700, color: T.textPrimary,
-          letterSpacing: '-0.01em',
+          letterSpacing: '-0.01em', fontFamily: ATL_FONT,
         }}>
           Nova ordem de serviço
         </div>
@@ -354,8 +358,8 @@ function Header({ T, dark, okObg, totalObg, onClose }) {
         onClick={(e) => { e.stopPropagation(); onClose() }}
         aria-label="Fechar"
         style={{
-          width: 36, height: 36, borderRadius: 3,
-          background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+          width: 36, height: 36, borderRadius: ATL_RADIUS,
+          background: atlSurfaceSunken(dark),
           border: `1px solid ${T.border}`,
           color: T.textPrimary, cursor: 'pointer',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -380,8 +384,8 @@ function TipoSegmented({ T, dark, tipo, onChange }) {
     }}>
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0,
-        background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
-        padding: 2, borderRadius: 3,
+        background: atlSurfaceSunken(dark),
+        padding: 2, borderRadius: ATL_RADIUS,
       }}>
         {TIPOS_ORDEM.map(id => {
           const cfg = TIPOS_OS[id]
@@ -400,8 +404,8 @@ function TipoSegmented({ T, dark, tipo, onChange }) {
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 boxShadow: ativo
                   ? (dark
-                      ? '0 1px 2px rgba(0,0,0,.4)'
-                      : '0 1px 2px rgba(9,30,66,0.18)')
+                      ? '0 1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,0.05)'
+                      : '0 1px 2px rgba(9,30,66,0.18), 0 0 0 1px rgba(9,30,66,0.05)')
                   : 'none',
                 letterSpacing: '-0.005em',
                 transition: 'background .12s, color .12s, box-shadow .12s',
@@ -423,7 +427,7 @@ function TipoSegmented({ T, dark, tipo, onChange }) {
 // ═══════════════════════════════════════════════════════════════════════════
 function AtendimentoForm({ T, dark, form, setForm, update, notify }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <ClienteBlock
         T={T} dark={dark}
         form={form} setForm={setForm}
@@ -461,11 +465,12 @@ function AtendimentoForm({ T, dark, form, setForm, update, notify }) {
 function VendaForm({ T, dark, form, setForm, update, notify }) {
   const verde = corEtapa('green', dark)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <InfoBanner T={T} dark={dark} cor={verde}
-        titulo="Venda do estoque"
-        texto="Máquina pronta. O comprador vira cliente cadastrado automaticamente."
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <AtlPanel T={T} dark={dark} title="Venda do estoque" accent={verde}>
+        <div style={{ padding: '10px 14px', fontSize: 12.5, color: T.textMuted, lineHeight: 1.5 }}>
+          Máquina pronta. O comprador vira cliente cadastrado automaticamente.
+        </div>
+      </AtlPanel>
 
       <ClienteBlock
         T={T} dark={dark}
@@ -505,40 +510,43 @@ function VendaForm({ T, dark, form, setForm, update, notify }) {
 function FabricacaoForm({ T, dark, form, update }) {
   const amarelo = corEtapa('yellow', dark)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <InfoBanner T={T} dark={dark} cor={amarelo}
-        titulo="Fabricação pro estoque"
-        texto="Os itens usados saem do estoque ao concluir, e a máquina entra como produto pronto."
-      />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <AtlPanel T={T} dark={dark} title="Fabricação pro estoque" accent={amarelo}>
+        <div style={{ padding: '10px 14px', fontSize: 12.5, color: T.textMuted, lineHeight: 1.5 }}>
+          Os itens usados saem do estoque ao concluir, e a máquina entra como produto pronto.
+        </div>
+      </AtlPanel>
 
-      <BlocoSecao T={T} dark={dark} icon="ti-building-factory-2" titulo="Máquina a fabricar" obrigatorio>
-        <Field T={T} label="Tipo de máquina">
-          <NativeSelect T={T} dark={dark}
+      <AtlPanel T={T} dark={dark} title="Máquina a fabricar">
+        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Select T={T} dark={dark}
+            label="Tipo de máquina *"
+            size="lg"
             value={form.equipamentoTipo}
             onChange={v => update('equipamentoTipo', v)}
             options={['', ...TIPOS_EQUIPAMENTO]}
             placeholder="Selecione…"
           />
-        </Field>
 
-        <Field T={T} label="Descrição / estado inicial" opcional>
-          <NativeTextarea T={T} dark={dark}
+          <Textarea T={T} dark={dark}
+            label="Descrição / estado inicial (opcional)"
             value={form.defeito}
             onChange={v => update('defeito', v)}
             placeholder="Ex: estrutura ok, trocar rolamento, polia, capa nova"
             minHeight={80}
           />
-        </Field>
 
-        <Field T={T} label="Custo inicial da máquina base (R$)" opcional>
-          <NativeInput T={T} dark={dark}
-            type="number" inputMode="decimal"
+          <Input T={T} dark={dark}
+            label="Custo inicial da máquina base R$ (opcional)"
+            size="lg"
+            type="number"
+            inputMode="decimal"
             value={form.valor}
             onChange={v => update('valor', v)}
             placeholder="150,00"
           />
-        </Field>
-      </BlocoSecao>
+        </div>
+      </AtlPanel>
     </div>
   )
 }
@@ -637,168 +645,164 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
 
   return (
     <>
-      <SectionHeader T={T} dark={dark} icon="ti-user" titulo={rotulo} obrigatorio />
+      <AtlPanel T={T} dark={dark} title={rotulo} count={form.clienteId ? 1 : undefined}>
+        <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {!form.cliente ? (
+            <>
+              {/* Input de busca */}
+              <div style={{ position: 'relative' }}>
+                <i className="ti ti-search" style={{
+                  position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                  fontSize: 14, color: T.textMuted, pointerEvents: 'none',
+                }} aria-hidden="true" />
+                <input
+                  className="idemaq-novaos-input"
+                  type="search"
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Buscar por nome ou telefone…"
+                  style={{
+                    width: '100%', height: 40,
+                    padding: '0 12px 0 32px',
+                    borderRadius: ATL_RADIUS,
+                    border: `1px solid ${T.border}`,
+                    background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+                    color: T.textPrimary,
+                    fontSize: 16,
+                    outline: 'none', boxSizing: 'border-box',
+                    fontFamily: ATL_FONT,
+                    letterSpacing: '-0.005em',
+                    transition: 'border-color .12s, box-shadow .12s',
+                  }}
+                />
+                {loading && (
+                  <i className="ti ti-loader-2" aria-hidden="true" style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    fontSize: 14, color: T.textMuted,
+                    animation: 'idemaq-novaos-spin .8s linear infinite',
+                  }} />
+                )}
+              </div>
 
-      {!form.cliente ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Input de busca */}
-          <div style={{ position: 'relative' }}>
-            <i className="ti ti-search" style={{
-              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 14, color: T.textMuted, pointerEvents: 'none',
-            }} aria-hidden="true" />
-            <input
-              className="idemaq-novaos-input"
-              type="search"
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar por nome ou telefone…"
-              style={{
-                width: '100%', height: 40,
-                padding: '0 12px 0 32px',
-                borderRadius: 3,
-                border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-                color: T.textPrimary,
-                fontSize: 16,
-                outline: 'none', boxSizing: 'border-box',
-                fontFamily: 'inherit',
-                letterSpacing: '-0.005em',
-                transition: 'border-color .12s, box-shadow .12s',
-              }}
-            />
-            {loading && (
-              <i className="ti ti-loader-2" aria-hidden="true" style={{
-                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                fontSize: 14, color: T.textMuted,
-                animation: 'idemaq-novaos-spin .8s linear infinite',
-              }} />
-            )}
-          </div>
-
-          {/* Resultados como cards */}
-          {busca.trim().length >= 2 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {loading && resultados.length === 0 && (
-                <SkeletonResultado T={T} />
-              )}
-              {!loading && resultados.length === 0 && (
+              {/* Resultados — lista com border-top */}
+              {busca.trim().length >= 2 && (
                 <div style={{
-                  padding: '14px 16px', borderRadius: 12,
-                  border: `1px dashed ${T.border}`,
-                  color: T.textMuted, fontSize: 13,
-                  display: 'flex', alignItems: 'center', gap: 8,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: ATL_RADIUS,
+                  overflow: 'hidden',
+                  background: T.card,
+                  boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
                 }}>
-                  <i className="ti ti-mood-empty" style={{ fontSize: 18 }} aria-hidden="true" />
-                  Nenhum cliente pra "{busca.trim()}"
+                  {loading && resultados.length === 0 && (
+                    <SkeletonResultado T={T} />
+                  )}
+                  {!loading && resultados.length === 0 && (
+                    <div style={{
+                      padding: '14px 16px',
+                      color: T.textMuted, fontSize: 13,
+                      display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <i className="ti ti-mood-empty" style={{ fontSize: 18 }} aria-hidden="true" />
+                      Nenhum cliente pra "{busca.trim()}"
+                    </div>
+                  )}
+                  {resultados.map((c, idx) => (
+                    <button key={c.id} onClick={() => escolher(c)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 14px',
+                        borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+                        background: 'transparent', color: T.textPrimary,
+                        cursor: 'pointer', fontFamily: ATL_FONT, textAlign: 'left',
+                        width: '100%', border: 'none',
+                        animation: 'idemaq-novaos-fade-up .12s ease-out',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: ATL_RADIUS,
+                        background: azul + '22', color: azul,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <i className="ti ti-user" style={{ fontSize: 16 }} aria-hidden="true" />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
+                          letterSpacing: '-0.005em',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{c.nome}</div>
+                        <div style={{
+                          fontSize: 11.5, color: T.textMuted, marginTop: 2,
+                          letterSpacing: '-0.005em',
+                        }}>
+                          {c.fone || '— sem telefone —'}
+                          {c.enderecos.length > 0 && (
+                            <> · {c.enderecos.length} end.</>
+                          )}
+                        </div>
+                      </div>
+                      <i className="ti ti-chevron-right" style={{
+                        fontSize: 14, color: T.textDim, flexShrink: 0,
+                      }} aria-hidden="true" />
+                    </button>
+                  ))}
                 </div>
               )}
-              {resultados.map(c => (
-                <button key={c.id} onClick={() => escolher(c)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 12px', borderRadius: 3,
-                    border: `1px solid ${T.border}`,
-                    background: T.card, color: T.textPrimary,
-                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    width: '100%', minHeight: 56,
-                    boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
-                    animation: 'idemaq-novaos-fade-up .12s ease-out',
-                  }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 4,
-                    background: azul + '22', color: azul,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <i className="ti ti-user" style={{ fontSize: 16 }} aria-hidden="true" />
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{
-                      fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
-                      letterSpacing: '-0.005em',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>{c.nome}</div>
-                    <div style={{
-                      fontSize: 11.5, color: T.textMuted, marginTop: 2,
-                      letterSpacing: '-0.005em',
-                    }}>
-                      {c.fone || '— sem telefone —'}
-                      {c.enderecos.length > 0 && (
-                        <> · {c.enderecos.length} end.</>
-                      )}
-                    </div>
-                  </div>
-                  <i className="ti ti-chevron-right" style={{
-                    fontSize: 14, color: T.textDim, flexShrink: 0,
-                  }} aria-hidden="true" />
-                </button>
-              ))}
+
+              {/* Atalho cadastrar novo */}
+              <AtlButton T={T} dark={dark} icon="user-plus" onClick={() => setModalNovoCli(true)}>
+                Cadastrar novo cliente
+              </AtlButton>
+            </>
+          ) : (
+            // Cliente selecionado
+            <div style={{
+              padding: 10, borderRadius: ATL_RADIUS,
+              background: azul + '12',
+              border: `1px solid ${azul}44`,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: ATL_RADIUS,
+                background: azul, color: '#fff',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, fontSize: 13, fontWeight: 700,
+                letterSpacing: '-0.005em', fontFamily: ATL_FONT,
+              }}>
+                {iniciais(form.cliente)}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{
+                  fontSize: 14, fontWeight: 600, color: T.textPrimary,
+                  letterSpacing: '-0.005em',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{form.cliente}</div>
+                <div style={{
+                  fontSize: 11.5, color: T.textMuted, marginTop: 1,
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  letterSpacing: '-0.005em',
+                }}>
+                  <i className="ti ti-phone" style={{ fontSize: 11 }} aria-hidden="true" />
+                  {form.fone || '—'}
+                </div>
+              </div>
+              <button onClick={trocar} aria-label="Trocar cliente"
+                style={{
+                  width: 32, height: 32, borderRadius: ATL_RADIUS,
+                  background: atlSurfaceSunken(dark),
+                  border: `1px solid ${T.border}`,
+                  color: T.textPrimary, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <i className="ti ti-edit" style={{ fontSize: 14 }} aria-hidden="true" />
+              </button>
             </div>
           )}
-
-          {/* Atalho cadastrar novo */}
-          <button onClick={() => setModalNovoCli(true)}
-            style={{
-              padding: '0 12px', borderRadius: 3, height: 36,
-              border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-              color: azul, fontWeight: 500, fontSize: 13.5,
-              cursor: 'pointer', fontFamily: 'inherit',
-              letterSpacing: '-0.005em',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <i className="ti ti-user-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-            Cadastrar novo cliente
-          </button>
         </div>
-      ) : (
-        // Cliente selecionado
-        <div style={{
-          padding: 10, borderRadius: 3,
-          background: azul + '12',
-          border: `1px solid ${azul}44`,
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 4,
-            background: azul, color: '#fff',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, fontSize: 13, fontWeight: 700,
-            letterSpacing: '-0.005em',
-          }}>
-            {iniciais(form.cliente)}
-          </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{
-              fontSize: 14, fontWeight: 600, color: T.textPrimary,
-              letterSpacing: '-0.005em',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{form.cliente}</div>
-            <div style={{
-              fontSize: 11.5, color: T.textMuted, marginTop: 1,
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              letterSpacing: '-0.005em',
-            }}>
-              <i className="ti ti-phone" style={{ fontSize: 11 }} aria-hidden="true" />
-              {form.fone || '—'}
-            </div>
-          </div>
-          <button onClick={trocar} aria-label="Trocar cliente"
-            style={{
-              width: 32, height: 32, borderRadius: 3,
-              background: dark ? 'rgba(255,255,255,0.05)' : '#fff',
-              border: `1px solid ${T.border}`,
-              color: T.textPrimary, cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <i className="ti ti-edit" style={{ fontSize: 14 }} aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      </AtlPanel>
 
       {modalNovoCli && (
         <NovoClienteModal
@@ -819,47 +823,47 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
 function EnderecoBlock({ T, dark, enderecos, enderecoIndex, onSelect, rotulo = 'Endereço da coleta' }) {
   const azul = corEtapa('blue', dark)
   return (
-    <div>
-      <SectionHeader T={T} dark={dark} icon="ti-map-pin" titulo={rotulo} obrigatorio />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <AtlPanel T={T} dark={dark} title={rotulo}>
+      <div>
         {enderecos.map((end, idx) => {
           const sel = enderecoIndex === idx
           return (
             <button key={idx} onClick={() => onSelect(idx, end)}
               style={{
                 display: 'flex', alignItems: 'flex-start', gap: 12,
-                padding: '12px 14px', minHeight: 64,
-                borderRadius: 12,
-                border: `${sel ? 1.5 : 1}px solid ${sel ? azul : T.border}`,
-                background: sel ? `${azul}10` : T.card,
-                cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                width: '100%',
+                padding: '10px 14px', minHeight: 56,
+                borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+                background: sel ? `${azul}10` : 'transparent',
+                cursor: 'pointer', textAlign: 'left', fontFamily: ATL_FONT,
+                width: '100%', border: 'none',
+                borderLeft: sel ? `3px solid ${azul}` : '3px solid transparent',
+                WebkitTapHighlightColor: 'transparent',
               }}>
               <div style={{
-                width: 22, height: 22, borderRadius: 11,
+                width: 20, height: 20, borderRadius: 10,
                 border: `2px solid ${sel ? azul : T.textDim}`,
                 background: sel ? azul : 'transparent',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0, marginTop: 2,
+                flexShrink: 0, marginTop: 3,
               }}>
-                {sel && <div style={{ width: 8, height: 8, borderRadius: 4, background: '#fff' }} />}
+                {sel && <div style={{ width: 7, height: 7, borderRadius: 4, background: '#fff' }} />}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 4,
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 3,
                 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: corHero(dark) }}>
-                    Endereço {idx + 1}
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
+                    {idx === 0 ? 'Principal' : `Endereço ${idx + 1}`}
                   </span>
                   {idx === 0 && (
                     <span style={{
                       fontSize: 9.5, padding: '2px 6px',
-                      borderRadius: 4, fontWeight: 800,
+                      borderRadius: ATL_RADIUS, fontWeight: 800,
                       background: `${azul}22`, color: azul, letterSpacing: '.3px',
                     }}>PRINCIPAL</span>
                   )}
                 </div>
-                <div style={{ fontSize: 12.5, color: T.textSecondary, lineHeight: 1.45 }}>
+                <div style={{ fontSize: 12.5, color: T.textMuted, lineHeight: 1.45 }}>
                   {end}
                 </div>
               </div>
@@ -867,7 +871,7 @@ function EnderecoBlock({ T, dark, enderecos, enderecoIndex, onSelect, rotulo = '
           )
         })}
       </div>
-    </div>
+    </AtlPanel>
   )
 }
 
@@ -879,72 +883,77 @@ function EquipamentoBlock({ T, dark, form, update }) {
   const algumValor = !!(form.equipamentoMarca || form.equipamentoModelo || form.equipamentoSerie)
   const [aberto, setAberto] = useState(algumValor)
 
-  return (
-    <div>
-      <button onClick={() => setAberto(a => !a)}
-        style={{
-          width: '100%', padding: 0,
-          background: 'transparent', border: 'none',
-          cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: aberto ? 10 : 0,
-        }}>
-        <SectionHeader T={T} dark={dark} icon="ti-device-washing-machine" titulo="Equipamento" opcional noBottom />
-        <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
-           style={{ fontSize: 18, color: T.textMuted }} aria-hidden="true" />
-      </button>
+  const toggleBtn = (
+    <button
+      type="button"
+      onClick={() => setAberto(a => !a)}
+      style={{
+        background: 'transparent', border: 'none',
+        cursor: 'pointer', fontFamily: ATL_FONT,
+        color: T.textMuted, padding: '0 4px',
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        fontSize: 12, WebkitTapHighlightColor: 'transparent',
+      }}>
+      <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
+         style={{ fontSize: 14 }} aria-hidden="true" />
+      {aberto ? 'ocultar' : 'expandir'}
+    </button>
+  )
 
+  return (
+    <AtlPanel T={T} dark={dark} title="Equipamento (opcional)" action={toggleBtn}>
       {aberto && (
         <div style={{
-          display: 'flex', flexDirection: 'column', gap: 12,
+          padding: '12px 14px',
+          display: 'flex', flexDirection: 'column', gap: 10,
           animation: 'idemaq-novaos-fade-up .15s ease-out',
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field T={T} label="Tipo">
-              <NativeSelect T={T} dark={dark}
-                value={form.equipamentoTipo}
-                onChange={v => update('equipamentoTipo', v)}
-                options={TIPOS_EQUIPAMENTO}
-              />
-            </Field>
-            <Field T={T} label="Marca">
-              <NativeSelect T={T} dark={dark}
-                value={form.equipamentoMarca}
-                onChange={v => update('equipamentoMarca', v)}
-                options={['', ...MARCAS_EQUIPAMENTO]}
-                placeholder="Selecione…"
-              />
-            </Field>
+            <Select T={T} dark={dark}
+              label="Tipo"
+              size="lg"
+              value={form.equipamentoTipo}
+              onChange={v => update('equipamentoTipo', v)}
+              options={TIPOS_EQUIPAMENTO}
+            />
+            <Select T={T} dark={dark}
+              label="Marca"
+              size="lg"
+              value={form.equipamentoMarca}
+              onChange={v => update('equipamentoMarca', v)}
+              options={['', ...MARCAS_EQUIPAMENTO]}
+              placeholder="Selecione…"
+            />
           </div>
 
           {form.equipamentoMarca === 'Outros' && (
-            <Field T={T} label="Nome da marca">
-              <NativeInput T={T} dark={dark}
-                value={form.equipamentoMarcaOutros}
-                onChange={v => update('equipamentoMarcaOutros', v)}
-                placeholder="Ex: Mueller, Suggar, Mondial…"
-              />
-            </Field>
+            <Input T={T} dark={dark}
+              label="Nome da marca"
+              size="lg"
+              value={form.equipamentoMarcaOutros}
+              onChange={v => update('equipamentoMarcaOutros', v)}
+              placeholder="Ex: Mueller, Suggar, Mondial…"
+            />
           )}
 
-          <Field T={T} label="Modelo">
-            <NativeInput T={T} dark={dark}
-              value={form.equipamentoModelo}
-              onChange={v => update('equipamentoModelo', v)}
-              placeholder="Ex: BWK11"
-            />
-          </Field>
+          <Input T={T} dark={dark}
+            label="Modelo"
+            size="lg"
+            value={form.equipamentoModelo}
+            onChange={v => update('equipamentoModelo', v)}
+            placeholder="Ex: BWK11"
+          />
 
-          <Field T={T} label="Nº de série">
-            <NativeInput T={T} dark={dark}
-              value={form.equipamentoSerie}
-              onChange={v => update('equipamentoSerie', v)}
-              placeholder="Ex: SN-12345"
-            />
-          </Field>
+          <Input T={T} dark={dark}
+            label="Nº de série"
+            size="lg"
+            value={form.equipamentoSerie}
+            onChange={v => update('equipamentoSerie', v)}
+            placeholder="Ex: SN-12345"
+          />
         </div>
       )}
-    </div>
+    </AtlPanel>
   )
 }
 
@@ -953,14 +962,15 @@ function EquipamentoBlock({ T, dark, form, update }) {
 // ═══════════════════════════════════════════════════════════════════════════
 function DefeitoBlock({ T, dark, value, onChange }) {
   return (
-    <div>
-      <SectionHeader T={T} dark={dark} icon="ti-message-circle" titulo="Defeito relatado" opcional />
-      <NativeTextarea T={T} dark={dark}
-        value={value} onChange={onChange}
-        placeholder="O que o cliente reportou? Ex: máquina não centrifuga, vaza água embaixo…"
-        minHeight={80}
-      />
-    </div>
+    <AtlPanel T={T} dark={dark} title="Defeito relatado (opcional)">
+      <div style={{ padding: '12px 14px' }}>
+        <Textarea T={T} dark={dark}
+          value={value} onChange={onChange}
+          placeholder="O que o cliente reportou? Ex: máquina não centrifuga, vaza água embaixo…"
+          minHeight={80}
+        />
+      </div>
+    </AtlPanel>
   )
 }
 
@@ -970,38 +980,39 @@ function DefeitoBlock({ T, dark, value, onChange }) {
 function AgendamentoBlock({ T, dark, form, update, rotulo = 'Agendamento da coleta' }) {
   const azul = corEtapa('blue', dark)
   return (
-    <div>
-      <SectionHeader T={T} dark={dark} icon="ti-calendar-event" titulo={rotulo} opcional />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Field T={T} label="Data">
-          <NativeInput T={T} dark={dark}
+    <AtlPanel T={T} dark={dark} title={`${rotulo} (opcional)`}>
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <Input T={T} dark={dark}
+            label="Data"
+            size="lg"
             type="date" value={form.data}
             onChange={v => update('data', v)}
           />
-        </Field>
-        <Field T={T} label="Hora">
-          <NativeInput T={T} dark={dark}
+          <Input T={T} dark={dark}
+            label="Hora"
+            size="lg"
             type="time" value={form.hora}
             onChange={v => update('hora', v)}
           />
-        </Field>
-      </div>
-      {!form.data && (
-        <div style={{
-          marginTop: 10, padding: '8px 12px',
-          background: azul + '12', borderRadius: 3,
-          border: `1px solid ${azul}33`,
-          fontSize: 12, color: T.textPrimary, lineHeight: 1.45,
-          display: 'flex', alignItems: 'center', gap: 8,
-          letterSpacing: '-0.005em',
-        }}>
-          <i className="ti ti-info-circle"
-             style={{ fontSize: 13, color: azul, flexShrink: 0 }}
-             aria-hidden="true" />
-          <span>Sem data marcada? A OS abre como <strong style={{ color: T.textPrimary }}>Aguardando agendamento</strong>.</span>
         </div>
-      )}
-    </div>
+        {!form.data && (
+          <div style={{
+            padding: '8px 12px',
+            background: azul + '12', borderRadius: ATL_RADIUS,
+            border: `1px solid ${azul}33`,
+            fontSize: 12, color: T.textPrimary, lineHeight: 1.45,
+            display: 'flex', alignItems: 'center', gap: 8,
+            letterSpacing: '-0.005em',
+          }}>
+            <i className="ti ti-info-circle"
+               style={{ fontSize: 13, color: azul, flexShrink: 0 }}
+               aria-hidden="true" />
+            <span>Sem data marcada? A OS abre como <strong style={{ color: T.textPrimary }}>Aguardando agendamento</strong>.</span>
+          </div>
+        )}
+      </div>
+    </AtlPanel>
   )
 }
 
@@ -1010,14 +1021,15 @@ function AgendamentoBlock({ T, dark, form, update, rotulo = 'Agendamento da cole
 // ═══════════════════════════════════════════════════════════════════════════
 function ObservacoesBlock({ T, dark, value, onChange }) {
   return (
-    <div>
-      <SectionHeader T={T} dark={dark} icon="ti-notes" titulo="Observações" opcional />
-      <NativeTextarea T={T} dark={dark}
-        value={value} onChange={onChange}
-        placeholder="Qualquer info extra pra equipe…"
-        minHeight={64}
-      />
-    </div>
+    <AtlPanel T={T} dark={dark} title="Observações (opcional)">
+      <div style={{ padding: '12px 14px' }}>
+        <Textarea T={T} dark={dark}
+          value={value} onChange={onChange}
+          placeholder="Qualquer info extra pra equipe…"
+          minHeight={64}
+        />
+      </div>
+    </AtlPanel>
   )
 }
 
@@ -1027,39 +1039,40 @@ function ObservacoesBlock({ T, dark, value, onChange }) {
 function MaquinaEstoqueBlock({ T, dark, selecionada, onSelect }) {
   const verde = corEtapa('green', dark)
   return (
-    <div>
-      <SectionHeader T={T} dark={dark} icon="ti-package" titulo="Máquina do estoque" obrigatorio />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {ESTOQUE_MAQUINAS_MOCK.map(m => {
+    <AtlPanel T={T} dark={dark} title="Máquina do estoque">
+      <div>
+        {ESTOQUE_MAQUINAS_MOCK.map((m, idx) => {
           const sel = selecionada === m.id
           return (
             <button key={m.id} onClick={() => onSelect(m)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
-                padding: '12px 14px', minHeight: 64,
-                borderRadius: 12,
-                border: `${sel ? 1.5 : 1}px solid ${sel ? verde : T.border}`,
-                background: sel ? `${verde}10` : T.card,
-                cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                width: '100%',
+                padding: '10px 14px', minHeight: 56,
+                borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
+                background: sel ? `${verde}10` : 'transparent',
+                cursor: 'pointer', textAlign: 'left', fontFamily: ATL_FONT,
+                width: '100%', border: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                borderLeft: sel ? `3px solid ${verde}` : '3px solid transparent',
               }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 10,
+                width: 36, height: 36, borderRadius: ATL_RADIUS,
                 background: sel ? verde : `${verde}1f`,
                 color: sel ? '#fff' : verde,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <i className="ti ti-device-washing-machine" style={{ fontSize: 18 }} aria-hidden="true" />
+                <i className="ti ti-device-washing-machine" style={{ fontSize: 16 }} aria-hidden="true" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: 14, fontWeight: 600, color: corHero(dark),
+                  fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
+                  letterSpacing: '-0.005em',
                 }}>{m.descricao}</div>
-                <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>#{m.id}</div>
+                <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1 }}>#{m.id}</div>
               </div>
               <div style={{
-                fontSize: 15, fontWeight: 700,
+                fontSize: 14, fontWeight: 700,
                 color: sel ? verde : T.textSecondary,
                 fontVariantNumeric: 'tabular-nums', flexShrink: 0,
               }}>
@@ -1069,7 +1082,7 @@ function MaquinaEstoqueBlock({ T, dark, selecionada, onSelect }) {
           )
         })}
       </div>
-    </div>
+    </AtlPanel>
   )
 }
 
@@ -1077,7 +1090,6 @@ function MaquinaEstoqueBlock({ T, dark, selecionada, onSelect }) {
 // Sticky Footer
 // ═══════════════════════════════════════════════════════════════════════════
 function StickyFooter({ T, dark, podeSalvar, salvando, obrigatorios, onSalvar }) {
-  const azul = corEtapa('blue', dark)
   const faltam = obrigatorios.filter(o => !o.ok)
 
   return (
@@ -1087,6 +1099,7 @@ function StickyFooter({ T, dark, podeSalvar, salvando, obrigatorios, onSalvar })
       background: T.card,
       padding: '12px 16px 14px',
       flexShrink: 0,
+      fontFamily: ATL_FONT,
     }}>
       {/* Fade gradient pra disfarçar limite com o body */}
       <div aria-hidden="true" style={{
@@ -1098,12 +1111,12 @@ function StickyFooter({ T, dark, podeSalvar, salvando, obrigatorios, onSalvar })
       {faltam.length > 0 && (
         <div style={{
           marginBottom: 10, padding: '8px 12px',
-          background: dark ? 'rgba(255,255,255,0.025)' : '#F7F8F9',
+          background: atlSurfaceSunken(dark),
           border: `1px solid ${T.border}`,
-          borderRadius: 3,
+          borderRadius: ATL_RADIUS,
           fontSize: 12, color: T.textMuted,
           display: 'flex', alignItems: 'center', gap: 8,
-          letterSpacing: '-0.005em',
+          letterSpacing: '-0.005em', fontFamily: ATL_FONT,
         }}>
           <i className="ti ti-alert-circle"
              style={{ fontSize: 13, color: T.textMuted, flexShrink: 0 }}
@@ -1112,28 +1125,21 @@ function StickyFooter({ T, dark, podeSalvar, salvando, obrigatorios, onSalvar })
         </div>
       )}
 
-      <button onClick={onSalvar} disabled={!podeSalvar}
-        style={{
-          width: '100%', minHeight: 36,
-          padding: '8px 12px', borderRadius: 3, border: 'none',
-          background: podeSalvar
-            ? azul
-            : (dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7'),
-          color: podeSalvar ? '#fff' : T.textDim,
-          fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
-          cursor: podeSalvar ? 'pointer' : 'not-allowed',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          letterSpacing: '-0.005em',
-          transition: 'background .15s, color .15s',
-          WebkitTapHighlightColor: 'transparent',
+      <AtlButton
+        T={T} dark={dark}
+        variant="primary"
+        fullWidth
+        icon={salvando ? 'loader-2' : 'check'}
+        onClick={onSalvar}
+        disabled={!podeSalvar}
+      >
+        <span style={{
+          fontSize: 14,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
         }}>
-        <i className={`ti ${salvando ? 'ti-loader-2' : 'ti-check'}`}
-           style={{
-             fontSize: 14,
-             animation: salvando ? 'idemaq-novaos-spin .8s linear infinite' : undefined,
-           }} aria-hidden="true" />
-        {salvando ? 'Criando OS…' : 'Criar OS'}
-      </button>
+          {salvando ? 'Criando OS…' : 'Criar OS'}
+        </span>
+      </AtlButton>
     </div>
   )
 }
@@ -1141,162 +1147,6 @@ function StickyFooter({ T, dark, podeSalvar, salvando, obrigatorios, onSalvar })
 // ═══════════════════════════════════════════════════════════════════════════
 // PRIMITIVOS (locais — sem expor pra outras telas)
 // ═══════════════════════════════════════════════════════════════════════════
-function SectionHeader({ T, dark, icon, titulo, obrigatorio, opcional, noBottom }) {
-  const azul = corEtapa('blue', dark)
-  const vermelho = corEtapa('red', dark)
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      marginBottom: noBottom ? 0 : 10,
-    }}>
-      <i className={`ti ${icon}`}
-         style={{ fontSize: 15, color: azul }}
-         aria-hidden="true" />
-      <span style={{
-        fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
-        letterSpacing: '-0.005em',
-      }}>{titulo}</span>
-      {obrigatorio && (
-        <span style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-          padding: '2px 6px', borderRadius: 3,
-          background: vermelho + '22', color: vermelho,
-        }}>OBRIGATÓRIO</span>
-      )}
-      {opcional && (
-        <span style={{
-          fontSize: 11, fontWeight: 500, color: T.textDim,
-          letterSpacing: '-0.005em',
-        }}>· opcional</span>
-      )}
-    </div>
-  )
-}
-
-function Field({ T, label, opcional, children }) {
-  return (
-    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-      <label style={{
-        display: 'flex', alignItems: 'center', gap: 5,
-        fontSize: 11, fontWeight: 600, color: T.textMuted,
-        letterSpacing: '0.07em', textTransform: 'uppercase',
-        marginBottom: 6,
-      }}>
-        {label}
-        {opcional && (
-          <span style={{
-            fontSize: 10, fontWeight: 500, color: T.textDim,
-            letterSpacing: 'normal', textTransform: 'none',
-          }}>
-            · opcional
-          </span>
-        )}
-      </label>
-      {children}
-    </div>
-  )
-}
-
-function NativeInput({ T, dark, type = 'text', inputMode, value, onChange, placeholder }) {
-  return (
-    <input
-      className="idemaq-novaos-input"
-      type={type}
-      inputMode={inputMode}
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      style={inputBaseStyle(T, dark)}
-    />
-  )
-}
-
-function NativeSelect({ T, dark, value, onChange, options, placeholder }) {
-  return (
-    <select
-      className="idemaq-novaos-input"
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        ...inputBaseStyle(T, dark),
-        colorScheme: dark ? 'dark' : 'light',
-        appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
-        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(T.textMuted)}' stroke-width='2'><path d='m6 9 6 6 6-6'/></svg>")`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'right 14px center',
-        paddingRight: 36,
-      }}>
-      {options.map((opt, i) => (
-        <option key={i} value={opt}>{opt || (placeholder || 'Selecione…')}</option>
-      ))}
-    </select>
-  )
-}
-
-function NativeTextarea({ T, dark, value, onChange, placeholder, minHeight = 80 }) {
-  return (
-    <textarea
-      className="idemaq-novaos-input"
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      style={{
-        ...inputBaseStyle(T, dark),
-        minHeight,
-        resize: 'vertical',
-        lineHeight: 1.45,
-      }}
-    />
-  )
-}
-
-function inputBaseStyle(T, dark) {
-  return {
-    width: '100%',
-    minWidth: 0,
-    minHeight: 40,
-    padding: '8px 12px',
-    borderRadius: 3,
-    border: `1px solid ${T.border}`,
-    background: dark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
-    color: T.textPrimary,
-    fontSize: 16, // não <16 — evita zoom iOS
-    fontFamily: 'inherit',
-    outline: 'none',
-    boxSizing: 'border-box',
-    letterSpacing: '-0.005em',
-    colorScheme: dark ? 'dark' : 'light',
-    transition: 'border-color .12s, box-shadow .12s',
-  }
-}
-
-function InfoBanner({ T, dark, cor, titulo, texto }) {
-  return (
-    <div style={{
-      padding: '10px 12px', borderRadius: 3,
-      background: cor + '12',
-      border: `1px solid ${cor}33`,
-      display: 'flex', alignItems: 'flex-start', gap: 10,
-    }}>
-      <i className="ti ti-info-circle" style={{ fontSize: 18, color: cor, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: corHero(dark), marginBottom: 2 }}>{titulo}</div>
-        <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.45 }}>{texto}</div>
-      </div>
-    </div>
-  )
-}
-
-function BlocoSecao({ T, dark, icon, titulo, obrigatorio, children }) {
-  return (
-    <div>
-      <SectionHeader T={T} dark={dark} icon={icon} titulo={titulo} obrigatorio={obrigatorio} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {children}
-      </div>
-    </div>
-  )
-}
 
 function SkeletonResultado({ T }) {
   return (
