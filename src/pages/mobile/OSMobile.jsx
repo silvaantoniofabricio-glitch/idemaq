@@ -24,9 +24,10 @@ import FiltrosMobile from '../../components/mobile/FiltrosMobile'
 import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
 import NovaOSMobile from '../../components/os/NovaOSMobile'
+import MentionTextInput from '../../components/notas/MentionTextInput'
 
 // ─── Bottom sheet Notas do Dia ──────────────────────────────────────────────
-function NotasDoDiaMobile({ T, dark, onClose }) {
+function NotasDoDiaMobile({ T, dark, onClose, osList = [] }) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
@@ -141,13 +142,15 @@ function NotasDoDiaMobile({ T, dark, onClose }) {
                     <i className={`ti ${checked ? 'ti-square-check-filled' : 'ti-square'}`} style={{ fontSize: 20 }} aria-hidden="true" />
                   </button>
                 )}
-                <input ref={el => { inputRefs.current[idx] = el }}
+                <MentionTextInput
+                  T={T} dark={dark} osList={osList}
+                  inputRef={el => { inputRefs.current[idx] = el }}
                   value={textoDisplay}
-                  onChange={e => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + e.target.value : e.target.value)}
+                  onChange={v => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + v : v)}
                   onKeyDown={e => handleKeyDown(idx, e)}
-                  placeholder={idx === 0 ? 'Anotação ou tarefa…' : ''}
+                  placeholder={idx === 0 ? 'Anotação, tarefa ou @OS…' : ''}
                   style={{
-                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                    background: 'transparent', border: 'none', outline: 'none',
                     fontSize: 15, fontFamily: 'inherit', lineHeight: 1.75, padding: '4px 0',
                     color: checked ? T.textDim : T.textPrimary,
                     textDecoration: checked ? 'line-through' : 'none',
@@ -520,7 +523,7 @@ export default function OSMobile({ T, dark, user }) {
       )}
 
       {/* Notas bottom sheet */}
-      {notasAbertas && <NotasDoDiaMobile T={T} dark={dark} onClose={() => setNotasAbertas(false)} />}
+      {notasAbertas && <NotasDoDiaMobile T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} />}
 
       {/* OSDetalhe modal */}
       {osVigente && (

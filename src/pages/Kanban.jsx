@@ -19,11 +19,12 @@ import {
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
 import KanbanColumn from '../components/kanban/KanbanColumn'
+import MentionTextInput from '../components/notas/MentionTextInput'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 // ─── Painel Notas do Dia ─────────────────────────────────────────────────────
-function NotasDoDia({ T, dark, onClose }) {
+function NotasDoDia({ T, dark, onClose, osList = [] }) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
@@ -181,15 +182,17 @@ function NotasDoDia({ T, dark, onClose }) {
                   <i className={`ti ${checked ? 'ti-square-check-filled' : 'ti-square'}`} style={{ fontSize: 15 }} aria-hidden="true" />
                 </button>
               )}
-              {/* Input */}
-              <input ref={el => { inputRefs.current[idx] = el }}
+              {/* Input com @menção */}
+              <MentionTextInput
+                T={T} dark={dark} osList={osList}
+                inputRef={el => { inputRefs.current[idx] = el }}
                 value={textoDisplay}
-                onChange={e => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + e.target.value : e.target.value)}
+                onChange={v => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + v : v)}
                 onKeyDown={e => handleKeyDown(idx, e)}
                 onContextMenu={e => { e.preventDefault(); setMenuCtx({ x: e.clientX, y: e.clientY, idx }) }}
-                placeholder={idx === 0 ? 'Anotação ou ☐ tarefa…' : ''}
+                placeholder={idx === 0 ? 'Anotação, ☐ tarefa ou @OS…' : ''}
                 style={{
-                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  background: 'transparent', border: 'none', outline: 'none',
                   fontSize: 13, fontFamily: 'inherit', lineHeight: 1.7, padding: '2px 0',
                   color: checked ? T.textDim : T.textPrimary,
                   textDecoration: checked ? 'line-through' : 'none',
@@ -764,7 +767,7 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
-      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} />}
+      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} />}
       {modalNova && (
         <NovaOSModal T={T} dark={dark} onClose={() => setModalNova(false)}
           tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />
