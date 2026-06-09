@@ -12,7 +12,8 @@ import { P } from '../../theme'
 import { ETAPAS_TODOS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo } from '../../utils/osHelpers'
 import { useToast } from '../ui'
-import FormClienteEdit from './FormClienteEdit'
+import { supabase } from '../../supabase'
+import ClienteDetalheModal from '../clientes/ClienteDetalheModal'
 import FormEquipamentoEdit from './FormEquipamentoEdit'
 
 const ABAS = [
@@ -356,11 +357,19 @@ export default function Header({
 
       {/* ── Modais ── */}
       {modalCliente && (
-        <FormClienteEdit
+        <ClienteDetalheModal
           T={T} dark={dark} mobile={mobile}
-          os={os}
+          clienteId={os.cliente_id}
+          osList={[os]}
           onClose={() => setModalCliente(false)}
-          onSalvarOk={() => onRefetchOS?.()}
+          onSalvar={async (patch) => {
+            const { id, ...campos } = patch
+            const { data, error } = await supabase
+              .from('cliente').update(campos).eq('id', id).select().single()
+            if (error) notify('erro', error.message || 'Erro ao salvar cliente')
+            else { notify('ok', 'Cliente atualizado'); onRefetchOS?.() }
+            return { data, error }
+          }}
         />
       )}
       {modalEquipamento && (

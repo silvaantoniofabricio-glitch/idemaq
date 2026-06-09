@@ -400,6 +400,9 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     const novaOficina = { ...oficinaJsonb, execucao: novoExec }
     novaOficina.limpeza_status    = temLimpeza    ? calcStatus(limpServOk)  : 'concluido'
     novaOficina.manutencao_status = temManutencao ? calcStatus(manutServOk) : 'concluido'
+    // Flags persistidas para o KanbanCard saber se o serviço existe no orçamento
+    novaOficina.tem_limpeza    = temLimpeza
+    novaOficina.tem_manutencao = temManutencao
 
     onUpdateOS?.(os.numero, {
       pre_diagnostico: { ...(os.pre_diagnostico || {}), oficina: novaOficina },

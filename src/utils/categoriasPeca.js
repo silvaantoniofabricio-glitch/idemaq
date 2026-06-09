@@ -45,6 +45,8 @@ export const CATEGORIAS_PECA = [
   { id: 'sensor',            label: 'Sensor',               grupo: 'eletrico' },
   { id: 'termostato',        label: 'Termostato',           grupo: 'eletrico' },
   { id: 'chicote_eletrico',  label: 'Chicote elétrico',     grupo: 'eletrico' },
+  { id: 'magnetron',         label: 'Magnetron',            grupo: 'eletrico' },
+  { id: 'fusivel',           label: 'Fusível',              grupo: 'eletrico' },
 
   // Estrutura interna
   { id: 'cesto',             label: 'Cesto',                grupo: 'estrutura' },

@@ -97,6 +97,60 @@ export default function EstoqueMobile({ T, dark, user }) {
     return () => { alive = false }
   }, [refetchKey])
 
+  // Lista de compras: itens de OS confirmadas sem estoque
+  const [listaCompras, setListaCompras] = useState([])
+  useEffect(() => {
+    let alive = true
+    async function fetchListaCompras() {
+      const { data: itens } = await supabase
+        .from('os_item')
+        .select('id, nome, quantidade, peca_id, os_id')
+        .is('deleted_at', null)
+        .not('peca_id', 'is', null)
+
+      if (!alive) return
+      if (!itens?.length) { if (alive) setListaCompras([]); return }
+
+      const osIdsFiltro = [...new Set(itens.map(i => i.os_id))]
+      if (!osIdsFiltro.length) { if (alive) setListaCompras([]); return }
+
+      const { data: osData } = await supabase
+        .from('os').select('id, numero, etapa')
+        .in('id', osIdsFiltro).eq('etapa', 'em_oficina').is('deleted_at', null)
+
+      if (!alive) return
+      const osAtivas = osData || []
+      const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
+      const osIds = new Set(osAtivas.map(o => o.id))
+
+      const itensFiltrados = itens.filter(i => osIds.has(i.os_id))
+      if (!itensFiltrados.length) { if (alive) setListaCompras([]); return }
+
+      const pecaIds = [...new Set(itensFiltrados.map(i => i.peca_id))]
+      const { data: pecasData } = await supabase
+        .from('peca').select('id, qtd_atual').in('id', pecaIds).is('deleted_at', null)
+      const pecaMap = Object.fromEntries((pecasData || []).map(p => [p.id, p]))
+
+      const semEstoque = itensFiltrados.filter(i => {
+        const p = pecaMap[i.peca_id]
+        return !p || (p.qtd_atual ?? 0) <= 0
+      })
+
+      const grupos = {}
+      for (const item of semEstoque) {
+        const k = item.peca_id
+        if (!grupos[k]) grupos[k] = { peca_id: k, nome: item.nome || '—', qtdTotal: 0, os: [] }
+        grupos[k].qtdTotal += Number(item.quantidade) || 1
+        const os = osMap[item.os_id]
+        if (os && !grupos[k].os.find(o => o.id === os.id)) grupos[k].os.push(os)
+      }
+
+      if (alive) setListaCompras(Object.values(grupos).sort((a, b) => b.qtdTotal - a.qtdTotal))
+    }
+    fetchListaCompras()
+    return () => { alive = false }
+  }, [refetchKey])
+
   const [maquinas] = useState(MAQUINAS_MOCK)
 
   async function adicionarPeca(nova) {
@@ -362,6 +416,11 @@ export default function EstoqueMobile({ T, dark, user }) {
         padding: '8px 14px',
         display: 'flex', flexDirection: 'column', gap: 6,
       }}>
+        {/* Aviso de compras (só na aba peças) */}
+        {onPecas && listaCompras.length > 0 && (
+          <ListaComprasMobile T={T} dark={dark} amarelo={amarelo} itens={listaCompras} />
+        )}
+
         {onPecas ? (
           loadingPecas ? <AtlSkeletonList T={T} dark={dark} />
             : errorPecas ? <AtlError T={T} dark={dark} mensagem={errorPecas.message} />
@@ -695,6 +754,102 @@ function FiltroCategoriasSheet({ T, dark, azul, chips, ativo, onSelect, onClose 
           })}
         </div>
       </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// LISTA DE COMPRAS MOBILE — cartão amarelo colapsável
+// =============================================================================
+function ListaComprasMobile({ T, dark, amarelo, itens }) {
+  const [expandido, setExpandido] = useState(true)
+  const corHeroLocal = dark ? '#FFFFFF' : '#000000'
+
+  return (
+    <div style={{
+      borderRadius: ATL_RADIUS, overflow: 'hidden',
+      border: `1.5px solid ${amarelo}55`,
+      boxShadow: dark ? 'none' : '0 1px 2px rgba(9,30,66,0.10)',
+    }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpandido(v => !v)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandido(v => !v) } }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 12px',
+          background: amarelo + '18',
+          cursor: 'pointer', outline: 'none',
+          borderBottom: expandido ? `1px solid ${amarelo}33` : 'none',
+          WebkitTapHighlightColor: 'transparent',
+          fontFamily: ATL_FONT,
+        }}
+      >
+        <i className="ti ti-shopping-cart" style={{ color: amarelo, fontSize: 16, flexShrink: 0 }} aria-hidden="true" />
+        <span style={{ fontWeight: 700, fontSize: 13, color: amarelo, letterSpacing: '-0.005em' }}>
+          Precisa Comprar
+        </span>
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          padding: '1px 7px', borderRadius: 99,
+          background: amarelo + '33', color: amarelo,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {itens.length}
+        </span>
+        <i
+          className={`ti ti-chevron-${expandido ? 'up' : 'down'}`}
+          style={{ color: T.textMuted, fontSize: 14, marginLeft: 'auto', flexShrink: 0 }}
+          aria-hidden="true"
+        />
+      </div>
+
+      {expandido && (
+        <div style={{ background: T.card }}>
+          {itens.map((item, i) => (
+            <div key={item.peca_id} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px',
+              borderTop: i > 0 ? `1px solid ${T.border}` : undefined,
+              fontFamily: ATL_FONT,
+            }}>
+              <div style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: amarelo, flexShrink: 0,
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 13, fontWeight: 600,
+                  color: corHeroLocal,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  letterSpacing: '-0.005em',
+                }}>
+                  {item.nome}
+                </div>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                  {item.os.map(o => (
+                    <span key={o.id} style={{
+                      fontSize: 10, color: T.textMuted,
+                      background: T.cardAlt, border: `1px solid ${T.border}`,
+                      padding: '1px 5px', borderRadius: 3,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      OS #{o.numero}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <span style={{
+                fontSize: 14, fontWeight: 700, color: amarelo,
+                flexShrink: 0, fontVariantNumeric: 'tabular-nums',
+              }}>
+                × {item.qtdTotal}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

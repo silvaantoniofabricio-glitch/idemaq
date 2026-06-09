@@ -35,6 +35,40 @@ const NAVIRAI_LON = -54.1908
 // raio ainda aparecem (é bias soft, não restriction) mas ranqueados depois.
 const NAVIRAI_BIAS_RAIO_M = 30000
 
+// Detecta se o texto já menciona cidade/UF para não duplicar o sufixo.
+function temCidade(texto) {
+  return /navira[ií]|campo grande|\bms\b|mato grosso/i.test(texto)
+}
+
+// Enriquece a query com cidade antes de enviar à API (não altera o input).
+function textoBusca(texto) {
+  return temCidade(texto) ? texto : texto + ', Naviraí, MS'
+}
+
+// Extrai o primeiro número de logradouro digitado (ex: "Rua X, 460" → "460").
+function extrairNumero(texto) {
+  const m = texto.match(/[,\s]+(\d+)\b/)
+  return m ? m[1] : null
+}
+
+// Garante que `numero` apareça logo após o nome da rua na description.
+function injetarNumero(desc, numero) {
+  if (!numero || !desc || desc.includes(numero)) return desc
+  const idx = desc.indexOf(',')
+  if (idx >= 0) return desc.slice(0, idx) + ', ' + numero + desc.slice(idx)
+  return desc + ', ' + numero
+}
+
+// Remove CEP e ", Brasil" do formatted_address do Google — deixa só
+// "Rua X, 460, Bairro, Naviraí - MS".
+function limparEnderecoGoogle(formatted) {
+  return formatted
+    .replace(/\s*,?\s*\d{5}-?\d{3}\b/g, '') // CEP
+    .replace(/,?\s*Brasil\s*$/i, '')          // País
+    .trim()
+    .replace(/,\s*$/, '')
+}
+
 // Photon: autocomplete público baseado em OSM (https://photon.komoot.io/).
 // Sem chave, sem cobrança, desenhado pra typeahead (diferente do Nominatim,
 // que é só geocoding pontual). Retorna predições já com lat/lng — não precisa
@@ -45,7 +79,7 @@ const NAVIRAI_BIAS_RAIO_M = 30000
 // default (multilíngue baseado nas tags OSM, que em BR já vêm em pt).
 async function buscarPhoton(texto) {
   const params = new URLSearchParams({
-    q: texto,
+    q: textoBusca(texto),
     limit: '6',
     lat: String(NAVIRAI_LAT),
     lon: String(NAVIRAI_LON),
@@ -187,6 +221,7 @@ export default function AddressInput({
 
   const debounceRef = useRef(null)
   const wrapperRef = useRef(null)
+  const numeroDigitadoRef = useRef(null)   // número extraído do que o usuário digitou
   const acServiceRef = useRef(null)        // AutocompleteService
   const placesServiceRef = useRef(null)    // PlacesService
   const placesDivRef = useRef(null)        // div invisível p/ PlacesService
@@ -234,7 +269,7 @@ export default function AddressInput({
       const google = window.google
       acServiceRef.current.getPlacePredictions(
         {
-          input: texto,
+          input: textoBusca(texto),
           componentRestrictions: { country: 'br' },
           location: new google.maps.LatLng(NAVIRAI_LAT, NAVIRAI_LON),
           radius: NAVIRAI_BIAS_RAIO_M,
@@ -254,6 +289,7 @@ export default function AddressInput({
 
   function handleChange(novoTexto) {
     onChange?.({ endereco: novoTexto, lat: null, lng: null })
+    numeroDigitadoRef.current = extrairNumero(novoTexto || '')
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     const texto = (novoTexto || '').trim()
@@ -283,16 +319,23 @@ export default function AddressInput({
       // Fallback: Photon (OSM). Funciona sem chave Google.
       const photonPreds = await buscarPhoton(texto)
       setCarregando(false)
-      setSugestoes(photonPreds.map(p => ({ ...p, _origem: 'photon' })))
+      const numero = numeroDigitadoRef.current
+      setSugestoes(photonPreds.map(p => ({
+        ...p,
+        _origem: 'photon',
+        description: injetarNumero(p.description, numero),
+      })))
       setAberto(photonPreds.length > 0)
     }, 250)
   }
 
   function escolherSugestao(pred) {
+    const numero = numeroDigitadoRef.current
+
     // Sugestões do Photon já vêm com lat/lng — aplica direto sem 2ª chamada.
     if (pred._origem === 'photon') {
       onChange?.({
-        endereco: pred.description,
+        endereco: injetarNumero(pred.description, numero),
         lat: pred.lat ?? null,
         lng: pred.lng ?? null,
       })
@@ -303,7 +346,7 @@ export default function AddressInput({
 
     // Places legacy: precisa do getDetails pra pegar geometry + formatted_address.
     if (!placesServiceRef.current) {
-      onChange?.({ endereco: pred.description, lat: null, lng: null })
+      onChange?.({ endereco: injetarNumero(pred.description, numero), lat: null, lng: null })
       setSugestoes([])
       setAberto(false)
       return
@@ -317,10 +360,11 @@ export default function AddressInput({
       (place, status) => {
         const google = window.google
         if (status !== google?.maps?.places?.PlacesServiceStatus?.OK || !place) {
-          onChange?.({ endereco: pred.description, lat: null, lng: null })
+          onChange?.({ endereco: injetarNumero(pred.description, numero), lat: null, lng: null })
         } else {
+          const enderecoLimpo = limparEnderecoGoogle(place.formatted_address || pred.description)
           onChange?.({
-            endereco: place.formatted_address || pred.description,
+            endereco: injetarNumero(enderecoLimpo, numero),
             lat: place.geometry?.location?.lat() ?? null,
             lng: place.geometry?.location?.lng() ?? null,
           })

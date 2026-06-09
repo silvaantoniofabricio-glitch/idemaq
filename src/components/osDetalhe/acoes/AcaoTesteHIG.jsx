@@ -14,7 +14,7 @@
 //
 // Nome do arquivo permanece *HIG por compat com imports do EtapaTab.
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 import { ETAPAS_TODOS } from '../../../utils/osData'
@@ -25,19 +25,54 @@ import {
   AtlPanel, AtlButton, ATL_FONT,
 } from './_AtlassianUI'
 
-// ─── Dados ────────────────────────────────────────────────────────────────
-const TESTES = [
-  { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
-  { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
-  { id: 'agitacao',      label: 'Agitação',         icon: 'refresh' },
-  { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
-]
+// ─── Dados por tipo de equipamento ────────────────────────────────────────
+const TESTES_POR_EQUIP = {
+  lavadora: [
+    { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
+    { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
+    { id: 'agitacao',      label: 'Agitação',         icon: 'refresh' },
+    { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
+  ],
+  microondas: [
+    { id: 'aquecimento',  label: 'Aquecimento',       icon: 'flame' },
+    { id: 'prato',        label: 'Prato giratório',   icon: 'rotate-clockwise' },
+    { id: 'temporizador', label: 'Temporizador',      icon: 'clock' },
+    { id: 'potencia',     label: 'Troca de potência', icon: 'adjustments' },
+  ],
+  lava_loucas: [
+    { id: 'entrada_agua', label: 'Entrada de água',       icon: 'droplet' },
+    { id: 'saida_agua',   label: 'Saída de água',         icon: 'droplet-off' },
+    { id: 'lavagem',      label: 'Lavagem',               icon: 'sparkles' },
+    { id: 'aquecimento',  label: 'Aquecimento / secagem', icon: 'flame' },
+  ],
+  outros: [
+    { id: 'liga',        label: 'Liga normalmente', icon: 'power' },
+    { id: 'funciona',    label: 'Funciona',         icon: 'check' },
+    { id: 'sem_barulho', label: 'Sem barulho',      icon: 'volume-off' },
+    { id: 'visual',      label: 'Aparência geral',  icon: 'eye' },
+  ],
+}
 
-const ACABAMENTO = [
-  { id: 'secagem',     label: 'Secagem',     icon: 'wind' },
-  { id: 'polimento',   label: 'Polimento',   icon: 'sparkles' },
-  { id: 'enceramento', label: 'Enceramento', icon: 'droplet-half-2' },
-]
+const ACABAMENTO_POR_EQUIP = {
+  lavadora: [
+    { id: 'secagem',     label: 'Secagem',     icon: 'wind' },
+    { id: 'polimento',   label: 'Polimento',   icon: 'sparkles' },
+    { id: 'enceramento', label: 'Enceramento', icon: 'droplet-half-2' },
+  ],
+  microondas: [
+    { id: 'limpeza_interna', label: 'Limpeza interna', icon: 'sparkles' },
+    { id: 'painel',          label: 'Painel',           icon: 'layout-grid' },
+  ],
+  lava_loucas: [
+    { id: 'filtros',   label: 'Filtros',           icon: 'filter' },
+    { id: 'borracha',  label: 'Borracha da porta', icon: 'circle-dashed' },
+    { id: 'polimento', label: 'Polimento',         icon: 'sparkles' },
+  ],
+  outros: [
+    { id: 'limpeza', label: 'Limpeza', icon: 'sparkles' },
+    { id: 'visual',  label: 'Visual',  icon: 'eye' },
+  ],
+}
 
 const OPCOES = [
   { id: 'ok',      label: 'OK',       icon: 'check',          corKey: 'green'  },
@@ -139,6 +174,11 @@ function AcabamentoCard({ T, dark, acab, on, onClick }) {
 export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
   const { T, dark } = useTheme()
 
+  // Checklists dinâmicos por tipo de equipamento
+  const tipoEquip = os.tipoEquipamento || 'lavadora'
+  const TESTES = TESTES_POR_EQUIP[tipoEquip] || TESTES_POR_EQUIP.lavadora
+  const ACABAMENTO = ACABAMENTO_POR_EQUIP[tipoEquip] || ACABAMENTO_POR_EQUIP.lavadora
+
   const { itens: itensOrcamento } = useOSItens(os.id)
   const temLimpeza = useMemo(
     () => itensOrcamento.some(i => /limpeza/i.test(i.nome || '')),
@@ -174,6 +214,19 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     setObs(os?.observacoes || '')
     setHidratado(true)
   }, [loadingChk, chkItens, hidratado, os?.observacoes])
+
+  // Reset quando o tipo de equipamento muda durante a sessão
+  const prevTipoRef = useRef(null)
+  useEffect(() => {
+    if (prevTipoRef.current === null) { prevTipoRef.current = tipoEquip; return }
+    if (prevTipoRef.current === tipoEquip) return
+    prevTipoRef.current = tipoEquip
+    const t = TESTES_POR_EQUIP[tipoEquip] || TESTES_POR_EQUIP.lavadora
+    const a = ACABAMENTO_POR_EQUIP[tipoEquip] || ACABAMENTO_POR_EQUIP.lavadora
+    setTestes(t.reduce((acc, x) => ({ ...acc, [x.id]: null }), {}))
+    setAcabamento(a.reduce((acc, x) => ({ ...acc, [x.id]: false }), {}))
+    setHidratado(false)
+  }, [tipoEquip])
 
   useEffect(() => {
     if (hidratado) setObs(os?.observacoes || '')
@@ -326,7 +379,7 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
           {salvando
             ? 'Salvando…'
             : podeAprovar
-              ? 'Aprovar teste · ir pra Entrega'
+              ? 'Aprovar · ir pra Entrega'
               : !todosPreenchidos
                 ? `Avalie os ${TESTES.length} testes para continuar`
                 : `Marque o acabamento (${acabPendentes} pendente${acabPendentes !== 1 ? 's' : ''})`}

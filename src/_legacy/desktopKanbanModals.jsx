@@ -18,6 +18,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../supabase'
 import { criarClientePersist } from '../hooks/useClientes'
+import NovoClienteModal from '../components/clientes/NovoClienteModal'
 import { P } from '../theme'
 import {
   TIPOS_OS, ETAPAS_TODOS, ZONAS, FUNCIONARIOS,
@@ -390,26 +391,14 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
     setClientesAchados([])
   }
 
-  async function clienteCadastrado(novoCli) {
-    // novoCli vem do NovoClienteModalCompleto com id fake "novo-NNN" e enderecos array.
-    // Persistimos no Supabase e usamos a linha real retornada (id de verdade).
-    const { data, error: err } = await criarClientePersist({
-      nome: novoCli.nome,
-      telefone: novoCli.fone,
-      enderecos: novoCli.enderecos,
-      email: novoCli.email,
-      observacoes: novoCli.cpfCnpj ? `CPF/CNPJ: ${novoCli.cpfCnpj}` : null,
-    })
-    if (err) {
-      notify?.('erro', `Erro ao cadastrar cliente: ${err.message || err}`)
-      return
-    }
+  // Chamado pelo NovoClienteModal após salvar no banco (data = linha real do Supabase)
+  function clienteCriadoNovo(data) {
     escolherCliente({
-      id: data.id,
-      nome: data.nome,
-      fone: data.telefone || '',
+      id:       data.id,
+      nome:     data.nome,
+      fone:     data.telefone || '',
       endereco: data.endereco || '',
-      enderecos: data.endereco ? [data.endereco] : [],
+      enderecos: [data.endereco, data.endereco2, data.endereco3].filter(Boolean),
     })
   }
 
@@ -954,14 +943,15 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
         </button>
       </div>
 
-      {/* Sub-modal: cadastrar novo cliente */}
+      {/* Sub-modal: cadastrar novo cliente — usa o NovoClienteModal padrão */}
       {modalNovoCli && (
-        <NovoClienteModalCompleto
+        <NovoClienteModal
           T={T} dark={dark}
           nomeInicial={buscaCli}
           mobile={mobile}
-          onClose={()=>setModalNovoCli(false)}
-          onSalvar={clienteCadastrado}
+          criar={criarClientePersist}
+          onClose={() => setModalNovoCli(false)}
+          onCriado={clienteCriadoNovo}
         />
       )}
     </ModalBase>
