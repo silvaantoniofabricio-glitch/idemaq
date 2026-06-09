@@ -24,7 +24,7 @@ import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 // ─── Painel Notas do Dia ─────────────────────────────────────────────────────
-function NotasDoDia({ T, dark, onClose, osList = [] }) {
+function NotasDoDia({ T, dark, onClose, osList = [], pessoas = [] }) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
     timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
   }).split('/').reverse().join('-')
@@ -184,13 +184,13 @@ function NotasDoDia({ T, dark, onClose, osList = [] }) {
               )}
               {/* Input com @menção */}
               <MentionTextInput
-                T={T} dark={dark} osList={osList}
+                T={T} dark={dark} osList={osList} pessoas={pessoas}
                 inputRef={el => { inputRefs.current[idx] = el }}
                 value={textoDisplay}
                 onChange={v => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + v : v)}
                 onKeyDown={e => handleKeyDown(idx, e)}
                 onContextMenu={e => { e.preventDefault(); setMenuCtx({ x: e.clientX, y: e.clientY, idx }) }}
-                placeholder={idx === 0 ? 'Anotação, ☐ tarefa ou @OS…' : ''}
+                placeholder={idx === 0 ? 'Anotação, ☐ tarefa ou @pessoa/OS…' : ''}
                 style={{
                   background: 'transparent', border: 'none', outline: 'none',
                   fontSize: 13, fontFamily: 'inherit', lineHeight: 1.7, padding: '2px 0',
@@ -767,7 +767,7 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
-      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} />}
+      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} />}
       {modalNova && (
         <NovaOSModal T={T} dark={dark} onClose={() => setModalNova(false)}
           tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />
