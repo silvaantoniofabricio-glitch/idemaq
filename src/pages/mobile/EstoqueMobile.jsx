@@ -111,15 +111,15 @@ export default function EstoqueMobile({ T, dark, user }) {
       if (!alive) return
       if (!itens?.length) { if (alive) setListaCompras([]); return }
 
-      const ETAPAS_EXCLUIR = ['orcamento', 'concluido', 'entrega', 'cancelado']
       const osIdsFiltro = [...new Set(itens.map(i => i.os_id))]
       if (!osIdsFiltro.length) { if (alive) setListaCompras([]); return }
 
       const { data: osData } = await supabase
-        .from('os').select('id, numero, etapa').in('id', osIdsFiltro).is('deleted_at', null)
+        .from('os').select('id, numero, etapa')
+        .in('id', osIdsFiltro).eq('etapa', 'em_oficina').is('deleted_at', null)
 
       if (!alive) return
-      const osAtivas = (osData || []).filter(o => !ETAPAS_EXCLUIR.includes(o.etapa))
+      const osAtivas = osData || []
       const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
       const osIds = new Set(osAtivas.map(o => o.id))
 

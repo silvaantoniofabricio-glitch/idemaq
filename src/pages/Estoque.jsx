@@ -186,8 +186,7 @@ export default function Estoque({ T, dark, user }) {
       if (!alive) return
       if (!itens?.length) { if (alive) setListaCompras([]); return }
 
-      // Passo 2: OS ativas e confirmadas
-      const ETAPAS_EXCLUIR = ['orcamento', 'concluido', 'entrega', 'cancelado']
+      // Passo 2: OS em conserto (etapa em_oficina)
       const osIdsFiltro = [...new Set(itens.map(i => i.os_id))]
       if (!osIdsFiltro.length) { if (alive) setListaCompras([]); return }
 
@@ -195,10 +194,11 @@ export default function Estoque({ T, dark, user }) {
         .from('os')
         .select('id, numero, etapa')
         .in('id', osIdsFiltro)
+        .eq('etapa', 'em_oficina')
         .is('deleted_at', null)
 
       if (!alive) return
-      const osAtivas = (osData || []).filter(o => !ETAPAS_EXCLUIR.includes(o.etapa))
+      const osAtivas = osData || []
       const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
       const osIds = new Set(osAtivas.map(o => o.id))
 
