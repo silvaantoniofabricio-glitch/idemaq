@@ -16,7 +16,7 @@
 //
 // Nome do arquivo permanece *HIG por compat com imports do EtapaTab.
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 import { ETAPAS_TODOS } from '../../../utils/osData'
@@ -45,19 +45,49 @@ function salvarCausa(frase) {
   } catch {}
 }
 
-// ─── Dados ────────────────────────────────────────────────────────────────
-const TESTES = [
-  { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
-  { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
-  { id: 'agitacao',      label: 'Agitação',         icon: 'refresh' },
-  { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
-]
+// ─── Dados por tipo de equipamento ────────────────────────────────────────
+const TESTES_POR_EQUIP = {
+  lavadora: [
+    { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
+    { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
+    { id: 'agitacao',      label: 'Agitação',         icon: 'refresh' },
+    { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
+  ],
+  microondas: [
+    { id: 'aquecimento',  label: 'Aquecimento',       icon: 'flame' },
+    { id: 'prato',        label: 'Prato giratório',   icon: 'rotate-clockwise' },
+    { id: 'temporizador', label: 'Temporizador',      icon: 'clock' },
+    { id: 'potencia',     label: 'Troca de potência', icon: 'adjustments' },
+  ],
+  lava_loucas: [
+    { id: 'entrada_agua', label: 'Entrada de água',       icon: 'droplet' },
+    { id: 'saida_agua',   label: 'Saída de água',         icon: 'droplet-off' },
+    { id: 'lavagem',      label: 'Lavagem',               icon: 'sparkles' },
+    { id: 'aquecimento',  label: 'Aquecimento / secagem', icon: 'flame' },
+  ],
+  outros: [
+    { id: 'liga',        label: 'Liga normalmente', icon: 'power' },
+    { id: 'funciona',    label: 'Funciona',         icon: 'check' },
+    { id: 'sem_barulho', label: 'Sem barulho',      icon: 'volume-off' },
+    { id: 'visual',      label: 'Aparência geral',  icon: 'eye' },
+  ],
+}
 
-const VAZAMENTOS = [
-  { id: 'entrada',  label: 'Entrada',  icon: 'droplet' },
-  { id: 'agitacao', label: 'Agitação', icon: 'refresh' },
-  { id: 'saida',    label: 'Saída',    icon: 'droplet-off' },
-]
+// Vazamentos: só lavadora e lava-louças têm água externa
+const VAZAMENTOS_POR_EQUIP = {
+  lavadora: [
+    { id: 'entrada',  label: 'Entrada',  icon: 'droplet' },
+    { id: 'agitacao', label: 'Agitação', icon: 'refresh' },
+    { id: 'saida',    label: 'Saída',    icon: 'droplet-off' },
+  ],
+  microondas: [],
+  lava_loucas: [
+    { id: 'porta',     label: 'Porta',      icon: 'door' },
+    { id: 'base',      label: 'Base',       icon: 'layout-bottom-bar' },
+    { id: 'mangueira', label: 'Mangueiras', icon: 'ripple' },
+  ],
+  outros: [],
+}
 
 // Atlassian usa nomes neutros — mapeamento de cores via corEtapa do projeto
 const OPCOES = [
@@ -199,6 +229,11 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   const amarelo = corEtapa('yellow', dark)
   const verde = corEtapa('green', dark)
 
+  // Checklists dinâmicos por tipo de equipamento
+  const tipoEquip = os.tipoEquipamento || 'lavadora'
+  const TESTES = TESTES_POR_EQUIP[tipoEquip] || TESTES_POR_EQUIP.lavadora
+  const VAZAMENTOS = VAZAMENTOS_POR_EQUIP[tipoEquip] || []
+
   const { itens: chkItens, salvar: salvarChk, loading: loadingChk } =
     useChecklistEtapa(os.id, 'recebido')
 
@@ -208,7 +243,9 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   const [obs, setObs]                = useState(os?.observacoes || '')
   const [naoLiga, setNaoLiga]        = useState(false)
   const [motivoNaoLiga, setMotivo]   = useState('')
-  const [vazamentos, setVazamentos]  = useState({ entrada: false, saida: false, agitacao: false })
+  const [vazamentos, setVazamentos]  = useState(
+    () => VAZAMENTOS.reduce((acc, v) => ({ ...acc, [v.id]: false }), {})
+  )
   const [causa, setCausa]            = useState(os?.pre_diagnostico?.causa_diagnostico || '')
   const [causaFocada, setCausaFocada] = useState(false)
   const [historicoCausas, setHistorico] = useState(() => lerCausas())
@@ -218,15 +255,28 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   useEffect(() => {
     setNaoLiga(!!os?.pre_diagnostico?.equipamento_nao_liga)
     setMotivo(os?.pre_diagnostico?.motivo_nao_liga || '')
-    setVazamentos({
-      entrada:  !!os?.pre_diagnostico?.vazamentos?.entrada,
-      saida:    !!os?.pre_diagnostico?.vazamentos?.saida,
-      agitacao: !!os?.pre_diagnostico?.vazamentos?.agitacao,
-    })
-  }, [os?.id,
+    const vazStore = os?.pre_diagnostico?.vazamentos || {}
+    setVazamentos(
+      (VAZAMENTOS_POR_EQUIP[tipoEquip] || [])
+        .reduce((acc, v) => ({ ...acc, [v.id]: !!vazStore[v.id] }), {})
+    )
+  }, [os?.id, tipoEquip,
     os?.pre_diagnostico?.equipamento_nao_liga,
     os?.pre_diagnostico?.motivo_nao_liga,
     os?.pre_diagnostico?.vazamentos])
+
+  // Reset dos checklists quando o tipo de equipamento muda durante a sessão
+  const prevTipoRef = useRef(null)
+  useEffect(() => {
+    if (prevTipoRef.current === null) { prevTipoRef.current = tipoEquip; return }
+    if (prevTipoRef.current === tipoEquip) return
+    prevTipoRef.current = tipoEquip
+    const t = TESTES_POR_EQUIP[tipoEquip] || TESTES_POR_EQUIP.lavadora
+    const v = VAZAMENTOS_POR_EQUIP[tipoEquip] || []
+    setTestes(t.reduce((acc, x) => ({ ...acc, [x.id]: null }), {}))
+    setVazamentos(v.reduce((acc, x) => ({ ...acc, [x.id]: false }), {}))
+    setHidratado(false)
+  }, [tipoEquip])
 
   // Hidrata causa só ao trocar de OS (evita pular o cursor enquanto digita)
   useEffect(() => {
@@ -347,6 +397,7 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   const preenchidos      = TESTES.filter(t => testes[t.id] != null).length
   const relatoCliente    = (os?.defeito || '').trim()
   const temVazamento     = Object.values(vazamentos).some(Boolean)
+  const temSecaoVazamentos = VAZAMENTOS.length > 0
 
   return (
     <div style={{
@@ -464,28 +515,30 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
         </div>
       </AtlPanel>
 
-      {/* 3. Vazamentos */}
-      <AtlPanel
-        T={T} dark={dark}
-        title="Vazamentos"
-        footer={temVazamento ? 'Registrado — será incluído no diagnóstico.' : 'Toque pra marcar onde está vazando.'}>
-        <div style={{
-          padding: '10px 14px',
-          display: 'flex', gap: 6,
-          opacity: naoLiga ? 0.4 : 1,
-          pointerEvents: naoLiga ? 'none' : 'auto',
-        }}>
-          {VAZAMENTOS.map(v => (
-            <VazamentoCard
-              key={v.id}
-              T={T} dark={dark}
-              vaza={v}
-              on={vazamentos[v.id]}
-              onClick={() => setVazamentos(prev => ({ ...prev, [v.id]: !prev[v.id] }))}
-            />
-          ))}
-        </div>
-      </AtlPanel>
+      {/* 3. Vazamentos — só para lavadora e lava-louças */}
+      {temSecaoVazamentos && (
+        <AtlPanel
+          T={T} dark={dark}
+          title="Vazamentos"
+          footer={temVazamento ? 'Registrado — será incluído no diagnóstico.' : 'Toque pra marcar onde está vazando.'}>
+          <div style={{
+            padding: '10px 14px',
+            display: 'flex', gap: 6,
+            opacity: naoLiga ? 0.4 : 1,
+            pointerEvents: naoLiga ? 'none' : 'auto',
+          }}>
+            {VAZAMENTOS.map(v => (
+              <VazamentoCard
+                key={v.id}
+                T={T} dark={dark}
+                vaza={v}
+                on={!!vazamentos[v.id]}
+                onClick={() => setVazamentos(prev => ({ ...prev, [v.id]: !prev[v.id] }))}
+              />
+            ))}
+          </div>
+        </AtlPanel>
+      )}
 
       {/* 4. Observacoes da avaliacao */}
       <AtlPanel
