@@ -171,10 +171,12 @@ function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal,
 function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChecks,
                           onToggleDesm, onToggleManut, onToggleMont, outroServDone }) {
   const desmDone = !!desmVal.feito
-  const servDone = manutChecks.length > 0 && manutChecks.every(c => manutVal[c.id])
+  const servDone = manutChecks.length > 0
+    ? manutChecks.every(c => manutVal[c.id])
+    : !!manutVal.feito
   let montBloqueio = null
   if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
-  else if (!servDone) montBloqueio = 'Conclua todos os itens de serviço'
+  else if (!servDone) montBloqueio = manutChecks.length > 0 ? 'Instale todas as peças' : 'Marque a manutenção como feita'
   else if (!outroServDone) montBloqueio = 'Aguardando limpeza'
 
   return (
@@ -199,13 +201,12 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
           />
         ))
       ) : (
-        <div style={{
-          padding: '10px 14px',
-          borderTop: `1px solid ${T.border}`,
-          fontSize: 12.5, color: T.textMuted, fontStyle: 'italic',
-        }}>
-          Sem componentes marcados no diagnóstico.
-        </div>
+        // Sem peças no orçamento (manutenção de mão de obra) — marca direto.
+        <CheckRow T={T} dark={dark}
+          label="Manutenção feita"
+          checked={!!manutVal.feito}
+          onToggle={() => onToggleManut('feito')}
+        />
       )}
       {montBloqueio
         ? <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
@@ -337,20 +338,20 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   const { itens } = useOSItens(os?.id)
   const vermelho = corEtapa('red', dark)
   const amarelo  = corEtapa('yellow', dark)
+  const azul     = corEtapa('blue', dark)
 
   const temLimpeza = useMemo(
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
     [itens]
   )
-  // Manutencao so e ativada se o orcamento tem item explicito de manutencao
-  // (taxa/deslocamento/capa/peca avulsa NAO sao servicos de oficina).
+  // Manutencao é ativada se o orçamento tem item de manutenção OU peças.
   const temManutencao = useMemo(
-    () => (itens || []).some(it => /manuten/i.test(it.nome || '')),
+    () => (itens || []).some(it => /manuten/i.test(it.nome || '') || it.tipo === 'peca'),
     [itens]
   )
 
-  // Checklist da manutencao vem do diagnostico
-  const manutChecks = useMemo(() => {
+  // Componentes do diagnóstico — SÓ informativo (resumo). Não é o checklist.
+  const diagComponentes = useMemo(() => {
     const marcados = os?.pre_diagnostico?.componentes_marcados || {}
     const out = []
     for (const [, items] of Object.entries(marcados)) {
@@ -374,6 +375,18 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     return out
   }, [os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho])
 
+  // Checklist da manutenção = PEÇAS do orçamento (são as que dependem do estoque).
+  // Cada peça do orçamento vira um item pra marcar quando instalada.
+  const manutChecks = useMemo(() => (itens || [])
+    .filter(it => it.tipo === 'peca')
+    .map(it => ({
+      id: it.id,
+      label: it.nome,
+      badge: (Number(it.qtd) || 1) > 1 ? { label: `${it.qtd}x`, cor: azul } : null,
+    })),
+    [itens, azul]
+  )
+
   const oficinaJsonb = os?.pre_diagnostico?.oficina || {}
   const exec = oficinaJsonb.execucao || {}
   const desmVal  = exec.desmontagem  || {}
@@ -389,7 +402,8 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     const montOk = !!novoExec.montagem?.feito
     const limpServOk = !!novoExec.limpeza_serv?.feito
     const manutServOk = manutChecks.length > 0
-      && manutChecks.every(c => novoExec.manut_serv?.[c.id])
+      ? manutChecks.every(c => novoExec.manut_serv?.[c.id])
+      : !!novoExec.manut_serv?.feito // sem peças (mão de obra): marca "manutenção feita"
 
     const calcStatus = (servOk) => {
       if (desmOk && servOk && montOk) return 'concluido'
@@ -418,7 +432,9 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
 
   const limpServDone = !temLimpeza || !!limpVal.feito
   const manutServDone = !temManutencao
-    || (manutChecks.length > 0 && manutChecks.every(c => manutVal[c.id]))
+    || (manutChecks.length > 0
+        ? manutChecks.every(c => manutVal[c.id])
+        : !!manutVal.feito)
 
   const desmDone  = !!desmVal.feito
   const montDone  = !!montVal.feito
@@ -448,7 +464,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
         T={T} dark={dark}
         relato={os?.defeito || ''}
         causa={os?.pre_diagnostico?.causa_diagnostico || ''}
-        componentes={manutChecks}
+        componentes={diagComponentes}
       />
 
       {/* 2. Banner falhas */}
@@ -459,26 +475,6 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
         T={T} dark={dark} os={os} itens={itens} admin={admin}
         onUpdateOS={onUpdateOS}
       />
-
-      {/* 3. Aviso diagnostico vazio */}
-      {temManutencao && manutChecks.length === 0 && (
-        <AtlPanel T={T} dark={dark} accent={amarelo}>
-          <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 4,
-              background: amarelo + '22', color: amarelo,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <i className="ti ti-info-circle" style={{ fontSize: 14 }} aria-hidden="true" />
-            </div>
-            <span style={{ flex: 1, fontSize: 12.5, color: T.textPrimary, lineHeight: 1.45 }}>
-              O orçamento tem manutenção mas o diagnóstico não tem componentes marcados.
-              Volte e marque os componentes.
-            </span>
-          </div>
-        </AtlPanel>
-      )}
 
       {/* 4. Lados */}
       {temLimpeza && (
