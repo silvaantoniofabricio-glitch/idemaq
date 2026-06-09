@@ -226,6 +226,9 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   const verde = corEtapa('green', dark)
 
   const jaPaga = estaPagaTotal(os)
+  // OS de orçamento recusado: ao confirmar a entrega (devolução da máquina),
+  // o card sai do Kanban (oculta_no_kanban) em vez de ir pra Pagamento/Concluído.
+  const ehRecusada = !!os?.recusada || os?.pre_diagnostico?.orcamento_status === 'recusado'
   const entregaSalva = os?.pre_diagnostico?.entrega || {}
   const entregaData = entregaSalva.data || null
   const obsGlobal = os?.observacoes || ''
@@ -329,13 +332,16 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
 
   function confirmarEntregaConfirmado() {
     setConfirmSheet(null)
-    onUpdateOS?.(os.numero, {
+    const patch = {
       pre_diagnostico: {
         ...(os.pre_diagnostico || {}),
         entrega: { ...entregaSalva, realizada_em: new Date().toISOString() },
       },
-    })
-    const destino = os.recusada ? 'recusado' : (jaPaga ? 'concluido' : 'pagamento')
+    }
+    // Recusada: máquina devolvida → some do Kanban (fica visível em busca/relatórios).
+    if (ehRecusada) patch.oculta_no_kanban = true
+    onUpdateOS?.(os.numero, patch)
+    const destino = ehRecusada ? 'recusado' : (jaPaga ? 'concluido' : 'pagamento')
     const proxima = ETAPAS_TODOS.find(e => e.id === destino || e.match?.[os.tipo] === destino)
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
@@ -452,7 +458,9 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
           onClose={() => setConfirmSheet(null)}
           actions={[
             {
-              label: jaPaga ? 'Confirmar entrega · Concluir OS' : 'Confirmar entrega · Ir para Pagamento',
+              label: ehRecusada
+                ? 'Confirmar entrega · Sair do Kanban'
+                : (jaPaga ? 'Confirmar entrega · Concluir OS' : 'Confirmar entrega · Ir para A receber'),
               onClick: confirmarEntregaConfirmado,
             },
           ]} />
@@ -472,9 +480,9 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
             variant="primary"
             fullWidth
             disabled={!podeConfirmar}
-            icon="check"
+            icon={ehRecusada ? 'truck-return' : 'check'}
             onClick={confirmarEntrega}>
-            {jaPaga ? 'Confirmar · Concluir OS' : 'Confirmar · Pagamento'}
+            {ehRecusada ? 'Entregue' : (jaPaga ? 'Entregue · Concluir OS' : 'Entregue · A receber')}
           </AtlButton>
         </div>
       </div>
