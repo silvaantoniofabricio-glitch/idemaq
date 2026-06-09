@@ -14,7 +14,8 @@
 //   · os.pre_diagnostico.oficina.execucao
 //   · os.pre_diagnostico.oficina.limpeza_status / manutencao_status
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
+import { supabase } from '../../../supabase'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
@@ -339,6 +340,26 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   const vermelho = corEtapa('red', dark)
   const amarelo  = corEtapa('yellow', dark)
   const azul     = corEtapa('blue', dark)
+  const verde    = corEtapa('green', dark)
+
+  // Estoque atual das peças do orçamento (pro selo Falta/Em estoque no checklist).
+  const [stockMap, setStockMap] = useState({})
+  useEffect(() => {
+    const pecaIds = [...new Set((itens || [])
+      .filter(it => it.tipo === 'peca' && it.peca_id)
+      .map(it => it.peca_id))]
+    if (!pecaIds.length) { setStockMap({}); return }
+    let cancel = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('peca').select('id, qtd_atual').in('id', pecaIds).is('deleted_at', null)
+      if (cancel || error || !data) return
+      const m = {}
+      for (const r of data) m[r.id] = r.qtd_atual ?? 0
+      setStockMap(m)
+    })()
+    return () => { cancel = true }
+  }, [itens])
 
   const temLimpeza = useMemo(
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
@@ -376,15 +397,28 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   }, [os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho])
 
   // Checklist da manutenção = PEÇAS do orçamento (são as que dependem do estoque).
-  // Cada peça do orçamento vira um item pra marcar quando instalada.
+  // Cada peça vira um item pra marcar quando instalada, com selo de estoque:
+  //   🔴 Falta · 🟡 Comprada · 🟢 Em estoque.
+  const compraPecas = os?.pre_diagnostico?.compra_pecas || {}
   const manutChecks = useMemo(() => (itens || [])
     .filter(it => it.tipo === 'peca')
-    .map(it => ({
-      id: it.id,
-      label: it.nome,
-      badge: (Number(it.qtd) || 1) > 1 ? { label: `${it.qtd}x`, cor: azul } : null,
-    })),
-    [itens, azul]
+    .map(it => {
+      const qtd = Number(it.qtd) || 1
+      const compraSt = compraPecas[it.id]?.status
+      const qtdAtual = it.peca_id ? stockMap[it.peca_id] : undefined
+      let badge = null
+      if (compraSt === 'entrega')        badge = { label: 'Comprada',   cor: amarelo }
+      else if (compraSt === 'entregue')  badge = { label: 'Em estoque', cor: verde }
+      else if (qtdAtual != null && qtdAtual <= 0) badge = { label: 'Falta',      cor: vermelho }
+      else if (qtdAtual != null && qtdAtual > 0)  badge = { label: 'Em estoque', cor: verde }
+      // peça avulsa (sem vínculo de catálogo) fica sem selo de estoque
+      return {
+        id: it.id,
+        label: qtd > 1 ? `${it.nome} · ${qtd}x` : it.nome,
+        badge,
+      }
+    }),
+    [itens, stockMap, compraPecas, amarelo, vermelho, verde]
   )
 
   const oficinaJsonb = os?.pre_diagnostico?.oficina || {}
