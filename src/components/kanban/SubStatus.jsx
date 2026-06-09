@@ -5,7 +5,6 @@ import React from 'react'
 import { P } from '../../theme'
 
 export default function SubStatus({ label, status, T, dark }) {
-  if (!status) return null
   const cor = (d, c) => dark ? d : c
   const map = {
     concluido:    { c: cor(P.green, P.greenDark),   bg: cor('#0f2a15', '#e8f5ec'), ico: 'ti-check' },

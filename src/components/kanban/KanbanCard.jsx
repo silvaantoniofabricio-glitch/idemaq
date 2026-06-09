@@ -180,11 +180,11 @@ export default function KanbanCard({
           }}>{endResumido}</div>
         )}
 
-        {/* Linha 5: dual status oficina — só aparece se tiver ao menos 1 valor */}
-        {dual && (os.limpeza || os.manutencao) && (
+        {/* Linha 5: dual status oficina — status real fica em pre_diagnostico.oficina */}
+        {dual && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
-            <SubStatus label="Limp."  status={os.limpeza}    T={T} dark={dark} />
-            <SubStatus label="Manut." status={os.manutencao} T={T} dark={dark} />
+            <SubStatus label="Limp."  status={os.pre_diagnostico?.oficina?.limpeza_status}    T={T} dark={dark} />
+            <SubStatus label="Manut." status={os.pre_diagnostico?.oficina?.manutencao_status} T={T} dark={dark} />
           </div>
         )}
 
