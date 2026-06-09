@@ -182,7 +182,8 @@ export default function KanbanCard({
 
         {/* Linha 5: dual status oficina
             tem_limpeza/tem_manutencao: undefined = form nunca aberto (mostra ambos como padrão)
-                                        true/false = definido pelo orçamento ao salvar o Conserto */}
+                                        true/false = definido pelo orçamento ao salvar o Conserto
+            Manut.: status da peça a comprar (vermelho/amarelo) tem prioridade sobre o status do serviço. */}
         {dual && (() => {
           const of = os.pre_diagnostico?.oficina || {}
           // Se as flags ainda não foram salvas (OS nunca tocou no Conserto), mostra as duas
@@ -193,7 +194,7 @@ export default function KanbanCard({
           return (
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
               {mostraLimp  && <SubStatus label="Limp."  status={of.limpeza_status}    T={T} dark={dark} />}
-              {mostraManut && <SubStatus label="Manut." status={of.manutencao_status} T={T} dark={dark} />}
+              {mostraManut && <SubStatus label="Manut." status={os.manutPecaStatus || of.manutencao_status} T={T} dark={dark} />}
             </div>
           )
         })()}

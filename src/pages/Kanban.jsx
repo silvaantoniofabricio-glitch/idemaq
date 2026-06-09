@@ -18,6 +18,7 @@ import {
 } from '../utils/osHelpers'
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
+import { fetchPartesStockPorOS, calcManutPecaStatus } from '../utils/pecasStatus'
 import KanbanColumn from '../components/kanban/KanbanColumn'
 import MentionTextInput from '../components/notas/MentionTextInput'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
@@ -254,6 +255,8 @@ export default function Kanban({ T, dark, user }) {
   // pois useOS só traz a contagem de itens — e useOS é "não mexer").
   const [temLimpeza, setTemLimpeza]     = useState(() => new Set())
   const [temManutencao, setTemManutencao] = useState(() => new Set())
+  // Map os_id → peças do catálogo + estoque (pro chip Manut. ficar vermelho/amarelo)
+  const [pecaPartsMap, setPecaPartsMap] = useState(() => new Map())
   const [modalNova, setModalNova]   = useState(false)
   const [detalhe, setDetalhe]       = useState(null)
   const [menuAberto, setMenuAberto] = useState(null)
@@ -305,6 +308,18 @@ export default function Kanban({ T, dark, user }) {
       }
       setTemLimpeza(limp)
       setTemManutencao(manu)
+    })()
+    return () => { cancel = true }
+  }, [osList.length])
+
+  // Peças do catálogo + estoque, pro chip Manut. (vermelho/amarelo). O status de
+  // compra (amarelo/neutro) recalcula sozinho no re-render via pre_diagnostico;
+  // aqui só precisamos do estoque atual, que muda pouco.
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      const map = await fetchPartesStockPorOS()
+      if (!cancel) setPecaPartsMap(map)
     })()
     return () => { cancel = true }
   }, [osList.length])
@@ -426,7 +441,12 @@ export default function Kanban({ T, dark, user }) {
   etapasVisiveis.forEach(e => porEtapa[e.id] = [])
   osFiltradas.forEach(os => {
     const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
-    if (ec) porEtapa[ec.id].push(os)
+    if (!ec) return
+    // Só a etapa Conserto (oficina) mostra o chip Manut. — calcula a cor da peça.
+    const card = os.etapa === 'oficina'
+      ? { ...os, manutPecaStatus: calcManutPecaStatus(os, pecaPartsMap.get(os.id)) }
+      : os
+    porEtapa[ec.id].push(card)
   })
   Object.keys(porEtapa).forEach(k => { porEtapa[k] = ordenarColuna(k, porEtapa[k]) })
 
