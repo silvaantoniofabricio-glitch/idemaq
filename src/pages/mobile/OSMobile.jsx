@@ -14,7 +14,7 @@ import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
 import { normalizePatchOS } from '../../utils/osPatch'
 import {
-  podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin,
+  podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin, ordenarColuna,
 } from '../../utils/osHelpers'
 import { ETAPAS_TODOS, ZONAS } from '../../utils/osData'
 import { corEtapa, bgEtapa } from '../../utils/colors'
@@ -286,7 +286,10 @@ export default function OSMobile({ T, dark, user }) {
     return ETAPAS_TODOS
       .filter(e => !(e.adminOnly && !admin))
       .filter(e => !etapasZonaSet || etapasZonaSet.has(e.id))
-      .map(e => ({ ...e, cards: porEtapa[e.id] || [], count: (porEtapa[e.id] || []).length }))
+      .map(e => {
+        const cards = ordenarColuna(e.id, porEtapa[e.id] || [])
+        return { ...e, cards, count: cards.length }
+      })
   }, [osFiltradas, admin, filtros.zona])
 
   const abasDisponiveis = useMemo(() => colunas.filter(c => c.count > 0), [colunas])
