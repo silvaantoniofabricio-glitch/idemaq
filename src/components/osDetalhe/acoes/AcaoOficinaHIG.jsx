@@ -365,12 +365,6 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
     [itens]
   )
-  // Manutencao é ativada se o orçamento tem item de manutenção OU peças.
-  const temManutencao = useMemo(
-    () => (itens || []).some(it => /manuten/i.test(it.nome || '') || it.tipo === 'peca'),
-    [itens]
-  )
-
   // Componentes do diagnóstico — SÓ informativo (resumo). Não é o checklist.
   const diagComponentes = useMemo(() => {
     const marcados = os?.pre_diagnostico?.componentes_marcados || {}
@@ -396,13 +390,36 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     return out
   }, [os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho])
 
-  // Checklist da manutenção = PEÇAS do orçamento (são as que dependem do estoque).
-  // Cada peça vira um item pra marcar quando instalada, com selo de estoque:
-  //   🔴 Falta · 🟡 Comprada · 🟢 Em estoque.
+  // Checklist da manutenção = combinação de duas fontes:
+  //   1) Componentes do diagnóstico marcados como MANUTENÇÃO → mão de obra, sem
+  //      peça no orçamento. O check vem do próprio componente.
+  //   2) PEÇAS do orçamento (vêm dos componentes marcados como TROCA) → com selo
+  //      de estoque (🔴 Falta · 🟡 Comprada · 🟢 Em estoque).
   const compraPecas = os?.pre_diagnostico?.compra_pecas || {}
-  const manutChecks = useMemo(() => (itens || [])
-    .filter(it => it.tipo === 'peca')
-    .map(it => {
+  const manutChecks = useMemo(() => {
+    const out = []
+
+    // 1) Componentes "manutenção" (sem peça — serviço embutido na mão de obra)
+    const marcados = os?.pre_diagnostico?.componentes_marcados || {}
+    for (const [, items] of Object.entries(marcados)) {
+      if (!items || typeof items !== 'object') continue
+      const pares = Array.isArray(items)
+        ? items.map(id => [id, 'troca'])
+        : Object.entries(items)
+      for (const [itemId, acao] of pares) {
+        if (acao !== 'manutencao') continue // 'troca' vira peça no orçamento (abaixo)
+        const cat = CATEGORIA_POR_ID[itemId]
+        out.push({
+          id: `manut:${itemId}`,
+          label: cat?.label || itemId,
+          badge: { label: 'Manut.', cor: amarelo },
+        })
+      }
+    }
+
+    // 2) Peças do orçamento (troca) — com selo de estoque
+    for (const it of (itens || [])) {
+      if (it.tipo !== 'peca') continue
       const qtd = Number(it.qtd) || 1
       const compraSt = compraPecas[it.id]?.status
       const qtdAtual = it.peca_id ? stockMap[it.peca_id] : undefined
@@ -411,14 +428,20 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
       else if (compraSt === 'entregue')  badge = { label: 'Em estoque', cor: verde }
       else if (qtdAtual != null && qtdAtual <= 0) badge = { label: 'Falta',      cor: vermelho }
       else if (qtdAtual != null && qtdAtual > 0)  badge = { label: 'Em estoque', cor: verde }
-      // peça avulsa (sem vínculo de catálogo) fica sem selo de estoque
-      return {
+      out.push({
         id: it.id,
         label: qtd > 1 ? `${it.nome} · ${qtd}x` : it.nome,
         badge,
-      }
-    }),
-    [itens, stockMap, compraPecas, amarelo, vermelho, verde]
+      })
+    }
+
+    return out
+  }, [itens, stockMap, compraPecas, os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho, verde])
+
+  // Manutenção ativa quando há itens de manutenção (peças/componentes) OU serviço.
+  const temManutencao = useMemo(
+    () => manutChecks.length > 0 || (itens || []).some(it => /manuten/i.test(it.nome || '')),
+    [manutChecks, itens]
   )
 
   const oficinaJsonb = os?.pre_diagnostico?.oficina || {}
