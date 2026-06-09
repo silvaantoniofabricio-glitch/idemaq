@@ -115,9 +115,14 @@ export function ordenarColuna(etapaId, lista) {
     case 'recebido':
     case 'diagnostico':
     case 'orcamento':
-      return arr.sort((a, b) => (b.horasNaEtapa || 0) - (a.horasNaEtapa || 0) || new Date(a.prazo) - new Date(b.prazo))
     case 'oficina':
     case 'teste_final':
+      // Mais dias aberto aparece primeiro: base = entrada em 'recebido' ou abertura
+      return arr.sort((a, b) => {
+        const baseA = (a.historico || []).find(h => h.etapa === 'recebido')?.data || a.abertura
+        const baseB = (b.historico || []).find(h => h.etapa === 'recebido')?.data || b.abertura
+        return new Date(baseA) - new Date(baseB)
+      })
     case 'entrega':
     case 'entregue':
       return arr.sort((a, b) => new Date(a.prazo) - new Date(b.prazo))
