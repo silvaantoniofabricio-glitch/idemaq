@@ -393,6 +393,7 @@ export default function LancamentoDetalheModal({
           pendente={pendente}
           tipo={tipo}
           valor={lancamento.valor}
+          formaInicial={lancamento.forma_enum}
           acaoLabel={cfg.acaoLabel}
           acaoIcon={cfg.acaoIcon}
           corDestaque={pendente === 'excluir' ? vermelho : cfg.cor}
@@ -446,7 +447,7 @@ export default function LancamentoDetalheModal({
 // Aparece quando o usuário clica em Baixar/Pagar ou Excluir — força o passo
 // de "Tem certeza?" pra evitar conclusão acidental por click errado.
 function ConfirmacaoFooter({
-  T, dark, pendente, tipo, valor, acaoLabel, acaoIcon,
+  T, dark, pendente, tipo, valor, formaInicial, acaoLabel, acaoIcon,
   corDestaque, bgDestaque, onVoltar, onConfirmar,
 }) {
   const ehExcluir = pendente === 'excluir'
@@ -456,6 +457,11 @@ function ConfirmacaoFooter({
   const [valorRecebidoStr, setValorRecebidoStr] = useState(
     Number(valor || 0).toFixed(2).replace('.', ',')
   )
+  // Data do recebimento/pagamento — pré-preenchida com hoje, editável.
+  const hojeISO = new Date().toISOString().slice(0, 10)
+  const [pagoEm, setPagoEm] = useState(hojeISO)
+  // Forma de pagamento — default = a do lançamento, ou PIX.
+  const [formaPag, setFormaPag] = useState(formaInicial || 'pix')
   const valorRecebido = Number(String(valorRecebidoStr).replace(',', '.')) || 0
   const ehParcial = !ehExcluir && valorRecebido > 0 && valorRecebido < Number(valor || 0)
   const restante = Math.max(0, Number(valor || 0) - valorRecebido)
@@ -526,6 +532,45 @@ function ConfirmacaoFooter({
         </div>
       )}
 
+      {/* Data do recebimento/pagamento + forma — só na baixa (não na exclusão) */}
+      {!ehExcluir && (
+        <div style={{
+          padding: '4px 20px 8px 48px',
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        }}>
+          <label style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>
+            {tipo === 'receber' ? 'Data do recebimento' : 'Data do pagamento'}
+          </label>
+          <input
+            type="date"
+            value={pagoEm}
+            onChange={e => setPagoEm(e.target.value || hojeISO)}
+            style={{
+              background: T.card, border: `1px solid ${T.border}`,
+              borderRadius: 6, padding: '5px 8px',
+              color: T.textPrimary, fontSize: 13, fontWeight: 600,
+              fontVariantNumeric: 'tabular-nums',
+              colorScheme: dark ? 'dark' : 'light',
+            }}
+          />
+          <label style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600, marginLeft: 4 }}>
+            Forma
+          </label>
+          <select
+            value={formaPag}
+            onChange={e => setFormaPag(e.target.value)}
+            style={{
+              background: T.card, border: `1px solid ${T.border}`,
+              borderRadius: 6, padding: '5px 8px',
+              color: T.textPrimary, fontSize: 13, fontWeight: 600,
+              fontFamily: 'inherit',
+            }}
+          >
+            {FORMAS_EDIT.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        </div>
+      )}
+
       <div style={{
         padding: '10px 20px 12px',
         display: 'flex', justifyContent: 'flex-end', gap: 8,
@@ -540,7 +585,7 @@ function ConfirmacaoFooter({
           size="sm"
           iconLeft={ehExcluir ? 'ti-trash' : (acaoIcon || 'ti-check')}
           disabled={!ehExcluir && valorRecebido <= 0}
-          onClick={() => onConfirmar(ehExcluir ? undefined : { valorRecebido })}>
+          onClick={() => onConfirmar(ehExcluir ? undefined : { valorRecebido, pago_em: pagoEm, forma_pagamento: formaPag })}>
           {ehExcluir
             ? 'Sim, excluir'
             : ehParcial

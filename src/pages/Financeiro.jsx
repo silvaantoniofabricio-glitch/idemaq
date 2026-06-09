@@ -300,8 +300,8 @@ export default function Financeiro({ T, dark }) {
           categoria: item.categoria || null,
           descricao: `${item.descricao || ''} (parcial)`.trim(),
           vencimento: item.vencimentoIso || item.vencimento || new Date().toISOString().slice(0,10),
-          pago_em: new Date().toISOString().slice(0,10),
-          forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+          pago_em: opts.pago_em || new Date().toISOString().slice(0,10),
+          forma_pagamento: opts.forma_pagamento || item.forma_enum || mapearFormaUIparaEnum(item.forma),
           taxa_pct: item.taxa_pct || 0,
           os_id: item.os_id || null,
         })
@@ -312,7 +312,8 @@ export default function Financeiro({ T, dark }) {
       }
 
       const { error } = await darBaixa(item.id, {
-        forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+        pago_em: opts.pago_em || undefined,
+        forma_pagamento: opts.forma_pagamento || item.forma_enum || mapearFormaUIparaEnum(item.forma),
         taxa_pct: item.taxa_pct || 0,
       })
       if (error) { notify('erro', `Não foi possível baixar: ${error.message}`); return }
@@ -352,8 +353,8 @@ export default function Financeiro({ T, dark }) {
           categoria: item.categoria || null,
           descricao: `${item.descricao || ''} (parcial)`.trim(),
           vencimento: item.vencimentoIso || item.vencimento || new Date().toISOString().slice(0,10),
-          pago_em: new Date().toISOString().slice(0,10),
-          forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+          pago_em: opts.pago_em || new Date().toISOString().slice(0,10),
+          forma_pagamento: opts.forma_pagamento || item.forma_enum || mapearFormaUIparaEnum(item.forma),
           taxa_pct: item.taxa_pct || 0,
           os_id: item.os_id || null,
         })
@@ -364,7 +365,8 @@ export default function Financeiro({ T, dark }) {
       }
 
       const { error } = await darBaixa(item.id, {
-        forma_pagamento: item.forma_enum || mapearFormaUIparaEnum(item.forma),
+        pago_em: opts.pago_em || undefined,
+        forma_pagamento: opts.forma_pagamento || item.forma_enum || mapearFormaUIparaEnum(item.forma),
         taxa_pct: item.taxa_pct || 0,
       })
       if (error) { notify('erro', `Não foi possível pagar: ${error.message}`); return }
@@ -508,9 +510,9 @@ export default function Financeiro({ T, dark }) {
           lancamento={selecionado.item} tipo={selecionado.tipo}
           contas={contasReais}
           onClose={() => setSelecionado(null)}
-          onBaixar={(item) => {
-            if (selecionado.tipo === 'receber') baixarReceber(item)
-            else if (selecionado.tipo === 'pagar') baixarPagar(item)
+          onBaixar={(item, opts) => {
+            if (selecionado.tipo === 'receber') baixarReceber(item, opts || {})
+            else if (selecionado.tipo === 'pagar') baixarPagar(item, opts || {})
           }}
           onSalvarEdicao={async (id, patch) => {
             const res = await atualizarLanc(id, patch)
