@@ -180,13 +180,23 @@ export default function KanbanCard({
           }}>{endResumido}</div>
         )}
 
-        {/* Linha 5: dual status oficina — só aparece se tiver ao menos 1 valor */}
-        {dual && (os.limpeza || os.manutencao) && (
-          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
-            <SubStatus label="Limp."  status={os.limpeza}    T={T} dark={dark} />
-            <SubStatus label="Manut." status={os.manutencao} T={T} dark={dark} />
-          </div>
-        )}
+        {/* Linha 5: dual status oficina
+            tem_limpeza/tem_manutencao: undefined = form nunca aberto (mostra ambos como padrão)
+                                        true/false = definido pelo orçamento ao salvar o Conserto */}
+        {dual && (() => {
+          const of = os.pre_diagnostico?.oficina || {}
+          // Se as flags ainda não foram salvas (OS nunca tocou no Conserto), mostra as duas
+          const semFlags = of.tem_limpeza === undefined && of.tem_manutencao === undefined
+          const mostraLimp  = semFlags || of.tem_limpeza
+          const mostraManut = semFlags || of.tem_manutencao
+          if (!mostraLimp && !mostraManut) return null
+          return (
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
+              {mostraLimp  && <SubStatus label="Limp."  status={of.limpeza_status}    T={T} dark={dark} />}
+              {mostraManut && <SubStatus label="Manut." status={of.manutencao_status} T={T} dark={dark} />}
+            </div>
+          )
+        })()}
 
         {/* Linha 6: tags */}
         {temTags && (
