@@ -3,7 +3,7 @@
 // Layout: page header (título + stats + botão criar) → zone tabs + filtros → board.
 // Toda lógica de negócio mantida; só UI reconstruída do zero.
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../supabase'
 import { useOS, uiEtapaToDb } from '../hooks/useOS'
 import { duplicarOS } from '../utils/osDerivada'
