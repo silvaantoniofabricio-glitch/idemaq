@@ -210,11 +210,9 @@ export default function NovaOSMobile({
       onClick={tryClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 250,
-        background: 'rgba(9,30,66,0.5)',
+        background: 'rgba(0,0,0,0.6)',
         backdropFilter: 'blur(2px)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        // paddingTop garante que o grab handle nunca fique atrás da barra do navegador
-        paddingTop: 'max(env(safe-area-inset-top, 0px), 52px)',
+        display: 'flex', alignItems: 'stretch', justifyContent: 'center',
         opacity: montado ? 1 : 0,
         transition: 'opacity .18s ease-out',
       }}
@@ -223,14 +221,16 @@ export default function NovaOSMobile({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxHeight: 'calc(100dvh - max(env(safe-area-inset-top, 0px), 52px))',
-          background: T.card,
-          borderRadius: '8px 8px 0 0',
+          height: '100dvh', maxHeight: '100dvh', minHeight: '100dvh',
+          background: T.bg,
+          borderRadius: 0,
+          border: 'none',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
-          boxShadow: '0 -8px 32px rgba(9,30,66,0.35)',
-          transform: montado ? `translateY(${dragY}px)` : 'translateY(100%)',
-          transition: sheetDragRef.current?.active ? 'none' : 'transform .24s cubic-bezier(.2,.8,.2,1)',
+          boxShadow: 'none',
+          animation: 'idemaq-novaos-slide-up .22s cubic-bezier(.2,.7,.2,1)',
+          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+          transition: sheetDragRef.current?.active ? 'none' : 'transform .18s ease-out',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
@@ -301,6 +301,7 @@ export default function NovaOSMobile({
       <style>{`
         @keyframes idemaq-novaos-spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }
         @keyframes idemaq-novaos-fade-up { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: translateY(0) } }
+        @keyframes idemaq-novaos-slide-up { from { transform: translateY(100%) } to { transform: translateY(0) } }
         .idemaq-novaos-input::placeholder { color: ${T.textDim}; }
         .idemaq-novaos-input:focus { border-color: ${corEtapa('blue', dark)}; box-shadow: 0 0 0 3px ${corEtapa('blue', dark)}22; }
       `}</style>
