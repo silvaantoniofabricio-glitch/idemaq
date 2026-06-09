@@ -89,6 +89,36 @@ export default function NovaOSMobile({
   const okObg = obrigatorios.filter(o => o.ok).length
   const podeSalvar = okObg === totalObg && !salvando
 
+  // ─── Swipe-to-close ─────────────────────────────────────────────────────
+  const sheetDragRef = useRef(null)
+  const [dragY, setDragY] = useState(0)
+
+  function onSheetDragStart(e) {
+    const t = e.touches?.[0]
+    if (!t) return
+    sheetDragRef.current = { y0: t.clientY, active: true }
+  }
+  function onSheetDragMove(e) {
+    if (!sheetDragRef.current?.active) return
+    const t = e.touches?.[0]
+    if (!t) return
+    const dy = Math.max(0, t.clientY - sheetDragRef.current.y0)
+    setDragY(dy)
+  }
+  function onSheetDragEnd() {
+    if (!sheetDragRef.current?.active) return
+    const dy = dragY
+    sheetDragRef.current = null
+    if (dy > 100) {
+      // Anima a queda e fecha (sem confirmar — arrastar = intenção clara)
+      setDragY(window.innerHeight)
+      setMontado(false)
+      setTimeout(onClose, 200)
+    } else {
+      setDragY(0)
+    }
+  }
+
   // ─── Animação de entrada ─────────────────────────────────────────────────
   const [montado, setMontado] = useState(false)
   useEffect(() => {
@@ -197,16 +227,24 @@ export default function NovaOSMobile({
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
           boxShadow: '0 -8px 32px rgba(9,30,66,0.35)',
-          transform: montado ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform .24s cubic-bezier(.2,.8,.2,1)',
+          transform: montado ? `translateY(${dragY}px)` : 'translateY(100%)',
+          transition: sheetDragRef.current?.active ? 'none' : 'transform .24s cubic-bezier(.2,.8,.2,1)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        {/* Drag handle visual */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 4px' }}>
+        {/* Drag handle — toca aqui pra arrastar pra baixo e fechar */}
+        <div
+          onTouchStart={onSheetDragStart}
+          onTouchMove={onSheetDragMove}
+          onTouchEnd={onSheetDragEnd}
+          onTouchCancel={onSheetDragEnd}
+          style={{
+            display: 'flex', justifyContent: 'center', padding: '10px 0 5px',
+            touchAction: 'none', cursor: 'grab',
+          }}>
           <div style={{
-            width: 36, height: 3, borderRadius: 2,
-            background: dark ? 'rgba(255,255,255,0.15)' : '#DFE1E6',
+            width: 36, height: 4, borderRadius: 2,
+            background: dark ? 'rgba(255,255,255,0.18)' : '#DFE1E6',
           }} />
         </div>
 

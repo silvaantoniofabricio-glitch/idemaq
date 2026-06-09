@@ -2,7 +2,7 @@
 // Modal base — Atlassian Design.
 // overlay rgba(9,30,66,0.5) + container border 1 + radius 4 + shadow.
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 export default function Modal({
   T, dark,
@@ -13,6 +13,8 @@ export default function Modal({
   closeOnOverlay = true,
 }) {
   const mouseDownOnBackdrop = useRef(false)
+  const mobileDragRef = useRef(null)
+  const [mobileDragY, setMobileDragY] = useState(0)
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose?.() }
@@ -24,6 +26,31 @@ export default function Modal({
       document.body.style.overflow = prev
     }
   }, [onClose])
+
+  // Swipe-to-close handlers (mobile only)
+  function onMobileDragStart(e) {
+    const t = e.touches?.[0]
+    if (!t) return
+    mobileDragRef.current = { y0: t.clientY, active: true }
+  }
+  function onMobileDragMove(e) {
+    if (!mobileDragRef.current?.active) return
+    const t = e.touches?.[0]
+    if (!t) return
+    const dy = Math.max(0, t.clientY - mobileDragRef.current.y0)
+    setMobileDragY(dy)
+  }
+  function onMobileDragEnd() {
+    if (!mobileDragRef.current?.active) return
+    const dy = mobileDragY
+    mobileDragRef.current = null
+    if (dy > 100) {
+      setMobileDragY(window.innerHeight)
+      setTimeout(() => onClose?.(), 200)
+    } else {
+      setMobileDragY(0)
+    }
+  }
 
   return (
     <div
@@ -59,9 +86,32 @@ export default function Modal({
             : '0 12px 32px rgba(9,30,66,0.25)',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
-          animation: 'idemaq-modal-in .2s ease-out',
+          animation: mobile ? undefined : 'idemaq-modal-in .2s ease-out',
+          transform: mobile ? `translateY(${mobileDragY}px)` : undefined,
+          transition: mobile
+            ? (mobileDragRef.current?.active ? 'none' : 'transform .22s cubic-bezier(.2,.8,.2,1)')
+            : undefined,
         }}
       >
+        {/* Grab handle — só mobile */}
+        {mobile && (
+          <div
+            onTouchStart={onMobileDragStart}
+            onTouchMove={onMobileDragMove}
+            onTouchEnd={onMobileDragEnd}
+            onTouchCancel={onMobileDragEnd}
+            style={{
+              display: 'flex', justifyContent: 'center',
+              padding: '10px 0 5px', touchAction: 'none',
+              cursor: 'grab', flexShrink: 0,
+            }}
+          >
+            <div style={{
+              width: 36, height: 4, borderRadius: 2,
+              background: dark ? 'rgba(255,255,255,0.18)' : '#DFE1E6',
+            }} />
+          </div>
+        )}
         {children}
       </div>
 
