@@ -227,6 +227,12 @@ export default function Kanban({ T, dark, user }) {
   const [statusF, setStatusF]       = useState('todos')
   const [verRecusados, setVerRecusados] = useState(true)
   const [verAgPeca, setVerAgPeca]   = useState(false)
+  const [verLimpeza, setVerLimpeza] = useState(false)
+  const [verManutencao, setVerManutencao] = useState(false)
+  // Conjuntos de os_id que têm serviço de limpeza / manutenção (1 query separada,
+  // pois useOS só traz a contagem de itens — e useOS é "não mexer").
+  const [temLimpeza, setTemLimpeza]     = useState(() => new Set())
+  const [temManutencao, setTemManutencao] = useState(() => new Set())
   const [modalNova, setModalNova]   = useState(false)
   const [detalhe, setDetalhe]       = useState(null)
   const [menuAberto, setMenuAberto] = useState(null)
@@ -258,6 +264,29 @@ export default function Kanban({ T, dark, user }) {
   // ── Dados ────────────────────────────────────────────────────────────────────
   const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch, updateOS: updateOSHook } = useOS(buscaAtiva)
   const { usuarios } = useUsuarios()
+
+  // Busca os serviços (1 query) e monta os conjuntos de OS com limpeza/manutenção.
+  // Refaz quando a quantidade de OS muda (criou/excluiu OS).
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('os_item')
+        .select('os_id, nome')
+        .eq('categoria', 'servico')
+        .is('deleted_at', null)
+      if (cancel || error || !data) return
+      const limp = new Set(), manu = new Set()
+      for (const it of data) {
+        const n = (it.nome || '').toLowerCase()
+        if (n.includes('limpez')) limp.add(it.os_id)
+        if (n.includes('manuten')) manu.add(it.os_id)
+      }
+      setTemLimpeza(limp)
+      setTemManutencao(manu)
+    })()
+    return () => { cancel = true }
+  }, [osList.length])
 
   // ── Drag & drop ──────────────────────────────────────────────────────────────
   const [arrastando, setArrastando]   = useState(null)
@@ -353,6 +382,8 @@ export default function Kanban({ T, dark, user }) {
     .filter(o => buscando ? true : !o.oculta_no_kanban)
     .filter(o => verRecusados ? true : o.etapa !== 'recusado')
     .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
+    .filter(o => !verLimpeza ? true : temLimpeza.has(o.id))
+    .filter(o => !verManutencao ? true : temManutencao.has(o.id))
     .filter(o => {
       if (statusF === 'todos') return true
       const s = calcStatusPrazo(o.prazo, o.etapa)
@@ -381,6 +412,8 @@ export default function Kanban({ T, dark, user }) {
   const totalKanban    = Object.values(porEtapa).reduce((s, a) => s + a.length, 0)
   const totalRecusados = todasUniverso.filter(o => o.etapa === 'recusado').length
   const totalAgPeca    = todasUniverso.filter(o => !!o.aguardando_peca).length
+  const totalLimpeza   = todasUniverso.filter(o => temLimpeza.has(o.id)).length
+  const totalManutencao = todasUniverso.filter(o => temManutencao.has(o.id)).length
   const totVencidas    = todasUniverso.filter(o => calcStatusPrazo(o.prazo, o.etapa) === 'vencido').length
   const totGarantia    = todasUniverso.filter(o => !!o.garantia).length
 
@@ -612,6 +645,26 @@ export default function Kanban({ T, dark, user }) {
                 label={`Peça${totalAgPeca > 0 ? ` (${totalAgPeca})` : ''}`}
                 title={verAgPeca ? 'Ocultar filtro peça' : 'Só OS aguardando peça'}
                 onClick={() => setVerAgPeca(v => !v)}
+                T={T} dark={dark} azul={azul} azulBg={azulBg}
+              />
+
+              {/* Toggle Limpeza */}
+              <ToggleChip
+                ativo={verLimpeza}
+                icon="ti-bubble"
+                label={`Limpeza${totalLimpeza > 0 ? ` (${totalLimpeza})` : ''}`}
+                title={verLimpeza ? 'Ocultar filtro limpeza' : 'Só OS com serviço de limpeza'}
+                onClick={() => setVerLimpeza(v => !v)}
+                T={T} dark={dark} azul={azul} azulBg={azulBg}
+              />
+
+              {/* Toggle Manutenção */}
+              <ToggleChip
+                ativo={verManutencao}
+                icon="ti-tool"
+                label={`Manutenção${totalManutencao > 0 ? ` (${totalManutencao})` : ''}`}
+                title={verManutencao ? 'Ocultar filtro manutenção' : 'Só OS com serviço de manutenção'}
+                onClick={() => setVerManutencao(v => !v)}
                 T={T} dark={dark} azul={azul} azulBg={azulBg}
               />
 
