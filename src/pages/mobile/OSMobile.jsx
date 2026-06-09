@@ -99,12 +99,13 @@ function NotasDoDiaMobile({ T, dark, onClose }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.45)' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)' }} />
       <div style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 71,
-        background: T.card, borderRadius: '16px 16px 0 0',
-        boxShadow: '0 -8px 32px rgba(0,0,0,0.35)',
-        display: 'flex', flexDirection: 'column', maxHeight: '72vh',
+        position: 'fixed', inset: 0, zIndex: 201,
+        background: T.card, borderRadius: 0,
+        boxShadow: 'none',
+        display: 'flex', flexDirection: 'column',
+        height: '100dvh', maxHeight: '100dvh',
       }}>
         {/* Handle */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
@@ -122,7 +123,7 @@ function NotasDoDiaMobile({ T, dark, onClose }) {
           </button>
         </div>
         {/* Lista */}
-        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0 4px' }}>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0 calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
           {linhas.map((linha, idx) => {
             const isTarefa = linha.startsWith('☐ ') || linha.startsWith('✓ ')
             const checked  = linha.startsWith('✓ ')
