@@ -195,9 +195,9 @@ function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
 
       {/* CTAs */}
       <div style={{ display: 'flex', gap: 8 }}>
-        {reagendando && onCancelar && (
+        {onCancelar && (
           <AtlButton T={T} dark={dark} variant="default" onClick={onCancelar}>
-            Cancelar
+            {reagendando ? 'Cancelar' : 'Voltar'}
           </AtlButton>
         )}
         <div style={{ flex: 1 }}>
@@ -362,38 +362,50 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
       gap: 12, fontFamily: ATL_FONT, padding: '0 0 12px',
     }}>
 
-      {/* 1. Countdown */}
-      <AtlPanel T={T} dark={dark} title="Entrega agendada" accent={azul}>
-        <div style={{ padding: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{
-              fontSize: 36, fontWeight: 700, color: azul,
-              fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.025em',
-              lineHeight: 1, fontFamily: ATL_FONT,
-            }}>{bigLabel}</span>
-            {unitLabel && (
-              <span style={{ fontSize: 14, color: T.textMuted }}>{unitLabel}</span>
-            )}
-          </div>
-          <div style={{
-            fontSize: 12.5, color: T.textMuted, marginTop: 4,
-            letterSpacing: '-0.005em',
-          }}>
-            <strong style={{ color: T.textPrimary, fontWeight: 600 }}>{coletaLabel}</strong>
-          </div>
-          <div style={{
-            height: 4, marginTop: 10,
-            background: dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA',
-            borderRadius: 3, overflow: 'hidden',
-          }}>
+      {/* 1. Countdown (ou aviso de não agendada) */}
+      {alvo ? (
+        <AtlPanel T={T} dark={dark} title="Entrega agendada" accent={azul}>
+          <div style={{ padding: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span style={{
+                fontSize: 36, fontWeight: 700, color: azul,
+                fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.025em',
+                lineHeight: 1, fontFamily: ATL_FONT,
+              }}>{bigLabel}</span>
+              {unitLabel && (
+                <span style={{ fontSize: 14, color: T.textMuted }}>{unitLabel}</span>
+              )}
+            </div>
             <div style={{
-              height: '100%', width: `${pct}%`,
-              background: azul, borderRadius: 3,
-              transition: 'width .3s',
-            }} />
+              fontSize: 12.5, color: T.textMuted, marginTop: 4,
+              letterSpacing: '-0.005em',
+            }}>
+              <strong style={{ color: T.textPrimary, fontWeight: 600 }}>{coletaLabel}</strong>
+            </div>
+            <div style={{
+              height: 4, marginTop: 10,
+              background: dark ? 'rgba(255,255,255,0.08)' : '#E5E5EA',
+              borderRadius: 3, overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%', width: `${pct}%`,
+                background: azul, borderRadius: 3,
+                transition: 'width .3s',
+              }} />
+            </div>
           </div>
-        </div>
-      </AtlPanel>
+        </AtlPanel>
+      ) : (
+        <AtlPanel T={T} dark={dark} title="Entrega" accent={azul}>
+          <AtlListRow T={T} dark={dark}
+            first
+            icon="calendar-plus" iconCor={azul}
+            label="Agendar entrega"
+            subtitle="Opcional — você pode marcar como entregue direto abaixo."
+            onClick={onReagendar}
+          />
+        </AtlPanel>
+      )}
 
       {/* 2. Acoes rapidas */}
       <AtlPanel T={T} dark={dark} title="Ações rápidas">
@@ -472,7 +484,7 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
           variant="default"
           icon="calendar-event"
           onClick={onReagendar}>
-          Reagendar
+          {alvo ? 'Reagendar' : 'Agendar'}
         </AtlButton>
         <div style={{ flex: 1 }}>
           <AtlButton
@@ -604,26 +616,26 @@ function ActionSheetAtl({ T, dark, onClose, actions }) {
 // Dispatcher
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoEntregaHIG({ os, admin, onUpdateOS, onMoverOS }) {
+  // editando = mostrando o form de agendar. Fora disso, mostra sempre a tela
+  // de entrega (com o botão "Entregue" sempre visível). O agendamento é opcional.
   const [editando, setEditando] = useState(false)
-  const dataAgendada = os?.pre_diagnostico?.entrega?.data || null
-  const emFase2 = !!dataAgendada && !editando
 
-  if (emFase2) {
+  if (editando) {
     return (
-      <EntregaAgendada
-        os={os} admin={admin}
+      <FormAgendarEntrega
+        os={os}
         onUpdateOS={onUpdateOS}
-        onMoverOS={onMoverOS}
-        onReagendar={() => setEditando(true)}
+        onCancelar={() => setEditando(false)}
       />
     )
   }
 
   return (
-    <FormAgendarEntrega
-      os={os}
+    <EntregaAgendada
+      os={os} admin={admin}
       onUpdateOS={onUpdateOS}
-      onCancelar={dataAgendada ? () => setEditando(false) : null}
+      onMoverOS={onMoverOS}
+      onReagendar={() => setEditando(true)}
     />
   )
 }
