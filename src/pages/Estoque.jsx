@@ -361,23 +361,37 @@ export default function Estoque({ T, dark, user }) {
 
     const hoje = new Date().toLocaleDateString('pt-BR')
 
-    const rows = emFalta.map((p, i) => {
+    // Monta dados por peça (reutilizado tanto no HTML quanto no texto WPP)
+    const itensMontados = emFalta.map((p, i) => {
       let compat = p.modelos_compativeis
       if (typeof compat === 'string') compat = compat.split(/[,;\n]/).map(s => s.trim()).filter(Boolean)
       else if (!Array.isArray(compat)) compat = []
       const modelos = [p.modelo, ...compat].filter(Boolean).join(', ') || '—'
-      const situacao = Number(p.qtd_atual ?? 0) <= 0 ? 'Esgotado' : 'Baixo'
       const qtdNecessaria = Math.max(1, Number(p.qtd_minima ?? 0) - Number(p.qtd_atual ?? 0))
-      return `
+      return { i: i + 1, nome: p.nome || '', sku: p.sku || '', modelos, qtd: qtdNecessaria }
+    })
+
+    const rows = itensMontados.map(it => `
         <tr>
-          <td>${i + 1}</td>
-          <td><strong>${p.nome || ''}</strong>${p.sku ? `<br><small>SKU: ${p.sku}</small>` : ''}</td>
-          <td>${modelos}</td>
-          <td><span class="${situacao === 'Esgotado' ? 'tag-esc' : 'tag-baixo'}">${situacao}</span></td>
-          <td style="text-align:center">${qtdNecessaria}</td>
+          <td>${it.i}</td>
+          <td><strong>${it.nome}</strong>${it.sku ? `<br><small>SKU: ${it.sku}</small>` : ''}</td>
+          <td>${it.modelos}</td>
+          <td style="text-align:center">${it.qtd}</td>
           <td></td>
-        </tr>`
-    }).join('')
+        </tr>`).join('')
+
+    // Texto para WhatsApp (embutido no HTML como variável JS)
+    const linhasWpp = [
+      `*Pedido de Orcamento - IDEMAQ*`,
+      `Data: ${hoje}`,
+      '',
+      ...itensMontados.map(it =>
+        `${it.i}. ${it.nome}${it.sku ? ` (SKU: ${it.sku})` : ''}\n   Modelo(s): ${it.modelos}\n   Qtd: ${it.qtd}`
+      ),
+      '',
+      'IDEMAQ Assistencia Tecnica - Navirai/MS',
+    ]
+    const wppEscaped = JSON.stringify(linhasWpp.join('\n'))
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -391,13 +405,12 @@ export default function Estoque({ T, dark, user }) {
   h1{font-size:20px;font-weight:700}
   .empresa{font-size:9px;color:#555;margin-top:3px}
   .sub{font-size:11px;color:#666;margin-top:4px}
+  .btns{display:flex;gap:8px;align-items:center}
   table{width:100%;border-collapse:collapse;font-size:11.5px}
   th{background:#1a3a6e;color:#fff;padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700}
   td{padding:7px 10px;border-bottom:1px solid #e0e0e0;vertical-align:middle}
   tr:nth-child(even) td{background:#f7f9fc}
   small{color:#888;font-size:9.5px}
-  .tag-esc{background:#fde8e8;color:#c0392b;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700}
-  .tag-baixo{background:#fff3cd;color:#856404;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700}
   .obs{margin-top:22px;font-size:11px;color:#444}
   .obs-box{width:100%;border:1px solid #ccc;border-radius:4px;padding:6px 8px;font-size:11px;min-height:48px;font-family:inherit;resize:vertical}
   .footer{margin-top:36px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;font-size:11px;color:#444}
@@ -414,12 +427,18 @@ export default function Estoque({ T, dark, user }) {
   <div>
     <h1>Pedido de Orcamento</h1>
     <div class="empresa">IDEMAQ Assistencia Tecnica LTDA &nbsp;·&nbsp; Navirai / MS</div>
-    <div class="sub">Data: ${hoje} &nbsp;·&nbsp; ${emFalta.length} item${emFalta.length !== 1 ? 's' : ''} em falta ou estoque baixo</div>
+    <div class="sub">Data: ${hoje} &nbsp;·&nbsp; ${emFalta.length} item${emFalta.length !== 1 ? 's' : ''}</div>
   </div>
-  <button class="no-print" onclick="window.print()"
-    style="padding:8px 18px;background:#1a3a6e;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600">
-    Imprimir / Salvar PDF
-  </button>
+  <div class="btns no-print">
+    <button onclick="window.print()"
+      style="padding:8px 16px;background:#1a3a6e;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600">
+      Imprimir / Salvar PDF
+    </button>
+    <button onclick="window.location.href='whatsapp://send?text='+encodeURIComponent(${wppEscaped})"
+      style="padding:8px 16px;background:#25a244;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600">
+      Enviar via WhatsApp
+    </button>
+  </div>
 </div>
 <table>
   <thead>
@@ -427,7 +446,6 @@ export default function Estoque({ T, dark, user }) {
       <th style="width:28px">#</th>
       <th>Nome da Peca</th>
       <th>Modelo(s) da Maquina</th>
-      <th style="width:70px">Situacao</th>
       <th style="width:50px;text-align:center">Qtd</th>
       <th>Valor Unit. R$</th>
     </tr>
