@@ -5,7 +5,6 @@ import React from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub } from '../../utils/osHelpers'
-import { fmtPrazoCurto } from '../../utils/fmt'
 import { corEtapa } from '../../utils/colors'
 import SubStatus from './SubStatus'
 
@@ -52,7 +51,7 @@ export default function KanbanCard({
       prazoPillText = 'Amanhã'
     } else if (status === 'ok') {
       prazoPillStyle = { background: 'transparent', color: T.textMuted, padding: '1px 0' }
-      prazoPillText = `${fmtPrazoCurto(os.prazo)} · ${dias}d`
+      prazoPillText = `${dias}d`
     }
   }
 
@@ -118,11 +117,13 @@ export default function KanbanCard({
             const dias = Math.floor((Date.now() - new Date(base).getTime()) / 86400000)
             if (dias < 0) return null
             return (
-              <span style={{
+              <span title="Aberta há" style={{
                 marginLeft: 'auto', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 2,
                 fontSize: 10, color: T.textDim,
                 fontVariantNumeric: 'tabular-nums',
-              }}>{dias}d</span>
+              }}>
+                <i className="ti ti-clock" style={{ fontSize: 10 }} aria-hidden="true" />{dias}d</span>
             )
           })()}
         </div>
@@ -134,7 +135,8 @@ export default function KanbanCard({
             fontVariantNumeric: 'tabular-nums',
             justifySelf: 'end',
             ...prazoPillStyle,
-          }}>{prazoPillText}</span>
+          }}>
+            <i className="ti ti-flag" style={{ fontSize: 10 }} aria-hidden="true" />{prazoPillText}</span>
         ) : <span />}
 
         {/* Linha 2: cliente | valor */}

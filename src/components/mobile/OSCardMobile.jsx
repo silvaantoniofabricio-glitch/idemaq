@@ -9,7 +9,6 @@ import {
   calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar,
   statusServicoSub,
 } from '../../utils/osHelpers'
-import { fmtPrazoCurto } from '../../utils/fmt'
 import { corEtapa } from '../../utils/colors'
 import SubStatus from '../kanban/SubStatus'
 
@@ -49,7 +48,7 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
       prazoPillText = 'Amanhã'
     } else if (status === 'ok') {
       prazoPillCor = T.textMuted
-      prazoPillText = `${fmtPrazoCurto(os.prazo)} · ${dias}d`
+      prazoPillText = `${dias}d`
     }
   }
 
@@ -113,11 +112,13 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             const dias = Math.floor((Date.now() - new Date(base).getTime()) / 86400000)
             if (dias < 0) return null
             return (
-              <span style={{
+              <span title="Aberta há" style={{
                 marginLeft: 'auto', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 2,
                 fontSize: 10, color: T.textDim,
                 fontVariantNumeric: 'tabular-nums',
-              }}>{dias}d</span>
+              }}>
+                <i className="ti ti-clock" style={{ fontSize: 10 }} aria-hidden="true" />{dias}d</span>
             )
           })()}
         </div>
@@ -131,7 +132,8 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             background: status === 'ok' ? 'transparent' : prazoPillCor + '22',
             color: prazoPillCor,
             letterSpacing: '-0.005em',
-          }}>{prazoPillText}</span>
+          }}>
+            <i className="ti ti-flag" style={{ fontSize: 10 }} aria-hidden="true" />{prazoPillText}</span>
         ) : <span />}
 
         {/* Linha 2: cliente | valor */}
