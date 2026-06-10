@@ -1050,6 +1050,22 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsApp }) {
             Aprovado
           </button>
         </div>
+
+        {/* Reenviar a mesma mensagem pro WhatsApp do cliente */}
+        {mensagemWhatsApp && (
+          <button type="button"
+            onClick={() => abrirWhatsAppComTexto(os?.fone, mensagemWhatsApp)}
+            style={{
+              height: 44, borderRadius: 9, cursor: 'pointer',
+              border: `1px solid ${T.border}`, fontFamily: 'inherit',
+              background: 'transparent', color: T.textSecondary,
+              fontSize: 13.5, fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            }}>
+            <i className="ti ti-brand-whatsapp" style={{ fontSize: 16, color: '#25D366' }} aria-hidden="true" />
+            Enviar novamente
+          </button>
+        )}
       </div>
     )
   }
