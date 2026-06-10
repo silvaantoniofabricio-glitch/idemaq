@@ -4,52 +4,10 @@
 import React from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
-import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar } from '../../utils/osHelpers'
+import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub } from '../../utils/osHelpers'
 import { fmtPrazoCurto } from '../../utils/fmt'
 import { corEtapa } from '../../utils/colors'
 import SubStatus from './SubStatus'
-
-// Status do chip Limp./Manut. recalculado a partir dos checks reais — NÃO exige a
-// montagem: o chip reflete o SERVIÇO.
-//   · Limpeza: verde quando "Limpeza feita"; amarelo se só desmontou; cinza se nada.
-//   · Manutenção: verde quando TODOS os checks (peças + componentes) foram dados;
-//     amarelo se parte foi feita (trocou 1, falta outra); cinza se nada.
-//     A contagem vem de oficina.manut_total/manut_feitos (salvos no Conserto).
-// Retorna vocabulário do SubStatus: 'concluido' | 'em_andamento' | 'aguardando'.
-function statusServicoSub(oficina, secao) {
-  const ex = oficina?.execucao || {}
-  const desm = !!ex.desmontagem?.feito
-
-  if (secao === 'limpeza') {
-    if (ex.limpeza_serv?.feito) return 'concluido'
-    if (desm) return 'em_andamento'
-    return 'aguardando'
-  }
-
-  // Manutenção — usa os contadores salvos pelo Conserto (peças + componentes).
-  const total  = oficina?.manut_total
-  const feitos = oficina?.manut_feitos
-  if (typeof total === 'number') {
-    if (total === 0) {
-      // Manutenção de mão de obra: check único "Manutenção feita".
-      if (ex.manut_serv?.feito) return 'concluido'
-      return desm ? 'em_andamento' : 'aguardando'
-    }
-    if (feitos >= total) return 'concluido'   // todas as peças/serviços marcados
-    if (feitos > 0 || desm) return 'em_andamento'
-    return 'aguardando'
-  }
-  // Legado (OS salva antes dos contadores): NÃO usa a montagem (pode estar velha
-  // se uma peça foi adicionada depois). Usa o status guardado, que foi calculado
-  // com a lista de peças correta na época.
-  const st = oficina?.manutencao_status
-  if (st === 'concluido') return 'concluido'
-  if (st === 'pendente')  return 'aguardando'
-  if (st === 'andamento') return 'em_andamento'
-  const algumManut = Object.values(ex.manut_serv || {}).some(Boolean)
-  if (algumManut || desm) return 'em_andamento'
-  return 'aguardando'
-}
 
 export default function KanbanCard({
   os, T, dark,

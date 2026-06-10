@@ -15,6 +15,48 @@ export function estaPagaParcial(os) {
   return os.pago === 'parcial' || ((os.valor_pago || 0) > 0 && (os.valor_pago || 0) < totalAPagar(os))
 }
 
+// Status do chip Limp./Manut. (card do Kanban — desktop e mobile) a partir dos
+// checks reais do Conserto. NÃO exige a montagem: o chip reflete o SERVIÇO.
+//   · Limpeza: verde quando "Limpeza feita"; amarelo se só desmontou; cinza se nada.
+//   · Manutenção: verde quando TODOS os checks (peças + componentes) foram dados;
+//     amarelo se parte foi feita (trocou 1, falta outra); cinza se nada.
+//     A contagem vem de oficina.manut_total/manut_feitos (salvos no Conserto).
+// Retorna vocabulário do SubStatus: 'concluido' | 'em_andamento' | 'aguardando'.
+export function statusServicoSub(oficina, secao) {
+  const ex = oficina?.execucao || {}
+  const desm = !!ex.desmontagem?.feito
+
+  if (secao === 'limpeza') {
+    if (ex.limpeza_serv?.feito) return 'concluido'
+    if (desm) return 'em_andamento'
+    return 'aguardando'
+  }
+
+  // Manutenção — usa os contadores salvos pelo Conserto (peças + componentes).
+  const total  = oficina?.manut_total
+  const feitos = oficina?.manut_feitos
+  if (typeof total === 'number') {
+    if (total === 0) {
+      // Manutenção de mão de obra: check único "Manutenção feita".
+      if (ex.manut_serv?.feito) return 'concluido'
+      return desm ? 'em_andamento' : 'aguardando'
+    }
+    if (feitos >= total) return 'concluido'   // todas as peças/serviços marcados
+    if (feitos > 0 || desm) return 'em_andamento'
+    return 'aguardando'
+  }
+  // Legado (OS salva antes dos contadores): NÃO usa a montagem (pode estar velha
+  // se uma peça foi adicionada depois). Usa o status guardado, que foi calculado
+  // com a lista de peças correta na época.
+  const st = oficina?.manutencao_status
+  if (st === 'concluido') return 'concluido'
+  if (st === 'pendente')  return 'aguardando'
+  if (st === 'andamento') return 'em_andamento'
+  const algumManut = Object.values(ex.manut_serv || {}).some(Boolean)
+  if (algumManut || desm) return 'em_andamento'
+  return 'aguardando'
+}
+
 export function responsavelAtual(os) {
   if (os.historico && os.historico.length > 0) {
     return os.historico[os.historico.length - 1].funcionario
