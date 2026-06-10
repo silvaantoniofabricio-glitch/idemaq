@@ -95,6 +95,8 @@ export default function FormRecebimento({
   T, dark,
   saldo,                 // valor máximo a receber
   onConfirmar,           // ({ valor, forma, modo }) — modo: 'total'|'parcial'|'desconto'
+  onAgendarCobranca,     // (parcelas[]) — opcional; quando passado, "A prazo" vira
+                         // "Agendar cobrança" (cria as parcelas em aberto no A receber)
   onEnviarLink,          // (valor) — opcional, atalho gerar link InfinitePay
   onGerarPix,            // (valor) — opcional, atalho gerar QR PIX
   showAtalhos = true,    // mostra botões "PIX" e "Link" ao lado de confirmar
@@ -181,6 +183,11 @@ export default function FormRecebimento({
   }
 
   // ─── Ações
+  function clickAgendar() {
+    if (forma !== 'aprazo' || !parcelasAPrazoOk) return
+    onAgendarCobranca?.(parcelasAPrazo.map(p => ({ ...p, valor: Number(p.valor) || 0 })))
+  }
+
   function clickConfirmar() {
     if (!formaOk || !valorOk) return
     // A prazo: confirma direto com parcelas no payload, sem dialog parcial
@@ -399,6 +406,7 @@ export default function FormRecebimento({
           onAdd={addParcelaAPrazo}
           onUpdate={updateParcelaAPrazo}
           onRemove={removeParcelaAPrazo}
+          onAgendar={onAgendarCobranca ? clickAgendar : null}
         />
       )}
 
@@ -414,8 +422,12 @@ export default function FormRecebimento({
         </div>
       )}
 
-      {/* Dialog inline pra valor parcial OU botões de confirmar */}
-      {partialDialog ? (
+      {/* A prazo com agendamento: a ação ("Agendar cobrança") fica no painel de
+          parcelas — não mostra o botão "Confirmar" genérico (não é recebimento). */}
+      {forma === 'aprazo' && onAgendarCobranca ? null : (
+
+      /* Dialog inline pra valor parcial OU botões de confirmar */
+      partialDialog ? (
         <PartialDialog
           T={T} dark={dark} cor={cor}
           valor={valor} saldo={saldo}
@@ -475,7 +487,7 @@ export default function FormRecebimento({
             </div>
           )}
         </div>
-      )}
+      ))}
 
     </div>
   )
@@ -528,7 +540,7 @@ function fmtDataPtBr(iso) {
 }
 
 // ─── Painel: agenda de parcelas a prazo ────────────────────────────────────
-function ParcelasAPrazoPanel({ T, dark, valor, parcelas, total, ok, onAdd, onUpdate, onRemove }) {
+function ParcelasAPrazoPanel({ T, dark, valor, parcelas, total, ok, onAdd, onUpdate, onRemove, onAgendar }) {
   const cor = (d, c) => dark ? d : c
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
@@ -628,28 +640,44 @@ function ParcelasAPrazoPanel({ T, dark, valor, parcelas, total, ok, onAdd, onUpd
         adicionar parcela
       </button>
 
-      {/* Validação: soma deve igualar valor */}
-      <div style={{
-        fontSize: 11, color: ok ? verde : amarelo,
-        fontWeight: 600, textAlign: 'center',
-        paddingTop: 4, borderTop: `1px dashed ${T.border}`,
-        fontVariantNumeric: 'tabular-nums',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-      }}>
-        {ok ? (
-          <>
-            <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
-            Total {fmtBRL(total, { fr: true })} — bate com o valor
-          </>
-        ) : (
-          <>
-            <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} aria-hidden="true" />
-            Total {fmtBRL(total, { fr: true })} — {diff > 0
-              ? `falta ${fmtBRL(diff, { fr: true })}`
-              : `${fmtBRL(-diff, { fr: true })} a mais`}
-          </>
-        )}
-      </div>
+      {/* Quando bate o valor e há agendamento: botão "Agendar cobrança".
+          Senão (ou sem onAgendar): mostra a validação da soma. */}
+      {onAgendar && ok ? (
+        <button
+          type="button"
+          onClick={onAgendar}
+          style={{
+            marginTop: 2, padding: '11px 14px', borderRadius: 8, border: 'none',
+            background: verde, color: '#0a0a0d',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+          <i className="ti ti-calendar-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+          Agendar cobrança
+        </button>
+      ) : (
+        <div style={{
+          fontSize: 11, color: ok ? verde : amarelo,
+          fontWeight: 600, textAlign: 'center',
+          paddingTop: 4, borderTop: `1px dashed ${T.border}`,
+          fontVariantNumeric: 'tabular-nums',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+        }}>
+          {ok ? (
+            <>
+              <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
+              Total {fmtBRL(total, { fr: true })} — bate com o valor
+            </>
+          ) : (
+            <>
+              <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} aria-hidden="true" />
+              Total {fmtBRL(total, { fr: true })} — {diff > 0
+                ? `falta ${fmtBRL(diff, { fr: true })}`
+                : `${fmtBRL(-diff, { fr: true })} a mais`}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }

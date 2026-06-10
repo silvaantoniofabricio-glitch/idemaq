@@ -1,5 +1,6 @@
 import React from 'react'
 import { useTheme } from '../../../theme'
+import { useToast } from '../../ui'
 import { TI } from '../../_shared/PrimitivasMobile'
 import { HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT, higType, higFilledButton, higInsetCard } from '../../../theme-hig'
 import { fmtBRL } from '../../../utils/fmt'
@@ -27,6 +28,7 @@ function Sep({ T, indent = 0 }) {
 
 export default function AcaoPagamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
+  const notify = useToast()
 
   const { itens } = useOSItens(os.id)
   const subtotal = itens.reduce((s, i) => s + (i.valor || 0) * (i.qtd || 0), 0)
@@ -73,6 +75,22 @@ export default function AcaoPagamentoHIG({ os, onUpdateOS, onMoverOS }) {
       const concluido = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'concluido')
       if (concluido) onMoverOS(os.numero, concluido.id)
     }
+  }
+
+  function handleAgendar(parcelas) {
+    // Fiado: cria as parcelas EM ABERTO no Financeiro (vencimento = data de cada
+    // uma). NÃO marca como paga nem move de etapa — a OS fica em "A receber" e o
+    // sistema avisa pelos vencimentos. A baixa é feita quando o cliente pagar.
+    const totalParcelas = parcelas.reduce((s, p) => s + (Number(p.valor) || 0), 0)
+    const txt = parcelas.map((p, i) => `${i + 1}ª · ${p.data} · ${fmtBRL(p.valor)}`).join('\n')
+    const novasObs = [os.observacoes, `— Cobrança agendada (${parcelas.length}x) —\n${txt}`].filter(Boolean).join('\n\n')
+    onUpdateOS(os.numero, { valor: subtotal, observacoes: novasObs })
+    persistirLancamentosDoPagamento(os, {
+      valor: totalParcelas, forma: `aprazo_${parcelas.length}x`,
+      taxa_pct: 0, parcelasAPrazo: parcelas, dataPagamento: null,
+    }).then(() => {
+      notify?.('ok', `${parcelas.length} cobrança(s) agendada(s) — já aparecem em "A receber" do Financeiro`)
+    })
   }
 
   function irParaConcluido() {
@@ -142,6 +160,7 @@ export default function AcaoPagamentoHIG({ os, onUpdateOS, onMoverOS }) {
               dark={dark}
               saldo={aPagar}
               onConfirmar={handleConfirmar}
+              onAgendarCobranca={handleAgendar}
               onEnviarLink={() => {}}
               onGerarPix={() => {}}
             />

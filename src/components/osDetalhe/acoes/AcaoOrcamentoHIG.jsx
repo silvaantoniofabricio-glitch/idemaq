@@ -2287,6 +2287,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
+  const notify = useToast()
   const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
   // Bump após gravar uma baixa pra a lista "Recebimentos lançados" recarregar
@@ -2426,6 +2427,23 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
           })
           persistirLancamentosDoPagamento(os, { valor, forma, taxa_pct, parcelasAPrazo: parcelasAPrazo || [], dataPagamento: data_pagamento || null })
             .then(() => setRecebKey(k => k + 1)) // recarrega a lista após o insert
+        }}
+        onAgendarCobranca={(parcelas) => {
+          // Fiado: cria as parcelas EM ABERTO no Financeiro (vencimento = data de
+          // cada parcela). NÃO marca a OS como paga — fica em "A receber" e o
+          // sistema avisa pelos vencimentos. A baixa de cada uma é feita quando
+          // o cliente pagar.
+          const totalParcelas = parcelas.reduce((s, p) => s + (Number(p.valor) || 0), 0)
+          const txt = parcelas.map((p, i) => `${i+1}ª · ${p.data} · ${fmtBRL(p.valor)}`).join('\n')
+          const novasObs = [os?.observacoes, `— Cobrança agendada (${parcelas.length}x) —\n${txt}`].filter(Boolean).join('\n\n')
+          onUpdateOS?.(os.numero, { valor: total, observacoes: novasObs })
+          persistirLancamentosDoPagamento(os, {
+            valor: totalParcelas, forma: `aprazo_${parcelas.length}x`,
+            taxa_pct: 0, parcelasAPrazo: parcelas, dataPagamento: null,
+          }).then(() => {
+            setRecebKey(k => k + 1)
+            notify?.('ok', `${parcelas.length} cobrança(s) agendada(s) — já aparecem em "A receber" do Financeiro`)
+          })
         }}
         onEnviarLink={() => {}}
         onGerarPix={() => {}}
