@@ -845,6 +845,64 @@ function DescontoCampo({ T, dark, label, prefix, suffix, value, onChange, onComm
   )
 }
 
+// ─── Mensagem de orçamento pro WhatsApp ──────────────────────────────────────
+// Texto corrido no estilo do gerador (FERRAMENTAS/gerador_idemaq_v4.html):
+// "{saudação}, {nome}! a máquina está com {defeito}. A troca de {peças} com
+//  mão de obra fica em R$ {total} no total. Posso seguir com o conserto?"
+function primeiroNome(nome) {
+  return (nome || '').trim().split(/\s+/)[0] || ''
+}
+function saudacaoAgora() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Bom dia'
+  if (h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+function minuscInicial(s) {
+  const t = (s || '').trim()
+  return t ? t.charAt(0).toLowerCase() + t.slice(1) : ''
+}
+// Valor sem ",00" quando inteiro (igual o gerador, que mostra "R$ 280").
+function fmtValorMsg(v) {
+  const n = Number(v) || 0
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',')
+}
+function montarMensagemOrcamento({ os, porTipo, total }) {
+  if (!(total > 0)) return null  // sem orçamento fechado, nada pra enviar
+
+  const nome = primeiroNome(os?.cliente)
+  const saud = saudacaoAgora()
+  const abertura = nome ? `${saud}, ${nome}! ` : `${saud}! `
+
+  // Diagnóstico: causa do técnico > relato do cliente.
+  const diag = minuscInicial(os?.pre_diagnostico?.causa_diagnostico || os?.defeito || '')
+  const fraseDiag = diag ? `a máquina está com ${diag}. ` : ''
+
+  // Peças trocadas → lista natural ("rolamento e eletrobomba").
+  const pecas = (porTipo?.peca || []).map(p => (p?.nome || '').trim()).filter(Boolean)
+  let fraseValor
+  if (pecas.length > 0) {
+    const lista = pecas.length === 1
+      ? pecas[0]
+      : pecas.slice(0, -1).join(', ') + ' e ' + pecas[pecas.length - 1]
+    fraseValor = `A troca de ${lista} com mão de obra fica em R$ ${fmtValorMsg(total)} no total. `
+  } else {
+    fraseValor = `O serviço fica em R$ ${fmtValorMsg(total)} no total. `
+  }
+
+  return `${abertura}${fraseDiag}${fraseValor}Posso seguir com o conserto?`
+}
+
+// Abre o WhatsApp do cliente com a mensagem pré-preenchida. Mesma lógica de
+// número do Header (prefixa 55 se não tiver). Retorna false se não há telefone.
+function abrirWhatsAppComTexto(fone, texto) {
+  const digits = (fone || '').replace(/\D/g, '')
+  if (!digits) return false
+  const numero = digits.startsWith('55') ? digits : '55' + digits
+  window.location.href = `whatsapp://send?phone=${numero}&text=${encodeURIComponent(texto)}`
+  return true
+}
+
 // ─── Status do orçamento ─────────────────────────────────────────────────────
 const STATUS_META = {
   idle:       { label: 'Enviar orçamento ao cliente', icon: 'ti-send',      variant: 'dashed' },
@@ -853,7 +911,7 @@ const STATUS_META = {
   recusado:   { label: 'Orçamento recusado',          icon: 'ti-circle-x',  variant: 'rejected' },
 }
 
-function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
+function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsApp }) {
   // Persistido em pre_diagnostico.orcamento_status (coluna nova nao existe
   // no banco — usar jsonb que ja persiste).
   const statusSalvo = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle'
@@ -881,6 +939,8 @@ function BotaoStatus({ os, onUpdateOS, onMoverOS, T, dark }) {
 
   function avancar() {
     if (status === 'idle') {
+      // Abre o WhatsApp do cliente com o orçamento pronto e marca aguardando.
+      if (mensagemWhatsApp) abrirWhatsAppComTexto(os?.fone, mensagemWhatsApp)
       setStatus('aguardando')
       persistirStatus('aguardando')
     } else if (status === 'aguardando') {
@@ -1196,6 +1256,12 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
 
   const total = Math.max(0, subtotalBruto - descontoRS)
 
+  // Mensagem pré-pronta pro WhatsApp do cliente (texto corrido estilo gerador).
+  const mensagemOrcamento = useMemo(
+    () => montarMensagemOrcamento({ os, porTipo, total }),
+    [os?.cliente, os?.fone, os?.defeito, os?.pre_diagnostico, porTipo, total]
+  )
+
   function aplicarDescontoRS(rs) {
     const v = Math.max(0, Math.min(subtotalBruto, Number(rs) || 0))
     setDescontoRS(v)
@@ -1301,7 +1367,8 @@ export default function AcaoOrcamento({ T, dark, os, onUpdateOS, onMoverOS, onAb
       />
 
       {/* Status do orçamento */}
-      <BotaoStatus T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
+      <BotaoStatus T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS}
+        mensagemWhatsApp={mensagemOrcamento} />
 
       {/* Recebimento */}
       <FormRecebimento
