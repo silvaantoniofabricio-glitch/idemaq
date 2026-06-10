@@ -362,8 +362,9 @@ export default function Kanban({ T, dark, user }) {
       const dbEtapa = uiEtapaToDb(os.tipo, etapaFinal)
       const patch = { etapa: dbEtapa }
       if (etapaFinal === 'concluido' || etapaFinal === 'recusado') patch.data_conclusao = new Date().toISOString()
-      else if (os.etapa === 'concluido') patch.data_conclusao = null
+      else if (os.etapa === 'concluido' || os.etapa === 'recusado') patch.data_conclusao = null
       if (etapaFinal === 'recusado') patch.recusada = true
+      else if (os.etapa === 'recusado') patch.recusada = false
       const { error } = await supabase.from('os').update(patch).eq('id', os.id)
       if (error) throw error
     } catch { setOsList(osPrev); notify('erro', 'Erro ao mover OS — revertido') }

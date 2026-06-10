@@ -21,6 +21,16 @@ export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
     if (entrega) onMoverOS(os.numero, entrega.id)
   }
 
+  // Recusou sem querer → volta a OS pro Orçamento e reabre a decisão
+  // (status "Aguardando resposta", limpa o flag recusada via moverOS).
+  function reabrirOrcamento() {
+    onUpdateOS(os.numero, {
+      pre_diagnostico: { ...(os.pre_diagnostico || {}), orcamento_status: 'aguardando' },
+    })
+    onMoverOS(os.numero, 'orcamento')
+    notify('ok', `OS #${os.numero} reaberta no Orçamento`)
+  }
+
   function cobrarTaxa() {
     onUpdateOS(os.numero, {
       valor: 30,
@@ -82,6 +92,17 @@ export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
             </div>
           </div>
         </div>
+      </AtlPanel>
+
+      {/* Reverter — recusou sem querer */}
+      <AtlPanel T={T} dark={dark} title="Foi sem querer?">
+        <Decisao T={T} dark={dark} cor={azul}
+          first
+          icon="arrow-back-up"
+          titulo="Reabrir orçamento"
+          texto="Volta a OS pra etapa Orçamento e reabre a decisão (aguardando resposta)."
+          onClick={reabrirOrcamento}
+        />
       </AtlPanel>
 
       {/* 3 decisoes em panel unico */}
