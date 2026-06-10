@@ -263,6 +263,119 @@ export default function Estoque({ T, dark, user }) {
     notify('info', msg || 'Em breve — Módulo 06 do plano')
   }
 
+  async function abrirPedidoOrcamento() {
+    const { data, error: err } = await supabase
+      .from('peca')
+      .select('nome, sku, modelo, modelos_compativeis, marca, qtd_atual, qtd_minima')
+      .is('deleted_at', null)
+      .gt('qtd_minima', 0)
+      .order('nome')
+
+    if (err) { notify('erro', 'Erro ao buscar peças'); return }
+
+    const emFalta = (data || []).filter(p =>
+      Number(p.qtd_atual ?? 0) <= Number(p.qtd_minima ?? 0)
+    )
+
+    if (emFalta.length === 0) {
+      notify('info', 'Nenhuma peça com estoque baixo ou esgotado no momento')
+      return
+    }
+
+    const hoje = new Date().toLocaleDateString('pt-BR')
+
+    const rows = emFalta.map((p, i) => {
+      let compat = p.modelos_compativeis
+      if (typeof compat === 'string') compat = compat.split(/[,;\n]/).map(s => s.trim()).filter(Boolean)
+      else if (!Array.isArray(compat)) compat = []
+      const modelos = [p.modelo, ...compat].filter(Boolean).join(', ') || '—'
+      const situacao = Number(p.qtd_atual ?? 0) <= 0 ? 'Esgotado' : 'Baixo'
+      const qtdNecessaria = Math.max(1, Number(p.qtd_minima ?? 0) - Number(p.qtd_atual ?? 0))
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td><strong>${p.nome || ''}</strong>${p.sku ? `<br><small>SKU: ${p.sku}</small>` : ''}</td>
+          <td>${modelos}</td>
+          <td><span class="${situacao === 'Esgotado' ? 'tag-esc' : 'tag-baixo'}">${situacao}</span></td>
+          <td style="text-align:center">${qtdNecessaria}</td>
+          <td></td>
+        </tr>`
+    }).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Pedido de Orcamento - IDEMAQ - ${hoje}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:28px 32px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px}
+  h1{font-size:20px;font-weight:700}
+  .empresa{font-size:9px;color:#555;margin-top:3px}
+  .sub{font-size:11px;color:#666;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  th{background:#1a3a6e;color:#fff;padding:8px 10px;text-align:left;font-size:10.5px;font-weight:700}
+  td{padding:7px 10px;border-bottom:1px solid #e0e0e0;vertical-align:middle}
+  tr:nth-child(even) td{background:#f7f9fc}
+  small{color:#888;font-size:9.5px}
+  .tag-esc{background:#fde8e8;color:#c0392b;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700}
+  .tag-baixo{background:#fff3cd;color:#856404;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700}
+  .obs{margin-top:22px;font-size:11px;color:#444}
+  .obs-box{width:100%;border:1px solid #ccc;border-radius:4px;padding:6px 8px;font-size:11px;min-height:48px;font-family:inherit;resize:vertical}
+  .footer{margin-top:36px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;font-size:11px;color:#444}
+  .footer-line{border-top:1px solid #333;padding-top:5px;margin-top:28px}
+  @media print{
+    body{padding:8mm 10mm}
+    .no-print{display:none!important}
+    .obs-box{border:none;background:transparent;padding:0}
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>Pedido de Orcamento</h1>
+    <div class="empresa">IDEMAQ Assistencia Tecnica LTDA &nbsp;·&nbsp; Navirai / MS</div>
+    <div class="sub">Data: ${hoje} &nbsp;·&nbsp; ${emFalta.length} item${emFalta.length !== 1 ? 's' : ''} em falta ou estoque baixo</div>
+  </div>
+  <button class="no-print" onclick="window.print()"
+    style="padding:8px 18px;background:#1a3a6e;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600">
+    Imprimir / Salvar PDF
+  </button>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:28px">#</th>
+      <th>Nome da Peca</th>
+      <th>Modelo(s) da Maquina</th>
+      <th style="width:70px">Situacao</th>
+      <th style="width:50px;text-align:center">Qtd</th>
+      <th>Valor Unit. R$</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="obs">
+  <strong>Observacoes:</strong><br><br>
+  <textarea class="obs-box" placeholder="Condicoes, prazo de entrega, frete..."></textarea>
+</div>
+<div class="footer">
+  <div><div>Fornecedor</div><div class="footer-line">___________________________</div></div>
+  <div><div>Responsavel</div><div class="footer-line">___________________________</div></div>
+  <div><div>Validade do orcamento</div><div class="footer-line">___________________________</div></div>
+</div>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    if (!win) { notify('erro', 'Popup bloqueado — libere popups neste site'); return }
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+  }
+
   // Texto do subtítulo:
   // - loading: "Carregando…"
   // - buscando: "N resultado(s) para 'termo'" (varre tudo, sem paginar)
@@ -286,6 +399,13 @@ export default function Estoque({ T, dark, user }) {
         stats={headerStats}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
+            {onPecas && pecasBaixas > 0 && (
+              <Button variant="secondary" T={T} dark={dark}
+                iconLeft="ti-file-text"
+                onClick={abrirPedidoOrcamento}>
+                Pedido de Orçamento
+              </Button>
+            )}
             <Button variant="secondary" T={T} dark={dark}
               iconLeft="ti-file-upload"
               onClick={() => placeholder('Entrada por nota fiscal (IA) — próximos chats')}>
