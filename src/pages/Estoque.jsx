@@ -434,7 +434,7 @@ export default function Estoque({ T, dark, user }) {
       style="padding:8px 16px;background:#1a3a6e;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600">
       Imprimir / Salvar PDF
     </button>
-    <button onclick="window.location.href='whatsapp://send?text='+encodeURIComponent(${wppEscaped})"
+    <button onclick="enviarWpp()"
       style="padding:8px 16px;background:#25a244;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600">
       Enviar via WhatsApp
     </button>
@@ -461,6 +461,10 @@ export default function Estoque({ T, dark, user }) {
   <div><div>Responsavel</div><div class="footer-line">___________________________</div></div>
   <div><div>Validade do orcamento</div><div class="footer-line">___________________________</div></div>
 </div>
+<script>
+  var _wppText = ${wppEscaped};
+  function enviarWpp() { window.location.href = 'whatsapp://send?text=' + encodeURIComponent(_wppText); }
+</script>
 </body>
 </html>`
 
