@@ -7,9 +7,10 @@ import React from 'react'
 import { TIPOS_OS } from '../../utils/osData'
 import {
   calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar,
+  statusServicoSub,
 } from '../../utils/osHelpers'
-import { fmtPrazoCurto } from '../../utils/fmt'
 import { corEtapa } from '../../utils/colors'
+import SubStatus from '../kanban/SubStatus'
 
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const MONO_FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
@@ -47,7 +48,7 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
       prazoPillText = 'Amanhã'
     } else if (status === 'ok') {
       prazoPillCor = T.textMuted
-      prazoPillText = `${fmtPrazoCurto(os.prazo)} · ${dias}d`
+      prazoPillText = `${dias}d`
     }
   }
 
@@ -60,6 +61,14 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
   })
 
   const temTags = os.garantia || pagoTotal || pagoParcial || os.aguardando_peca
+
+  // Conserto: chips Limp./Manut. (mesma regra do desktop). Flags undefined =
+  // OS nunca passou pelo Conserto → mostra ambos como padrão.
+  const dual = os.etapa === 'oficina'
+  const of = os.pre_diagnostico?.oficina || {}
+  const semFlags = of.tem_limpeza === undefined && of.tem_manutencao === undefined
+  const mostraLimp = dual && (semFlags || of.tem_limpeza)
+  const mostraManut = dual && (semFlags || of.tem_manutencao)
 
   return (
     <button onClick={onClick}
@@ -103,11 +112,13 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             const dias = Math.floor((Date.now() - new Date(base).getTime()) / 86400000)
             if (dias < 0) return null
             return (
-              <span style={{
+              <span title="Aberta há" style={{
                 marginLeft: 'auto', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 2,
                 fontSize: 10, color: T.textDim,
                 fontVariantNumeric: 'tabular-nums',
-              }}>{dias}d</span>
+              }}>
+                <i className="ti ti-clock" style={{ fontSize: 10 }} aria-hidden="true" />{dias}d</span>
             )
           })()}
         </div>
@@ -121,7 +132,8 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             background: status === 'ok' ? 'transparent' : prazoPillCor + '22',
             color: prazoPillCor,
             letterSpacing: '-0.005em',
-          }}>{prazoPillText}</span>
+          }}>
+            <i className="ti ti-flag" style={{ fontSize: 10 }} aria-hidden="true" />{prazoPillText}</span>
         ) : <span />}
 
         {/* Linha 2: cliente | valor */}
@@ -203,6 +215,14 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
                 <i className="ti ti-package" style={{ fontSize: 10 }} aria-hidden="true" />peça
               </span>
             )}
+          </div>
+        )}
+
+        {/* Linha 6: dual status oficina (Limp. / Manut.) */}
+        {(mostraLimp || mostraManut) && (
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
+            {mostraLimp  && <SubStatus label="Limp."  status={statusServicoSub(of, 'limpeza')} T={T} dark={dark} />}
+            {mostraManut && <SubStatus label="Manut." status={os.manutPecaStatus || statusServicoSub(of, 'manutencao')} T={T} dark={dark} />}
           </div>
         )}
       </div>

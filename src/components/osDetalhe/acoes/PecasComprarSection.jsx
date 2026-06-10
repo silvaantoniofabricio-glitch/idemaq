@@ -52,7 +52,7 @@ const FLUXO = {
   entregue: { label: 'Entregue',           icon: 'circle-check',   cor: 'green',  cta: null,            ctaIcon: null },
 }
 
-export default function PecasComprarSection({ T, dark, os, itens, admin = false, onUpdateOS }) {
+export default function PecasComprarSection({ T, dark, os, itens, admin = false, faltaSet, onUpdateOS }) {
   const { atualizar, ajustarEstoque } = usePecas()
   const [pecasMap, setPecasMap] = useState({})
   const [cardPeca, setCardPeca] = useState(null)
@@ -87,12 +87,11 @@ export default function PecasComprarSection({ T, dark, os, itens, admin = false,
 
   const compraStatus = os?.pre_diagnostico?.compra_pecas || {}
 
-  // Aparece: peça com estoque ZERADO, ou que já entrou no fluxo de compra.
+  // Aparece: peça EM FALTA (alocação global do estoque), ou que já entrou no
+  // fluxo de compra. O faltaSet considera qtd pedida + demanda de várias OS.
   const lista = useMemo(() => pecasItens.filter(it => {
-    const p = pecasMap[it.peca_id]
-    const zerada = p && p.qtdAtual <= 0
-    return zerada || !!compraStatus[it.id]?.status
-  }), [pecasItens, pecasMap, compraStatus])
+    return (faltaSet?.has(it.id)) || !!compraStatus[it.id]?.status
+  }), [pecasItens, faltaSet, compraStatus])
 
   if (lista.length === 0) return null
 

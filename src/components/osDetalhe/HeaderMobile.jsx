@@ -78,6 +78,29 @@ const HeaderMobile = ({
   const [menuAberto, setMenuAberto] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
+  const [prazoModo, setPrazoModo] = useState(false);
+  const [prazoVal, setPrazoVal]   = useState('');
+
+  function prazoParaInput(iso) {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d)) return ''
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
+  }
+  function abrirPrazo() {
+    setPrazoVal(prazoParaInput(os?.prazo))
+    setPrazoModo(true)
+  }
+  async function salvarPrazo() {
+    const novo = prazoVal ? `${prazoVal}T12:00:00.000Z` : null
+    try {
+      await onUpdateOS?.(os.numero, { prazo: novo })
+      notify('ok', novo ? 'Prazo definido' : 'Prazo removido')
+      setPrazoModo(false)
+      setMenuAberto(false)
+    } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
+  }
   const [foneCopied, setFoneCopied] = useState(false);
   const [endCopied, setEndCopied] = useState(false);
   const historicoHandler = onShowHistorico || onHistory;
@@ -291,7 +314,7 @@ const HeaderMobile = ({
             )}
           </button>
           <button
-            onClick={() => setMenuAberto(true)}
+            onClick={() => { setPrazoModo(false); setMenuAberto(true) }}
             aria-label="Mais opções"
             style={m3 ? {
               border: 'none', background: 'transparent',
@@ -593,9 +616,62 @@ const HeaderMobile = ({
               OS #{os?.numero}
             </div>
 
-            {/* Itens */}
+            {/* Painel de prazo */}
+            {prazoModo ? (
+              <div style={{ padding: '12px 20px 18px' }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8,
+                }}>Prazo da OS</div>
+                <input
+                  type="date"
+                  value={prazoVal}
+                  onChange={e => setPrazoVal(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '12px 12px', borderRadius: 9,
+                    border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                    fontSize: 16, fontWeight: 600, outline: 'none', fontFamily: 'inherit',
+                    colorScheme: dark ? 'dark' : 'light',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button onClick={salvarPrazo}
+                    style={{
+                      flex: 1, minHeight: 48, borderRadius: 10, border: 'none',
+                      background: '#5B9BD5', color: '#fff', fontSize: 15, fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Salvar</button>
+                  {os?.prazo && (
+                    <button onClick={() => setPrazoVal('')}
+                      style={{
+                        minHeight: 48, padding: '0 16px', borderRadius: 10,
+                        border: `1px solid ${T.border}`, background: 'transparent',
+                        color: '#FF6B6B', fontSize: 15, fontWeight: 600,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}>Limpar</button>
+                  )}
+                  <button onClick={() => setPrazoModo(false)}
+                    style={{
+                      minHeight: 48, padding: '0 16px', borderRadius: 10,
+                      border: `1px solid ${T.border}`, background: 'transparent',
+                      color: T.textMuted, fontSize: 15, fontWeight: 600,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Voltar</button>
+                </div>
+              </div>
+            ) : (
+            /* Itens */
             <div style={{ padding: '6px 0 8px' }}>
               <SheetItem icon="copy" label="Copiar nº da OS" T={T} dark={dark} onClick={copiarNumeroOS} />
+              {onUpdateOS && (
+                <SheetItem
+                  icon="calendar-clock"
+                  label={os?.prazo ? 'Alterar prazo' : 'Definir prazo'}
+                  T={T} dark={dark}
+                  onClick={abrirPrazo}
+                />
+              )}
               {onDuplicar && (
                 <SheetItem
                   icon="copy-plus"
@@ -627,6 +703,7 @@ const HeaderMobile = ({
                 </>
               )}
             </div>
+            )}
 
             {/* Botão cancelar */}
             <div style={{ padding: '0 16px 20px' }}>

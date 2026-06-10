@@ -234,7 +234,7 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   const TESTES = TESTES_POR_EQUIP[tipoEquip] || TESTES_POR_EQUIP.lavadora
   const VAZAMENTOS = VAZAMENTOS_POR_EQUIP[tipoEquip] || []
 
-  const { itens: chkItens, salvar: salvarChk, loading: loadingChk } =
+  const { itens: chkItens, loading: loadingChk } =
     useChecklistEtapa(os.id, 'recebido')
 
   const [testes, setTestes] = useState(
@@ -251,6 +251,10 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   const [historicoCausas, setHistorico] = useState(() => lerCausas())
   const [hidratado, setHidratado]    = useState(false)
   const [salvando, setSalvando]      = useState(false)
+
+  // Sempre lê o pre_diagnostico mais fresco (evita closures stale nos timeouts).
+  const osRef = useRef(os)
+  osRef.current = os
 
   useEffect(() => {
     setNaoLiga(!!os?.pre_diagnostico?.equipamento_nao_liga)
@@ -325,12 +329,28 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [os?.observacoes])
 
-  function salvarTestes(novoTestes, novoNaoLiga) {
-    salvarChk(TESTES.map(t => ({
+  // Monta os itens do checklist a partir do estado dos testes.
+  function montarItensTestes(novoTestes, novoNaoLiga) {
+    return TESTES.map(t => ({
       id: t.id, label: t.label,
       checked: novoNaoLiga ? false : novoTestes[t.id] === 'ok',
       valor:   novoNaoLiga ? 'na'  : (novoTestes[t.id] || null),
-    })), null)
+    }))
+  }
+
+  // Salva os testes pelo MESMO caminho dos outros campos (onUpdateOS), pra tudo
+  // viver no mesmo pre_diagnostico em memória e nada se sobrescrever.
+  function salvarTestes(novoTestes, novoNaoLiga) {
+    const base = osRef.current?.pre_diagnostico || {}
+    onUpdateOS?.(os.numero, {
+      pre_diagnostico: {
+        ...base,
+        checklist: {
+          ...(base.checklist || {}),
+          recebido: { itens: montarItensTestes(novoTestes, novoNaoLiga), observacoes: null },
+        },
+      },
+    })
   }
 
   function setResultado(testeId, valor) {
@@ -355,9 +375,10 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
   useEffect(() => {
     if (!hidratado) return
     const t = setTimeout(() => {
+      const base = osRef.current?.pre_diagnostico || {}
       onUpdateOS?.(os.numero, {
         pre_diagnostico: {
-          ...(os.pre_diagnostico || {}),
+          ...base,
           equipamento_nao_liga: naoLiga,
           motivo_nao_liga:      naoLiga ? motivoNaoLiga : null,
           vazamentos,
@@ -371,16 +392,17 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
 
   async function avancar() {
     setSalvando(true)
-    await salvarChk(TESTES.map(t => ({
-      id: t.id, label: t.label,
-      checked: naoLiga ? false : testes[t.id] === 'ok',
-      valor:   naoLiga ? 'na'  : (testes[t.id] || null),
-    })), null)
     if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     if (causa.trim()) salvarCausa(causa)
+    // Escrita única: testes + campos da avaliação no mesmo pre_diagnostico.
+    const base = osRef.current?.pre_diagnostico || {}
     onUpdateOS?.(os.numero, {
       pre_diagnostico: {
-        ...(os.pre_diagnostico || {}),
+        ...base,
+        checklist: {
+          ...(base.checklist || {}),
+          recebido: { itens: montarItensTestes(testes, naoLiga), observacoes: null },
+        },
         equipamento_nao_liga: naoLiga,
         motivo_nao_liga:      naoLiga ? motivoNaoLiga : null,
         vazamentos,

@@ -62,6 +62,31 @@ export default function Header({
   const [menuAberto, setMenuAberto] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [duplicando, setDuplicando] = useState(false)
+  const [prazoModo, setPrazoModo] = useState(false)
+  const [prazoVal, setPrazoVal]   = useState('')
+
+  // Converte o prazo (timestamp) pra YYYY-MM-DD no fuso local (pro <input date>).
+  function prazoParaInput(iso) {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d)) return ''
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
+  }
+  function abrirPrazo() {
+    setPrazoVal(prazoParaInput(os.prazo))
+    setPrazoModo(true)
+  }
+  async function salvarPrazo() {
+    // Meio-dia UTC = mesma data em Cuiaba (evita off-by-one).
+    const novo = prazoVal ? `${prazoVal}T12:00:00.000Z` : null
+    try {
+      await onUpdateOS?.(os.numero, { prazo: novo })
+      notify('ok', novo ? 'Prazo definido' : 'Prazo removido')
+      setPrazoModo(false)
+      setMenuAberto(false)
+    } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
+  }
   useEffect(() => {
     if (!menuAberto) return
     function onDocClick(e) {
@@ -77,6 +102,7 @@ export default function Header({
       document.removeEventListener('keydown', onEsc, true)
     }
   }, [menuAberto])
+  useEffect(() => { if (!menuAberto) setPrazoModo(false) }, [menuAberto])
 
   async function duplicarOSHandler() {
     if (duplicando || !onDuplicar) return
@@ -262,9 +288,61 @@ export default function Header({
                 padding: 5, minWidth: 200,
                 boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.12)',
               }}>
+                {prazoModo ? (
+                  <div style={{ padding: 6 }}>
+                    <div style={{
+                      fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+                      textTransform: 'uppercase', letterSpacing: '.05em', padding: '0 2px 6px',
+                    }}>Prazo da OS</div>
+                    <input
+                      type="date"
+                      value={prazoVal}
+                      autoFocus
+                      onChange={e => setPrazoVal(e.target.value)}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '8px 10px', borderRadius: 7,
+                        border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                        fontSize: 13, fontWeight: 600, outline: 'none', fontFamily: 'inherit',
+                        colorScheme: dark ? 'dark' : 'light',
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <button onClick={salvarPrazo}
+                        style={{
+                          flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none',
+                          background: azul, color: '#fff', fontSize: 12.5, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}>Salvar</button>
+                      {os.prazo && (
+                        <button onClick={() => { setPrazoVal(''); }}
+                          title="Limpar prazo"
+                          style={{
+                            padding: '8px 10px', borderRadius: 7,
+                            border: `1px solid ${T.border}`, background: 'transparent',
+                            color: cor(P.red, P.redDark), fontSize: 12.5, fontWeight: 600,
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}>Limpar</button>
+                      )}
+                      <button onClick={() => setPrazoModo(false)}
+                        style={{
+                          padding: '8px 10px', borderRadius: 7,
+                          border: `1px solid ${T.border}`, background: 'transparent',
+                          color: T.textMuted, fontSize: 12.5, fontWeight: 600,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}>Voltar</button>
+                    </div>
+                  </div>
+                ) : (
+                <>
                 <MenuItem T={T} icon="ti-copy" onClick={copiarNumero}>
                   Copiar nº da OS
                 </MenuItem>
+                {onUpdateOS && (
+                  <MenuItem T={T} icon="ti-calendar-clock" onClick={abrirPrazo}>
+                    {os.prazo ? 'Alterar prazo' : 'Definir prazo'}
+                  </MenuItem>
+                )}
                 {onDuplicar && (
                   <MenuItem T={T} icon="ti-copy-plus" onClick={duplicarOSHandler} disabled={duplicando}>
                     {duplicando ? 'Duplicando…' : 'Duplicar OS'}
@@ -292,6 +370,8 @@ export default function Header({
                       {excluindo ? 'Excluindo…' : 'Excluir OS'}
                     </MenuItem>
                   </>
+                )}
+                </>
                 )}
               </div>
             )}

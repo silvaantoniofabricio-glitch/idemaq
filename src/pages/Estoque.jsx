@@ -169,70 +169,74 @@ export default function Estoque({ T, dark, user }) {
     return () => { alive = false }
   }, [refetchKey])
 
-  // Lista de compras: itens do catálogo em OS confirmadas sem estoque.
-  // "Confirmadas" = etapa != orcamento (rascunho) e != concluido/entrega/cancelado.
+  // Relatório de peças em conserto: todos os itens de OS em em_oficina,
+  // com indicação de quais têm estoque e quais estão faltando.
   const [listaCompras, setListaCompras] = useState([])
 
   useEffect(() => {
     let alive = true
     async function fetchListaCompras() {
-      // Passo 1: todos os os_item com peca vinculada (itens do catálogo)
-      const { data: itens } = await supabase
-        .from('os_item')
-        .select('id, nome, quantidade, peca_id, os_id')
-        .is('deleted_at', null)
-        .not('peca_id', 'is', null)
-
-      if (!alive) return
-      if (!itens?.length) { if (alive) setListaCompras([]); return }
-
-      // Passo 2: OS em conserto (etapa em_oficina)
-      const osIdsFiltro = [...new Set(itens.map(i => i.os_id))]
-      if (!osIdsFiltro.length) { if (alive) setListaCompras([]); return }
-
-      const { data: osData } = await supabase
+      // Passo 1: OS em conserto (em_oficina) — query pequena, sem risco de limite
+      const { data: osAtivas } = await supabase
         .from('os')
-        .select('id, numero, etapa')
-        .in('id', osIdsFiltro)
+        .select('id, numero')
         .eq('etapa', 'em_oficina')
         .is('deleted_at', null)
 
       if (!alive) return
-      const osAtivas = osData || []
+      if (!osAtivas?.length) { if (alive) setListaCompras([]); return }
+
       const osMap = Object.fromEntries(osAtivas.map(o => [o.id, o]))
-      const osIds = new Set(osAtivas.map(o => o.id))
 
-      // Passo 3: itens cujas OS estão ativas
-      const itensFiltrados = itens.filter(i => osIds.has(i.os_id))
-      if (!itensFiltrados.length) { if (alive) setListaCompras([]); return }
-
-      // Passo 4: verifica estoque de cada peça vinculada
-      const pecaIds = [...new Set(itensFiltrados.map(i => i.peca_id))]
-      const { data: pecas } = await supabase
-        .from('peca')
-        .select('id, qtd_atual')
-        .in('id', pecaIds)
+      // Passo 2: itens dessas OS específicas (filtra no banco, evita limit 1000)
+      const { data: itensFiltrados } = await supabase
+        .from('os_item')
+        .select('id, nome, quantidade, peca_id, os_id')
+        .in('os_id', osAtivas.map(o => o.id))
         .is('deleted_at', null)
-      const pecaMap = Object.fromEntries((pecas || []).map(p => [p.id, p]))
 
-      // Passo 5: filtra somente sem estoque (peca inexistente, deletada ou qtd=0)
-      const semEstoque = itensFiltrados.filter(i => {
-        const p = pecaMap[i.peca_id]
-        return !p || (p.qtd_atual ?? 0) <= 0
-      })
+      if (!alive) return
+      if (!itensFiltrados?.length) { if (alive) setListaCompras([]); return }
 
-      // Passo 6: agrupa por peca_id, soma qtd, lista OS
-      const grupos = {}
-      for (const item of semEstoque) {
-        const k = item.peca_id
-        if (!grupos[k]) grupos[k] = { peca_id: k, nome: item.nome || '—', qtdTotal: 0, os: [] }
-        grupos[k].qtdTotal += Number(item.quantidade) || 1
-        const os = osMap[item.os_id]
-        if (os && !grupos[k].os.find(o => o.id === os.id)) grupos[k].os.push(os)
+      // Passo 4: verifica estoque das peças vinculadas ao catálogo
+      const pecaIds = [...new Set(itensFiltrados.filter(i => i.peca_id).map(i => i.peca_id))]
+      const pecaMap = {}
+      if (pecaIds.length) {
+        const { data: pecas } = await supabase
+          .from('peca').select('id, qtd_atual').in('id', pecaIds).is('deleted_at', null)
+        for (const p of (pecas || [])) pecaMap[p.id] = p
       }
 
+      // Passo 5: agrupa por peca_id (ou por nome p/ itens avulsos sem peca_id)
+      // Cada grupo tem { nome, qtdTotal, qtdEstoque, temEstoque, os[] }
+      const grupos = {}
+      for (const item of itensFiltrados) {
+        const key = item.peca_id || `avulso:${(item.nome || '').toLowerCase().trim()}`
+        if (!grupos[key]) {
+          const peca = item.peca_id ? pecaMap[item.peca_id] : null
+          const qtdEstoque = peca ? (peca.qtd_atual ?? 0) : null  // null = avulso sem controle
+          grupos[key] = {
+            peca_id: item.peca_id || null,
+            nome: item.nome || '—',
+            qtdTotal: 0,
+            qtdEstoque,
+            temEstoque: qtdEstoque === null ? null : qtdEstoque > 0,
+            os: [],
+          }
+        }
+        grupos[key].qtdTotal += Number(item.quantidade) || 1
+        const os = osMap[item.os_id]
+        if (os && !grupos[key].os.find(o => o.id === os.id)) grupos[key].os.push(os)
+      }
+
+      // Ordena: faltando primeiro, depois ok, depois avulsos; dentro de cada grupo por qtd desc
+      const ORDEM = { false: 0, true: 1, null: 2 }
       if (alive) setListaCompras(
-        Object.values(grupos).sort((a, b) => b.qtdTotal - a.qtdTotal)
+        Object.values(grupos).sort((a, b) => {
+          const oa = ORDEM[String(a.temEstoque)], ob = ORDEM[String(b.temEstoque)]
+          if (oa !== ob) return oa - ob
+          return b.qtdTotal - a.qtdTotal
+        })
       )
     }
     fetchListaCompras()
@@ -952,46 +956,67 @@ function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = 
 }
 
 // =============================================================================
-// LISTA DE COMPRAS — itens de OS confirmadas sem estoque
+// PEÇAS EM CONSERTO — relatório geral de itens das OS em em_oficina
 // =============================================================================
-// Aparece no topo da aba Peças quando há itens em OS ativas (confirmadas)
-// cujas peças vinculadas estão com qtd_atual = 0. Aviso visual amarelo
-// para o dono saber o que precisa comprar antes de começar os serviços.
+// Mostra TODOS os itens das OS em conserto, com badge de status:
+//   • Azul   = tem estoque suficiente
+//   • Vermelho = faltando (sem estoque ou qtd insuficiente)
+//   • Cinza  = item avulso (sem vínculo no catálogo)
+// Ordenado: faltando primeiro → com estoque → avulsos.
 function ListaCompras({ T, dark, itens }) {
   const amarelo = corEtapa('yellow', dark)
+  const azul    = corEtapa('blue', dark)
+  const vermelho = corEtapa('red', dark)
   const [expandido, setExpandido] = useState(true)
 
+  const faltando = itens.filter(i => i.temEstoque === false).length
+  const temEstoque = itens.filter(i => i.temEstoque === true).length
+  const accentColor = faltando > 0 ? amarelo : azul
+
   return (
-    <Card T={T} dark={dark} padding={0} style={{ border: `1.5px solid ${amarelo}55` }}>
-      {/* Header */}
+    <Card T={T} dark={dark} padding={0} style={{ border: `1.5px solid ${accentColor}44` }}>
+      {/* Header colapsável */}
       <div
-        role="button"
-        tabIndex={0}
+        role="button" tabIndex={0}
         onClick={() => setExpandido(v => !v)}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandido(v => !v) } }}
         style={{
           padding: '10px 16px',
-          background: amarelo + '18',
-          borderBottom: expandido ? `1px solid ${amarelo}33` : 'none',
+          background: accentColor + '15',
+          borderBottom: expandido ? `1px solid ${accentColor}30` : 'none',
           display: 'flex', alignItems: 'center', gap: 8,
           cursor: 'pointer', outline: 'none',
         }}
       >
-        <i className="ti ti-shopping-cart" style={{ color: amarelo, fontSize: 15, flexShrink: 0 }} aria-hidden="true" />
-        <span style={{ fontWeight: 700, fontSize: 13, color: amarelo }}>
-          Precisa Comprar
+        <i className="ti ti-tools" style={{ color: accentColor, fontSize: 15, flexShrink: 0 }} aria-hidden="true" />
+        <span style={{ fontWeight: 700, fontSize: 13, color: accentColor }}>
+          Peças em Conserto
         </span>
+        {/* Contador total */}
         <span style={{
           fontSize: 11, fontWeight: 700,
           padding: '1px 7px', borderRadius: 8,
-          background: amarelo + '33', color: amarelo,
+          background: accentColor + '25', color: accentColor,
           fontVariantNumeric: 'tabular-nums',
         }}>
           {itens.length} {itens.length === 1 ? 'item' : 'itens'}
         </span>
-        <span style={{ fontSize: 11, color: T.textMuted, marginLeft: 2 }}>
-          de orçamentos confirmados sem estoque
-        </span>
+        {/* Indicador de faltas */}
+        {faltando > 0 && (
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            padding: '1px 7px', borderRadius: 8,
+            background: vermelho + '20', color: vermelho,
+            border: `1px solid ${vermelho}40`,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 10, marginRight: 3 }} aria-hidden="true" />
+            {faltando} faltando
+          </span>
+        )}
+        {faltando === 0 && temEstoque > 0 && (
+          <span style={{ fontSize: 11, color: T.textMuted }}>tudo no estoque</span>
+        )}
         <i
           className={`ti ti-chevron-${expandido ? 'up' : 'down'}`}
           style={{ color: T.textMuted, fontSize: 13, marginLeft: 'auto' }}
@@ -999,73 +1024,107 @@ function ListaCompras({ T, dark, itens }) {
         />
       </div>
 
-      {/* Linhas de itens */}
-      {expandido && itens.map((item, i) => (
-        <div key={item.peca_id} style={{
-          display: 'grid',
-          gridTemplateColumns: '24px 1fr auto auto',
-          alignItems: 'center',
-          gap: 10,
-          padding: '9px 16px',
-          borderTop: i > 0 ? `1px solid ${T.border}` : undefined,
+      {/* Cabeçalho da tabela */}
+      {expandido && (
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 70px 80px',
+          gap: 8, padding: '6px 16px',
+          borderBottom: `1px solid ${T.border}`,
+          background: T.cardAlt,
+          fontSize: 10, color: T.textMuted, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.04em',
         }}>
-          {/* Bullet */}
-          <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: amarelo, flexShrink: 0, margin: '0 auto',
-          }} />
+          <div>Item · OS</div>
+          <div style={{ textAlign: 'right' }}>Qtd</div>
+          <div style={{ textAlign: 'right' }}>Estoque</div>
+        </div>
+      )}
 
-          {/* Nome */}
-          <div style={{ minWidth: 0 }}>
-            <span style={{
-              fontSize: 13, fontWeight: 600,
-              color: corHero(dark),
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              display: 'block',
+      {/* Linhas de itens */}
+      {expandido && itens.map((item, i) => {
+        const falta = item.temEstoque === false
+        const avulso = item.temEstoque === null
+        const ok = item.temEstoque === true
+        const rowAccent = falta ? vermelho : ok ? azul : T.border
+
+        return (
+          <div key={item.peca_id || `avulso-${i}`} style={{
+            display: 'grid', gridTemplateColumns: '1fr 70px 80px',
+            alignItems: 'center', gap: 8,
+            padding: '9px 16px',
+            borderTop: `1px solid ${T.border}`,
+            borderLeft: `3px solid ${rowAccent}`,
+          }}>
+            {/* Nome + OS */}
+            <div style={{ minWidth: 0 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 600, color: corHero(dark),
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {item.nome}
+              </div>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 2 }}>
+                {item.os.map(o => (
+                  <span key={o.id} style={{
+                    fontSize: 10, color: T.textMuted,
+                    background: T.cardAlt, border: `1px solid ${T.border}`,
+                    padding: '1px 5px', borderRadius: 4,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    OS #{o.numero}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Quantidade necessária */}
+            <div style={{
+              textAlign: 'right', fontSize: 13, fontWeight: 700,
+              color: corHero(dark), fontVariantNumeric: 'tabular-nums',
             }}>
-              {item.nome}
-            </span>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-              {item.os.map(o => (
-                <span key={o.id} style={{
-                  fontSize: 10.5, color: T.textMuted,
-                  background: T.cardAlt,
+              {item.qtdTotal}
+            </div>
+
+            {/* Badge de status */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              {avulso ? (
+                <span style={{
+                  fontSize: 10, fontWeight: 600,
+                  padding: '2px 7px', borderRadius: 6,
+                  background: T.cardAlt, color: T.textMuted,
                   border: `1px solid ${T.border}`,
-                  padding: '1px 6px', borderRadius: 4,
+                  whiteSpace: 'nowrap',
+                }}>
+                  Avulso
+                </span>
+              ) : falta ? (
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  padding: '2px 7px', borderRadius: 6,
+                  background: vermelho + '18', color: vermelho,
+                  border: `1px solid ${vermelho}44`,
+                  whiteSpace: 'nowrap',
+                }}>
+                  <i className="ti ti-alert-octagon" style={{ fontSize: 9, marginRight: 3 }} aria-hidden="true" />
+                  Faltando
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: 10, fontWeight: 700,
+                  padding: '2px 7px', borderRadius: 6,
+                  background: azul + '18', color: azul,
+                  border: `1px solid ${azul}44`,
+                  whiteSpace: 'nowrap',
                   fontVariantNumeric: 'tabular-nums',
                 }}>
-                  OS #{o.numero}
+                  <i className="ti ti-check" style={{ fontSize: 9, marginRight: 3 }} aria-hidden="true" />
+                  {item.qtdEstoque} un.
                 </span>
-              ))}
+              )}
             </div>
           </div>
-
-          {/* Quantidade total necessária */}
-          <div style={{
-            fontSize: 13, fontWeight: 700,
-            color: amarelo,
-            fontVariantNumeric: 'tabular-nums',
-            flexShrink: 0,
-            textAlign: 'right',
-          }}>
-            × {item.qtdTotal}
-          </div>
-
-          {/* Indicador "sem estoque" */}
-          <div style={{ flexShrink: 0 }}>
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              padding: '2px 7px', borderRadius: 6,
-              background: '#FF6B6B22', color: '#FF6B6B',
-              border: '1px solid #FF6B6B55',
-              whiteSpace: 'nowrap',
-            }}>
-              <i className="ti ti-alert-octagon" style={{ fontSize: 9, marginRight: 3 }} aria-hidden="true" />
-              Sem estoque
-            </span>
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </Card>
   )
 }

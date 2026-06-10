@@ -23,9 +23,11 @@ import { fmtBRL } from '../../../utils/fmt'
 import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { usePecas } from '../../../hooks/usePecas'
+import { supabase } from '../../../supabase'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
-import FormRecebimento from '../FormRecebimento'
+import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
+import { useToast } from '../../ui'
 
 // ─── Tipos de item ────────────────────────────────────────────────────────
 const TIPOS = [
@@ -705,6 +707,154 @@ function AtlPanel({ T, dark, title, action, count, footer, children, accent }) {
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Painel: recebimentos (baixas) já lançados nesta OS ────────────────────
+// Lista cada receita ligada a esta OS (Caixa). Excluir reverte os DOIS lados:
+// soft-delete do lançamento no Caixa + desconto em os.valor_pago (reabre a OS).
+// Assim Caixa e OS nunca ficam descasados.
+function fmtDataBaixa(iso) {
+  if (!iso) return '—'
+  const s = String(iso).slice(0, 10)
+  const [y, m, d] = s.split('-')
+  if (!y || !m || !d) return s
+  return `${d}/${m}/${y}`
+}
+
+function BaixasRecebidasPanel({ T, dark, os, total, onUpdateOS, refreshKey = 0 }) {
+  const notify = useToast()
+  const verde = corEtapa('green', dark)
+  const vermelho = corEtapa('red', dark)
+  const [baixas, setBaixas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [excluindo, setExcluindo] = useState(null)
+
+  async function carregar() {
+    if (!os?.id) { setBaixas([]); setLoading(false); return }
+    const { data, error } = await supabase
+      .from('lancamento_financeiro')
+      .select('id, valor, forma_pagamento, pago_em, vencimento')
+      .eq('os_id', os.id)
+      .eq('tipo', 'receita')
+      .is('deleted_at', null)
+      .order('pago_em', { ascending: true, nullsFirst: false })
+    if (!error) setBaixas(data || [])
+    setLoading(false)
+  }
+  useEffect(() => { carregar() }, [os?.id, os?.valor_pago, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading || baixas.length === 0) return null
+
+  async function excluirBaixa(b) {
+    if (excluindo) return
+    setExcluindo(b.id)
+    try {
+      const { data: u } = await supabase.auth.getUser()
+      const { error } = await supabase
+        .from('lancamento_financeiro')
+        .update({ deleted_at: new Date().toISOString(), excluido_por: u?.user?.id || null })
+        .eq('id', b.id)
+      if (error) throw error
+      // Reverte na OS: desconta o valor da baixa e recalcula o status de pago.
+      const totalAP = Math.max(0, Number(total) || 0)
+      const novoValorPago = Math.max(0, (Number(os.valor_pago) || 0) - (Number(b.valor) || 0))
+      let novoPago = 'nao'
+      if (totalAP > 0 && novoValorPago >= totalAP - 0.01) novoPago = 'total'
+      else if (novoValorPago > 0) novoPago = 'parcial'
+      onUpdateOS?.(os.numero, { valor_pago: novoValorPago, pago: novoPago })
+      notify?.('ok', `Baixa de ${fmtBRL(b.valor, { fr: true })} excluída — OS reaberta`)
+      setBaixas(prev => prev.filter(x => x.id !== b.id))
+    } catch (e) {
+      console.error('[baixa] excluir falhou:', e)
+      notify?.('erro', 'Não consegui excluir a baixa')
+    } finally {
+      setExcluindo(null)
+    }
+  }
+
+  return (
+    <AtlPanel
+      T={T} dark={dark}
+      title="Recebimentos lançados"
+      count={baixas.length}
+      accent={verde}
+      footer="Excluir uma baixa apaga o lançamento no Caixa e reabre o valor na OS.">
+      {baixas.map((b, i) => {
+        const aPrazo = !b.pago_em
+        const data = fmtDataBaixa(b.pago_em || b.vencimento)
+        const carregandoEsta = excluindo === b.id
+        return (
+          <div key={b.id} style={{
+            padding: '10px 14px',
+            borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 4, flexShrink: 0,
+              background: (aPrazo ? T.textMuted : verde) + '22',
+              color: aPrazo ? T.textMuted : verde,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <i className={`ti ${aPrazo ? 'ti-clock' : 'ti-cash'}`} style={{ fontSize: 14 }} aria-hidden="true" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+                {fmtBRL(b.valor, { fr: true })}
+                <span style={{ color: T.textMuted, fontWeight: 500, marginLeft: 6 }}>
+                  {formaIdToLabel(b.forma_pagamento) || (aPrazo ? 'A prazo' : '—')}
+                </span>
+              </div>
+              <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1 }}>
+                {aPrazo ? `a prazo · vence ${data}` : `recebido em ${data}`}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => excluirBaixa(b)}
+              disabled={!!excluindo}
+              aria-label="Excluir baixa"
+              title="Excluir esta baixa (apaga do Caixa e reabre na OS)"
+              style={{
+                flexShrink: 0, width: 30, height: 30, borderRadius: 6,
+                border: `1px solid ${T.border}`, background: 'transparent',
+                color: excluindo ? T.textDim : vermelho,
+                cursor: excluindo ? 'not-allowed' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: ATL_FONT,
+              }}>
+              <i className={`ti ${carregandoEsta ? 'ti-loader-2' : 'ti-trash'}`} style={{ fontSize: 15 }} aria-hidden="true" />
+            </button>
+          </div>
+        )
+      })}
+    </AtlPanel>
+  )
+}
+
+// Estado "quitado" — substitui o form de recebimento quando não há mais saldo.
+function PagoQuitadoPanel({ T, dark, total, valorPago }) {
+  const verde = corEtapa('green', dark)
+  return (
+    <AtlPanel T={T} dark={dark} title="Recebimento" accent={verde}>
+      <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+          background: verde + '22', color: verde,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <i className="ti ti-circle-check" style={{ fontSize: 22 }} aria-hidden="true" />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: verde, letterSpacing: '-0.01em' }}>
+            Pago — totalmente recebido
+          </div>
+          <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+            {fmtBRL(valorPago, { fr: true })} de {fmtBRL(total, { fr: true })}
+          </div>
+        </div>
+      </div>
+    </AtlPanel>
   )
 }
 
@@ -2139,6 +2289,9 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
   const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
+  // Bump após gravar uma baixa pra a lista "Recebimentos lançados" recarregar
+  // SÓ depois do insert terminar (senão busca antes do lançamento existir).
+  const [recebKey, setRecebKey] = useState(0)
 
   // SEM auto-preenchimento. Inserir itens padrao automaticamente ao abrir a
   // etapa causava DUPLICACAO: a ref de controle resetava a cada remontagem
@@ -2242,9 +2395,14 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
       {/* 5. Status do orçamento — Atlassian panel */}
       <AtlStatusOrcamento T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
 
-      {/* 6. Recebimento antecipado — envolvido em AtlPanel pra consistencia
-            visual com os outros cards. FormRecebimento mantem layout interno
-            (compartilhado com etapa Pagamento). */}
+      {/* 6. Recebimentos já lançados (baixas) — lista com excluir que reverte
+            os dois lados (Caixa + OS). */}
+      <BaixasRecebidasPanel T={T} dark={dark} os={os} total={total} onUpdateOS={onUpdateOS} refreshKey={recebKey} />
+
+      {/* 7. Recebimento — quitado mostra "Pago"; senão, o form de recebimento. */}
+      {total > 0 && Math.max(0, total - (os?.valor_pago || 0)) <= 0.01 && (os?.valor_pago || 0) > 0 ? (
+        <PagoQuitadoPanel T={T} dark={dark} total={total} valorPago={os?.valor_pago || 0} />
+      ) : (
       <AtlPanel T={T} dark={dark} title="Recebimento antecipado">
       <FormRecebimento
         T={T} dark={dark}
@@ -2267,13 +2425,15 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
             ...(novasObs !== os?.observacoes ? { observacoes: novasObs } : {}),
           })
           persistirLancamentosDoPagamento(os, { valor, forma, taxa_pct, parcelasAPrazo: parcelasAPrazo || [], dataPagamento: data_pagamento || null })
+            .then(() => setRecebKey(k => k + 1)) // recarrega a lista após o insert
         }}
         onEnviarLink={() => {}}
         onGerarPix={() => {}}
       />
       </AtlPanel>
+      )}
 
-      {/* 7. Documentos — Atlassian panel */}
+      {/* 8. Documentos — Atlassian panel */}
       <AtlDocumentosCard
         T={T} dark={dark}
         onPdf={() => setDocSheet('pdf')}

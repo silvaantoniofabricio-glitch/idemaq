@@ -3,7 +3,7 @@
 // Layout: page header (título + stats + botão criar) → zone tabs + filtros → board.
 // Toda lógica de negócio mantida; só UI reconstruída do zero.
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../supabase'
 import { useOS, uiEtapaToDb } from '../hooks/useOS'
 import { duplicarOS } from '../utils/osDerivada'
@@ -18,7 +18,7 @@ import {
 } from '../utils/osHelpers'
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
-import { fetchPartesStockPorOS, calcManutPecaStatus } from '../utils/pecasStatus'
+import { fetchFaltaPecas, calcManutPecaStatus } from '../utils/pecasStatus'
 import KanbanColumn from '../components/kanban/KanbanColumn'
 import MentionTextInput from '../components/notas/MentionTextInput'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
@@ -255,8 +255,9 @@ export default function Kanban({ T, dark, user }) {
   // pois useOS só traz a contagem de itens — e useOS é "não mexer").
   const [temLimpeza, setTemLimpeza]     = useState(() => new Set())
   const [temManutencao, setTemManutencao] = useState(() => new Set())
-  // Map os_id → peças do catálogo + estoque (pro chip Manut. ficar vermelho/amarelo)
-  const [pecaPartsMap, setPecaPartsMap] = useState(() => new Map())
+  // Falta de peças (alocação global do estoque entre OS de conserto) pro chip Manut.
+  const [faltaSet, setFaltaSet]     = useState(() => new Set())
+  const [pecasPorOS, setPecasPorOS] = useState(() => new Map())
   const [modalNova, setModalNova]   = useState(false)
   const [detalhe, setDetalhe]       = useState(null)
   const [menuAberto, setMenuAberto] = useState(null)
@@ -312,17 +313,20 @@ export default function Kanban({ T, dark, user }) {
     return () => { cancel = true }
   }, [osList.length])
 
-  // Peças do catálogo + estoque, pro chip Manut. (vermelho/amarelo). O status de
-  // compra (amarelo/neutro) recalcula sozinho no re-render via pre_diagnostico;
-  // aqui só precisamos do estoque atual, que muda pouco.
+  // Alocação global do estoque entre as OS de conserto (pro chip Manut.).
+  // Refaz quando a lista de OS muda OU quando algum status de compra muda.
+  const compraPecasKey = useMemo(
+    () => osList.map(o => o.pre_diagnostico?.compra_pecas ? JSON.stringify(o.pre_diagnostico.compra_pecas) : '').join('|'),
+    [osList]
+  )
   useEffect(() => {
     let cancel = false
     ;(async () => {
-      const map = await fetchPartesStockPorOS()
-      if (!cancel) setPecaPartsMap(map)
+      const { falta, porOS } = await fetchFaltaPecas()
+      if (!cancel) { setFaltaSet(falta); setPecasPorOS(porOS) }
     })()
     return () => { cancel = true }
-  }, [osList.length])
+  }, [osList.length, compraPecasKey])
 
   // ── Drag & drop ──────────────────────────────────────────────────────────────
   const [arrastando, setArrastando]   = useState(null)
@@ -444,7 +448,7 @@ export default function Kanban({ T, dark, user }) {
     if (!ec) return
     // Só a etapa Conserto (oficina) mostra o chip Manut. — calcula a cor da peça.
     const card = os.etapa === 'oficina'
-      ? { ...os, manutPecaStatus: calcManutPecaStatus(os, pecaPartsMap.get(os.id)) }
+      ? { ...os, manutPecaStatus: calcManutPecaStatus(os, pecasPorOS.get(os.id), faltaSet) }
       : os
     porEtapa[ec.id].push(card)
   })

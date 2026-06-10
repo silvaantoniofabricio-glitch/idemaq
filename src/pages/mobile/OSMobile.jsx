@@ -14,8 +14,9 @@ import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
 import { normalizePatchOS } from '../../utils/osPatch'
 import {
-  podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin,
+  podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin, ordenarColuna,
 } from '../../utils/osHelpers'
+import { fetchFaltaPecas, calcManutPecaStatus } from '../../utils/pecasStatus'
 import { ETAPAS_TODOS, ZONAS } from '../../utils/osData'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import { P } from '../../theme'
@@ -225,6 +226,22 @@ export default function OSMobile({ T, dark, user }) {
     return () => { cancel = true }
   }, [osList.length])
 
+  // Falta de peças (alocação global do estoque entre OS de conserto) pro chip Manut.
+  const [faltaSet, setFaltaSet]     = useState(() => new Set())
+  const [pecasPorOS, setPecasPorOS] = useState(() => new Map())
+  const compraPecasKey = useMemo(
+    () => osList.map(o => o.pre_diagnostico?.compra_pecas ? JSON.stringify(o.pre_diagnostico.compra_pecas) : '').join('|'),
+    [osList]
+  )
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      const { falta, porOS } = await fetchFaltaPecas()
+      if (!cancel) { setFaltaSet(falta); setPecasPorOS(porOS) }
+    })()
+    return () => { cancel = true }
+  }, [osList.length, compraPecasKey])
+
   const VIEW_STORAGE_KEY = 'idemaq.osmobile.view'
   const [viewMode, setViewMode] = useState(() => {
     try { return localStorage.getItem(VIEW_STORAGE_KEY) === 'compact' ? 'compact' : 'normal' }
@@ -279,15 +296,22 @@ export default function OSMobile({ T, dark, user }) {
       const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
       if (!uni) continue
       if (uni.adminOnly && !admin) continue
-      ;(porEtapa[uni.id] = porEtapa[uni.id] || []).push(os)
+      // Só a etapa Conserto (oficina) mostra o chip Manut. — calcula a cor da peça.
+      const card = os.etapa === 'oficina'
+        ? { ...os, manutPecaStatus: calcManutPecaStatus(os, pecasPorOS.get(os.id), faltaSet) }
+        : os
+      ;(porEtapa[uni.id] = porEtapa[uni.id] || []).push(card)
     }
     const zonaCfg = ZONAS.find(z => z.id === filtros.zona)
     const etapasZonaSet = zonaCfg ? new Set(zonaCfg.etapas) : null
     return ETAPAS_TODOS
       .filter(e => !(e.adminOnly && !admin))
       .filter(e => !etapasZonaSet || etapasZonaSet.has(e.id))
-      .map(e => ({ ...e, cards: porEtapa[e.id] || [], count: (porEtapa[e.id] || []).length }))
-  }, [osFiltradas, admin, filtros.zona])
+      .map(e => {
+        const cards = ordenarColuna(e.id, porEtapa[e.id] || [])
+        return { ...e, cards, count: cards.length }
+      })
+  }, [osFiltradas, admin, filtros.zona, faltaSet, pecasPorOS])
 
   const abasDisponiveis = useMemo(() => colunas.filter(c => c.count > 0), [colunas])
 

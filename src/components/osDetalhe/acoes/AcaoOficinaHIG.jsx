@@ -14,7 +14,8 @@
 //   · os.pre_diagnostico.oficina.execucao
 //   · os.pre_diagnostico.oficina.limpeza_status / manutencao_status
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
+import { fetchFaltaPecas } from '../../../utils/pecasStatus'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
@@ -171,10 +172,12 @@ function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal,
 function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChecks,
                           onToggleDesm, onToggleManut, onToggleMont, outroServDone }) {
   const desmDone = !!desmVal.feito
-  const servDone = manutChecks.length > 0 && manutChecks.every(c => manutVal[c.id])
+  const servDone = manutChecks.length > 0
+    ? manutChecks.every(c => manutVal[c.id])
+    : !!manutVal.feito
   let montBloqueio = null
   if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
-  else if (!servDone) montBloqueio = 'Conclua todos os itens de serviço'
+  else if (!servDone) montBloqueio = manutChecks.length > 0 ? 'Instale todas as peças' : 'Marque a manutenção como feita'
   else if (!outroServDone) montBloqueio = 'Aguardando limpeza'
 
   return (
@@ -199,13 +202,12 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
           />
         ))
       ) : (
-        <div style={{
-          padding: '10px 14px',
-          borderTop: `1px solid ${T.border}`,
-          fontSize: 12.5, color: T.textMuted, fontStyle: 'italic',
-        }}>
-          Sem componentes marcados no diagnóstico.
-        </div>
+        // Sem peças no orçamento (manutenção de mão de obra) — marca direto.
+        <CheckRow T={T} dark={dark}
+          label="Manutenção feita"
+          checked={!!manutVal.feito}
+          onToggle={() => onToggleManut('feito')}
+        />
       )}
       {montBloqueio
         ? <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
@@ -337,20 +339,28 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   const { itens } = useOSItens(os?.id)
   const vermelho = corEtapa('red', dark)
   const amarelo  = corEtapa('yellow', dark)
+  const azul     = corEtapa('blue', dark)
+  const verde    = corEtapa('green', dark)
+
+  // Falta de peças — alocação GLOBAL do estoque entre todas as OS de conserto
+  // (considera qtd pedida e a mesma peça pedida por várias OS).
+  const [faltaSet, setFaltaSet] = useState(() => new Set())
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      const { falta } = await fetchFaltaPecas()
+      if (!cancel) setFaltaSet(falta)
+    })()
+    return () => { cancel = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [os?.id, os?.pre_diagnostico?.compra_pecas, itens])
 
   const temLimpeza = useMemo(
     () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
     [itens]
   )
-  // Manutencao so e ativada se o orcamento tem item explicito de manutencao
-  // (taxa/deslocamento/capa/peca avulsa NAO sao servicos de oficina).
-  const temManutencao = useMemo(
-    () => (itens || []).some(it => /manuten/i.test(it.nome || '')),
-    [itens]
-  )
-
-  // Checklist da manutencao vem do diagnostico
-  const manutChecks = useMemo(() => {
+  // Componentes do diagnóstico — SÓ informativo (resumo). Não é o checklist.
+  const diagComponentes = useMemo(() => {
     const marcados = os?.pre_diagnostico?.componentes_marcados || {}
     const out = []
     for (const [, items] of Object.entries(marcados)) {
@@ -374,6 +384,60 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     return out
   }, [os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho])
 
+  // Checklist da manutenção = combinação de duas fontes:
+  //   1) Componentes do diagnóstico marcados como MANUTENÇÃO → mão de obra, sem
+  //      peça no orçamento. O check vem do próprio componente.
+  //   2) PEÇAS do orçamento (vêm dos componentes marcados como TROCA) → com selo
+  //      de estoque (🔴 Falta · 🟡 Comprada · 🟢 Em estoque).
+  const compraPecas = os?.pre_diagnostico?.compra_pecas || {}
+  const manutChecks = useMemo(() => {
+    const out = []
+
+    // 1) Componentes "manutenção" (sem peça — serviço embutido na mão de obra)
+    const marcados = os?.pre_diagnostico?.componentes_marcados || {}
+    for (const [, items] of Object.entries(marcados)) {
+      if (!items || typeof items !== 'object') continue
+      const pares = Array.isArray(items)
+        ? items.map(id => [id, 'troca'])
+        : Object.entries(items)
+      for (const [itemId, acao] of pares) {
+        if (acao !== 'manutencao') continue // 'troca' vira peça no orçamento (abaixo)
+        const cat = CATEGORIA_POR_ID[itemId]
+        out.push({
+          id: `manut:${itemId}`,
+          label: cat?.label || itemId,
+          badge: { label: 'Manut.', cor: amarelo },
+        })
+      }
+    }
+
+    // 2) Peças do orçamento (troca) — com selo de estoque
+    for (const it of (itens || [])) {
+      if (it.tipo !== 'peca') continue
+      const qtd = Number(it.qtd) || 1
+      const compraSt = compraPecas[it.id]?.status
+      let badge = null
+      if (compraSt === 'entrega')        badge = { label: 'Comprada',   cor: amarelo }
+      else if (compraSt === 'entregue')  badge = { label: 'Em estoque', cor: verde }
+      else if (!it.peca_id)              badge = null // peça avulsa, sem estoque
+      else if (faltaSet.has(it.id))      badge = { label: 'Falta',      cor: vermelho }
+      else                               badge = { label: 'Em estoque', cor: verde }
+      out.push({
+        id: it.id,
+        label: qtd > 1 ? `${it.nome} · ${qtd}x` : it.nome,
+        badge,
+      })
+    }
+
+    return out
+  }, [itens, faltaSet, compraPecas, os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho, verde])
+
+  // Manutenção ativa quando há itens de manutenção (peças/componentes) OU serviço.
+  const temManutencao = useMemo(
+    () => manutChecks.length > 0 || (itens || []).some(it => /manuten/i.test(it.nome || '')),
+    [manutChecks, itens]
+  )
+
   const oficinaJsonb = os?.pre_diagnostico?.oficina || {}
   const exec = oficinaJsonb.execucao || {}
   const desmVal  = exec.desmontagem  || {}
@@ -389,7 +453,8 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     const montOk = !!novoExec.montagem?.feito
     const limpServOk = !!novoExec.limpeza_serv?.feito
     const manutServOk = manutChecks.length > 0
-      && manutChecks.every(c => novoExec.manut_serv?.[c.id])
+      ? manutChecks.every(c => novoExec.manut_serv?.[c.id])
+      : !!novoExec.manut_serv?.feito // sem peças (mão de obra): marca "manutenção feita"
 
     const calcStatus = (servOk) => {
       if (desmOk && servOk && montOk) return 'concluido'
@@ -403,6 +468,12 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     // Flags persistidas para o KanbanCard saber se o serviço existe no orçamento
     novaOficina.tem_limpeza    = temLimpeza
     novaOficina.tem_manutencao = temManutencao
+    // Contadores do checklist de manutenção (peças do orçamento + componentes).
+    // O KanbanCard pinta o chip Manut. a partir daqui: todos feitos = verde,
+    // parte feita = amarelo — SEM exigir a montagem. A lista de checks vem do
+    // orçamento, que o card não tem; por isso o contador é salvo aqui.
+    novaOficina.manut_total  = manutChecks.length
+    novaOficina.manut_feitos = manutChecks.filter(c => !!novoExec.manut_serv?.[c.id]).length
 
     onUpdateOS?.(os.numero, {
       pre_diagnostico: { ...(os.pre_diagnostico || {}), oficina: novaOficina },
@@ -418,7 +489,9 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
 
   const limpServDone = !temLimpeza || !!limpVal.feito
   const manutServDone = !temManutencao
-    || (manutChecks.length > 0 && manutChecks.every(c => manutVal[c.id]))
+    || (manutChecks.length > 0
+        ? manutChecks.every(c => manutVal[c.id])
+        : !!manutVal.feito)
 
   const desmDone  = !!desmVal.feito
   const montDone  = !!montVal.feito
@@ -448,37 +521,18 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
         T={T} dark={dark}
         relato={os?.defeito || ''}
         causa={os?.pre_diagnostico?.causa_diagnostico || ''}
-        componentes={manutChecks}
+        componentes={diagComponentes}
       />
 
       {/* 2. Banner falhas */}
       <BannerFalhas T={T} dark={dark} falhas={falhas} />
 
-      {/* 2b. Peças a comprar (estoque zerado) */}
+      {/* 2b. Peças a comprar (em falta no estoque) */}
       <PecasComprarSection
         T={T} dark={dark} os={os} itens={itens} admin={admin}
+        faltaSet={faltaSet}
         onUpdateOS={onUpdateOS}
       />
-
-      {/* 3. Aviso diagnostico vazio */}
-      {temManutencao && manutChecks.length === 0 && (
-        <AtlPanel T={T} dark={dark} accent={amarelo}>
-          <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 4,
-              background: amarelo + '22', color: amarelo,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <i className="ti ti-info-circle" style={{ fontSize: 14 }} aria-hidden="true" />
-            </div>
-            <span style={{ flex: 1, fontSize: 12.5, color: T.textPrimary, lineHeight: 1.45 }}>
-              O orçamento tem manutenção mas o diagnóstico não tem componentes marcados.
-              Volte e marque os componentes.
-            </span>
-          </div>
-        </AtlPanel>
-      )}
 
       {/* 4. Lados */}
       {temLimpeza && (

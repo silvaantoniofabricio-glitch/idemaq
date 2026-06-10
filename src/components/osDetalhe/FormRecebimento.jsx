@@ -16,19 +16,59 @@ import { corEtapa } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
 import { useToast } from '../ui'
 
-// Taxas InfinitePay Maxi 1 (1x a 12x). Aplicáveis ao Crédito.
-const TAXA_CREDITO = {
-  1: 3.15, 2: 4.46, 3: 4.99, 4: 5.52, 5: 6.05, 6: 6.58,
-  7: 7.11, 8: 7.64, 9: 8.17, 10: 8.70, 11: 9.23, 12: 9.76,
+// Taxas reais da maquininha InfinitePay por BANDEIRA (1x a 21x no crédito).
+// Mastercard e Visa usam a mesma tabela; Elo é mais cara. Conferido em
+// "Minhas taxas e prazos" do app InfinitePay (10/06/2026).
+const TAXAS_BANDEIRA = {
+  master: {
+    debito: 1.36,
+    credito: {
+      1: 3.14, 2: 5.38, 3: 6.11, 4: 6.84, 5: 7.56, 6: 8.27, 7: 8.98,
+      8: 9.68, 9: 10.37, 10: 11.05, 11: 11.73, 12: 12.39, 13: 15.39,
+      14: 16.01, 15: 16.65, 16: 17.31, 17: 18.00, 18: 18.72, 19: 19.36,
+      20: 20.00, 21: 20.64,
+    },
+  },
+  elo: {
+    debito: 2.57,
+    credito: {
+      1: 4.90, 2: 6.46, 3: 7.19, 4: 7.91, 5: 8.62, 6: 9.32, 7: 10.02,
+      8: 10.71, 9: 11.40, 10: 12.07, 11: 12.74, 12: 13.40, 13: 16.40,
+      14: 17.06, 15: 17.74, 16: 18.45, 17: 19.19, 18: 19.95, 19: 20.59,
+      20: 21.23, 21: 21.87,
+    },
+  },
 }
-// Link InfinitePay = taxa do crédito + 0,90% (ex: 12x maquininha 9,76% → link 10,66%)
+TAXAS_BANDEIRA.visa = TAXAS_BANDEIRA.master // Visa = mesma tabela da Mastercard
+
+const MAX_PARCELAS = 21
+
+const BANDEIRAS = [
+  { id: 'master', label: 'Mastercard' },
+  { id: 'visa',   label: 'Visa' },
+  { id: 'elo',    label: 'Elo' },
+]
+
+// Link InfinitePay = taxa do crédito + 0,90%.
 const LINK_ACRESCIMO = 0.90
-const taxaLink = (p) => (TAXA_CREDITO[p] || 0) + LINK_ACRESCIMO
+
+function taxaDebito(bandeira) {
+  return (TAXAS_BANDEIRA[bandeira] || TAXAS_BANDEIRA.master).debito
+}
+function taxaCredito(bandeira, parcelas) {
+  return (TAXAS_BANDEIRA[bandeira] || TAXAS_BANDEIRA.master).credito[parcelas] || 0
+}
+function taxaSub(subId, bandeira, parcelas) {
+  if (subId === 'debito')  return taxaDebito(bandeira)
+  if (subId === 'credito') return taxaCredito(bandeira, parcelas)
+  if (subId === 'link')    return taxaCredito(bandeira, parcelas) + LINK_ACRESCIMO
+  return 0
+}
 
 const SUB_CARTAO = [
-  { id: 'debito',  label: 'Débito',           fixed: 1.37,  icon: 'ti-credit-card' },
-  { id: 'credito', label: 'Crédito',          parcelado: true, getTaxa: (p) => TAXA_CREDITO[p] || 0, icon: 'ti-credit-card', desc: '1x a 12x' },
-  { id: 'link',    label: 'Link InfinitePay', parcelado: true, getTaxa: taxaLink, icon: 'ti-link', desc: '1x a 12x' },
+  { id: 'debito',  label: 'Débito',           icon: 'ti-credit-card' },
+  { id: 'credito', label: 'Crédito',          parcelado: true, icon: 'ti-credit-card', desc: '1x a 21x' },
+  { id: 'link',    label: 'Link InfinitePay', parcelado: true, icon: 'ti-link',        desc: '1x a 21x' },
 ]
 
 // Converte o ID interno num label legível pro display em outras telas.
@@ -70,7 +110,8 @@ export default function FormRecebimento({
   const [dataPagamento, setDataPagamento] = useState(dataMaisDiasISO(0)) // hoje, editável
   const [forma, setForma] = useState('pix')          // 'pix' | 'cartao' | 'dinheiro' | 'aprazo'
   const [subCartao, setSubCartao] = useState(null)   // null antes de escolher
-  const [parcelas, setParcelas] = useState(1)        // 1x a 12x (crédito e link)
+  const [bandeira, setBandeira] = useState('master') // 'master' | 'visa' | 'elo'
+  const [parcelas, setParcelas] = useState(1)        // 1x a 21x (crédito e link)
   const [parcelasAPrazo, setParcelasAPrazo] = useState([])  // [{ data, valor }]
   const [partialDialog, setPartialDialog] = useState(false)
 
@@ -101,11 +142,8 @@ export default function FormRecebimento({
   }
   function taxaAtual() {
     if (forma === 'pix' || forma === 'dinheiro' || forma === 'aprazo') return 0
-    const sub = SUB_CARTAO.find(s => s.id === subCartao)
-    if (!sub) return 0
-    if (sub.fixed != null) return sub.fixed
-    if (sub.getTaxa) return sub.getTaxa(parcelas)
-    return 0
+    if (!subCartao) return 0
+    return taxaSub(subCartao, bandeira, parcelas)
   }
 
   // Total das parcelas a prazo (precisa bater com o valor de recebimento)
@@ -310,25 +348,43 @@ export default function FormRecebimento({
           border: `1px solid ${azul}44`,
           display: 'flex', flexDirection: 'column', gap: 4,
         }}>
+          {/* Bandeira — define a tabela de taxas (Mastercard/Visa x Elo) */}
+          <div style={{
+            fontSize: 10, color: T.textMuted, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '.4px',
+            marginBottom: 4,
+          }}>Bandeira</div>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
+            marginBottom: 8,
+          }}>
+            {BANDEIRAS.map(b => (
+              <BandeiraBtn
+                key={b.id}
+                T={T} dark={dark}
+                ativo={bandeira === b.id}
+                onClick={() => setBandeira(b.id)}
+                label={b.label}
+              />
+            ))}
+          </div>
+
           <div style={{
             fontSize: 10, color: T.textMuted, fontWeight: 700,
             textTransform: 'uppercase', letterSpacing: '.4px',
             marginBottom: 4,
           }}>Tipo de cartão</div>
-          {SUB_CARTAO.map(s => {
-            const taxa = s.fixed != null ? s.fixed : (s.getTaxa ? s.getTaxa(parcelas) : null)
-            return (
-              <SubCartaoBtn
-                key={s.id}
-                T={T} dark={dark} sub={s}
-                ativo={subCartao === s.id}
-                onClick={() => setSubCartao(s.id)}
-                parcelas={parcelas}
-                setParcelas={setParcelas}
-                taxaAtual={taxa}
-              />
-            )
-          })}
+          {SUB_CARTAO.map(s => (
+            <SubCartaoBtn
+              key={s.id}
+              T={T} dark={dark} sub={s}
+              ativo={subCartao === s.id}
+              onClick={() => setSubCartao(s.id)}
+              parcelas={parcelas}
+              setParcelas={setParcelas}
+              taxaAtual={taxaSub(s.id, bandeira, parcelas)}
+            />
+          ))}
         </div>
       )}
 
@@ -621,6 +677,29 @@ function AtalhoBtn({ T, valorOk, icon, label, title, onClick }) {
   )
 }
 
+// Botão de bandeira (Mastercard/Visa/Elo) — chip simples, ativo = azul.
+function BandeiraBtn({ T, dark, ativo, onClick, label }) {
+  const cor = (d, c) => dark ? d : c
+  const azul = cor(P.blue, P.blueDark)
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '7px 6px', borderRadius: 6,
+        border: `1.5px solid ${ativo ? azul : T.border}`,
+        background: ativo ? cor('#142d4a', '#dbe9f7') : 'transparent',
+        color: ativo ? azul : T.textSecondary,
+        fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+        fontFamily: 'inherit', minWidth: 0,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+      <i className="ti ti-credit-card" style={{ fontSize: 13 }} aria-hidden="true" />
+      {label}
+    </button>
+  )
+}
+
 // Layout VERTICAL compacto (icon + label/sublabel centralizados) — cabe nas
 // 4 colunas de qualquer largura mobile, evita overflow. Radio dot no canto.
 function FormaTopBtn({ T, dark, ativo, onClick, icon, label, sublabel }) {
@@ -720,7 +799,7 @@ function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, tax
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4,
           }}>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(p => {
+            {Array.from({ length: MAX_PARCELAS }, (_, i) => i + 1).map(p => {
               const ativoP = parcelas === p
               return (
                 <button
