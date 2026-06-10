@@ -94,21 +94,16 @@ export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
         </div>
       </AtlPanel>
 
-      {/* Reverter — recusou sem querer */}
-      <AtlPanel T={T} dark={dark} title="Foi sem querer?">
-        <Decisao T={T} dark={dark} cor={azul}
-          first
-          icon="arrow-back-up"
-          titulo="Reabrir orçamento"
-          texto="Volta a OS pra etapa Orçamento e reabre a decisão (aguardando resposta)."
-          onClick={reabrirOrcamento}
-        />
-      </AtlPanel>
-
-      {/* 3 decisoes em panel unico */}
+      {/* Destinos — inclui reverter (recusou sem querer) */}
       <AtlPanel T={T} dark={dark} title="Destino da máquina">
         <Decisao T={T} dark={dark} cor={azul}
           first
+          icon="arrow-back-up"
+          titulo="Retornar ao orçamento"
+          texto="Recusou sem querer? Volta a OS pro Orçamento e reabre a decisão."
+          onClick={reabrirOrcamento}
+        />
+        <Decisao T={T} dark={dark} cor={azul}
           icon="building-factory-2"
           titulo="Converter em Fabricação"
           texto="Aproveita as peças e a máquina vira estoque pra venda futura."
