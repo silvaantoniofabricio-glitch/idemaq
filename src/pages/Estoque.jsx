@@ -342,14 +342,17 @@ export default function Estoque({ T, dark, user }) {
       .from('peca')
       .select('nome, sku, modelo, modelos_compativeis, marca, qtd_atual, qtd_minima')
       .is('deleted_at', null)
-      .gt('qtd_minima', 0)
       .order('nome')
 
     if (err) { notify('erro', 'Erro ao buscar peças'); return }
 
-    const emFalta = (data || []).filter(p =>
-      Number(p.qtd_atual ?? 0) <= Number(p.qtd_minima ?? 0)
-    )
+    // Inclui: esgotadas (qtd=0, independente de qtd_minima) +
+    //         baixo (qtd_minima>0 e qtd<=min)
+    const emFalta = (data || []).filter(p => {
+      const qtd = Number(p.qtd_atual ?? 0)
+      const min = Number(p.qtd_minima ?? 0)
+      return qtd <= 0 || (min > 0 && qtd <= min)
+    })
 
     if (emFalta.length === 0) {
       notify('info', 'Nenhuma peça com estoque baixo ou esgotado no momento')
@@ -473,7 +476,7 @@ export default function Estoque({ T, dark, user }) {
         stats={headerStats}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
-            {onPecas && pecasBaixas > 0 && (
+            {onPecas && (
               <Button variant="secondary" T={T} dark={dark}
                 iconLeft="ti-file-text"
                 onClick={abrirPedidoOrcamento}>
