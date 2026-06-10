@@ -32,9 +32,23 @@ function listaNatural(itens) {
   return arr.slice(0, -1).join(', ') + ' e ' + arr[arr.length - 1]
 }
 
-// ─── Orçamento de conserto (etapa Orçamento normal) ───────────────────────────
-// "{saudação}, {nome}! a máquina está com {defeito}. A troca de {peças} com mão
-//  de obra fica em R$ {total} no total. Posso seguir com o conserto?"
+// Item de higienização/limpeza (oferecido à parte como adicional).
+function ehHigienizacao(it) {
+  return /limpez|higien/i.test(it?.nome || '')
+}
+
+// ─── Mensagem da etapa Orçamento ──────────────────────────────────────────────
+// Texto corrido estilo gerador, com oferta de higienização como adicional:
+//
+//  "{saud}, {nome}! a máquina está com {causa}. A troca do {peças} com mão de
+//   obra fica em R$ {conserto}. Ela também está com sujeira na parte interna, se
+//   quiser aproveitar que já está aqui pra fazer a higienização completa junto
+//   com o serviço fica R$ {hig}. Posso já incluir a higienização ou prefere só
+//   o conserto?"
+//
+// - O valor do conserto = total − higienização (a higienização é opcional).
+// - Se não houver item de higienização: fecha com "Posso seguir com o conserto?".
+// - Se a OS for só higienização (sem conserto): mensagem de higienização pura.
 export function montarMensagemOrcamento({ os, porTipo, total }) {
   if (!(total > 0)) return null  // sem orçamento fechado, nada pra enviar
 
@@ -42,33 +56,34 @@ export function montarMensagemOrcamento({ os, porTipo, total }) {
   const saud = saudacaoAgora()
   const abertura = nome ? `${saud}, ${nome}! ` : `${saud}! `
 
-  // Diagnóstico: causa do técnico > relato do cliente.
+  const servicos = porTipo?.servico || []
+  const pecas = (porTipo?.peca || []).map(p => (p?.nome || '').trim()).filter(Boolean)
+
+  // Higienização é um serviço à parte; o conserto é todo o resto.
+  const valorHig = servicos.filter(ehHigienizacao)
+    .reduce((s, it) => s + (Number(it.qtd) || 0) * (Number(it.valor_unitario) || 0), 0)
+  const valorConserto = Math.max(0, total - valorHig)
+
+  // Caso 1: OS só de higienização (sem conserto).
+  if (valorConserto <= 0 && valorHig > 0) {
+    return `${abertura}a higienização completa da sua máquina fica em R$ ${fmtValorMsg(valorHig)}. ` +
+      `Inclui limpeza de toda a máquina por dentro, eliminação de resíduo de sabão, ` +
+      `amaciante e bactérias, e polimento pra proteção. Posso confirmar o serviço?`
+  }
+
+  // Caso 2: conserto (com ou sem oferta de higienização).
   const diag = minuscInicial(os?.pre_diagnostico?.causa_diagnostico || os?.defeito || '')
   const fraseDiag = diag ? `a máquina está com ${diag}. ` : ''
 
-  // Peças trocadas → lista natural ("rolamento e eletrobomba").
-  const pecas = (porTipo?.peca || []).map(p => (p?.nome || '').trim()).filter(Boolean)
   const fraseValor = pecas.length > 0
-    ? `A troca de ${listaNatural(pecas)} com mão de obra fica em R$ ${fmtValorMsg(total)} no total. `
-    : `O serviço fica em R$ ${fmtValorMsg(total)} no total. `
+    ? `A troca do ${listaNatural(pecas)} com mão de obra fica em R$ ${fmtValorMsg(valorConserto)}. `
+    : `O serviço com mão de obra fica em R$ ${fmtValorMsg(valorConserto)}. `
 
-  return `${abertura}${fraseDiag}${fraseValor}Posso seguir com o conserto?`
-}
+  const fraseFecho = valorHig > 0
+    ? `Ela também está com sujeira na parte interna, se quiser aproveitar que já está aqui pra fazer a higienização completa junto com o serviço fica R$ ${fmtValorMsg(valorHig)}. Posso já incluir a higienização ou prefere só o conserto?`
+    : `Posso seguir com o conserto?`
 
-// ─── Orçamento de higienização (etapa Orçamento da máquina de higienização) ───
-// "{saudação}, {nome}! A higienização completa da sua máquina fica em R$ {total}.
-//  Inclui limpeza de toda a máquina por dentro, eliminação de resíduo de sabão,
-//  amaciante e bactérias, e polimento pra proteção. Posso confirmar o serviço?"
-export function montarMensagemHigienizacao({ os, total }) {
-  if (!(total > 0)) return null
-
-  const nome = primeiroNome(os?.cliente)
-  const saud = saudacaoAgora()
-  const abertura = nome ? `${saud}, ${nome}! ` : `${saud}! `
-
-  return `${abertura}A higienização completa da sua máquina fica em R$ ${fmtValorMsg(total)}. ` +
-    `Inclui limpeza de toda a máquina por dentro, eliminação de resíduo de sabão, ` +
-    `amaciante e bactérias, e polimento pra proteção. Posso confirmar o serviço?`
+  return `${abertura}${fraseDiag}${fraseValor}${fraseFecho}`
 }
 
 // Abre o WhatsApp do cliente com a mensagem pré-preenchida. Mesma lógica de

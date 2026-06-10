@@ -27,7 +27,7 @@ import { supabase } from '../../../supabase'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
-import { montarMensagemHigienizacao, abrirWhatsAppComTexto } from '../../../utils/osMensagens'
+import { montarMensagemOrcamento, abrirWhatsAppComTexto } from '../../../utils/osMensagens'
 import { useToast } from '../../ui'
 
 // ─── Tipos de item ────────────────────────────────────────────────────────
@@ -2343,10 +2343,10 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   useEffect(() => { setDescontoRS(Number(os?.desconto || 0)) }, [os?.desconto])
   const total = Math.max(0, subtotalBruto - descontoRS)
 
-  // Mensagem pré-pronta pro WhatsApp do cliente (higienização — preço fechado).
+  // Mensagem pré-pronta pro WhatsApp do cliente (conserto + oferta de higienização).
   const mensagemOrcamento = useMemo(
-    () => montarMensagemHigienizacao({ os, total }),
-    [os?.cliente, os?.fone, total]
+    () => montarMensagemOrcamento({ os, porTipo, total }),
+    [os?.cliente, os?.fone, os?.defeito, os?.pre_diagnostico, porTipo, total]
   )
 
   function aplicarRS(rs)  { setDescontoRS(Math.max(0, Math.min(subtotalBruto, Number(String(rs).replace(',', '.')) || 0))) }
