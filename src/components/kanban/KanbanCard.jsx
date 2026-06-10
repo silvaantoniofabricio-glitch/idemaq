@@ -9,20 +9,35 @@ import { fmtPrazoCurto } from '../../utils/fmt'
 import { corEtapa } from '../../utils/colors'
 import SubStatus from './SubStatus'
 
-// Status do chip Limp./Manut. recalculado a partir dos checks reais (execucao),
-// SEM confiar no texto guardado (oficina.limpeza_status/manutencao_status) — esse
-// pode ficar velho se outra gravação sobrescrever. Como "Montagem" só libera depois
-// de desmontagem + serviço completos, montagem✓ já garante a conclusão.
+// Status do chip Limp./Manut. recalculado a partir dos checks reais — NÃO exige a
+// montagem: o chip reflete o SERVIÇO.
+//   · Limpeza: verde quando "Limpeza feita"; amarelo se só desmontou; cinza se nada.
+//   · Manutenção: verde quando TODOS os checks (peças + componentes) foram dados;
+//     amarelo se parte foi feita (trocou 1, falta outra); cinza se nada.
+//     A contagem vem de oficina.manut_total/manut_feitos (salvos no Conserto).
 // Retorna vocabulário do SubStatus: 'concluido' | 'em_andamento' | 'aguardando'.
 function statusServicoSub(oficina, secao) {
   const ex = oficina?.execucao || {}
   const desm = !!ex.desmontagem?.feito
-  const mont = !!ex.montagem?.feito
-  const serv = secao === 'limpeza'
-    ? !!ex.limpeza_serv?.feito
-    : (mont || Object.values(ex.manut_serv || {}).some(Boolean))
-  if (desm && serv && mont) return 'concluido'
-  if (desm || serv || mont) return 'em_andamento'
+
+  if (secao === 'limpeza') {
+    if (ex.limpeza_serv?.feito) return 'concluido'
+    if (desm) return 'em_andamento'
+    return 'aguardando'
+  }
+
+  // Manutenção — usa os contadores salvos pelo Conserto.
+  const total  = oficina?.manut_total
+  const feitos = oficina?.manut_feitos
+  if (typeof total === 'number' && total > 0) {
+    if (feitos >= total) return 'concluido'
+    if (feitos > 0 || desm) return 'em_andamento'
+    return 'aguardando'
+  }
+  // Legado (OS salva antes dos contadores): aproxima pela montagem.
+  const algumManut = Object.values(ex.manut_serv || {}).some(Boolean)
+  if (ex.montagem?.feito) return 'concluido'
+  if (algumManut || desm) return 'em_andamento'
   return 'aguardando'
 }
 

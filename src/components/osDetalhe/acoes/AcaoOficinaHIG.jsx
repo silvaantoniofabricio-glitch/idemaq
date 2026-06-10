@@ -468,6 +468,12 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     // Flags persistidas para o KanbanCard saber se o serviço existe no orçamento
     novaOficina.tem_limpeza    = temLimpeza
     novaOficina.tem_manutencao = temManutencao
+    // Contadores do checklist de manutenção (peças do orçamento + componentes).
+    // O KanbanCard pinta o chip Manut. a partir daqui: todos feitos = verde,
+    // parte feita = amarelo — SEM exigir a montagem. A lista de checks vem do
+    // orçamento, que o card não tem; por isso o contador é salvo aqui.
+    novaOficina.manut_total  = manutChecks.length
+    novaOficina.manut_feitos = manutChecks.filter(c => !!novoExec.manut_serv?.[c.id]).length
 
     onUpdateOS?.(os.numero, {
       pre_diagnostico: { ...(os.pre_diagnostico || {}), oficina: novaOficina },
