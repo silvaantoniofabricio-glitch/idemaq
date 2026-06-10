@@ -28,6 +28,7 @@
 - ✅ Header redesenhado (foto 72x72 + nome cliente big + contato + equipamento)
 - ✅ Todas as 10 ações implementadas visualmente (17-18/05/2026)
 - ✅ Resumo Tab completa: banners contextuais, mini-cards de prazo, RelatorioDiagnostico compartilhado, orçamento admin-only, histórico recente, observações
+- ✅ **Enviar orçamento ao cliente (10/06/2026)**: na etapa Orçamento (`AcaoOrcamento.jsx`), o botão idle "Enviar orçamento ao cliente" agora monta a mensagem em texto corrido (estilo `FERRAMENTAS/gerador_idemaq_v4.html`) com `os.cliente` + causa/`os.defeito` + nomes das peças + `total`, e abre o WhatsApp do cliente (`whatsapp://send?phone=...&text=...`) já preenchido, depois marca `aguardando`. Helper `montarMensagemOrcamento` no próprio arquivo. Só dispara se `total > 0`. **Pendente**: replicar na higienização (`AcaoOrcamentoHIG.jsx`, 2 variantes de BotaoStatus, preço fixo R$165/185 — mensagem diferente).
 - ✅ `updateOS(numero, patch)` exposto pelo hook `useOS` (movido pra lá em 19/05/2026 noite): retorna `{ ok, error, skipped }`. Consumer (Kanban) só wrappa pra toast em erro. Manual de insert em `os_historico` removido — trigger do banco cuida
 - ✅ Persiste parcial via `normalizePatchOS()` em `utils/osPatch.js`: whitelist + optimistic + rollback
 - ✅ **Schema parte 2 plugado (19/05/2026)**: checklist de Recebido / Em oficina / Teste final persistido em `checklist_etapa`; falhas de teste em `falha_teste` (substituiu jsonb em memória `os.teste_falhas`)
