@@ -18,6 +18,7 @@ import { fmtBRL } from '../../utils/fmt'
 import { Modal, ModalHeader, Button, Input, Select, Textarea, useToast } from '../ui'
 
 const MOTIVOS = [
+  { value: 'compra',    label: 'Compra',                 icon: 'ti-shopping-cart' },
   { value: 'contagem',  label: 'Contagem de inventário', icon: 'ti-clipboard-list' },
   { value: 'perda',     label: 'Perda / quebra',         icon: 'ti-alert-triangle' },
   { value: 'ganho',     label: 'Sobra encontrada',       icon: 'ti-package' },
