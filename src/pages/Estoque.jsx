@@ -8,6 +8,7 @@ import { supabase } from '../supabase'
 import { corEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import { isAdmin } from '../utils/osHelpers'
+import { useIsMobile } from '../theme'
 import {
   Card, Button, Badge, Input, Tabs,
   EmptyState, PageHeader, SectionHeader,
@@ -18,6 +19,8 @@ import MaquinaDetalheModal from '../components/estoque/MaquinaDetalheModal'
 import NovaPecaModal from '../components/estoque/NovaPecaModal'
 import { CATEGORIAS_PECA, CATEGORIA_POR_ID } from '../utils/categoriasPeca'
 import { usePecas } from '../hooks/usePecas'
+import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
+import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 const MAQUINAS_MOCK = [
   { id:1, modelo:'Lavadora Consul CWE10',     marca:'Consul',     capacidade:'10kg', estado:'disponivel', custoCompra:150, custoItens:180, custoServico:50,  precoVenda:650 },
@@ -107,6 +110,15 @@ function pctLucro(custo, venda) {
 
 export default function Estoque({ T, dark, user }) {
   const notify = useToast()
+  const isMobile = useIsMobile()
+  const { abrirOSPorId, modalProps: osModalProps } = useOSDetalheModal({ notify, buscando: true })
+
+  // Abre o cartão da peça a partir de um peca_id (usado pela ListaCompras)
+  async function abrirPecaPorId(pecaId) {
+    const { data, error } = await supabase.from('peca').select('*').eq('id', pecaId).single()
+    if (!error && data) setPecaAberta(data)
+  }
+
   // Funcionário não enxerga valores financeiros (custo, lucro, capital).
   // Só vê preço de venda + quantidade. Toggle único usado em todos os blocos.
   const mostraValores = isAdmin(user)
@@ -565,7 +577,9 @@ export default function Estoque({ T, dark, user }) {
 
       {/* Aviso de compras: itens de OS confirmadas que estão sem estoque */}
       {onPecas && listaCompras.length > 0 && (
-        <ListaCompras T={T} dark={dark} itens={listaCompras} />
+        <ListaCompras T={T} dark={dark} itens={listaCompras}
+          onClickOS={abrirOSPorId}
+          onClickPeca={abrirPecaPorId} />
       )}
 
       {onPecas
@@ -593,6 +607,10 @@ export default function Estoque({ T, dark, user }) {
           onSalvar={salvarEdicaoPeca}
           onAjustar={ajustarEstoqueDaPeca}
           onClose={() => setPecaAberta(null)} />
+      )}
+
+      {osModalProps && (
+        <OSDetalhe {...osModalProps} T={T} dark={dark} mobile={isMobile} />
       )}
 
       {maquinaAberta && (
@@ -988,7 +1006,7 @@ function ListaMaquinas({ T, dark, itens, todos, busca, onAbrir, mostraValores = 
 //   • Vermelho = faltando (sem estoque ou qtd insuficiente)
 //   • Cinza  = item avulso (sem vínculo no catálogo)
 // Ordenado: faltando primeiro → com estoque → avulsos.
-function ListaCompras({ T, dark, itens }) {
+function ListaCompras({ T, dark, itens, onClickOS, onClickPeca }) {
   const amarelo = corEtapa('yellow', dark)
   const azul    = corEtapa('blue', dark)
   const vermelho = corEtapa('red', dark)
@@ -1082,20 +1100,31 @@ function ListaCompras({ T, dark, itens }) {
           }}>
             {/* Nome + OS */}
             <div style={{ minWidth: 0 }}>
-              <div style={{
-                fontSize: 13, fontWeight: 600, color: corHero(dark),
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
+              <div
+                onClick={item.peca_id && onClickPeca ? () => onClickPeca(item.peca_id) : undefined}
+                style={{
+                  fontSize: 13, fontWeight: 600, color: corHero(dark),
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  cursor: item.peca_id && onClickPeca ? 'pointer' : 'default',
+                  textDecoration: item.peca_id && onClickPeca ? 'underline' : 'none',
+                  textDecorationColor: item.peca_id && onClickPeca ? corHero(dark) + '60' : 'transparent',
+                }}
+              >
                 {item.nome}
               </div>
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 2 }}>
                 {item.os.map(o => (
-                  <span key={o.id} style={{
-                    fontSize: 10, color: T.textMuted,
-                    background: T.cardAlt, border: `1px solid ${T.border}`,
-                    padding: '1px 5px', borderRadius: 4,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
+                  <span
+                    key={o.id}
+                    onClick={onClickOS ? () => onClickOS(o.id) : undefined}
+                    style={{
+                      fontSize: 10, color: T.textMuted,
+                      background: T.cardAlt, border: `1px solid ${T.border}`,
+                      padding: '1px 5px', borderRadius: 4,
+                      fontVariantNumeric: 'tabular-nums',
+                      cursor: onClickOS ? 'pointer' : 'default',
+                    }}
+                  >
                     OS #{o.numero}
                   </span>
                 ))}
