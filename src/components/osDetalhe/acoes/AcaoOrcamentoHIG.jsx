@@ -722,7 +722,7 @@ function fmtDataBaixa(iso) {
   return `${d}/${m}/${y}`
 }
 
-function BaixasRecebidasPanel({ T, dark, os, total, onUpdateOS }) {
+function BaixasRecebidasPanel({ T, dark, os, total, onUpdateOS, refreshKey = 0 }) {
   const notify = useToast()
   const verde = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
@@ -742,7 +742,7 @@ function BaixasRecebidasPanel({ T, dark, os, total, onUpdateOS }) {
     if (!error) setBaixas(data || [])
     setLoading(false)
   }
-  useEffect(() => { carregar() }, [os?.id, os?.valor_pago]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [os?.id, os?.valor_pago, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || baixas.length === 0) return null
 
@@ -2289,6 +2289,9 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
   const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
+  // Bump após gravar uma baixa pra a lista "Recebimentos lançados" recarregar
+  // SÓ depois do insert terminar (senão busca antes do lançamento existir).
+  const [recebKey, setRecebKey] = useState(0)
 
   // SEM auto-preenchimento. Inserir itens padrao automaticamente ao abrir a
   // etapa causava DUPLICACAO: a ref de controle resetava a cada remontagem
@@ -2394,7 +2397,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
 
       {/* 6. Recebimentos já lançados (baixas) — lista com excluir que reverte
             os dois lados (Caixa + OS). */}
-      <BaixasRecebidasPanel T={T} dark={dark} os={os} total={total} onUpdateOS={onUpdateOS} />
+      <BaixasRecebidasPanel T={T} dark={dark} os={os} total={total} onUpdateOS={onUpdateOS} refreshKey={recebKey} />
 
       {/* 7. Recebimento — quitado mostra "Pago"; senão, o form de recebimento. */}
       {total > 0 && Math.max(0, total - (os?.valor_pago || 0)) <= 0.01 && (os?.valor_pago || 0) > 0 ? (
@@ -2422,6 +2425,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
             ...(novasObs !== os?.observacoes ? { observacoes: novasObs } : {}),
           })
           persistirLancamentosDoPagamento(os, { valor, forma, taxa_pct, parcelasAPrazo: parcelasAPrazo || [], dataPagamento: data_pagamento || null })
+            .then(() => setRecebKey(k => k + 1)) // recarrega a lista após o insert
         }}
         onEnviarLink={() => {}}
         onGerarPix={() => {}}
