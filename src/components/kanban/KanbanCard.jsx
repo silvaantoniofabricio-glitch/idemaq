@@ -9,6 +9,23 @@ import { fmtPrazoCurto } from '../../utils/fmt'
 import { corEtapa } from '../../utils/colors'
 import SubStatus from './SubStatus'
 
+// Status do chip Limp./Manut. recalculado a partir dos checks reais (execucao),
+// SEM confiar no texto guardado (oficina.limpeza_status/manutencao_status) — esse
+// pode ficar velho se outra gravação sobrescrever. Como "Montagem" só libera depois
+// de desmontagem + serviço completos, montagem✓ já garante a conclusão.
+// Retorna vocabulário do SubStatus: 'concluido' | 'em_andamento' | 'aguardando'.
+function statusServicoSub(oficina, secao) {
+  const ex = oficina?.execucao || {}
+  const desm = !!ex.desmontagem?.feito
+  const mont = !!ex.montagem?.feito
+  const serv = secao === 'limpeza'
+    ? !!ex.limpeza_serv?.feito
+    : (mont || Object.values(ex.manut_serv || {}).some(Boolean))
+  if (desm && serv && mont) return 'concluido'
+  if (desm || serv || mont) return 'em_andamento'
+  return 'aguardando'
+}
+
 export default function KanbanCard({
   os, T, dark,
   tipoCor,
@@ -193,8 +210,8 @@ export default function KanbanCard({
           if (!mostraLimp && !mostraManut) return null
           return (
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
-              {mostraLimp  && <SubStatus label="Limp."  status={of.limpeza_status}    T={T} dark={dark} />}
-              {mostraManut && <SubStatus label="Manut." status={os.manutPecaStatus || of.manutencao_status} T={T} dark={dark} />}
+              {mostraLimp  && <SubStatus label="Limp."  status={statusServicoSub(of, 'limpeza')} T={T} dark={dark} />}
+              {mostraManut && <SubStatus label="Manut." status={os.manutPecaStatus || statusServicoSub(of, 'manutencao')} T={T} dark={dark} />}
             </div>
           )
         })()}
