@@ -26,17 +26,27 @@ function statusServicoSub(oficina, secao) {
     return 'aguardando'
   }
 
-  // Manutenção — usa os contadores salvos pelo Conserto.
+  // Manutenção — usa os contadores salvos pelo Conserto (peças + componentes).
   const total  = oficina?.manut_total
   const feitos = oficina?.manut_feitos
-  if (typeof total === 'number' && total > 0) {
-    if (feitos >= total) return 'concluido'
+  if (typeof total === 'number') {
+    if (total === 0) {
+      // Manutenção de mão de obra: check único "Manutenção feita".
+      if (ex.manut_serv?.feito) return 'concluido'
+      return desm ? 'em_andamento' : 'aguardando'
+    }
+    if (feitos >= total) return 'concluido'   // todas as peças/serviços marcados
     if (feitos > 0 || desm) return 'em_andamento'
     return 'aguardando'
   }
-  // Legado (OS salva antes dos contadores): aproxima pela montagem.
+  // Legado (OS salva antes dos contadores): NÃO usa a montagem (pode estar velha
+  // se uma peça foi adicionada depois). Usa o status guardado, que foi calculado
+  // com a lista de peças correta na época.
+  const st = oficina?.manutencao_status
+  if (st === 'concluido') return 'concluido'
+  if (st === 'pendente')  return 'aguardando'
+  if (st === 'andamento') return 'em_andamento'
   const algumManut = Object.values(ex.manut_serv || {}).some(Boolean)
-  if (ex.montagem?.feito) return 'concluido'
   if (algumManut || desm) return 'em_andamento'
   return 'aguardando'
 }
