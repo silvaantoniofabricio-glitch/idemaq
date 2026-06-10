@@ -622,6 +622,7 @@ export default function PecaDetalheModal({
         <AjusteEstoqueModal T={T} dark={dark}
           peca={peca}
           mobile={mobile}
+          mostraValores={mostraValores}
           onClose={() => setAjustandoAberto(false)}
           onSalvar={async (payload) => {
             if (!onAjustar) {

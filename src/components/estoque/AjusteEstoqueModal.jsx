@@ -4,8 +4,8 @@
 // devolução de cliente, sobra encontrada na prateleira, etc.
 //
 // O modal recebe `peca` (read-only), captura nova quantidade + motivo +
-// observação, mostra preview "qtd atual → nova · delta (motivo)" e chama
-// `onSalvar({ qtdNova, motivo, observacao })`. Quem persiste é o consumidor
+// observação + fornecedor/custo opcionais, mostra preview e chama
+// `onSalvar({ qtdNova, motivo, observacao, fornecedor?, custoAtual? })`. Quem persiste é o consumidor
 // (Estoque.jsx → usePecas.ajustarEstoque).
 //
 // Por enquanto só atualiza peca.qtd_atual; o histórico real depende da tabela
@@ -14,6 +14,7 @@
 
 import React, { useMemo, useState } from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
+import { fmtBRL } from '../../utils/fmt'
 import { Modal, ModalHeader, Button, Input, Select, Textarea, useToast } from '../ui'
 
 const MOTIVOS = [
@@ -31,7 +32,7 @@ function toInt(v) {
   return Number.isFinite(n) ? Math.trunc(n) : NaN
 }
 
-export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, mobile }) {
+export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, mobile, mostraValores = true }) {
   const notify = useToast()
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
@@ -43,6 +44,8 @@ export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, m
   const [qtdNovaStr, setQtdNovaStr] = useState(String(qtdAtual))
   const [motivo, setMotivo] = useState('contagem')
   const [observacao, setObservacao] = useState('')
+  const [fornecedor, setFornecedor] = useState('')
+  const [custoNovoStr, setCustoNovoStr] = useState('')
   const [salvando, setSalvando] = useState(false)
 
   const qtdNova = toInt(qtdNovaStr)
@@ -66,10 +69,15 @@ export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, m
 
     setSalvando(true)
     try {
+      const custoNovo = custoNovoStr.trim()
+        ? Number(custoNovoStr.replace(',', '.'))
+        : null
       const res = await onSalvar({
         qtdNova,
         motivo,
         observacao: observacao.trim() || null,
+        fornecedor: fornecedor.trim() || null,
+        custoAtual: (mostraValores && custoNovo !== null && Number.isFinite(custoNovo)) ? custoNovo : null,
       })
       if (res && res.error) {
         notify('erro', 'Erro ao ajustar: ' + (res.error.message || res.error))
@@ -177,6 +185,46 @@ export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, m
               placeholder="Detalhe do ajuste (ex: NF 1820, queda no manuseio, sobra no estoque…)"
               rows={3}
             />
+          </div>
+
+          {/* Fornecedor e custo — opcionais, mantém atuais se em branco */}
+          <div style={{ height: 1, background: T.border }} />
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: (mostraValores && !mobile) ? '1fr 1fr' : '1fr',
+            gap: 10,
+          }}>
+            <div>
+              <div style={{ ...sectionLabel, marginBottom: 6 }}>
+                Fornecedor
+                <span style={{ marginLeft: 6, fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: T.textMuted }}>
+                  (opcional)
+                </span>
+              </div>
+              <Input T={T} dark={dark}
+                value={fornecedor}
+                onChange={setFornecedor}
+                icon="ti-building-store"
+                placeholder={peca?.fornecedor || 'Manter atual'}
+              />
+            </div>
+            {mostraValores && (
+              <div>
+                <div style={{ ...sectionLabel, marginBottom: 6 }}>
+                  Custo (R$)
+                  <span style={{ marginLeft: 6, fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: T.textMuted }}>
+                    (opcional)
+                  </span>
+                </div>
+                <Input T={T} dark={dark}
+                  type="number" inputMode="decimal"
+                  value={custoNovoStr}
+                  onChange={setCustoNovoStr}
+                  icon="ti-currency-dollar"
+                  placeholder={peca?.custoAtual != null ? fmtBRL(peca.custoAtual) : 'Manter atual'}
+                />
+              </div>
+            )}
           </div>
         </div>
 
