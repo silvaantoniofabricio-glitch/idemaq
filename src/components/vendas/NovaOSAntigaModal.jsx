@@ -12,6 +12,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { Modal, Button, Input, useToast } from '../ui'
 import { corEtapa, corHero } from '../../utils/colors'
+import { semAcento } from '../../utils/fmt'
 
 const TIPOS = [
   { id: 'atendimento', label: 'Atendimento', icon: 'ti-tool',  cor: 'blue' },
@@ -50,6 +51,7 @@ export default function NovaOSAntigaModal({ T, dark, onClose, onCriada }) {
   const [buscando, setBuscando] = useState(false)
   const debounceRef = useRef(null)
   const wrapperRef = useRef(null)
+  const todosCliRef = useRef(null) // cache de todos os clientes (busca sem acento)
 
   // Equipamento
   const [marca, setMarca] = useState('')
@@ -92,21 +94,30 @@ export default function NovaOSAntigaModal({ T, dark, onClose, onCriada }) {
     }
     debounceRef.current = setTimeout(async () => {
       setBuscando(true)
-      const termo = novo.trim().replace(/[,()*]/g, ' ')
-      const { data, error } = await supabase
-        .from('cliente')
-        .select('id, nome, telefone, endereco')
-        .is('deleted_at', null)
-        .or(`nome.ilike.%${termo}%,telefone.ilike.%${termo}%`)
-        .order('nome')
-        .limit(20)
-      setBuscando(false)
-      if (error) {
-        console.warn('busca cliente:', error.message)
-        return
+      try {
+        // Carrega todos os clientes 1x (cache) e filtra no cliente ignorando
+        // acentos — "joao" acha "João".
+        if (!todosCliRef.current) {
+          const { data, error } = await supabase
+            .from('cliente')
+            .select('id, nome, telefone, endereco')
+            .is('deleted_at', null)
+            .order('nome')
+            .limit(5000)
+          if (error) throw error
+          todosCliRef.current = data || []
+        }
+        const q = semAcento(novo.trim())
+        const matches = todosCliRef.current.filter(c =>
+          semAcento(c.nome).includes(q) || semAcento(c.telefone).includes(q)
+        ).slice(0, 20)
+        setSugestoesCliente(matches)
+        setAberto(true)
+      } catch (e) {
+        console.warn('busca cliente:', e?.message || e)
+      } finally {
+        setBuscando(false)
       }
-      setSugestoesCliente(data || [])
-      setAberto(true)
     }, 250)
   }
 

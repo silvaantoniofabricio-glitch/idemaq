@@ -19,7 +19,7 @@ import {
   HIG_SPACE, HIG_RADIUS, HIG_SIZE, HIG_COLOR, HIG_FONT, HIG_FONT_MONO,
   higType, higFilledButton, higTintedButton, higInsetCard,
 } from '../../../theme-hig'
-import { fmtBRL } from '../../../utils/fmt'
+import { fmtBRL, semAcento } from '../../../utils/fmt'
 import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { usePecas } from '../../../hooks/usePecas'
@@ -396,8 +396,8 @@ function AddItemForm_DEPRECATED({ tipo, T, dark, onSave, onCancel, saving }) {
 
 // ─── Picker de sugestões (Serviço / Deslocamento) ─────────────────────────
 function SugestoesPicker({ T, dark, sugestoes, termo, onEscolher }) {
-  const t = (termo || '').trim().toLowerCase()
-  const matches = t ? sugestoes.filter(s => s.nome.toLowerCase().includes(t)) : sugestoes
+  const t = semAcento((termo || '').trim())
+  const matches = t ? sugestoes.filter(s => semAcento(s.nome).includes(t)) : sugestoes
   if (matches.length === 0) return null
   return (
     <div>

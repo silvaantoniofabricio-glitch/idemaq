@@ -14,7 +14,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
-import { fmtBRL } from '../utils/fmt'
+import { fmtBRL, semAcento } from '../utils/fmt'
 import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
 import {
   Card, Button, Badge, Input, PageHeader, EmptyState, ChipToggle, useToast,
@@ -232,14 +232,14 @@ export default function Vendas({ T, dark, user }) {
     }
 
     // Busca livre (cliente / nº OS / telefone)
-    const termo = (busca || '').trim().toLowerCase()
+    const termo = semAcento((busca || '').trim())
     if (termo) {
       r = r.filter(os =>
         String(os.numero || '').includes(termo) ||
-        (os.cliente || '').toLowerCase().includes(termo) ||
-        (os.fone || '').toLowerCase().includes(termo) ||
-        (os.marca || '').toLowerCase().includes(termo) ||
-        (os.modelo || '').toLowerCase().includes(termo)
+        semAcento(os.cliente).includes(termo) ||
+        semAcento(os.fone).includes(termo) ||
+        semAcento(os.marca).includes(termo) ||
+        semAcento(os.modelo).includes(termo)
       )
     }
 

@@ -17,6 +17,7 @@ import {
   podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin, ordenarColuna,
 } from '../../utils/osHelpers'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../../utils/pecasStatus'
+import { semAcento } from '../../utils/fmt'
 import { ETAPAS_TODOS, ZONAS } from '../../utils/osData'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import { P } from '../../theme'
@@ -264,7 +265,7 @@ export default function OSMobile({ T, dark, user }) {
 
   // ─── Filtragem ───────────────────────────────────────────────────────────
   const osFiltradas = useMemo(() => {
-    const q = busca.trim().toLowerCase()
+    const q = semAcento(busca.trim())
     const buscando = q.length > 0
     const zonaCfg = ZONAS.find(z => z.id === filtros.zona)
     const etapasZona = zonaCfg ? new Set(zonaCfg.etapas) : null
@@ -278,10 +279,10 @@ export default function OSMobile({ T, dark, user }) {
       if (etapasZona && etapaUni && !etapasZona.has(etapaUni.id)) return false
       if (!buscando && !dentroMesCorrente(os)) return false
       if (buscando) {
-        const c = (os.cliente || '').toLowerCase()
-        const e = (os.equipamento || '').toLowerCase()
-        const m = (os.marca || '').toLowerCase()
-        const mo = (os.modelo || '').toLowerCase()
+        const c = semAcento(os.cliente)
+        const e = semAcento(os.equipamento)
+        const m = semAcento(os.marca)
+        const mo = semAcento(os.modelo)
         const n = String(os.numero || '')
         if (!c.includes(q) && !e.includes(q) && !m.includes(q) && !mo.includes(q) && !n.includes(q)) return false
       }

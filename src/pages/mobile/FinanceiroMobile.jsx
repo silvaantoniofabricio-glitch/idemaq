@@ -10,7 +10,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
-import { fmtBRL, fmtPrazoCurto } from '../../utils/fmt'
+import { fmtBRL, fmtPrazoCurto, semAcento } from '../../utils/fmt'
 import { Input, useToast } from '../../components/ui'
 import LancamentoDetalheModal from '../../components/financeiro/LancamentoDetalheModal'
 import NovoLancamentoModal from '../../components/financeiro/NovoLancamentoModal'
@@ -446,11 +446,11 @@ function ListaMobile({ T, dark, itens, tipo, onAbrir, onBaixar }) {
     else if (statusFilt === 'pago')    arr = arr.filter(i => i.status === 'pago')
     else if (statusFilt === 'vencido') arr = arr.filter(i => i.status === 'aberto' && statusVenc(i.vencimento).tipo === 'vencido')
     if (busca.trim()) {
-      const q = busca.trim().toLowerCase()
+      const q = semAcento(busca.trim())
       arr = arr.filter(i =>
-        (i.descricao || '').toLowerCase().includes(q) ||
-        (i.cliente   || '').toLowerCase().includes(q) ||
-        (i.categoria || '').toLowerCase().includes(q)
+        semAcento(i.descricao).includes(q) ||
+        semAcento(i.cliente).includes(q) ||
+        semAcento(i.categoria).includes(q)
       )
     }
     return [...arr].sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''))
@@ -522,8 +522,8 @@ function CaixaMobile({ T, dark, itens, onAbrir }) {
     let arr = filtrarPorPeriodo(itens, periodo, 'data')
     if (tipoFilt !== 'todos') arr = arr.filter(m => m.tipo === tipoFilt)
     if (busca.trim()) {
-      const q = busca.trim().toLowerCase()
-      arr = arr.filter(m => m.descricao.toLowerCase().includes(q))
+      const q = semAcento(busca.trim())
+      arr = arr.filter(m => semAcento(m.descricao).includes(q))
     }
     return [...arr].sort((a, b) => (b.data || '').localeCompare(a.data || ''))
   }, [itens, periodo, tipoFilt, busca])

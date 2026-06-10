@@ -19,6 +19,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
+import { semAcento } from '../../../utils/fmt'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import {
@@ -290,9 +291,9 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
 
   // Sugestões do autocomplete (mesmo histórico do Diagnóstico)
   const sugestoes = useMemo(() => {
-    const q = causa.trim().toLowerCase()
-    const base = historicoCausas.filter(f => f.toLowerCase() !== q)
-    return q ? base.filter(f => f.toLowerCase().includes(q)).slice(0, 5)
+    const q = semAcento(causa.trim())
+    const base = historicoCausas.filter(f => semAcento(f) !== q)
+    return q ? base.filter(f => semAcento(f).includes(q)).slice(0, 5)
              : base.slice(0, 5)
   }, [causa, historicoCausas])
 

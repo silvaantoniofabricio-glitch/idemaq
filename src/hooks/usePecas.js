@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { semAcento } from '../utils/fmt'
 
 const SELECT_COLS = [
   'id', 'nome', 'sku', 'categoria',
@@ -168,18 +169,12 @@ export function usePecas({ categoria = null, busca = '', page = 1, pageSize = 20
 
     if (cat) query = query.eq('categoria', cat)
 
+    // Busca SEM acento ("valvula" acha "Válvula"): quando há termo, traz o
+    // conjunto (já filtrado por categoria no banco) e filtra no cliente
+    // normalizando acentos. ~680 peças — leve. Sem termo, pagina no servidor.
     if (termo) {
-      // Escapa caracteres do PostgREST .or() (vírgula). ILIKE não diferencia case.
-      const t = termo.replace(/[,()*]/g, ' ').trim()
-      if (t) {
-        query = query.or(
-          `nome.ilike.%${t}%,sku.ilike.%${t}%,referencia.ilike.%${t}%`
-        )
-      }
-    }
-
-    // Pagina só quando NÃO está buscando — busca varre tudo que casa.
-    if (!termo) {
+      query = query.range(0, 4999) // teto de segurança; varre tudo que casa
+    } else {
       const from = (pg - 1) * sz
       const to = from + sz - 1
       query = query.range(from, to)
@@ -191,8 +186,18 @@ export function usePecas({ categoria = null, busca = '', page = 1, pageSize = 20
       setLoading(false)
       return
     }
-    setPecas((data || []).map(dbToUi))
-    setTotal(count ?? (data?.length || 0))
+
+    let rows = data || []
+    if (termo) {
+      const q = semAcento(termo)
+      rows = rows.filter(p =>
+        semAcento(p.nome).includes(q) ||
+        semAcento(p.sku).includes(q) ||
+        semAcento(p.referencia).includes(q)
+      )
+    }
+    setPecas(rows.map(dbToUi))
+    setTotal(termo ? rows.length : (count ?? rows.length))
     setLoading(false)
   }, [cat, termo, pg, sz])
 

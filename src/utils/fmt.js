@@ -1,6 +1,16 @@
 // idemaq-src/utils/fmt.js
 // Formatadores de moeda, data e helpers de exibição.
 
+// Normaliza texto pra BUSCA: tira acentos e baixa o caixa. Usar nos DOIS lados
+// (termo digitado E campo comparado) pra busca ignorar acentos —
+// "valvula" acha "Válvula". Ex: semAcento('Válvula') === 'valvula'.
+export function semAcento(s) {
+  return (s == null ? '' : String(s))
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // remove marcas de acento (combining diacritics)
+    .toLowerCase()
+}
+
 export function fmtBRL(v, opts = {}) {
   if (v == null) return '—'
   const s = Math.abs(v).toLocaleString('pt-BR', {

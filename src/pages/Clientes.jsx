@@ -7,6 +7,7 @@
 
 import React, { useState, useMemo } from 'react'
 import { corEtapa, corHero } from '../utils/colors'
+import { semAcento } from '../utils/fmt'
 import { useIsMobile } from '../theme'
 import { useClientes } from '../hooks/useClientes'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
@@ -62,12 +63,12 @@ export default function Clientes({ T, dark }) {
   const POR_PAGINA = 20
 
   const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase()
+    const q = semAcento(busca.trim())
     if (!q) return clientes
     return clientes.filter(c =>
-      (c.nome     || '').toLowerCase().includes(q) ||
-      (c.telefone || '').toLowerCase().includes(q) ||
-      (c.endereco || '').toLowerCase().includes(q)
+      semAcento(c.nome).includes(q) ||
+      semAcento(c.telefone).includes(q) ||
+      semAcento(c.endereco).includes(q)
     )
   }, [clientes, busca])
 

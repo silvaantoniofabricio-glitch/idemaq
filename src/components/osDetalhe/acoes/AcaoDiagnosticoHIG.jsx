@@ -19,6 +19,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
+import { semAcento } from '../../../utils/fmt'
 import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
@@ -323,9 +324,9 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
 
   // ── Autocomplete ─────────────────────────────────────────────────────────
   const sugestoes = useMemo(() => {
-    const q = causa.trim().toLowerCase()
-    const base = historicoCausas.filter(f => f.toLowerCase() !== q)
-    return q ? base.filter(f => f.toLowerCase().includes(q)).slice(0, 5)
+    const q = semAcento(causa.trim())
+    const base = historicoCausas.filter(f => semAcento(f) !== q)
+    return q ? base.filter(f => semAcento(f).includes(q)).slice(0, 5)
              : base.slice(0, 5)
   }, [causa, historicoCausas])
 
@@ -551,12 +552,12 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
         {/* Grupos */}
         {(() => {
           const buscaAtiva = busca.trim().length > 0
-          const queryLower = busca.trim().toLowerCase()
+          const queryLower = semAcento(busca.trim())
 
           const gruposVisiveis = GRUPOS.map(grupo => {
             const marcados = marcadosPorGrupo[grupo.id] || {}
             const itensMatch = buscaAtiva
-              ? grupo.itens.filter(i => i.label.toLowerCase().includes(queryLower))
+              ? grupo.itens.filter(i => semAcento(i.label).includes(queryLower))
               : grupo.itens
             const skipPorBusca = buscaAtiva && itensMatch.length === 0
             const open = buscaAtiva || grupoAberto === grupo.id

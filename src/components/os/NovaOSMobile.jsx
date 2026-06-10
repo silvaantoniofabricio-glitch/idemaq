@@ -27,6 +27,7 @@ import {
   TIPOS_OS, ESTOQUE_MAQUINAS_MOCK,
 } from '../../utils/osData'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
+import { semAcento } from '../../utils/fmt'
 import NovoClienteModal from '../clientes/NovoClienteModal'
 import { AtlPanel, ATL_FONT, atlSurfaceSunken, atlHover, AtlButton, ATL_RADIUS } from '../osDetalhe/acoes/_AtlassianUI'
 import { Input, Select, Textarea } from '../ui'
@@ -560,6 +561,7 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
   const [resultados, setResultados] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalNovoCli, setModalNovoCli] = useState(false)
+  const todosCliRef = useRef(null) // cache de todos os clientes (busca sem acento)
 
   // Debounce 250ms, 2+ chars
   useEffect(() => {
@@ -570,22 +572,24 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
       return
     }
     setLoading(true)
-    const safe = termo.replace(/[,()%_]/g, ' ').trim()
+    let cancel = false
     const handle = setTimeout(async () => {
       try {
-        const [rn, rf] = await Promise.all([
-          supabase.from('cliente').select('id, nome, telefone, endereco')
-            .is('deleted_at', null).ilike('nome', `%${safe}%`)
-            .order('nome', { ascending: true }).limit(20),
-          supabase.from('cliente').select('id, nome, telefone, endereco')
-            .is('deleted_at', null).ilike('telefone', `%${safe}%`)
-            .order('nome', { ascending: true }).limit(20),
-        ])
-        if (rn.error) throw rn.error
-        if (rf.error) throw rf.error
-        const dedupe = new Map()
-        ;[...(rn.data || []), ...(rf.data || [])].forEach(c => dedupe.set(c.id, c))
-        setResultados(Array.from(dedupe.values()).slice(0, 20).map(c => ({
+        // Carrega todos os clientes 1x (cache) e filtra no cliente ignorando
+        // acentos — "joao" acha "João". ~782 clientes, leve.
+        if (!todosCliRef.current) {
+          const { data, error } = await supabase
+            .from('cliente').select('id, nome, telefone, endereco')
+            .is('deleted_at', null).order('nome', { ascending: true }).limit(5000)
+          if (error) throw error
+          todosCliRef.current = data || []
+        }
+        if (cancel) return
+        const q = semAcento(termo)
+        const matches = todosCliRef.current.filter(c =>
+          semAcento(c.nome).includes(q) || semAcento(c.telefone).includes(q)
+        ).slice(0, 20)
+        setResultados(matches.map(c => ({
           id: c.id, nome: c.nome,
           fone: c.telefone || '',
           endereco: c.endereco || '',
@@ -596,10 +600,10 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
         notify?.('erro', `Erro buscando clientes: ${e?.message || e}`)
         setResultados([])
       } finally {
-        setLoading(false)
+        if (!cancel) setLoading(false)
       }
     }, 250)
-    return () => clearTimeout(handle)
+    return () => { cancel = true; clearTimeout(handle) }
   }, [busca, notify])
 
   function escolher(c) {

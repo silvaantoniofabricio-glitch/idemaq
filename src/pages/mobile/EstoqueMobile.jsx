@@ -15,7 +15,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../supabase'
 import { corEtapa } from '../../utils/colors'
-import { fmtBRL } from '../../utils/fmt'
+import { fmtBRL, semAcento } from '../../utils/fmt'
 import { isAdmin } from '../../utils/osHelpers'
 import { useToast } from '../../components/ui'
 import { CATEGORIAS_PECA } from '../../utils/categoriasPeca'
@@ -195,12 +195,12 @@ export default function EstoqueMobile({ T, dark, user }) {
   }, [statsRaw])
 
   const maquinasFiltradas = useMemo(() => {
-    const q = busca.trim().toLowerCase()
+    const q = semAcento(busca.trim())
     if (!q) return maquinas
     return maquinas.filter(m =>
-      m.modelo.toLowerCase().includes(q) ||
-      m.marca.toLowerCase().includes(q) ||
-      m.capacidade.toLowerCase().includes(q))
+      semAcento(m.modelo).includes(q) ||
+      semAcento(m.marca).includes(q) ||
+      semAcento(m.capacidade).includes(q))
   }, [maquinas, busca])
 
   const disponiveis   = maquinas.filter(m => m.estado === 'disponivel').length
