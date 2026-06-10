@@ -8,6 +8,7 @@ import { fmtBRL } from '../../../utils/fmt'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { usePecas } from '../../../hooks/usePecas'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
+import { montarMensagemOrcamento, abrirWhatsAppComTexto } from '../../../utils/osMensagens'
 import FormRecebimento from '../FormRecebimento'
 import BlocoAcao from './BlocoAcao'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
@@ -843,64 +844,6 @@ function DescontoCampo({ T, dark, label, prefix, suffix, value, onChange, onComm
       </div>
     </label>
   )
-}
-
-// ─── Mensagem de orçamento pro WhatsApp ──────────────────────────────────────
-// Texto corrido no estilo do gerador (FERRAMENTAS/gerador_idemaq_v4.html):
-// "{saudação}, {nome}! a máquina está com {defeito}. A troca de {peças} com
-//  mão de obra fica em R$ {total} no total. Posso seguir com o conserto?"
-function primeiroNome(nome) {
-  return (nome || '').trim().split(/\s+/)[0] || ''
-}
-function saudacaoAgora() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Bom dia'
-  if (h < 18) return 'Boa tarde'
-  return 'Boa noite'
-}
-function minuscInicial(s) {
-  const t = (s || '').trim()
-  return t ? t.charAt(0).toLowerCase() + t.slice(1) : ''
-}
-// Valor sem ",00" quando inteiro (igual o gerador, que mostra "R$ 280").
-function fmtValorMsg(v) {
-  const n = Number(v) || 0
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace('.', ',')
-}
-function montarMensagemOrcamento({ os, porTipo, total }) {
-  if (!(total > 0)) return null  // sem orçamento fechado, nada pra enviar
-
-  const nome = primeiroNome(os?.cliente)
-  const saud = saudacaoAgora()
-  const abertura = nome ? `${saud}, ${nome}! ` : `${saud}! `
-
-  // Diagnóstico: causa do técnico > relato do cliente.
-  const diag = minuscInicial(os?.pre_diagnostico?.causa_diagnostico || os?.defeito || '')
-  const fraseDiag = diag ? `a máquina está com ${diag}. ` : ''
-
-  // Peças trocadas → lista natural ("rolamento e eletrobomba").
-  const pecas = (porTipo?.peca || []).map(p => (p?.nome || '').trim()).filter(Boolean)
-  let fraseValor
-  if (pecas.length > 0) {
-    const lista = pecas.length === 1
-      ? pecas[0]
-      : pecas.slice(0, -1).join(', ') + ' e ' + pecas[pecas.length - 1]
-    fraseValor = `A troca de ${lista} com mão de obra fica em R$ ${fmtValorMsg(total)} no total. `
-  } else {
-    fraseValor = `O serviço fica em R$ ${fmtValorMsg(total)} no total. `
-  }
-
-  return `${abertura}${fraseDiag}${fraseValor}Posso seguir com o conserto?`
-}
-
-// Abre o WhatsApp do cliente com a mensagem pré-preenchida. Mesma lógica de
-// número do Header (prefixa 55 se não tiver). Retorna false se não há telefone.
-function abrirWhatsAppComTexto(fone, texto) {
-  const digits = (fone || '').replace(/\D/g, '')
-  if (!digits) return false
-  const numero = digits.startsWith('55') ? digits : '55' + digits
-  window.location.href = `whatsapp://send?phone=${numero}&text=${encodeURIComponent(texto)}`
-  return true
 }
 
 // ─── Status do orçamento ─────────────────────────────────────────────────────

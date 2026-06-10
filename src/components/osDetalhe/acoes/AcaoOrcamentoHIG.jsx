@@ -27,6 +27,7 @@ import { supabase } from '../../../supabase'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
+import { montarMensagemHigienizacao, abrirWhatsAppComTexto } from '../../../utils/osMensagens'
 import { useToast } from '../../ui'
 
 // ─── Tipos de item ────────────────────────────────────────────────────────
@@ -1737,7 +1738,7 @@ function AtlTotalCard({ T, dark, subtotais, descontoRS, total }) {
 }
 
 // ─── Status do orçamento em padrão Atlassian ──────────────────────────────
-function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
+function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsApp }) {
   const statusSalvo = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle'
   const [status, setStatus] = useState(statusSalvo)
   const [fase, setFase] = useState('normal') // 'normal' | 'confirmar' | 'desfazer'
@@ -1798,6 +1799,22 @@ function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
             <span style={{ fontSize: 13, fontWeight: 600 }}>Aprovado</span>
           </button>
         </div>
+        {/* Reenviar a mesma mensagem pro WhatsApp do cliente */}
+        {mensagemWhatsApp && (
+          <button type="button"
+            onClick={() => abrirWhatsAppComTexto(os?.fone, mensagemWhatsApp)}
+            style={{
+              width: '100%', minHeight: 44, padding: '0 14px',
+              border: 'none', borderTop: `1px solid ${T.border}`,
+              background: 'transparent', cursor: 'pointer', fontFamily: ATL_FONT,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              color: T.textSecondary, fontSize: 13, fontWeight: 600,
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <i className="ti ti-brand-whatsapp" style={{ fontSize: 16, color: '#25D366' }} aria-hidden="true" />
+            Enviar novamente
+          </button>
+        )}
         <div style={{
           padding: '8px 14px', borderTop: `1px solid ${T.border}`,
           background: atlSurfaceSunken(dark), textAlign: 'center',
@@ -1859,7 +1876,11 @@ function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
   const resolvido = status === 'confirmado' || status === 'recusado'
 
   function handleClick() {
-    if (status === 'idle') { setStatus('aguardando'); persistir('aguardando') }
+    if (status === 'idle') {
+      // Abre o WhatsApp do cliente com o orçamento pronto e marca aguardando.
+      if (mensagemWhatsApp) abrirWhatsAppComTexto(os?.fone, mensagemWhatsApp)
+      setStatus('aguardando'); persistir('aguardando')
+    }
     else if (status === 'aguardando') setFase('confirmar')
     else if (resolvido) setFase('desfazer')
   }
@@ -2322,6 +2343,12 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
   useEffect(() => { setDescontoRS(Number(os?.desconto || 0)) }, [os?.desconto])
   const total = Math.max(0, subtotalBruto - descontoRS)
 
+  // Mensagem pré-pronta pro WhatsApp do cliente (higienização — preço fechado).
+  const mensagemOrcamento = useMemo(
+    () => montarMensagemHigienizacao({ os, total }),
+    [os?.cliente, os?.fone, total]
+  )
+
   function aplicarRS(rs)  { setDescontoRS(Math.max(0, Math.min(subtotalBruto, Number(String(rs).replace(',', '.')) || 0))) }
   function aplicarPct(p)  { setDescontoRS(subtotalBruto * (Math.max(0, Math.min(100, Number(String(p).replace(',', '.')) || 0)) / 100)) }
   function persistDesc()  { if (Number(os?.desconto || 0) !== descontoRS) onUpdateOS?.(os.numero, { desconto: descontoRS }) }
@@ -2394,7 +2421,8 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
       <AtlTotalCard T={T} dark={dark} subtotais={subtotais} descontoRS={descontoRS} total={total} />
 
       {/* 5. Status do orçamento — Atlassian panel */}
-      <AtlStatusOrcamento T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS} />
+      <AtlStatusOrcamento T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS}
+        mensagemWhatsApp={mensagemOrcamento} />
 
       {/* 6. Recebimentos já lançados (baixas) — lista com excluir que reverte
             os dois lados (Caixa + OS). */}
