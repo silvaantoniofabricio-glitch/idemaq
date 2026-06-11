@@ -268,7 +268,7 @@ export function usePecas({ categoria = null, busca = '', page = 1, pageSize = 20
    * @param {{ qtdNova: number, motivo: string, observacao?: string|null }} payload
    * @returns {Promise<{ data: object|null, error: any }>}
    */
-  async function ajustarEstoque(pecaId, { qtdNova, motivo, observacao = null, fornecedor = null, custoAtual = null } = {}) {
+  async function ajustarEstoque(pecaId, { qtdNova, motivo, observacao = null, fornecedor = null, custoAtual = null, nome = null } = {}) {
     if (!pecaId) return { data: null, error: new Error('pecaId vazio') }
     const nova = Math.max(0, Math.trunc(Number(qtdNova) || 0))
 
@@ -286,8 +286,9 @@ export function usePecas({ categoria = null, busca = '', page = 1, pageSize = 20
     const qtdAntes = Number(antes.qtd_atual) || 0
     const delta = nova - qtdAntes
 
-    // Monta patch: só inclui fornecedor/custo quando fornecidos.
+    // Monta patch: só inclui campos opcionais quando fornecidos.
     const updateData = { qtd_atual: nova }
+    if (nome && String(nome).trim()) updateData.nome = String(nome).trim()
     if (fornecedor && String(fornecedor).trim()) updateData.fornecedor = String(fornecedor).trim()
     if (custoAtual !== null && Number.isFinite(Number(custoAtual))) updateData.custo_atual = Number(custoAtual)
 

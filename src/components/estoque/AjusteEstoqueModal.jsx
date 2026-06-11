@@ -42,6 +42,7 @@ export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, m
 
   const qtdAtual = Number(peca?.qtdAtual ?? 0)
 
+  const [nomeStr, setNomeStr] = useState(peca?.nome || '')
   const [qtdNovaStr, setQtdNovaStr] = useState(String(qtdAtual))
   const [motivo, setMotivo] = useState('contagem')
   const [observacao, setObservacao] = useState('')
@@ -73,12 +74,16 @@ export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, m
       const custoNovo = custoNovoStr.trim()
         ? Number(custoNovoStr.replace(',', '.'))
         : null
+      const nomeAlterado = nomeStr.trim() && nomeStr.trim() !== (peca?.nome || '')
+        ? nomeStr.trim()
+        : null
       const res = await onSalvar({
         qtdNova,
         motivo,
         observacao: observacao.trim() || null,
         fornecedor: fornecedor.trim() || null,
         custoAtual: (mostraValores && custoNovo !== null && Number.isFinite(custoNovo)) ? custoNovo : null,
+        nome: nomeAlterado,
       })
       if (res && res.error) {
         notify('erro', 'Erro ao ajustar: ' + (res.error.message || res.error))
@@ -151,6 +156,16 @@ export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, m
 
         {/* Campos */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <div style={{ ...sectionLabel, marginBottom: 6 }}>Nome da peça</div>
+            <Input T={T} dark={dark}
+              value={nomeStr}
+              onChange={setNomeStr}
+              icon="ti-puzzle"
+              placeholder="Nome da peça"
+            />
+          </div>
+
           <div>
             <div style={{ ...sectionLabel, marginBottom: 6 }}>Nova quantidade</div>
             <Input T={T} dark={dark}

@@ -608,9 +608,9 @@ export default function PecaDetalheModal({
               {/* Ajuste manual só pro dono — funcionário não mexe em estoque
                   fora do fluxo de OS. Defesa em UI; RLS reforça no banco. */}
               {mostraValores && (
-                <Button variant="primary" iconLeft="ti-adjustments-alt"
+                <Button variant="primary" iconLeft="ti-pencil"
                   onClick={() => setAjustandoAberto(true)}>
-                  Ajustar estoque
+                  Editar
                 </Button>
               )}
             </div>
