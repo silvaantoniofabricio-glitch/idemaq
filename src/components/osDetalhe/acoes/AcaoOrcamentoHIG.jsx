@@ -1114,11 +1114,11 @@ function AtlItemRowEditando({ T, dark, item, tipo, onConfirm, onCancel }) {
 
       {ehPeca && mostrarSugestoes && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+          position: 'absolute', bottom: '100%', left: 0, right: 0, zIndex: 50,
           background: dark ? '#1E1E2E' : '#fff',
-          border: `1px solid ${T.border}`, borderTop: 'none',
-          borderRadius: '0 0 8px 8px',
-          boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
+          border: `1px solid ${T.border}`, borderBottom: 'none',
+          borderRadius: '8px 8px 0 0',
+          boxShadow: dark ? '0 -8px 24px rgba(0,0,0,0.5)' : '0 -8px 24px rgba(0,0,0,0.12)',
           overflow: 'hidden',
           maxHeight: 220, overflowY: 'auto',
         }}>
@@ -1305,11 +1305,11 @@ function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
 
       {ehPeca && mostrarSugestoes && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+          position: 'absolute', bottom: '100%', left: 0, right: 0, zIndex: 50,
           background: dark ? '#1E1E2E' : '#fff',
-          border: `1px solid ${T.border}`, borderTop: 'none',
-          borderRadius: '0 0 8px 8px',
-          boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
+          border: `1px solid ${T.border}`, borderBottom: 'none',
+          borderRadius: '8px 8px 0 0',
+          boxShadow: dark ? '0 -8px 24px rgba(0,0,0,0.5)' : '0 -8px 24px rgba(0,0,0,0.12)',
           overflow: 'hidden',
           maxHeight: 220, overflowY: 'auto',
         }}>
