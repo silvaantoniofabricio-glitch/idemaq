@@ -335,10 +335,10 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
     const handle = setTimeout(async () => {
       try {
         const [resNome, resFone] = await Promise.all([
-          supabase.from('cliente').select('id, nome, telefone, endereco')
+          supabase.from('cliente').select('id, nome, telefone, endereco, endereco2, endereco3')
             .is('deleted_at', null).ilike('nome', `%${safe}%`)
             .order('nome', { ascending: true }).limit(20),
-          supabase.from('cliente').select('id, nome, telefone, endereco')
+          supabase.from('cliente').select('id, nome, telefone, endereco, endereco2, endereco3')
             .is('deleted_at', null).ilike('telefone', `%${safe}%`)
             .order('nome', { ascending: true }).limit(20),
         ])
@@ -350,7 +350,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
           id: c.id, nome: c.nome,
           fone: c.telefone || '',
           endereco: c.endereco || '',
-          enderecos: c.endereco ? [c.endereco] : [],
+          enderecos: [c.endereco, c.endereco2, c.endereco3].filter(Boolean),
         }))
         console.log('[NovaOS] busca cliente', { termo, achados: adapted.length, nome: resNome.data?.length, fone: resFone.data?.length })
         setClientesAchados(adapted)
