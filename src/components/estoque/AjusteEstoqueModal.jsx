@@ -62,11 +62,15 @@ export default function AjusteEstoqueModal({ T, dark, peca, onClose, onSalvar, m
     return null
   }, [qtdNova, qtdNovaStr])
 
-  const podeSalvar = !erro && !salvando && delta !== 0
+  const algumCampoMudou = delta !== 0
+    || (nomeStr.trim() && nomeStr.trim() !== (peca?.nome || ''))
+    || fornecedor.trim() !== ''
+    || custoNovoStr.trim() !== ''
+  const podeSalvar = !erro && !salvando && algumCampoMudou
 
   async function salvar() {
     if (erro) { notify('erro', erro); return }
-    if (delta === 0) { notify('info', 'A quantidade não mudou'); return }
+    if (!algumCampoMudou) { notify('info', 'Nada para salvar'); return }
     if (!onSalvar) { notify('erro', 'Salvar não conectado'); return }
 
     setSalvando(true)
