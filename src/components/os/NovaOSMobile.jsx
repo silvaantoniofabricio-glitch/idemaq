@@ -579,7 +579,7 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
         // acentos — "joao" acha "João". ~782 clientes, leve.
         if (!todosCliRef.current) {
           const { data, error } = await supabase
-            .from('cliente').select('id, nome, telefone, endereco')
+            .from('cliente').select('id, nome, telefone, endereco, endereco2, endereco3')
             .is('deleted_at', null).order('nome', { ascending: true }).limit(5000)
           if (error) throw error
           todosCliRef.current = data || []
@@ -593,7 +593,7 @@ function ClienteBlock({ T, dark, form, setForm, notify, rotulo = 'Cliente' }) {
           id: c.id, nome: c.nome,
           fone: c.telefone || '',
           endereco: c.endereco || '',
-          enderecos: c.endereco ? [c.endereco] : [],
+          enderecos: [c.endereco, c.endereco2, c.endereco3].filter(Boolean),
         })))
       } catch (e) {
         console.error('[NovaOSMobile] busca cliente erro:', e)
