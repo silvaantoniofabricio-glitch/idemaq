@@ -1120,6 +1120,7 @@ function AtlItemRowEditando({ T, dark, item, tipo, onConfirm, onCancel }) {
           borderRadius: '0 0 8px 8px',
           boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
           overflow: 'hidden',
+          maxHeight: 220, overflowY: 'auto',
         }}>
           <PecaSugestoes T={T} dark={dark} termo={nome} onEscolher={escolherPeca} />
         </div>
@@ -1310,6 +1311,7 @@ function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
           borderRadius: '0 0 8px 8px',
           boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
           overflow: 'hidden',
+          maxHeight: 220, overflowY: 'auto',
         }}>
           <PecaSugestoes T={T} dark={dark} termo={nome} onEscolher={escolherPeca} />
         </div>
