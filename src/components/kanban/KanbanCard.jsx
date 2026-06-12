@@ -1,7 +1,7 @@
 // src/components/kanban/KanbanCard.jsx
 // Card do Kanban — Apple HIG: elevação, tipografia SF, tags em pill.
 
-import React, { useState } from 'react'
+import React from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub, secoesOficinaVisiveis } from '../../utils/osHelpers'
@@ -17,7 +17,6 @@ export default function KanbanCard({
   shaking,
 }) {
   const cor = (d, c) => dark ? d : c
-  const [dragOver, setDragOver] = useState(false)
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
   const tipoCfg = TIPOS_OS[os.tipo]
@@ -74,10 +73,16 @@ export default function KanbanCard({
     <div onClick={onClick}
       draggable
       onDragStart={handleDragStart}
-      onDragEnd={(e) => { setDragOver(false); onDragEnd?.(e) }}
-      onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true) }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(false); onReorder?.(os.numero) }}
+      onDragEnd={(e) => { e.currentTarget.style.outline = ''; onDragEnd?.(e) }}
+      onDragOver={(e) => {
+        // preventDefault libera o drop. O contorno é setado DIRETO no DOM (sem
+        // setState) — re-renderizar o card durante o arraste cancela o drag.
+        e.preventDefault()
+        e.currentTarget.style.outline = `2px solid ${cor(P.blue, P.blueDark)}`
+        e.currentTarget.style.outlineOffset = '-1px'
+      }}
+      onDragLeave={(e) => { e.currentTarget.style.outline = '' }}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.style.outline = ''; onReorder?.(os.numero) }}
       className={shaking ? 'idemaq-shake' : undefined}
       style={{
         ...cardStyle,
@@ -86,8 +91,6 @@ export default function KanbanCard({
         cursor: 'grab',
         transition: 'box-shadow .18s, transform .15s',
         userSelect: 'none',
-        outline: dragOver ? `2px solid ${cor(P.blue, P.blueDark)}` : undefined,
-        outlineOffset: -1,
       }}
       onMouseEnter={e => {
         if (!dark) e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.1), 0 0 0 .5px rgba(0,0,0,.05)'
