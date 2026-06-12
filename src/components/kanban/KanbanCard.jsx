@@ -4,7 +4,7 @@
 import React from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
-import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub } from '../../utils/osHelpers'
+import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub, secoesOficinaVisiveis } from '../../utils/osHelpers'
 import { corEtapa } from '../../utils/colors'
 import SubStatus from './SubStatus'
 
@@ -182,16 +182,13 @@ export default function KanbanCard({
           }}>{endResumido}</div>
         )}
 
-        {/* Linha 5: dual status oficina
-            tem_limpeza/tem_manutencao: undefined = form nunca aberto (mostra ambos como padrão)
-                                        true/false = definido pelo orçamento ao salvar o Conserto
-            Manut.: status da peça a comprar (vermelho/amarelo) tem prioridade sobre o status do serviço. */}
+        {/* Linha 5: dual status oficina (Limp./Manut.). Visibilidade vem da
+            DETECÇÃO REAL de serviços/peças (os._temLimp/_temManut, enriquecido no
+            Kanban) — não mostra "Limp." em OS sem limpeza.
+            Manut.: status da peça a comprar (vermelho/amarelo) tem prioridade. */}
         {dual && (() => {
           const of = os.pre_diagnostico?.oficina || {}
-          // Se as flags ainda não foram salvas (OS nunca tocou no Conserto), mostra as duas
-          const semFlags = of.tem_limpeza === undefined && of.tem_manutencao === undefined
-          const mostraLimp  = semFlags || of.tem_limpeza
-          const mostraManut = semFlags || of.tem_manutencao
+          const { limp: mostraLimp, manut: mostraManut } = secoesOficinaVisiveis(os)
           if (!mostraLimp && !mostraManut) return null
           return (
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>

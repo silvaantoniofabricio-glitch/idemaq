@@ -297,9 +297,14 @@ export default function OSMobile({ T, dark, user }) {
       const uni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
       if (!uni) continue
       if (uni.adminOnly && !admin) continue
-      // Só a etapa Conserto (oficina) mostra o chip Manut. — calcula a cor da peça.
+      // Só a etapa Conserto (oficina): cor da peça (Manut.) + detecção real de
+      // limpeza/manutenção (evita mostrar "Limp." em OS que não tem limpeza).
       const card = os.etapa === 'oficina'
-        ? { ...os, manutPecaStatus: calcManutPecaStatus(os, pecasPorOS.get(os.id), faltaSet) }
+        ? { ...os,
+            manutPecaStatus: calcManutPecaStatus(os, pecasPorOS.get(os.id), faltaSet),
+            _temLimp: temLimpeza.has(os.id),
+            _temManut: temManutencao.has(os.id) || (pecasPorOS.get(os.id)?.length > 0),
+          }
         : os
       ;(porEtapa[uni.id] = porEtapa[uni.id] || []).push(card)
     }
@@ -312,7 +317,7 @@ export default function OSMobile({ T, dark, user }) {
         const cards = ordenarColuna(e.id, porEtapa[e.id] || [])
         return { ...e, cards, count: cards.length }
       })
-  }, [osFiltradas, admin, filtros.zona, faltaSet, pecasPorOS])
+  }, [osFiltradas, admin, filtros.zona, faltaSet, pecasPorOS, temLimpeza, temManutencao])
 
   const abasDisponiveis = useMemo(() => colunas.filter(c => c.count > 0), [colunas])
 

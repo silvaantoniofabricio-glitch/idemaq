@@ -7,7 +7,7 @@ import React from 'react'
 import { TIPOS_OS } from '../../utils/osData'
 import {
   calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar,
-  statusServicoSub,
+  statusServicoSub, secoesOficinaVisiveis,
 } from '../../utils/osHelpers'
 import { corEtapa } from '../../utils/colors'
 import SubStatus from '../kanban/SubStatus'
@@ -62,13 +62,14 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
 
   const temTags = os.garantia || pagoTotal || pagoParcial || os.aguardando_peca
 
-  // Conserto: chips Limp./Manut. (mesma regra do desktop). Flags undefined =
-  // OS nunca passou pelo Conserto → mostra ambos como padrão.
+  // Conserto: chips Limp./Manut. — visibilidade pela DETECÇÃO REAL de serviços/
+  // peças (os._temLimp/_temManut, enriquecido no OSMobile). Não mostra "Limp."
+  // em OS sem limpeza.
   const dual = os.etapa === 'oficina'
   const of = os.pre_diagnostico?.oficina || {}
-  const semFlags = of.tem_limpeza === undefined && of.tem_manutencao === undefined
-  const mostraLimp = dual && (semFlags || of.tem_limpeza)
-  const mostraManut = dual && (semFlags || of.tem_manutencao)
+  const { limp: mostraLimpRaw, manut: mostraManutRaw } = secoesOficinaVisiveis(os)
+  const mostraLimp = dual && mostraLimpRaw
+  const mostraManut = dual && mostraManutRaw
 
   return (
     <button onClick={onClick}

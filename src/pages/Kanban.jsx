@@ -447,9 +447,14 @@ export default function Kanban({ T, dark, user }) {
   osFiltradas.forEach(os => {
     const ec = etapasVisiveis.find(e => e.match && e.match[os.tipo] === os.etapa)
     if (!ec) return
-    // Só a etapa Conserto (oficina) mostra o chip Manut. — calcula a cor da peça.
+    // Só a etapa Conserto (oficina): cor da peça (Manut.) + detecção real de
+    // limpeza/manutenção (evita mostrar "Limp." em OS que não tem limpeza).
     const card = os.etapa === 'oficina'
-      ? { ...os, manutPecaStatus: calcManutPecaStatus(os, pecasPorOS.get(os.id), faltaSet) }
+      ? { ...os,
+          manutPecaStatus: calcManutPecaStatus(os, pecasPorOS.get(os.id), faltaSet),
+          _temLimp: temLimpeza.has(os.id),
+          _temManut: temManutencao.has(os.id) || (pecasPorOS.get(os.id)?.length > 0),
+        }
       : os
     porEtapa[ec.id].push(card)
   })

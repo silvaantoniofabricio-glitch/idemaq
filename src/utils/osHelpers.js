@@ -57,6 +57,28 @@ export function statusServicoSub(oficina, secao) {
   return 'aguardando'
 }
 
+// Quais chips de serviço (Limp./Manut.) o card de Conserto deve mostrar.
+// Fonte: DETECÇÃO REAL enriquecida no Kanban/OSMobile (os._temLimp = tem serviço
+// de limpeza no orçamento; os._temManut = tem manutenção/peça) + sinais salvos no
+// Conserto. Substitui o default antigo que mostrava AMBOS quando a OS ainda não
+// tinha sido tocada no Conserto (mostrava "Limp." em OS sem limpeza).
+export function secoesOficinaVisiveis(os) {
+  const of = os?.pre_diagnostico?.oficina || {}
+  const limp = !!os?._temLimp
+  let manut = !!os?._temManut
+    || of.tem_manutencao === true
+    || (typeof of.manut_total === 'number' && of.manut_total > 0)
+  if (!manut) {
+    // Componente marcado como "manutenção" no diagnóstico (mão de obra sem peça).
+    const marc = os?.pre_diagnostico?.componentes_marcados || {}
+    for (const items of Object.values(marc)) {
+      if (items && typeof items === 'object' && !Array.isArray(items)
+          && Object.values(items).some(v => v === 'manutencao')) { manut = true; break }
+    }
+  }
+  return { limp, manut }
+}
+
 export function responsavelAtual(os) {
   if (os.historico && os.historico.length > 0) {
     return os.historico[os.historico.length - 1].funcionario
