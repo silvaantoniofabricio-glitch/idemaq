@@ -307,10 +307,12 @@ export default function Kanban({ T, dark, user }) {
     return () => { supabase.removeChannel(ch) }
   }, [cfgRefetch])
 
-  // Salva a ordem (otimista local + persiste) e avisa os outros dispositivos.
+  // Salva a ordem (otimista local + persiste) e, SÓ DEPOIS de gravar, avisa os
+  // outros dispositivos (senão eles recarregam antes do dado existir no banco).
   function salvarOrdemKanban(novo) {
-    cfgSet('kanban_ordem', novo)
-    ordemChanRef.current?.send({ type: 'broadcast', event: 'reorder', payload: {} })
+    Promise.resolve(cfgSet('kanban_ordem', novo)).then(() => {
+      ordemChanRef.current?.send({ type: 'broadcast', event: 'reorder', payload: {} })
+    })
   }
 
   // Busca os serviços (1 query) e monta os conjuntos de OS com limpeza/manutenção.
