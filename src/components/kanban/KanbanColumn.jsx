@@ -25,7 +25,7 @@ export default function KanbanColumn({
   etapa, osList = [], T, dark, tipoCor,
   modoTodos = true, onCardClick,
   arrastando, colunaHover,
-  onDragStart, onDragEnd, onDragOverCol, onDropCol,
+  onDragStart, onDragEnd, onDragOverCol, onDropCol, onReorder,
   concluidoMesAtual, loading, shakingNum,
 }) {
   const c  = corEtapa(etapa.cor, dark)
@@ -221,7 +221,8 @@ export default function KanbanColumn({
             shaking={shakingNum === os.numero}
             onClick={() => onCardClick?.(os)}
             onDragStart={() => onDragStart?.(os.numero, etapa.id)}
-            onDragEnd={onDragEnd} />
+            onDragEnd={onDragEnd}
+            onReorder={onReorder} />
         ))}
       </div>
     </div>

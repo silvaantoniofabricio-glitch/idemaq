@@ -13,9 +13,10 @@ import { TIPOS_OS, ETAPAS_TODOS, ZONAS } from '../utils/osData'
 import {
   isAdmin, getRole, totalAPagar,
   estaPagaTotal, estaPagaParcial,
-  podeMoverOS, ordenarColuna, dentroMesCorrente,
+  podeMoverOS, ordenarColuna, ordenarColunaManual, dentroMesCorrente,
   calcStatusPrazo, diasPrazo,
 } from '../utils/osHelpers'
+import { useConfiguracoes } from '../hooks/useConfiguracoes'
 import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../utils/pecasStatus'
@@ -289,6 +290,9 @@ export default function Kanban({ T, dark, user }) {
   // ── Dados ────────────────────────────────────────────────────────────────────
   const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch, updateOS: updateOSHook } = useOS(buscaAtiva)
   const { usuarios } = useUsuarios()
+  // Ordem manual dos cards (compartilhada): { [etapa]: { [os.numero]: chaveFloat } }
+  const { get: cfgGet, set: cfgSet } = useConfiguracoes()
+  const kanbanOrdem = cfgGet('kanban_ordem', {}) || {}
 
   // Busca os serviços (1 query) e monta os conjuntos de OS com limpeza/manutenção.
   // Refaz quando a quantidade de OS muda (criou/excluiu OS).
@@ -458,7 +462,50 @@ export default function Kanban({ T, dark, user }) {
       : os
     porEtapa[ec.id].push(card)
   })
-  Object.keys(porEtapa).forEach(k => { porEtapa[k] = ordenarColuna(k, porEtapa[k]) })
+  Object.keys(porEtapa).forEach(k => { porEtapa[k] = ordenarColunaManual(k, porEtapa[k], kanbanOrdem[k]) })
+
+  // Reordenar dentro da coluna (drag entre cards). Soltar sobre um card:
+  //  - mesma coluna → calcula uma chave entre os vizinhos e salva (ordem manual).
+  //  - coluna diferente → vira um "mover de etapa" normal.
+  function onReorderCard(targetNumero) {
+    const drag = arrastando
+    if (!drag || drag.numero === targetNumero) return
+    let targetEtapa = null
+    for (const k of Object.keys(porEtapa)) {
+      if (porEtapa[k].some(o => o.numero === targetNumero)) { targetEtapa = k; break }
+    }
+    if (!targetEtapa) return
+    if (targetEtapa !== drag.etapa) { moverOS(drag.numero, targetEtapa); return }
+
+    const displayed = porEtapa[targetEtapa] || []
+    const dragIdx = displayed.findIndex(o => o.numero === drag.numero)
+    const tIdx = displayed.findIndex(o => o.numero === targetNumero)
+    if (dragIdx < 0 || tIdx < 0) return
+
+    const auto = ordenarColuna(targetEtapa, displayed)
+    const rank = new Map(auto.map((o, i) => [o.numero, i]))
+    const ordemEtapa = kanbanOrdem[targetEtapa] || {}
+    const keyOf = (o) => {
+      const m = ordemEtapa[o.numero]
+      return (m !== undefined && m !== null) ? Number(m) : rank.get(o.numero)
+    }
+    // Direção: arrastando pra baixo solta DEPOIS do alvo; pra cima, ANTES.
+    const movingDown = dragIdx < tIdx
+    const neighborKey = (idx) => {
+      if (idx < 0 || idx >= displayed.length) return null
+      if (displayed[idx].numero === drag.numero) return neighborKey(movingDown ? idx + 1 : idx - 1)
+      return keyOf(displayed[idx])
+    }
+    const kBefore = movingDown ? neighborKey(tIdx)     : neighborKey(tIdx - 1)
+    const kAfter  = movingDown ? neighborKey(tIdx + 1) : neighborKey(tIdx)
+    let newKey
+    if (kBefore != null && kAfter != null) newKey = (kBefore + kAfter) / 2
+    else if (kBefore != null) newKey = kBefore + 1
+    else if (kAfter != null) newKey = kAfter - 1
+    else return
+    const novo = { ...kanbanOrdem, [targetEtapa]: { ...ordemEtapa, [drag.numero]: newKey } }
+    cfgSet('kanban_ordem', novo)
+  }
 
   const totalKanban    = Object.values(porEtapa).reduce((s, a) => s + a.length, 0)
   const totalRecusados = todasUniverso.filter(o => o.etapa === 'recusado').length
@@ -768,6 +815,7 @@ export default function Kanban({ T, dark, user }) {
               onDragEnd={() => { setArrastando(null); setColunaHover(null) }}
               onDragOverCol={e => setColunaHover(e)}
               onDropCol={e => { if (arrastando) moverOS(arrastando.numero, e); setArrastando(null); setColunaHover(null) }}
+              onReorder={onReorderCard}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
           ))}

@@ -1,7 +1,7 @@
 // src/components/kanban/KanbanCard.jsx
 // Card do Kanban — Apple HIG: elevação, tipografia SF, tags em pill.
 
-import React from 'react'
+import React, { useState } from 'react'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub, secoesOficinaVisiveis } from '../../utils/osHelpers'
@@ -13,10 +13,11 @@ export default function KanbanCard({
   tipoCor,
   modoTodos = true,
   onClick,
-  onDragStart, onDragEnd,
+  onDragStart, onDragEnd, onReorder,
   shaking,
 }) {
   const cor = (d, c) => dark ? d : c
+  const [dragOver, setDragOver] = useState(false)
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
   const tipoCfg = TIPOS_OS[os.tipo]
@@ -73,7 +74,10 @@ export default function KanbanCard({
     <div onClick={onClick}
       draggable
       onDragStart={handleDragStart}
-      onDragEnd={onDragEnd}
+      onDragEnd={(e) => { setDragOver(false); onDragEnd?.(e) }}
+      onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setDragOver(false); onReorder?.(os.numero) }}
       className={shaking ? 'idemaq-shake' : undefined}
       style={{
         ...cardStyle,
@@ -82,6 +86,8 @@ export default function KanbanCard({
         cursor: 'grab',
         transition: 'box-shadow .18s, transform .15s',
         userSelect: 'none',
+        outline: dragOver ? `2px solid ${cor(P.blue, P.blueDark)}` : undefined,
+        outlineOffset: -1,
       }}
       onMouseEnter={e => {
         if (!dark) e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.1), 0 0 0 .5px rgba(0,0,0,.05)'

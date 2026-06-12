@@ -207,6 +207,22 @@ export function ordenarColuna(etapaId, lista) {
   }
 }
 
+// Ordena uma coluna respeitando a ORDEM MANUAL (cards arrastados ficam fixos)
+// e mantendo o resto na ordem automática. `ordemEtapa` = { [os.numero]: chave }
+// salvo nas configurações (kanban_ordem). Cards sem chave usam a posição
+// automática como chave; arrastados usam o float salvo (entre vizinhos).
+export function ordenarColunaManual(etapaId, lista, ordemEtapa) {
+  const auto = ordenarColuna(etapaId, lista)
+  if (!ordemEtapa || Object.keys(ordemEtapa).length === 0) return auto
+  const rank = new Map(auto.map((o, i) => [o.numero, i]))
+  const keyOf = (o) => {
+    const m = ordemEtapa[o.numero]
+    return (m !== undefined && m !== null) ? Number(m) : rank.get(o.numero)
+  }
+  return [...auto].sort((a, b) =>
+    (keyOf(a) - keyOf(b)) || (rank.get(a.numero) - rank.get(b.numero)))
+}
+
 // OS concluída no MÊS DO CALENDÁRIO atual (não 30 dias corridos).
 // Prefere os.data_conclusao (sempre atualizado quando a OS é concluida).
 // Fallback: ULTIMA transicao pra concluido no historico (OS pode ter sido
