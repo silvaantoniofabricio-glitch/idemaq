@@ -17,8 +17,10 @@ import {
 import PecaDetalheModal from '../components/estoque/PecaDetalheModal'
 import MaquinaDetalheModal from '../components/estoque/MaquinaDetalheModal'
 import NovaPecaModal from '../components/estoque/NovaPecaModal'
+import NovaMaquinaModal from '../components/estoque/NovaMaquinaModal'
 import { CATEGORIAS_PECA, CATEGORIA_POR_ID } from '../utils/categoriasPeca'
 import { usePecas } from '../hooks/usePecas'
+import { useMaquinas } from '../hooks/useMaquinas'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
@@ -130,6 +132,7 @@ export default function Estoque({ T, dark, user }) {
   const [pecaAberta, setPecaAberta] = useState(null)
   const [maquinaAberta, setMaquinaAberta] = useState(null)
   const [novaPecaAberta, setNovaPecaAberta] = useState(false)
+  const [novaMaquinaAberta, setNovaMaquinaAberta] = useState(false)
   const [refetchKey, setRefetchKey] = useState(0)
   const [paginaAtual, setPaginaAtual] = useState(1)
 
@@ -255,7 +258,11 @@ export default function Estoque({ T, dark, user }) {
     return () => { alive = false }
   }, [refetchKey])
 
-  const [maquinas] = useState(MAQUINAS_MOCK)
+  const { maquinas, criar: criarMaquina } = useMaquinas()
+
+  async function adicionarMaquina(payload) {
+    return criarMaquina(payload)
+  }
 
   // CREATE — retorna { error } pro modal decidir se fecha ou continua
   async function adicionarPeca(nova) {
@@ -525,7 +532,7 @@ export default function Estoque({ T, dark, user }) {
             <Button variant="primary" iconLeft="ti-plus"
               onClick={() => onPecas
                 ? setNovaPecaAberta(true)
-                : placeholder('Cadastro de máquina em breve')}>
+                : setNovaMaquinaAberta(true)}>
               {onPecas ? 'Cadastro de Peças' : 'Nova máquina'}
             </Button>
           </div>
@@ -624,6 +631,13 @@ export default function Estoque({ T, dark, user }) {
         <NovaPecaModal T={T} dark={dark}
           onClose={() => setNovaPecaAberta(false)}
           onSalvar={adicionarPeca} />
+      )}
+
+      {novaMaquinaAberta && (
+        <NovaMaquinaModal T={T} dark={dark}
+          mostraValores={mostraValores}
+          onClose={() => setNovaMaquinaAberta(false)}
+          onSalvar={adicionarMaquina} />
       )}
     </div>
   )

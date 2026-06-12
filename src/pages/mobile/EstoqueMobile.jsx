@@ -20,6 +20,7 @@ import { isAdmin } from '../../utils/osHelpers'
 import { useToast } from '../../components/ui'
 import { CATEGORIAS_PECA } from '../../utils/categoriasPeca'
 import { usePecas } from '../../hooks/usePecas'
+import { useMaquinas } from '../../hooks/useMaquinas'
 
 import PecaCardMobile    from '../../components/mobile/PecaCardMobile'
 import MaquinaCardMobile from '../../components/mobile/MaquinaCardMobile'
@@ -29,6 +30,7 @@ import MobileEmptyState  from '../../components/mobile/MobileEmptyState'
 import PecaDetalheModal    from '../../components/estoque/PecaDetalheModal'
 import MaquinaDetalheModal from '../../components/estoque/MaquinaDetalheModal'
 import NovaPecaModal       from '../../components/estoque/NovaPecaModal'
+import NovaMaquinaModal    from '../../components/estoque/NovaMaquinaModal'
 
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const ATL_RADIUS = 4
@@ -72,7 +74,8 @@ export default function EstoqueMobile({ T, dark, user }) {
   const [refetchKey, setRefetchKey]     = useState(0)
   const [pecaAberta, setPecaAberta]     = useState(null)
   const [maquinaAberta, setMaquinaAberta] = useState(null)
-  const [novaPecaAberta, setNovaPeca]   = useState(false)
+  const [novaPecaAberta, setNovaPeca]       = useState(false)
+  const [novaMaquinaAberta, setNovaMaquina] = useState(false)
   const [filtroOpen, setFiltroOpen]     = useState(false)
 
   useEffect(() => {
@@ -160,7 +163,7 @@ export default function EstoqueMobile({ T, dark, user }) {
     return () => { alive = false }
   }, [refetchKey])
 
-  const [maquinas] = useState(MAQUINAS_MOCK)
+  const { maquinas, criar: criarMaquina } = useMaquinas()
 
   async function adicionarPeca(nova) {
     const res = await criar(nova)
@@ -478,6 +481,9 @@ export default function EstoqueMobile({ T, dark, user }) {
       {onPecas && mostraValores && (
         <MobileFAB T={T} dark={dark} icon="ti-plus" onClick={() => setNovaPeca(true)} />
       )}
+      {!onPecas && mostraValores && (
+        <MobileFAB T={T} dark={dark} icon="ti-plus" onClick={() => setNovaMaquina(true)} />
+      )}
 
       {pecaAberta && (
         <PecaDetalheModal T={T} dark={dark}
@@ -497,6 +503,12 @@ export default function EstoqueMobile({ T, dark, user }) {
         <NovaPecaModal T={T} dark={dark} mobile
           onClose={() => setNovaPeca(false)}
           onSalvar={adicionarPeca} />
+      )}
+      {novaMaquinaAberta && (
+        <NovaMaquinaModal T={T} dark={dark} mobile
+          mostraValores={mostraValores}
+          onClose={() => setNovaMaquina(false)}
+          onSalvar={criarMaquina} />
       )}
     </div>
   )
