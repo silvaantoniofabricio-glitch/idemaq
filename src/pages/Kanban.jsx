@@ -291,8 +291,27 @@ export default function Kanban({ T, dark, user }) {
   const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch, updateOS: updateOSHook } = useOS(buscaAtiva)
   const { usuarios } = useUsuarios()
   // Ordem manual dos cards (compartilhada): { [etapa]: { [os.numero]: chaveFloat } }
-  const { get: cfgGet, set: cfgSet } = useConfiguracoes()
+  const { get: cfgGet, set: cfgSet, refetch: cfgRefetch } = useConfiguracoes()
   const kanbanOrdem = cfgGet('kanban_ordem', {}) || {}
+
+  // Sync AO VIVO da ordem entre dispositivos via broadcast (sem precisar da
+  // tabela na publication do Realtime). Quem reordena emite 'reorder'; os
+  // outros recarregam as configs e re-renderizam na hora.
+  const ordemChanRef = useRef(null)
+  useEffect(() => {
+    const ch = supabase
+      .channel('kanban-ordem-sync')
+      .on('broadcast', { event: 'reorder' }, () => { cfgRefetch() })
+      .subscribe()
+    ordemChanRef.current = ch
+    return () => { supabase.removeChannel(ch) }
+  }, [cfgRefetch])
+
+  // Salva a ordem (otimista local + persiste) e avisa os outros dispositivos.
+  function salvarOrdemKanban(novo) {
+    cfgSet('kanban_ordem', novo)
+    ordemChanRef.current?.send({ type: 'broadcast', event: 'reorder', payload: {} })
+  }
 
   // Busca os serviços (1 query) e monta os conjuntos de OS com limpeza/manutenção.
   // Refaz quando a quantidade de OS muda (criou/excluiu OS).
@@ -504,7 +523,25 @@ export default function Kanban({ T, dark, user }) {
     else if (kAfter != null) newKey = kAfter - 1
     else return
     const novo = { ...kanbanOrdem, [targetEtapa]: { ...ordemEtapa, [drag.numero]: newKey } }
-    cfgSet('kanban_ordem', novo)
+    salvarOrdemKanban(novo)
+  }
+
+  // Soltar num espaço VAZIO da própria coluna → manda o card pro FIM (em vez de
+  // dar "já está nesta etapa"). Mantém o drag dentro da coluna como reordenar.
+  function onReorderParaFim(numero, etapa) {
+    const displayed = porEtapa[etapa] || []
+    if (displayed.length <= 1) return
+    if (displayed[displayed.length - 1].numero === numero) return // já é o último
+    const auto = ordenarColuna(etapa, displayed)
+    const rank = new Map(auto.map((o, i) => [o.numero, i]))
+    const ordemEtapa = kanbanOrdem[etapa] || {}
+    const keyOf = (o) => {
+      const m = ordemEtapa[o.numero]
+      return (m !== undefined && m !== null) ? Number(m) : rank.get(o.numero)
+    }
+    const ultimo = displayed[displayed.length - 1]
+    const novo = { ...kanbanOrdem, [etapa]: { ...ordemEtapa, [numero]: keyOf(ultimo) + 1 } }
+    salvarOrdemKanban(novo)
   }
 
   const totalKanban    = Object.values(porEtapa).reduce((s, a) => s + a.length, 0)
@@ -814,7 +851,13 @@ export default function Kanban({ T, dark, user }) {
               onDragStart={(n, e) => setArrastando({ numero: n, etapa: e })}
               onDragEnd={() => { setArrastando(null); setColunaHover(null) }}
               onDragOverCol={e => setColunaHover(e)}
-              onDropCol={e => { if (arrastando) moverOS(arrastando.numero, e); setArrastando(null); setColunaHover(null) }}
+              onDropCol={e => {
+                if (arrastando) {
+                  if (arrastando.etapa === e) onReorderParaFim(arrastando.numero, e) // mesma coluna → fim
+                  else moverOS(arrastando.numero, e)                                 // outra coluna → move etapa
+                }
+                setArrastando(null); setColunaHover(null)
+              }}
               onReorder={onReorderCard}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
