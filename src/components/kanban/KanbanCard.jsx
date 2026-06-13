@@ -13,7 +13,7 @@ export default function KanbanCard({
   tipoCor,
   modoTodos = true,
   onClick,
-  onDragStart, onDragEnd, onReorder,
+  onDragStart, onDragEnd,
   shaking,
 }) {
   const cor = (d, c) => dark ? d : c
@@ -72,17 +72,9 @@ export default function KanbanCard({
   return (
     <div onClick={onClick}
       draggable
+      data-num={os.numero}
       onDragStart={handleDragStart}
-      onDragEnd={(e) => { e.currentTarget.style.outline = ''; onDragEnd?.(e) }}
-      onDragOver={(e) => {
-        // preventDefault libera o drop. O contorno é setado DIRETO no DOM (sem
-        // setState) — re-renderizar o card durante o arraste cancela o drag.
-        e.preventDefault()
-        e.currentTarget.style.outline = `2px solid ${cor(P.blue, P.blueDark)}`
-        e.currentTarget.style.outlineOffset = '-1px'
-      }}
-      onDragLeave={(e) => { e.currentTarget.style.outline = '' }}
-      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.style.outline = ''; onReorder?.(os.numero) }}
+      onDragEnd={onDragEnd}
       className={shaking ? 'idemaq-shake' : undefined}
       style={{
         ...cardStyle,

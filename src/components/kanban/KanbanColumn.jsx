@@ -2,7 +2,7 @@
 // Coluna Kanban — estilo Atlassian/Jira (02/06/2026).
 // Fundo cinza neutro, header compacto uppercase, sem stripe colorida no topo.
 
-import React from 'react'
+import React, { useRef } from 'react'
 import { P } from '../../theme'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import KanbanCard from './KanbanCard'
@@ -25,12 +25,38 @@ export default function KanbanColumn({
   etapa, osList = [], T, dark, tipoCor,
   modoTodos = true, onCardClick,
   arrastando, colunaHover,
-  onDragStart, onDragEnd, onDragOverCol, onDropCol, onReorder,
+  onDragStart, onDragEnd, onDragOverCol, onDropCol, onReorderColuna,
   concluidoMesAtual, loading, shakingNum,
 }) {
   const c  = corEtapa(etapa.cor, dark)
   const bg = bgEtapa(etapa.cor, dark)
   const isHover = colunaHover === etapa.id && arrastando
+  const bodyRef = useRef(null)
+
+  // Posição do drop pela ALTURA do cursor: devolve o número da OS antes da qual
+  // inserir (ou null = no fim). Robusto — não depende do drop cair sobre o card.
+  function numeroAntesDoDrop(clientY) {
+    const cont = bodyRef.current
+    if (!cont) return null
+    for (const el of cont.querySelectorAll('[data-num]')) {
+      const num = el.getAttribute('data-num')
+      if (arrastando && String(num) === String(arrastando.numero)) continue // ignora o próprio
+      const r = el.getBoundingClientRect()
+      if (clientY < r.top + r.height / 2) return num
+    }
+    return null
+  }
+
+  // Drop na coluna: mesma etapa do card arrastado → reordena pela altura;
+  // etapa diferente → move de etapa (comportamento antigo).
+  function handleColDrop(e) {
+    e.preventDefault()
+    if (arrastando && arrastando.etapa === etapa.id) {
+      onReorderColuna?.(etapa.id, numeroAntesDoDrop(e.clientY))
+    } else {
+      onDropCol?.(etapa.id)
+    }
+  }
 
   // Colapso automático (estilo Jira): coluna vazia vira um filete vertical.
   // Enquanto arrasta um card, todas expandem pra facilitar o drop.
@@ -121,7 +147,7 @@ export default function KanbanColumn({
     <div
       onDragOver={e => { e.preventDefault(); onDragOverCol?.(etapa.id) }}
       onDragLeave={() => { if (colunaHover === etapa.id) onDragOverCol?.(null) }}
-      onDrop={e => { e.preventDefault(); onDropCol?.(etapa.id) }}
+      onDrop={handleColDrop}
       style={{
         minWidth: 270, maxWidth: 270, flexShrink: 0,
         background: colBg,
@@ -183,7 +209,7 @@ export default function KanbanColumn({
       </div>
 
       {/* Body — lista de cards */}
-      <div style={{
+      <div ref={bodyRef} style={{
         flex: 1, overflowY: 'auto',
         padding: '8px 6px',
         display: 'flex', flexDirection: 'column', gap: 6,
@@ -221,8 +247,7 @@ export default function KanbanColumn({
             shaking={shakingNum === os.numero}
             onClick={() => onCardClick?.(os)}
             onDragStart={() => onDragStart?.(os.numero, etapa.id)}
-            onDragEnd={onDragEnd}
-            onReorder={onReorder} />
+            onDragEnd={onDragEnd} />
         ))}
       </div>
     </div>

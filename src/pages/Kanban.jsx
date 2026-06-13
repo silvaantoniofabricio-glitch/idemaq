@@ -485,55 +485,15 @@ export default function Kanban({ T, dark, user }) {
   })
   Object.keys(porEtapa).forEach(k => { porEtapa[k] = ordenarColunaManual(k, porEtapa[k], kanbanOrdem[k]) })
 
-  // Reordenar dentro da coluna (drag entre cards). Soltar sobre um card:
-  //  - mesma coluna → calcula uma chave entre os vizinhos e salva (ordem manual).
-  //  - coluna diferente → vira um "mover de etapa" normal.
-  function onReorderCard(targetNumero) {
+  // Reordenar dentro da coluna pela POSIÇÃO (altura) do drop. `beforeNum` = OS
+  // antes da qual inserir, ou null = no fim. Salva uma chave float entre os
+  // vizinhos (ordem manual compartilhada). Robusto: não depende do drop cair
+  // exatamente sobre um card.
+  function onReorderColuna(etapa, beforeNum) {
     const drag = arrastando
-    if (!drag || drag.numero === targetNumero) return
-    let targetEtapa = null
-    for (const k of Object.keys(porEtapa)) {
-      if (porEtapa[k].some(o => o.numero === targetNumero)) { targetEtapa = k; break }
-    }
-    if (!targetEtapa) return
-    if (targetEtapa !== drag.etapa) { moverOS(drag.numero, targetEtapa); return }
-
-    const displayed = porEtapa[targetEtapa] || []
-    const dragIdx = displayed.findIndex(o => o.numero === drag.numero)
-    const tIdx = displayed.findIndex(o => o.numero === targetNumero)
-    if (dragIdx < 0 || tIdx < 0) return
-
-    const auto = ordenarColuna(targetEtapa, displayed)
-    const rank = new Map(auto.map((o, i) => [o.numero, i]))
-    const ordemEtapa = kanbanOrdem[targetEtapa] || {}
-    const keyOf = (o) => {
-      const m = ordemEtapa[o.numero]
-      return (m !== undefined && m !== null) ? Number(m) : rank.get(o.numero)
-    }
-    // Direção: arrastando pra baixo solta DEPOIS do alvo; pra cima, ANTES.
-    const movingDown = dragIdx < tIdx
-    const neighborKey = (idx) => {
-      if (idx < 0 || idx >= displayed.length) return null
-      if (displayed[idx].numero === drag.numero) return neighborKey(movingDown ? idx + 1 : idx - 1)
-      return keyOf(displayed[idx])
-    }
-    const kBefore = movingDown ? neighborKey(tIdx)     : neighborKey(tIdx - 1)
-    const kAfter  = movingDown ? neighborKey(tIdx + 1) : neighborKey(tIdx)
-    let newKey
-    if (kBefore != null && kAfter != null) newKey = (kBefore + kAfter) / 2
-    else if (kBefore != null) newKey = kBefore + 1
-    else if (kAfter != null) newKey = kAfter - 1
-    else return
-    const novo = { ...kanbanOrdem, [targetEtapa]: { ...ordemEtapa, [drag.numero]: newKey } }
-    salvarOrdemKanban(novo)
-  }
-
-  // Soltar num espaço VAZIO da própria coluna → manda o card pro FIM (em vez de
-  // dar "já está nesta etapa"). Mantém o drag dentro da coluna como reordenar.
-  function onReorderParaFim(numero, etapa) {
+    if (!drag || drag.etapa !== etapa) return
     const displayed = porEtapa[etapa] || []
     if (displayed.length <= 1) return
-    if (displayed[displayed.length - 1].numero === numero) return // já é o último
     const auto = ordenarColuna(etapa, displayed)
     const rank = new Map(auto.map((o, i) => [o.numero, i]))
     const ordemEtapa = kanbanOrdem[etapa] || {}
@@ -541,9 +501,17 @@ export default function Kanban({ T, dark, user }) {
       const m = ordemEtapa[o.numero]
       return (m !== undefined && m !== null) ? Number(m) : rank.get(o.numero)
     }
-    const ultimo = displayed[displayed.length - 1]
-    const novo = { ...kanbanOrdem, [etapa]: { ...ordemEtapa, [numero]: keyOf(ultimo) + 1 } }
-    salvarOrdemKanban(novo)
+    const semDrag = displayed.filter(o => o.numero !== drag.numero)
+    let pos = (beforeNum != null) ? semDrag.findIndex(o => String(o.numero) === String(beforeNum)) : semDrag.length
+    if (pos < 0) pos = semDrag.length
+    const prev = pos > 0 ? semDrag[pos - 1] : null
+    const next = pos < semDrag.length ? semDrag[pos] : null
+    let newKey
+    if (prev && next) newKey = (keyOf(prev) + keyOf(next)) / 2
+    else if (prev) newKey = keyOf(prev) + 1
+    else if (next) newKey = keyOf(next) - 1
+    else return
+    salvarOrdemKanban({ ...kanbanOrdem, [etapa]: { ...ordemEtapa, [drag.numero]: newKey } })
   }
 
   const totalKanban    = Object.values(porEtapa).reduce((s, a) => s + a.length, 0)
@@ -853,14 +821,8 @@ export default function Kanban({ T, dark, user }) {
               onDragStart={(n, e) => setArrastando({ numero: n, etapa: e })}
               onDragEnd={() => { setArrastando(null); setColunaHover(null) }}
               onDragOverCol={e => setColunaHover(e)}
-              onDropCol={e => {
-                if (arrastando) {
-                  if (arrastando.etapa === e) onReorderParaFim(arrastando.numero, e) // mesma coluna → fim
-                  else moverOS(arrastando.numero, e)                                 // outra coluna → move etapa
-                }
-                setArrastando(null); setColunaHover(null)
-              }}
-              onReorder={onReorderCard}
+              onDropCol={e => { if (arrastando) moverOS(arrastando.numero, e); setArrastando(null); setColunaHover(null) }}
+              onReorderColuna={(etapa, beforeNum) => { onReorderColuna(etapa, beforeNum); setArrastando(null); setColunaHover(null) }}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
           ))}
