@@ -25,6 +25,32 @@ import MentionTextInput from '../components/notas/MentionTextInput'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
+// ─── Helpers do arraste manual dos cards ─────────────────────────────────────
+// Qual coluna (etapa) está sob o cursor — pelo data-etapa do DOM.
+function colunaSobCursor(x, y) {
+  const el = document.elementFromPoint(x, y)
+  const col = el && el.closest ? el.closest('[data-etapa]') : null
+  return col ? col.getAttribute('data-etapa') : null
+}
+// Dentro da coluna, antes de qual OS soltar (pela altura) — ou null = no fim.
+function numeroAntesNaColuna(etapaId, clientY, dragNumero) {
+  const col = document.querySelector(`[data-etapa="${etapaId}"]`)
+  if (!col) return null
+  for (const el of col.querySelectorAll('[data-num]')) {
+    const num = el.getAttribute('data-num')
+    if (String(num) === String(dragNumero)) continue
+    const r = el.getBoundingClientRect()
+    if (clientY < r.top + r.height / 2) return num
+  }
+  return null
+}
+// Após um arraste, engole o próximo clique (senão abriria o modal da OS).
+function suprimirProximoClique() {
+  const h = (ev) => { ev.stopPropagation(); ev.preventDefault(); window.removeEventListener('click', h, true) }
+  window.addEventListener('click', h, true)
+  setTimeout(() => window.removeEventListener('click', h, true), 350)
+}
+
 // ─── Painel Notas do Dia ─────────────────────────────────────────────────────
 function NotasDoDia({ T, dark, onClose, osList = [], pessoas = [] }) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
@@ -489,9 +515,7 @@ export default function Kanban({ T, dark, user }) {
   // antes da qual inserir, ou null = no fim. Salva uma chave float entre os
   // vizinhos (ordem manual compartilhada). Robusto: não depende do drop cair
   // exatamente sobre um card.
-  function onReorderColuna(etapa, beforeNum) {
-    const drag = arrastando
-    if (!drag || drag.etapa !== etapa) return
+  function onReorderColuna(etapa, beforeNum, dragNumero) {
     const displayed = porEtapa[etapa] || []
     if (displayed.length <= 1) return
     const auto = ordenarColuna(etapa, displayed)
@@ -501,7 +525,7 @@ export default function Kanban({ T, dark, user }) {
       const m = ordemEtapa[o.numero]
       return (m !== undefined && m !== null) ? Number(m) : rank.get(o.numero)
     }
-    const semDrag = displayed.filter(o => o.numero !== drag.numero)
+    const semDrag = displayed.filter(o => o.numero !== dragNumero)
     let pos = (beforeNum != null) ? semDrag.findIndex(o => String(o.numero) === String(beforeNum)) : semDrag.length
     if (pos < 0) pos = semDrag.length
     const prev = pos > 0 ? semDrag[pos - 1] : null
@@ -511,7 +535,61 @@ export default function Kanban({ T, dark, user }) {
     else if (prev) newKey = keyOf(prev) + 1
     else if (next) newKey = keyOf(next) - 1
     else return
-    salvarOrdemKanban({ ...kanbanOrdem, [etapa]: { ...ordemEtapa, [drag.numero]: newKey } })
+    salvarOrdemKanban({ ...kanbanOrdem, [etapa]: { ...ordemEtapa, [dragNumero]: newKey } })
+  }
+
+  // ── Arraste MANUAL (não usa o drag nativo do navegador, que falha em alguns
+  // ambientes). mousedown no card → segue o cursor (clone) → solta: mesma coluna
+  // reordena pela altura; outra coluna muda a etapa. Funciona com mouse comum.
+  function onCardPointerDown(os, etapa, e) {
+    if (e.button !== 0) return
+    const d = {
+      numero: os.numero, etapa,
+      startX: e.clientX, startY: e.clientY,
+      el: e.currentTarget, started: false, clone: null, offsetX: 0, offsetY: 0,
+    }
+    function onMove(ev) {
+      if (!d.started) {
+        if (Math.hypot(ev.clientX - d.startX, ev.clientY - d.startY) < 5) return
+        d.started = true
+        const r = d.el.getBoundingClientRect()
+        d.offsetX = d.startX - r.left
+        d.offsetY = d.startY - r.top
+        const clone = d.el.cloneNode(true)
+        Object.assign(clone.style, {
+          position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px',
+          margin: '0', pointerEvents: 'none', zIndex: '9999', opacity: '0.93',
+          transform: 'rotate(2deg)', boxShadow: '0 10px 26px rgba(0,0,0,0.35)',
+        })
+        document.body.appendChild(clone)
+        d.clone = clone
+        d.el.style.opacity = '0.35'
+        document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'grabbing'
+        setArrastando({ numero: d.numero, etapa: d.etapa })
+      }
+      d.clone.style.left = (ev.clientX - d.offsetX) + 'px'
+      d.clone.style.top = (ev.clientY - d.offsetY) + 'px'
+      setColunaHover(colunaSobCursor(ev.clientX, ev.clientY))
+    }
+    function onUp(ev) {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      if (!d.started) return // foi clique simples → onClick abre o modal
+      if (d.clone) d.clone.remove()
+      if (d.el) d.el.style.opacity = ''
+      document.body.style.userSelect = ''
+      document.body.style.cursor = ''
+      setColunaHover(null)
+      setArrastando(null)
+      suprimirProximoClique()
+      const etapaSob = colunaSobCursor(ev.clientX, ev.clientY)
+      if (!etapaSob) return
+      if (etapaSob === d.etapa) onReorderColuna(etapaSob, numeroAntesNaColuna(etapaSob, ev.clientY, d.numero), d.numero)
+      else moverOS(d.numero, etapaSob)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
   }
 
   const totalKanban    = Object.values(porEtapa).reduce((s, a) => s + a.length, 0)
@@ -818,11 +896,7 @@ export default function Kanban({ T, dark, user }) {
               modoTodos={true} onCardClick={setDetalhe}
               arrastando={arrastando} colunaHover={colunaHover}
               loading={osLoading} shakingNum={shakingNum}
-              onDragStart={(n, e) => setArrastando({ numero: n, etapa: e })}
-              onDragEnd={() => { setArrastando(null); setColunaHover(null) }}
-              onDragOverCol={e => setColunaHover(e)}
-              onDropCol={e => { if (arrastando) moverOS(arrastando.numero, e); setArrastando(null); setColunaHover(null) }}
-              onReorderColuna={(etapa, beforeNum) => { onReorderColuna(etapa, beforeNum); setArrastando(null); setColunaHover(null) }}
+              onCardMouseDown={onCardPointerDown}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
           ))}

@@ -13,7 +13,7 @@ export default function KanbanCard({
   tipoCor,
   modoTodos = true,
   onClick,
-  onDragStart, onDragEnd,
+  onCardMouseDown,
   shaking,
 }) {
   const cor = (d, c) => dark ? d : c
@@ -29,12 +29,6 @@ export default function KanbanCard({
 
   const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
   const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento
-
-  function handleDragStart(e) {
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', String(os.numero))
-    onDragStart?.()
-  }
 
   // Prazo pill
   let prazoPillText = null
@@ -71,10 +65,7 @@ export default function KanbanCard({
 
   return (
     <div onClick={onClick}
-      draggable
       data-num={os.numero}
-      onDragStart={handleDragStart}
-      onDragEnd={onDragEnd}
       className={shaking ? 'idemaq-shake' : undefined}
       style={{
         ...cardStyle,
@@ -92,7 +83,7 @@ export default function KanbanCard({
         if (!dark) e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.07), 0 0 0 .5px rgba(0,0,0,.04)'
         e.currentTarget.style.transform = 'translateY(0)'
       }}
-      onMouseDown={e => { e.currentTarget.style.cursor = 'grabbing' }}
+      onMouseDown={e => { e.currentTarget.style.cursor = 'grabbing'; onCardMouseDown?.(os, e) }}
       onMouseUp={e => { e.currentTarget.style.cursor = 'grab' }}>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
