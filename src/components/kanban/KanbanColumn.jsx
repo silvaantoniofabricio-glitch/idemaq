@@ -33,9 +33,11 @@ export default function KanbanColumn({
   const isHover = colunaHover === etapa.id && arrastando
 
   // Colapso automático (estilo Jira): coluna vazia vira um filete vertical.
-  // Enquanto arrasta um card, todas expandem pra facilitar o drop.
+  // NÃO expande durante o arraste — isso empurrava as colunas pro lado no meio
+  // do drag e fazia o card cair na coluna errada. O filete continua aceitando
+  // drop (tem data-etapa).
   const vazia     = !loading && osList.length === 0
-  const colapsada = vazia && !arrastando
+  const colapsada = vazia
 
   // Cores da coluna — estilo Atlassian: fundo sólido neutro
   const colBg = dark
