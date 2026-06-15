@@ -21,7 +21,7 @@ import { fmtPrazoCurto } from '../utils/fmt'
 import { corEtapa, bgEtapa } from '../utils/colors'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../utils/pecasStatus'
 import KanbanColumn from '../components/kanban/KanbanColumn'
-import MentionTextInput from '../components/notas/MentionTextInput'
+import RoteiroDia from '../components/roteiro/RoteiroDia'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
@@ -49,219 +49,6 @@ function suprimirProximoClique() {
   const h = (ev) => { ev.stopPropagation(); ev.preventDefault(); window.removeEventListener('click', h, true) }
   window.addEventListener('click', h, true)
   setTimeout(() => window.removeEventListener('click', h, true), 350)
-}
-
-// ─── Painel Notas do Dia ─────────────────────────────────────────────────────
-function NotasDoDia({ T, dark, onClose, osList = [], pessoas = [] }) {
-  const hoje = new Date().toLocaleDateString('pt-BR', {
-    timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).split('/').reverse().join('-')
-  const chave = `kanban_notas_${hoje}`
-
-  const [linhas, setLinhas]   = useState([''])
-  const [status, setStatus]   = useState('idle')
-  const [pronto, setPronto]   = useState(false)
-  const [menuCtx, setMenuCtx] = useState(null)
-  const [dragIdx, setDragIdx] = useState(null)
-  const [dragOver, setDragOver] = useState(null)
-
-  const timerRef  = useRef(null)
-  const inputRefs = useRef({})
-  const _mdb      = useRef(false) // mousedown começou no backdrop? (evita fechar ao arrastar)
-
-  function agendarSave(novas) {
-    setStatus('saving')
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(async () => {
-      const val = novas.join('\n')
-      const { error } = await supabase
-        .from('configuracoes')
-        .upsert({ chave, valor: val, descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
-      if (error) { setStatus('error'); return }
-      setStatus('saved')
-      setTimeout(() => setStatus('idle'), 2000)
-    }, 800)
-  }
-
-  useEffect(() => {
-    let cancelado = false
-    ;(async () => {
-      const { data } = await supabase
-        .from('configuracoes').select('valor')
-        .eq('chave', chave).is('deleted_at', null).maybeSingle()
-      if (!cancelado) {
-        const val = data?.valor
-        setLinhas(val && typeof val === 'string' && val.length > 0 ? val.split('\n') : [''])
-        setPronto(true)
-      }
-    })()
-    return () => { cancelado = true }
-  }, [chave])
-
-  function atualizar(novas) { setLinhas(novas); if (pronto) agendarSave(novas) }
-  function editarLinha(idx, val) { const n = [...linhas]; n[idx] = val; atualizar(n) }
-
-  function toggleCheck(idx) {
-    const l = linhas[idx]
-    if (l.startsWith('☐ '))      editarLinha(idx, '✓ ' + l.slice(2))
-    else if (l.startsWith('✓ ')) editarLinha(idx, '☐ ' + l.slice(2))
-  }
-
-  function handleKeyDown(idx, e) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      const prefixo = (linhas[idx].startsWith('☐ ') || linhas[idx].startsWith('✓ ')) ? '☐ ' : ''
-      const novas = [...linhas]; novas.splice(idx + 1, 0, prefixo); atualizar(novas)
-      setTimeout(() => {
-        const el = inputRefs.current[idx + 1]
-        if (el) { el.focus(); el.setSelectionRange(prefixo.length, prefixo.length) }
-      }, 20)
-    } else if (e.key === 'Backspace' && linhas[idx] === '' && linhas.length > 1) {
-      e.preventDefault()
-      atualizar(linhas.filter((_, i) => i !== idx))
-      setTimeout(() => inputRefs.current[Math.max(0, idx - 1)]?.focus(), 20)
-    }
-  }
-
-  function inserirTarefaEm(idx) {
-    const novas = [...linhas]; novas.splice(idx + 1, 0, '☐ '); atualizar(novas)
-    setMenuCtx(null)
-    setTimeout(() => { const el = inputRefs.current[idx + 1]; if (el) { el.focus(); el.setSelectionRange(2, 2) } }, 20)
-  }
-
-  function onDragStart(e, idx) { setDragIdx(idx); e.dataTransfer.effectAllowed = 'move' }
-  function onDragOver(e, idx) { e.preventDefault(); if (dragOver !== idx) setDragOver(idx) }
-  function onDrop(e, idx) {
-    e.preventDefault()
-    if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setDragOver(null); return }
-    const novas = [...linhas]
-    const [item] = novas.splice(dragIdx, 1)
-    novas.splice(dragIdx < idx ? idx - 1 : idx, 0, item)
-    atualizar(novas); setDragIdx(null); setDragOver(null)
-  }
-
-  return (
-    <div
-      onMouseDown={(e) => { _mdb.current = e.target === e.currentTarget }}
-      onClick={(e) => { if (e.target === e.currentTarget && _mdb.current) onClose() }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '2rem',
-        animation: 'os-detalhe-fade .15s ease-out',
-      }}>
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="idemaq-card"
-      style={{
-        background: T.card, color: T.textPrimary,
-        borderRadius: 14,
-        width: '100%', maxWidth: 780,
-        height: 'auto', maxHeight: 'calc(100vh - 4rem)',
-        border: `1px solid ${T.border}`,
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        animation: 'os-detalhe-in .22s cubic-bezier(.2,.7,.2,1)',
-      }}>
-      <div style={{
-        padding: '12px 16px', borderBottom: `1px solid ${T.border}`, flexShrink: 0,
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: dark ? 'rgba(91,155,213,.10)' : 'rgba(91,155,213,.06)',
-        borderRadius: '14px 14px 0 0',
-      }}>
-        <i className="ti ti-notes" style={{ fontSize: 16, color: '#5B9BD5' }} aria-hidden="true" />
-        <span style={{ fontWeight: 700, fontSize: 15, color: T.textPrimary, flex: 1 }}>Notas do Dia</span>
-        {status === 'saving' && <span style={{ fontSize: 10.5, color: T.textDim }}>salvando…</span>}
-        {status === 'saved' && <span style={{ fontSize: 10.5, color: '#4CAF50', display: 'flex', alignItems: 'center', gap: 3 }}><i className="ti ti-check" style={{ fontSize: 11 }} /> salvo</span>}
-        {status === 'error' && <span style={{ fontSize: 10.5, color: '#FF6B6B' }}>erro ao salvar</span>}
-        <button onClick={onClose} style={{ width: 22, height: 22, borderRadius: 4, border: 'none', cursor: 'pointer', background: 'transparent', color: T.textDim, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <i className="ti ti-x" style={{ fontSize: 13 }} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div style={{ overflowY: 'auto', flex: 1, padding: '6px 0' }}>
-        {linhas.map((linha, idx) => {
-          const isTarefa = linha.startsWith('☐ ') || linha.startsWith('✓ ')
-          const checked  = linha.startsWith('✓ ')
-          const textoDisplay = isTarefa ? linha.slice(2) : linha
-          return (
-            <div key={idx}
-              onDragOver={e => onDragOver(e, idx)} onDrop={e => onDrop(e, idx)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, padding: '1px 8px 1px 4px',
-                borderTop: dragOver === idx && dragIdx !== null && dragIdx !== idx ? '2px solid #5B9BD5' : '2px solid transparent',
-                opacity: dragIdx === idx ? 0.4 : 1,
-              }}>
-              {/* Alça de arrasto */}
-              <span draggable onDragStart={e => onDragStart(e, idx)} onDragEnd={() => { setDragIdx(null); setDragOver(null) }}
-                style={{ cursor: 'grab', color: T.textDim, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '4px 2px', opacity: 0.4 }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#5B9BD5' }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = '0.4'; e.currentTarget.style.color = T.textDim }}>
-                <i className="ti ti-grip-vertical" style={{ fontSize: 13 }} aria-hidden="true" />
-              </span>
-              {/* Checkbox clicável — só em linhas de tarefa */}
-              {isTarefa && (
-                <button onClick={() => toggleCheck(idx)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: '2px 1px',
-                  flexShrink: 0, display: 'flex', alignItems: 'center',
-                  color: checked ? '#5B9BD5' : T.textDim,
-                }}>
-                  <i className={`ti ${checked ? 'ti-square-check-filled' : 'ti-square'}`} style={{ fontSize: 15 }} aria-hidden="true" />
-                </button>
-              )}
-              {/* Input com @menção */}
-              <MentionTextInput
-                T={T} dark={dark} osList={osList} pessoas={pessoas}
-                inputRef={el => { inputRefs.current[idx] = el }}
-                value={textoDisplay}
-                onChange={v => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + v : v)}
-                onKeyDown={e => handleKeyDown(idx, e)}
-                onContextMenu={e => { e.preventDefault(); setMenuCtx({ x: e.clientX, y: e.clientY, idx }) }}
-                placeholder={idx === 0 ? 'Anotação, ☐ tarefa ou @pessoa/OS…' : ''}
-                style={{
-                  background: 'transparent', border: 'none', outline: 'none',
-                  fontSize: 13, fontFamily: 'inherit', lineHeight: 1.7, padding: '2px 0',
-                  color: checked ? T.textDim : T.textPrimary,
-                  textDecoration: checked ? 'line-through' : 'none',
-                }}
-              />
-              {/* Botão excluir linha */}
-              <button
-                onClick={() => atualizar(linhas.filter((_, i) => i !== idx))}
-                title="Excluir"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 3px', flexShrink: 0, display: 'flex', alignItems: 'center', color: T.textDim, opacity: 0, transition: 'opacity .15s' }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#FF6B6B' }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.color = T.textDim }}
-              >
-                <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
-              </button>
-            </div>
-          )
-        })}
-        <button onClick={() => inserirTarefaEm(linhas.length - 1)}
-          style={{ width: '100%', padding: '6px 12px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, color: T.textDim, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', marginTop: 2 }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#5B9BD5' }}
-          onMouseLeave={e => { e.currentTarget.style.color = T.textDim }}>
-          <i className="ti ti-plus" style={{ fontSize: 12 }} aria-hidden="true" /> Nova tarefa
-        </button>
-      </div>
-
-      {menuCtx && (
-        <>
-          <div onClick={() => setMenuCtx(null)} style={{ position: 'fixed', inset: 0, zIndex: 70 }} />
-          <div style={{ position: 'fixed', top: menuCtx.y, left: menuCtx.x, zIndex: 71, minWidth: 160, padding: 4, background: T.card, border: `1px solid ${T.border}`, borderRadius: 6, boxShadow: dark ? '0 8px 24px rgba(0,0,0,.55)' : '0 8px 24px rgba(0,0,0,.14)' }}>
-            <button onClick={() => inserirTarefaEm(menuCtx.idx)} style={{ width: '100%', padding: '8px 11px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 13, color: T.textPrimary, display: 'flex', alignItems: 'center', gap: 9, borderRadius: 4, fontFamily: 'inherit' }}
-              onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.07)' : '#f0f4ff' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-              <i className="ti ti-checkbox" style={{ fontSize: 14, color: '#5B9BD5' }} aria-hidden="true" /> Nova tarefa abaixo
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-    </div>
-  )
 }
 
 export default function Kanban({ T, dark, user }) {
@@ -865,12 +652,12 @@ export default function Kanban({ T, dark, user }) {
 
               <Divider dark={dark} T={T} />
 
-              {/* Notas do dia */}
+              {/* Roteiro do dia */}
               <ToggleChip
                 ativo={notasAbertas}
-                icon="ti-notes"
-                label="Notas"
-                title="Notas do dia"
+                icon="ti-checklist"
+                label="Roteiro"
+                title="Roteiro do dia"
                 onClick={() => setNotasAbertas(v => !v)}
                 T={T} dark={dark} azul={azul} azulBg={azulBg}
               />
@@ -926,7 +713,7 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
-      {notasAbertas && <NotasDoDia T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} />}
+      {notasAbertas && <RoteiroDia T={T} dark={dark} user={user} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} onAbrirOS={(os) => { setNotasAbertas(false); setDetalhe(os) }} />}
       {modalNova && (
         <NovaOSModal T={T} dark={dark} onClose={() => setModalNova(false)}
           tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />

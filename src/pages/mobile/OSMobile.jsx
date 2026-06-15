@@ -26,162 +26,7 @@ import FiltrosMobile from '../../components/mobile/FiltrosMobile'
 import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
 import NovaOSMobile from '../../components/os/NovaOSMobile'
-import MentionTextInput from '../../components/notas/MentionTextInput'
-
-// ─── Bottom sheet Notas do Dia ──────────────────────────────────────────────
-function NotasDoDiaMobile({ T, dark, onClose, osList = [], pessoas = [] }) {
-  const hoje = new Date().toLocaleDateString('pt-BR', {
-    timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).split('/').reverse().join('-')
-  const chave = `kanban_notas_${hoje}`
-
-  const [linhas, setLinhas] = useState([''])
-  const [status, setStatus] = useState('idle')
-  const [pronto, setPronto] = useState(false)
-  const timerRef  = useRef(null)
-  const inputRefs = useRef({})
-
-  function agendarSave(novas) {
-    setStatus('saving')
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(async () => {
-      const { error } = await supabase.from('configuracoes')
-        .upsert({ chave, valor: novas.join('\n'), descricao: `Notas do dia ${hoje}` }, { onConflict: 'chave' })
-      if (error) { setStatus('error'); return }
-      setStatus('saved')
-      setTimeout(() => setStatus('idle'), 2000)
-    }, 800)
-  }
-
-  useEffect(() => {
-    let cancelado = false
-    ;(async () => {
-      const { data } = await supabase.from('configuracoes').select('valor')
-        .eq('chave', chave).is('deleted_at', null).maybeSingle()
-      if (!cancelado) {
-        const val = data?.valor
-        setLinhas(val && typeof val === 'string' && val.length > 0 ? val.split('\n') : [''])
-        setPronto(true)
-      }
-    })()
-    return () => { cancelado = true }
-  }, [chave])
-
-  function atualizar(novas) { setLinhas(novas); if (pronto) agendarSave(novas) }
-  function editarLinha(idx, val) { const n = [...linhas]; n[idx] = val; atualizar(n) }
-
-  function toggleCheck(idx) {
-    const l = linhas[idx]
-    if (l.startsWith('☐ '))      editarLinha(idx, '✓ ' + l.slice(2))
-    else if (l.startsWith('✓ ')) editarLinha(idx, '☐ ' + l.slice(2))
-  }
-
-  function handleKeyDown(idx, e) {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      const prefixo = (linhas[idx].startsWith('☐ ') || linhas[idx].startsWith('✓ ')) ? '☐ ' : ''
-      const novas = [...linhas]; novas.splice(idx + 1, 0, prefixo); atualizar(novas)
-      setTimeout(() => {
-        const el = inputRefs.current[idx + 1]
-        if (el) { el.focus(); el.setSelectionRange(prefixo.length, prefixo.length) }
-      }, 20)
-    } else if (e.key === 'Backspace' && linhas[idx] === '' && linhas.length > 1) {
-      e.preventDefault()
-      atualizar(linhas.filter((_, i) => i !== idx))
-      setTimeout(() => inputRefs.current[Math.max(0, idx - 1)]?.focus(), 20)
-    }
-  }
-
-  function inserirTarefa() {
-    const novas = [...linhas]; novas.push('☐ '); atualizar(novas)
-    setTimeout(() => {
-      const el = inputRefs.current[novas.length - 1]
-      if (el) { el.focus(); el.setSelectionRange(2, 2) }
-    }, 20)
-  }
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)' }} />
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 201,
-        background: T.card, borderRadius: 0,
-        boxShadow: 'none',
-        display: 'flex', flexDirection: 'column',
-        height: '100dvh', maxHeight: '100dvh',
-      }}>
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: T.border }} />
-        </div>
-        {/* Header */}
-        <div style={{ padding: '8px 16px 10px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${T.border}` }}>
-          <i className="ti ti-notes" style={{ fontSize: 16, color: '#5B9BD5' }} aria-hidden="true" />
-          <span style={{ fontWeight: 700, fontSize: 15, color: T.textPrimary, flex: 1 }}>Notas do Dia</span>
-          {status === 'saving' && <span style={{ fontSize: 11, color: T.textDim }}>salvando…</span>}
-          {status === 'saved'  && <span style={{ fontSize: 11, color: '#4CAF50', display: 'flex', alignItems: 'center', gap: 3 }}><i className="ti ti-check" style={{ fontSize: 11 }} /> salvo</span>}
-          {status === 'error'  && <span style={{ fontSize: 11, color: '#FF6B6B' }}>erro ao salvar</span>}
-          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer', background: dark ? 'rgba(255,255,255,0.08)' : '#f0f0f0', color: T.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
-          </button>
-        </div>
-        {/* Lista */}
-        <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0 calc(env(safe-area-inset-bottom, 0px) + 16px)' }}>
-          {linhas.map((linha, idx) => {
-            const isTarefa = linha.startsWith('☐ ') || linha.startsWith('✓ ')
-            const checked  = linha.startsWith('✓ ')
-            const textoDisplay = isTarefa ? linha.slice(2) : linha
-            return (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 16px' }}>
-                {/* Checkbox */}
-                {isTarefa && (
-                  <button onClick={() => toggleCheck(idx)} style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '4px 2px', flexShrink: 0, display: 'flex', alignItems: 'center',
-                    color: checked ? '#5B9BD5' : T.textDim,
-                    WebkitTapHighlightColor: 'transparent',
-                  }}>
-                    <i className={`ti ${checked ? 'ti-square-check-filled' : 'ti-square'}`} style={{ fontSize: 20 }} aria-hidden="true" />
-                  </button>
-                )}
-                <MentionTextInput
-                  T={T} dark={dark} osList={osList} pessoas={pessoas}
-                  inputRef={el => { inputRefs.current[idx] = el }}
-                  value={textoDisplay}
-                  onChange={v => editarLinha(idx, isTarefa ? (checked ? '✓ ' : '☐ ') + v : v)}
-                  onKeyDown={e => handleKeyDown(idx, e)}
-                  placeholder={idx === 0 ? 'Anotação, tarefa ou @pessoa/OS…' : ''}
-                  style={{
-                    background: 'transparent', border: 'none', outline: 'none',
-                    fontSize: 15, fontFamily: 'inherit', lineHeight: 1.75, padding: '4px 0',
-                    color: checked ? T.textDim : T.textPrimary,
-                    textDecoration: checked ? 'line-through' : 'none',
-                  }}
-                />
-                {/* Botão excluir */}
-                <button
-                  onClick={() => atualizar(linhas.filter((_, i) => i !== idx))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px 4px', flexShrink: 0, display: 'flex', alignItems: 'center', color: T.textDim, WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <i className="ti ti-x" style={{ fontSize: 15 }} aria-hidden="true" />
-                </button>
-              </div>
-            )
-          })}
-          {/* Botão nova tarefa */}
-          <button onClick={inserirTarefa} style={{
-            width: '100%', padding: '10px 16px', background: 'transparent', border: 'none',
-            cursor: 'pointer', textAlign: 'left', fontSize: 14, color: T.textDim,
-            display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'inherit',
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" /> Nova tarefa
-          </button>
-        </div>
-      </div>
-    </>
-  )
-}
+import RoteiroDia from '../../components/roteiro/RoteiroDia'
 
 // ─── Componente principal ───────────────────────────────────────────────────
 export default function OSMobile({ T, dark, user }) {
@@ -535,11 +380,11 @@ export default function OSMobile({ T, dark, user }) {
         </div>
       )}
 
-      {/* FAB Notas do dia */}
+      {/* FAB Roteiro do dia */}
       {!loading && (
-        <button onClick={() => setNotasAbertas(v => !v)} aria-label="Notas do dia"
+        <button onClick={() => setNotasAbertas(v => !v)} aria-label="Roteiro do dia"
           style={{ position: 'absolute', right: 14, bottom: 124, width: 38, height: 38, borderRadius: 6, background: notasAbertas ? azul : (dark ? '#1e293b' : '#fff'), color: notasAbertas ? '#fff' : azul, border: `1.5px solid ${azul}`, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', zIndex: 50, WebkitTapHighlightColor: 'transparent' }}>
-          <i className="ti ti-notes" style={{ fontSize: 18 }} aria-hidden="true" />
+          <i className="ti ti-checklist" style={{ fontSize: 18 }} aria-hidden="true" />
         </button>
       )}
 
@@ -552,8 +397,8 @@ export default function OSMobile({ T, dark, user }) {
         </button>
       )}
 
-      {/* Notas bottom sheet */}
-      {notasAbertas && <NotasDoDiaMobile T={T} dark={dark} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} />}
+      {/* Roteiro do dia */}
+      {notasAbertas && <RoteiroDia T={T} dark={dark} user={user} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} onAbrirOS={(os) => { setNotasAbertas(false); setOsAberta(os) }} />}
 
       {/* OSDetalhe modal */}
       {osVigente && (
