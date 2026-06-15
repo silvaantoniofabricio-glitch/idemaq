@@ -22,6 +22,7 @@ import { corEtapa, bgEtapa } from '../utils/colors'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../utils/pecasStatus'
 import KanbanColumn from '../components/kanban/KanbanColumn'
 import RoteiroDia from '../components/roteiro/RoteiroDia'
+import { useRoteiro } from '../hooks/useRoteiro'
 import { enviarOSParaRoteiro, diaRelativo } from '../utils/roteiroEnvio'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
@@ -105,6 +106,13 @@ export default function Kanban({ T, dark, user }) {
   const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch, updateOS: updateOSHook } = useOS(buscaAtiva)
   const { usuarios, apelidoDe } = useUsuarios()
   const funcionariosRoteiro = useMemo(() => usuarios.filter(u => u.papel !== 'dono'), [usuarios])
+  // Itens do Roteiro de HOJE (ao vivo) → mapa os_id → responsavel_id, pro avatar no card.
+  const { itens: roteiroItens } = useRoteiro({})
+  const roteiroPorOS = useMemo(() => {
+    const m = new Map()
+    for (const it of roteiroItens) if (it.os_id) m.set(it.os_id, it.responsavel_id)
+    return m
+  }, [roteiroItens])
   // Ordem manual dos cards (compartilhada): { [etapa]: { [os.numero]: chaveFloat } }
   const { get: cfgGet, set: cfgSet, refetch: cfgRefetch } = useConfiguracoes()
   const kanbanOrdem = cfgGet('kanban_ordem', {}) || {}
@@ -696,6 +704,7 @@ export default function Kanban({ T, dark, user }) {
               loading={osLoading} shakingNum={shakingNum}
               onCardMouseDown={onCardPointerDown}
               admin={admin} funcionarios={funcionariosRoteiro} onMandarRoteiro={mandarOSparaRoteiro}
+              roteiroPorOS={roteiroPorOS}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
           ))}

@@ -19,9 +19,13 @@ export default function KanbanCard({
   admin = false,
   funcionarios = [],
   onMandarRoteiro,
+  roteiroPorOS,
 }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
+  // Funcionário a quem a OS foi atribuída no Roteiro de hoje (avatar no card).
+  const respRoteiro = roteiroPorOS && roteiroPorOS.get ? roteiroPorOS.get(os.id) : null
+  const funcRoteiro = respRoteiro ? funcionarios.find(f => f.id === respRoteiro) : null
   const [hover, setHover]   = React.useState(false)
   const [menu, setMenu]     = React.useState(false)
   const [diaKey, setDiaKey] = React.useState('hoje')  // 'hoje' | 'amanha'
@@ -203,6 +207,14 @@ export default function KanbanCard({
             fontFamily: '"SF Mono", ui-monospace, Menlo, monospace',
             fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em',
           }}>#{os.numero}</span>
+          {funcRoteiro && (
+            <span title={`No roteiro de ${funcRoteiro.nome} hoje`} style={{
+              width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+              background: (funcRoteiro.cor || azul) + '33', color: funcRoteiro.cor || azul,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 8.5, fontWeight: 700, letterSpacing: '-0.03em',
+            }}>{(funcRoteiro.nome || '?').slice(0, 2).toUpperCase()}</span>
+          )}
           {!cantoLimpo && (() => {
             // Conta a partir da confirmação de coleta (entrada em 'recebido').
             // Para fabricação/venda sem recebido, usa a abertura da OS.
