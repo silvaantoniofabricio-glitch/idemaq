@@ -27,6 +27,32 @@ export default function KanbanCard({
   const podeRoteiro = admin && funcionarios.length > 0 && !!onMandarRoteiro
   // Trava propagação pra o ⋮ não disparar arraste do card nem abrir a OS.
   const trava = e => { e.stopPropagation() }
+  // Enquanto o ⋮ está visível, limpamos o canto sup. direito (prazo / "Nd aberto")
+  // pra ele não ficar por cima do prazo.
+  const cantoLimpo = podeRoteiro && (hover || menu)
+
+  // Posição FIXA do menu (calculada do botão) — escapa do recorte (overflow) da
+  // coluna do Kanban. Abre pra cima quando o card está perto da base da tela.
+  const btnRef = React.useRef(null)
+  const MENU_W = 186, MENU_H = 158
+  let menuPos = null
+  if (menu && btnRef.current && typeof window !== 'undefined') {
+    const r = btnRef.current.getBoundingClientRect()
+    const abreCima = r.bottom + MENU_H > window.innerHeight - 8
+    menuPos = {
+      left: Math.max(8, Math.min(r.right - MENU_W, window.innerWidth - MENU_W - 8)),
+      top:  abreCima ? Math.max(8, r.top - MENU_H - 4) : r.bottom + 4,
+    }
+  }
+  // Fecha o menu ao clicar fora ou rolar.
+  React.useEffect(() => {
+    if (!menu) return
+    function onDoc(e) { if (!e.target.closest('[data-card-roteiro]')) setMenu(false) }
+    function onScroll() { setMenu(false) }
+    document.addEventListener('mousedown', onDoc)
+    window.addEventListener('scroll', onScroll, true)
+    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('scroll', onScroll, true) }
+  }, [menu])
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
   const tipoCfg = TIPOS_OS[os.tipo]
@@ -92,7 +118,7 @@ export default function KanbanCard({
         e.currentTarget.style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={e => {
-        setHover(false); setMenu(false)
+        setHover(false)
         if (!dark) e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.07), 0 0 0 .5px rgba(0,0,0,.04)'
         e.currentTarget.style.transform = 'translateY(0)'
       }}
@@ -101,9 +127,10 @@ export default function KanbanCard({
 
       {/* ⋮ Mandar pro roteiro — só dono, aparece no hover (organiza no desktop) */}
       {podeRoteiro && (hover || menu) && (
-        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 6 }}
-          onMouseDown={trava} onMouseUp={trava}>
+        <div data-card-roteiro style={{ position: 'absolute', top: 4, right: 4, zIndex: 6 }}
+          onMouseDown={trava} onMouseUp={trava} onClick={trava}>
           <button
+            ref={btnRef}
             aria-label="Mandar pro roteiro"
             title="Mandar pro roteiro"
             onMouseDown={trava}
@@ -115,9 +142,9 @@ export default function KanbanCard({
             }}>
             <i className="ti ti-dots-vertical" style={{ fontSize: 14 }} aria-hidden="true" />
           </button>
-          {menu && (
+          {menu && menuPos && (
             <div onMouseDown={trava} onClick={trava} style={{
-              position: 'absolute', top: 26, right: 0, zIndex: 10, minWidth: 172,
+              position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 1000, width: MENU_W,
               background: T.cardAlt || T.card, border: `1px solid ${T.border}`, borderRadius: 8,
               padding: 6, boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.45)' : '0 4px 16px rgba(0,0,0,0.14)',
             }}>
@@ -170,7 +197,7 @@ export default function KanbanCard({
             fontFamily: '"SF Mono", ui-monospace, Menlo, monospace',
             fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em',
           }}>#{os.numero}</span>
-          {(() => {
+          {!cantoLimpo && (() => {
             // Conta a partir da confirmação de coleta (entrada em 'recebido').
             // Para fabricação/venda sem recebido, usa a abertura da OS.
             const recebido = os.historico?.find(h => h.etapa === 'recebido')
@@ -189,7 +216,7 @@ export default function KanbanCard({
             )
           })()}
         </div>
-        {prazoPillText ? (
+        {prazoPillText && !cantoLimpo ? (
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 3,
             padding: '1.5px 7px', borderRadius: 100,
