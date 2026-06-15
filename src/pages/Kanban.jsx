@@ -520,7 +520,7 @@ export default function Kanban({ T, dark, user }) {
           {/* Linha 2: zone tabs + filtros inline */}
           <div ref={barraRef} style={{
             display: 'flex', alignItems: 'stretch',
-            justifyContent: 'space-between', gap: 8,
+            justifyContent: 'flex-start', gap: 8,
           }}>
             {/* Zone tabs — underline style */}
             <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexShrink: 0 }}>
