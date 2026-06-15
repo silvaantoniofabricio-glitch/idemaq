@@ -2,6 +2,7 @@
 // Card do Kanban — Apple HIG: elevação, tipografia SF, tags em pill.
 
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub, secoesOficinaVisiveis } from '../../utils/osHelpers'
@@ -144,45 +145,48 @@ export default function KanbanCard({
             }}>
             <i className="ti ti-dots-vertical" style={{ fontSize: 14 }} aria-hidden="true" />
           </button>
-          {menu && menuPos && (
-            <div onMouseDown={trava} onClick={trava} style={{
-              position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 1000, width: MENU_W,
-              background: T.cardAlt || T.card, border: `1px solid ${T.border}`, borderRadius: 8,
-              padding: 6, boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.45)' : '0 4px 16px rgba(0,0,0,0.14)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '2px 4px 7px', fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                <i className="ti ti-checklist" style={{ fontSize: 12, color: azul }} aria-hidden="true" /> Mandar pro roteiro
-              </div>
-              {funcionarios.map(f => (
-                <button key={f.id}
-                  onClick={() => { onMandarRoteiro?.(os, f.id, diaKey); setMenu(false) }}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '7px 8px', marginBottom: 4, borderRadius: 6,
-                    border: 'none', background: 'transparent', color: T.textPrimary,
-                    fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#f0f4ff' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-                  <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: (f.cor || azul) + '33', color: f.cor || azul, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{(f.nome || '?').slice(0, 2).toUpperCase()}</span>
-                  {f.nome}
-                </button>
-              ))}
-              <div style={{ display: 'flex', gap: 5, marginTop: 2 }}>
-                {[['hoje', 'Hoje'], ['amanha', 'Amanhã']].map(([v, lbl]) => (
-                  <button key={v} onClick={() => setDiaKey(v)}
-                    style={{
-                      flex: 1, padding: '5px 6px', borderRadius: 6,
-                      border: `1px solid ${diaKey === v ? azul : T.border}`,
-                      background: diaKey === v ? (dark ? 'rgba(91,155,213,0.16)' : '#eef5fc') : 'transparent',
-                      color: diaKey === v ? azul : T.textMuted,
-                      fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                    }}>{lbl}</button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+      )}
+      {/* Menu via PORTAL no body — o card tem transform no hover, que faria um
+          position:fixed se ancorar no card (e não na tela). O portal escapa disso. */}
+      {menu && menuPos && createPortal(
+        <div data-card-roteiro onMouseDown={trava} onClick={trava} style={{
+          position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 4000, width: MENU_W,
+          background: T.cardAlt || T.card, border: `1px solid ${T.border}`, borderRadius: 8,
+          padding: 6, boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.45)' : '0 4px 16px rgba(0,0,0,0.14)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '2px 4px 7px', fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+            <i className="ti ti-checklist" style={{ fontSize: 12, color: azul }} aria-hidden="true" /> Mandar pro roteiro
+          </div>
+          {funcionarios.map(f => (
+            <button key={f.id}
+              onClick={() => { onMandarRoteiro?.(os, f.id, diaKey); setMenu(false) }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                padding: '7px 8px', marginBottom: 4, borderRadius: 6,
+                border: 'none', background: 'transparent', color: T.textPrimary,
+                fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#f0f4ff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+              <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: (f.cor || azul) + '33', color: f.cor || azul, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{(f.nome || '?').slice(0, 2).toUpperCase()}</span>
+              {f.nome}
+            </button>
+          ))}
+          <div style={{ display: 'flex', gap: 5, marginTop: 2 }}>
+            {[['hoje', 'Hoje'], ['amanha', 'Amanhã']].map(([v, lbl]) => (
+              <button key={v} onClick={() => setDiaKey(v)}
+                style={{
+                  flex: 1, padding: '5px 6px', borderRadius: 6,
+                  border: `1px solid ${diaKey === v ? azul : T.border}`,
+                  background: diaKey === v ? (dark ? 'rgba(91,155,213,0.16)' : '#eef5fc') : 'transparent',
+                  color: diaKey === v ? azul : T.textMuted,
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                }}>{lbl}</button>
+            ))}
+          </div>
+        </div>,
+        document.body
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
