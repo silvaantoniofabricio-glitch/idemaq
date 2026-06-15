@@ -31,18 +31,21 @@ export default function KanbanCard({
   // pra ele não ficar por cima do prazo.
   const cantoLimpo = podeRoteiro && (hover || menu)
 
-  // Posição FIXA do menu (calculada do botão) — escapa do recorte (overflow) da
-  // coluna do Kanban. Abre pra cima quando o card está perto da base da tela.
-  const btnRef = React.useRef(null)
+  // Posição FIXA do menu — calculada NO CLIQUE a partir do próprio botão (evita
+  // pegar elemento defasado) e guardada em estado. Fixed escapa do recorte
+  // (overflow) da coluna. Abre pra cima quando o card está perto da base da tela.
   const MENU_W = 186, MENU_H = 158
-  let menuPos = null
-  if (menu && btnRef.current && typeof window !== 'undefined') {
-    const r = btnRef.current.getBoundingClientRect()
+  const [menuPos, setMenuPos] = React.useState(null)
+  function toggleMenu(e) {
+    trava(e)
+    if (menu) { setMenu(false); return }
+    const r = e.currentTarget.getBoundingClientRect()
     const abreCima = r.bottom + MENU_H > window.innerHeight - 8
-    menuPos = {
+    setMenuPos({
       left: Math.max(8, Math.min(r.right - MENU_W, window.innerWidth - MENU_W - 8)),
       top:  abreCima ? Math.max(8, r.top - MENU_H - 4) : r.bottom + 4,
-    }
+    })
+    setMenu(true)
   }
   // Fecha o menu ao clicar fora ou rolar.
   React.useEffect(() => {
@@ -130,11 +133,10 @@ export default function KanbanCard({
         <div data-card-roteiro style={{ position: 'absolute', top: 4, right: 4, zIndex: 6 }}
           onMouseDown={trava} onMouseUp={trava} onClick={trava}>
           <button
-            ref={btnRef}
             aria-label="Mandar pro roteiro"
             title="Mandar pro roteiro"
             onMouseDown={trava}
-            onClick={e => { trava(e); setMenu(m => !m) }}
+            onClick={toggleMenu}
             style={{
               width: 22, height: 22, borderRadius: 6, cursor: 'pointer',
               border: `1px solid ${T.border}`, background: T.card, color: azul,
