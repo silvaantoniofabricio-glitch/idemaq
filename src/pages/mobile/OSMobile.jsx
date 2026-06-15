@@ -226,6 +226,26 @@ export default function OSMobile({ T, dark, user }) {
     updateOS(numero, { aguardando_peca: !os.aguardando_peca })
   }
 
+  // Soft-delete da OS — espelha o excluirOS do Kanban desktop (optimistic + rollback).
+  async function excluirOS(numero) {
+    const os = osList.find(o => o.numero === numero)
+    if (!os) return
+    const prev = osList
+    setOsList(arr => arr.filter(o => o.numero !== numero))
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      const { error } = await supabase.from('os').update({
+        deleted_at: new Date().toISOString(),
+        excluido_por: userData?.user?.id || null,
+      }).eq('id', os.id)
+      if (error) throw error
+      notify('ok', `OS #${numero} excluída`)
+    } catch (e) {
+      setOsList(prev)
+      notify('erro', `Erro ao excluir: ${e?.message || 'desconhecido'}`)
+    }
+  }
+
   // ─── Scroll horizontal ────────────────────────────────────────────────────
   const scrollRef   = useRef(null)
   const colunaRefs  = useRef({})
@@ -409,6 +429,7 @@ export default function OSMobile({ T, dark, user }) {
           onToggleAgPeca={() => toggleAgPeca(osVigente.numero)}
           onAbrirOS={numero => { const o = osList.find(x => x.numero === numero); if (o) setOsAberta(o) }}
           onMoverOS={moverOS} onUpdateOS={updateOS} onRefetchOS={refetch}
+          onExcluir={excluirOS}
         />
       )}
 
