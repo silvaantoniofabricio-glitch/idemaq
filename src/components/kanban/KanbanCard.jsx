@@ -15,8 +15,18 @@ export default function KanbanCard({
   onClick,
   onCardMouseDown,
   shaking,
+  admin = false,
+  funcionarios = [],
+  onMandarRoteiro,
 }) {
   const cor = (d, c) => dark ? d : c
+  const azul = cor(P.blue, P.blueDark)
+  const [hover, setHover]   = React.useState(false)
+  const [menu, setMenu]     = React.useState(false)
+  const [diaKey, setDiaKey] = React.useState('hoje')  // 'hoje' | 'amanha'
+  const podeRoteiro = admin && funcionarios.length > 0 && !!onMandarRoteiro
+  // Trava propagação pra o ⋮ não disparar arraste do card nem abrir a OS.
+  const trava = e => { e.stopPropagation() }
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
   const tipoCfg = TIPOS_OS[os.tipo]
@@ -69,6 +79,7 @@ export default function KanbanCard({
       className={shaking ? 'idemaq-shake' : undefined}
       style={{
         ...cardStyle,
+        position: 'relative',
         borderRadius: 11,
         padding: '10px 12px',
         cursor: 'grab',
@@ -76,15 +87,74 @@ export default function KanbanCard({
         userSelect: 'none',
       }}
       onMouseEnter={e => {
+        setHover(true)
         if (!dark) e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.1), 0 0 0 .5px rgba(0,0,0,.05)'
         e.currentTarget.style.transform = 'translateY(-1px)'
       }}
       onMouseLeave={e => {
+        setHover(false); setMenu(false)
         if (!dark) e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,.07), 0 0 0 .5px rgba(0,0,0,.04)'
         e.currentTarget.style.transform = 'translateY(0)'
       }}
       onMouseDown={e => { e.currentTarget.style.cursor = 'grabbing'; onCardMouseDown?.(os, e) }}
       onMouseUp={e => { e.currentTarget.style.cursor = 'grab' }}>
+
+      {/* ⋮ Mandar pro roteiro — só dono, aparece no hover (organiza no desktop) */}
+      {podeRoteiro && (hover || menu) && (
+        <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 6 }}
+          onMouseDown={trava} onMouseUp={trava}>
+          <button
+            aria-label="Mandar pro roteiro"
+            title="Mandar pro roteiro"
+            onMouseDown={trava}
+            onClick={e => { trava(e); setMenu(m => !m) }}
+            style={{
+              width: 22, height: 22, borderRadius: 6, cursor: 'pointer',
+              border: `1px solid ${T.border}`, background: T.card, color: azul,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <i className="ti ti-dots-vertical" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          {menu && (
+            <div onMouseDown={trava} onClick={trava} style={{
+              position: 'absolute', top: 26, right: 0, zIndex: 10, minWidth: 172,
+              background: T.cardAlt || T.card, border: `1px solid ${T.border}`, borderRadius: 8,
+              padding: 6, boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.45)' : '0 4px 16px rgba(0,0,0,0.14)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '2px 4px 7px', fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                <i className="ti ti-checklist" style={{ fontSize: 12, color: azul }} aria-hidden="true" /> Mandar pro roteiro
+              </div>
+              {funcionarios.map(f => (
+                <button key={f.id}
+                  onClick={() => { onMandarRoteiro?.(os, f.id, diaKey); setMenu(false) }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '7px 8px', marginBottom: 4, borderRadius: 6,
+                    border: 'none', background: 'transparent', color: T.textPrimary,
+                    fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#f0f4ff' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+                  <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: (f.cor || azul) + '33', color: f.cor || azul, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{(f.nome || '?').slice(0, 2).toUpperCase()}</span>
+                  {f.nome}
+                </button>
+              ))}
+              <div style={{ display: 'flex', gap: 5, marginTop: 2 }}>
+                {[['hoje', 'Hoje'], ['amanha', 'Amanhã']].map(([v, lbl]) => (
+                  <button key={v} onClick={() => setDiaKey(v)}
+                    style={{
+                      flex: 1, padding: '5px 6px', borderRadius: 6,
+                      border: `1px solid ${diaKey === v ? azul : T.border}`,
+                      background: diaKey === v ? (dark ? 'rgba(91,155,213,0.16)' : '#eef5fc') : 'transparent',
+                      color: diaKey === v ? azul : T.textMuted,
+                      fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>{lbl}</button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
 

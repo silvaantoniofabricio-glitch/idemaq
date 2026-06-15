@@ -22,6 +22,7 @@ import { corEtapa, bgEtapa } from '../utils/colors'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../utils/pecasStatus'
 import KanbanColumn from '../components/kanban/KanbanColumn'
 import RoteiroDia from '../components/roteiro/RoteiroDia'
+import { enviarOSParaRoteiro, diaRelativo } from '../utils/roteiroEnvio'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
@@ -102,7 +103,8 @@ export default function Kanban({ T, dark, user }) {
 
   // ── Dados ────────────────────────────────────────────────────────────────────
   const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch, updateOS: updateOSHook } = useOS(buscaAtiva)
-  const { usuarios } = useUsuarios()
+  const { usuarios, apelidoDe } = useUsuarios()
+  const funcionariosRoteiro = useMemo(() => usuarios.filter(u => u.papel !== 'dono'), [usuarios])
   // Ordem manual dos cards (compartilhada): { [etapa]: { [os.numero]: chaveFloat } }
   const { get: cfgGet, set: cfgSet, refetch: cfgRefetch } = useConfiguracoes()
   const kanbanOrdem = cfgGet('kanban_ordem', {}) || {}
@@ -211,6 +213,15 @@ export default function Kanban({ T, dark, user }) {
   async function updateOS(numero, patch) {
     const res = await updateOSHook(numero, patch)
     if (!res.ok) notify('erro', 'Erro ao salvar — mudança revertida')
+  }
+
+  async function mandarOSparaRoteiro(os, responsavelId, diaKey) {
+    const dia = diaKey === 'amanha' ? diaRelativo(1) : undefined
+    const quando = diaKey === 'amanha' ? 'amanhã' : 'hoje'
+    const r = await enviarOSParaRoteiro({ os, responsavelId, dia, apelidoDe })
+    if (r.error) notify('erro', `Erro: ${r.error.message || 'desconhecido'}`)
+    else if (r.jaExiste) notify('erro', `OS #${os.numero} já está no roteiro de ${r.responsavelNome || 'alguém'} (${quando})`)
+    else notify('ok', `OS #${os.numero} → roteiro de ${apelidoDe(responsavelId)} · ${quando}`)
   }
 
   async function handleDuplicarOS(os) { return duplicarOS(os) }
@@ -684,6 +695,7 @@ export default function Kanban({ T, dark, user }) {
               arrastando={arrastando} colunaHover={colunaHover}
               loading={osLoading} shakingNum={shakingNum}
               onCardMouseDown={onCardPointerDown}
+              admin={admin} funcionarios={funcionariosRoteiro} onMandarRoteiro={mandarOSparaRoteiro}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
           ))}

@@ -27,6 +27,7 @@ export default function KanbanColumn({
   arrastando, colunaHover,
   onCardMouseDown,
   concluidoMesAtual, loading, shakingNum,
+  admin = false, funcionarios = [], onMandarRoteiro,
 }) {
   const c  = corEtapa(etapa.cor, dark)
   const bg = bgEtapa(etapa.cor, dark)
@@ -217,6 +218,7 @@ export default function KanbanColumn({
           <KanbanCard key={os.numero} os={os} T={T} dark={dark}
             tipoCor={tipoCor} modoTodos={modoTodos}
             shaking={shakingNum === os.numero}
+            admin={admin} funcionarios={funcionarios} onMandarRoteiro={onMandarRoteiro}
             onClick={() => onCardClick?.(os)}
             onCardMouseDown={(osArg, e) => onCardMouseDown?.(osArg, etapa.id, e)} />
         ))}

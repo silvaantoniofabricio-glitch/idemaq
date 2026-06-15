@@ -13,6 +13,8 @@ import { ETAPAS_TODOS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo } from '../../utils/osHelpers'
 import { useToast } from '../ui'
 import { supabase } from '../../supabase'
+import { useUsuarios } from '../../hooks/useUsuarios'
+import { enviarOSParaRoteiro } from '../../utils/roteiroEnvio'
 import ClienteDetalheModal from '../clientes/ClienteDetalheModal'
 import FormEquipamentoEdit from './FormEquipamentoEdit'
 
@@ -65,6 +67,35 @@ export default function Header({
   const [prazoModo, setPrazoModo] = useState(false)
   const [prazoVal, setPrazoVal]   = useState('')
 
+  // ── "Mandar pro roteiro" (só dono organiza a agenda) ──────────────────────
+  const { usuarios, apelidoDe } = useUsuarios()
+  const funcionarios = usuarios.filter(u => u.papel !== 'dono')
+  const [roteiroModo, setRoteiroModo] = useState(false)
+  const [roteiroDia, setRoteiroDia]   = useState('hoje')  // 'hoje' | 'amanha'
+  const [enviandoRot, setEnviandoRot] = useState(false)
+
+  async function enviarRoteiro(responsavelId) {
+    if (enviandoRot) return
+    setEnviandoRot(true)
+    try {
+      const dia = roteiroDia === 'amanha'
+        ? (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d })()
+        : undefined
+      const diaIso = dia
+        ? dia.toLocaleDateString('pt-BR', { timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-')
+        : undefined
+      const r = await enviarOSParaRoteiro({ os, responsavelId, dia: diaIso, apelidoDe })
+      const quando = roteiroDia === 'amanha' ? 'amanhã' : 'hoje'
+      if (r.error) { notify('erro', `Erro: ${r.error.message || 'desconhecido'}`) }
+      else if (r.jaExiste) { notify('erro', `OS #${os.numero} já está no roteiro de ${r.responsavelNome || 'alguém'} (${quando})`) }
+      else { notify('ok', `OS #${os.numero} → roteiro de ${apelidoDe(responsavelId)} · ${quando}`) }
+      setRoteiroModo(false)
+      setMenuAberto(false)
+    } finally {
+      setEnviandoRot(false)
+    }
+  }
+
   // Converte o prazo (timestamp) pra YYYY-MM-DD no fuso local (pro <input date>).
   function prazoParaInput(iso) {
     if (!iso) return ''
@@ -102,7 +133,7 @@ export default function Header({
       document.removeEventListener('keydown', onEsc, true)
     }
   }, [menuAberto])
-  useEffect(() => { if (!menuAberto) setPrazoModo(false) }, [menuAberto])
+  useEffect(() => { if (!menuAberto) { setPrazoModo(false); setRoteiroModo(false) } }, [menuAberto])
 
   async function duplicarOSHandler() {
     if (duplicando || !onDuplicar) return
@@ -288,7 +319,55 @@ export default function Header({
                 padding: 5, minWidth: 200,
                 boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 4px 16px rgba(0,0,0,0.12)',
               }}>
-                {prazoModo ? (
+                {roteiroModo ? (
+                  <div style={{ padding: 6 }}>
+                    <div style={{
+                      fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+                      textTransform: 'uppercase', letterSpacing: '.05em', padding: '0 2px 8px',
+                    }}>Mandar pro roteiro de</div>
+                    {funcionarios.length === 0 && (
+                      <div style={{ padding: '4px 2px 8px', fontSize: 12, color: T.textMuted }}>Nenhum funcionário cadastrado.</div>
+                    )}
+                    {funcionarios.map(f => (
+                      <button key={f.id} onClick={() => enviarRoteiro(f.id)} disabled={enviandoRot}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: 9,
+                          padding: '9px 10px', marginBottom: 5, borderRadius: 7,
+                          border: `1px solid ${T.border}`, background: 'transparent',
+                          color: T.textPrimary, fontSize: 13, fontWeight: 600,
+                          cursor: enviandoRot ? 'default' : 'pointer', fontFamily: 'inherit',
+                          opacity: enviandoRot ? 0.6 : 1,
+                        }}>
+                        <span style={{
+                          width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                          background: (f.cor || azul) + '33', color: f.cor || azul,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 700,
+                        }}>{(f.nome || '?').slice(0, 2).toUpperCase()}</span>
+                        {f.nome}
+                      </button>
+                    ))}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                      {[['hoje', 'Hoje'], ['amanha', 'Amanhã']].map(([v, lbl]) => (
+                        <button key={v} onClick={() => setRoteiroDia(v)}
+                          style={{
+                            flex: 1, padding: '7px 8px', borderRadius: 7,
+                            border: `1px solid ${roteiroDia === v ? azul : T.border}`,
+                            background: roteiroDia === v ? (dark ? 'rgba(91,155,213,0.16)' : '#eef5fc') : 'transparent',
+                            color: roteiroDia === v ? azul : T.textMuted,
+                            fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                          }}>{lbl}</button>
+                      ))}
+                    </div>
+                    <button onClick={() => setRoteiroModo(false)}
+                      style={{
+                        width: '100%', marginTop: 8, padding: '7px 10px', borderRadius: 7,
+                        border: `1px solid ${T.border}`, background: 'transparent',
+                        color: T.textMuted, fontSize: 12, fontWeight: 600,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}>Voltar</button>
+                  </div>
+                ) : prazoModo ? (
                   <div style={{ padding: 6 }}>
                     <div style={{
                       fontSize: 10.5, fontWeight: 700, color: T.textMuted,
@@ -338,6 +417,11 @@ export default function Header({
                 <MenuItem T={T} icon="ti-copy" onClick={copiarNumero}>
                   Copiar nº da OS
                 </MenuItem>
+                {admin && funcionarios.length > 0 && (
+                  <MenuItem T={T} icon="ti-checklist" onClick={() => setRoteiroModo(true)}>
+                    Mandar pro roteiro
+                  </MenuItem>
+                )}
                 {onUpdateOS && (
                   <MenuItem T={T} icon="ti-calendar-clock" onClick={abrirPrazo}>
                     {os.prazo ? 'Alterar prazo' : 'Definir prazo'}
