@@ -61,7 +61,7 @@ function OSChip({ os, T, dark, onAbrir }) {
 // ════════════════════════════════════════════════════════════════════════════
 // MODO ORGANIZADOR (dono) — coluna por funcionário
 // ════════════════════════════════════════════════════════════════════════════
-function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R }) {
+function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R, onAbrirOS }) {
   const [novo, setNovo]   = useState('')
   const [novoOS, setNovoOS] = useState(null) // { id, numero } da OS vinculada à nova tarefa
   const [dragId, setDragId] = useState(null)
@@ -154,7 +154,7 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
                   />
                   {item.urgente && <i className="ti ti-flag-3" style={{ fontSize: 12, color: '#FF6B6B', flexShrink: 0 }} aria-hidden="true" />}
                 </div>
-                {os && <OSChip os={os} T={T} dark={dark} />}
+                {os && <OSChip os={os} T={T} dark={dark} onAbrir={onAbrirOS} />}
               </div>
               {/* Ações: urgente + excluir */}
               <button onClick={() => R.setUrgente(item.id, !item.urgente)} title="Marcar urgente"
@@ -200,7 +200,7 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
   )
 }
 
-function Organizador({ R, osPorId, osList, pessoas, T, dark }) {
+function Organizador({ R, osPorId, osList, pessoas, T, dark, onAbrirOS }) {
   // Só funcionários (dono não tem "Meu Dia" pra organizar).
   const funcionarios = pessoas.filter(p => p.papel !== 'dono')
   if (funcionarios.length === 0) {
@@ -213,6 +213,7 @@ function Organizador({ R, osPorId, osList, pessoas, T, dark }) {
           key={p.id} pessoa={p}
           itens={R.itens.filter(i => i.responsavel_id === p.id)}
           osPorId={osPorId} osList={osList} pessoas={pessoas} R={R} T={T} dark={dark}
+          onAbrirOS={onAbrirOS}
         />
       ))}
     </div>
@@ -355,7 +356,7 @@ export default function RoteiroDia({ T, dark, user, onClose, osList = [], pessoa
           ) : R.loading ? (
             <div style={{ padding: 28, textAlign: 'center', color: T.textDim, fontSize: 12.5 }}>Carregando…</div>
           ) : isDono ? (
-            <Organizador R={R} osPorId={osPorId} osList={osList} pessoas={pessoas} T={T} dark={dark} />
+            <Organizador R={R} osPorId={osPorId} osList={osList} pessoas={pessoas} T={T} dark={dark} onAbrirOS={onAbrirOS} />
           ) : (
             <MeuDia R={R} osPorId={osPorId} T={T} dark={dark} pessoa={pessoaAtual} onAbrirOS={onAbrirOS} />
           )}
