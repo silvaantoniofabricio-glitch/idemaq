@@ -251,10 +251,16 @@ export default function Estoque({ T, dark, user }) {
     return () => { alive = false }
   }, [refetchKey])
 
-  const { maquinas, criar: criarMaquina } = useMaquinas()
+  const { maquinas, criar: criarMaquina, atualizar: atualizarMaquina } = useMaquinas()
 
   async function adicionarMaquina(payload) {
     return criarMaquina(payload)
+  }
+
+  async function editarMaquina(id, patch) {
+    const { data, error } = await atualizarMaquina(id, patch)
+    if (!error && data) setMaquinaAberta(data)
+    return { data, error }
   }
 
   // CREATE — retorna { error } pro modal decidir se fecha ou continua
@@ -617,6 +623,7 @@ export default function Estoque({ T, dark, user }) {
         <MaquinaDetalheModal T={T} dark={dark}
           maquina={maquinaAberta}
           mostraValores={mostraValores}
+          onAtualizar={editarMaquina}
           onClose={() => setMaquinaAberta(null)} />
       )}
 

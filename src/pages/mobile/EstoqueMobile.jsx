@@ -155,7 +155,7 @@ export default function EstoqueMobile({ T, dark, user }) {
     return () => { alive = false }
   }, [refetchKey])
 
-  const { maquinas, criar: criarMaquina } = useMaquinas()
+  const { maquinas, criar: criarMaquina, atualizar: atualizarMaquina } = useMaquinas()
 
   async function adicionarPeca(nova) {
     const res = await criar(nova)
@@ -489,6 +489,11 @@ export default function EstoqueMobile({ T, dark, user }) {
         <MaquinaDetalheModal T={T} dark={dark}
           maquina={maquinaAberta} mobile
           mostraValores={mostraValores}
+          onAtualizar={async (id, patch) => {
+            const res = await atualizarMaquina(id, patch)
+            if (!res.error && res.data) setMaquinaAberta(res.data)
+            return res
+          }}
           onClose={() => setMaquinaAberta(null)} />
       )}
       {novaPecaAberta && (
