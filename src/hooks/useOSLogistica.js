@@ -81,7 +81,7 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
         .from('os')
         .select(`
           id, numero, tipo, etapa,
-          prazo, data_agendamento,
+          prazo, data_agendamento, endereco,
           cliente:cliente_id(id, nome, telefone, endereco)
         `)
         .is('deleted_at', null)
@@ -103,8 +103,8 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
         etapa_label: labelEtapa(os.etapa),
         cliente_nome: os.cliente?.nome || (os.tipo === 'fabricacao' ? 'Fabricação' : 'Sem cliente'),
         cliente_telefone: os.cliente?.telefone || '',
-        endereco: os.cliente?.endereco || '',
-        lat: null, // cliente.endereco é texto livre por enquanto — sem coords
+        endereco: os.endereco || os.cliente?.endereco || '',
+        lat: null,
         lng: null,
         prazo: os.prazo,
         data_agendamento: os.data_agendamento,

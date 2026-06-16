@@ -167,6 +167,7 @@ export default function NovaOSMobile({
         numero_serie: form.equipamentoSerie?.trim() || null,
         defeito_relatado: form.defeito?.trim() || null,
         data_agendamento: dataAgIso,
+        endereco: form.enderecoSelecionado || null,
       }
       if (tipo === 'fabricacao' && form.valor) {
         const v = parseFloat(String(form.valor).replace(',', '.'))

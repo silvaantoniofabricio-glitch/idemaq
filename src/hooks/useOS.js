@@ -61,7 +61,7 @@ export function useOS(buscando = false) {
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
           prazo, data_agendamento, data_conclusao, criado_em, atualizado_em,
-          cliente_id,
+          cliente_id, endereco,
           marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado,
           tipo_equipamento,
           pre_diagnostico, observacoes, oculta_no_kanban,
@@ -104,9 +104,8 @@ export function useOS(buscando = false) {
           modelo: os.modelo_equipamento || '',
           serie: os.numero_serie || '',
           defeito: os.defeito_relatado || '',
-          // Endereço vem do cliente embed (cliente.endereco). OS não tem
-          // coluna própria de endereço por enquanto.
-          endereco: os.cliente?.endereco || '',
+          // Endereço: usa o da OS (selecionado na criação) ou cai pro cliente.
+          endereco: os.endereco || os.cliente?.endereco || '',
           fotos: 0,
           observacoes: os.observacoes || '',
           // Contagem de itens da OS (vem de os_item(count) → [{ count: N }])
