@@ -61,7 +61,7 @@ export function useOS(buscando = false) {
           garantia, os_origem_id, garantia_dias,
           recusada, aguardando_peca,
           prazo, data_agendamento, data_conclusao, criado_em, atualizado_em,
-          cliente_id, endereco,
+          cliente_id,
           marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado,
           tipo_equipamento,
           pre_diagnostico, observacoes, oculta_no_kanban,
