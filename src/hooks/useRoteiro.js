@@ -40,6 +40,9 @@ export function useRoteiro({ dia, responsavelId } = {}) {
   const [loading, setLoading] = useState(true)
   const [tabelaAusente, setTabelaAusente] = useState(false)
   const [erro, setErro] = useState(null)
+  // Timers de debounce do salvar-texto, por item. Também serve pra NÃO deixar o
+  // refetch do Realtime sobrescrever um item que ainda está sendo digitado.
+  const saveTimers = useRef({})
 
   // ─── Carrega itens do dia ──────────────────────────────────────────────────
   const carregar = useCallback(async () => {
@@ -59,7 +62,17 @@ export function useRoteiro({ dia, responsavelId } = {}) {
       setTabelaAusente(true); setItens([]); setLoading(false); return
     }
     if (error) { setErro(error); console.error('[useRoteiro] erro:', error) }
-    else { setItens(data || []) }
+    else {
+      // Preserva o texto local de itens com salvamento pendente (digitando agora)
+      // pra o eco do Realtime não reverter caractere no meio da digitação.
+      setItens(prev => (data || []).map(srv => {
+        if (saveTimers.current[srv.id]) {
+          const local = prev.find(p => p.id === srv.id)
+          if (local) return { ...srv, texto: local.texto }
+        }
+        return srv
+      }))
+    }
     setTabelaAusente(false)
     setLoading(false)
   }, [diaAtual, responsavelId])
@@ -113,7 +126,19 @@ export function useRoteiro({ dia, responsavelId } = {}) {
     patch(item.id, { feito: !item.feito, feito_em: !item.feito ? new Date().toISOString() : null })
   , [patch])
 
-  const editarTexto = useCallback((id, texto) => patch(id, { texto }), [patch])
+  // Texto: atualiza local IMEDIATO (mantém foco/cursor) e salva no banco com
+  // debounce — sem martelar o Realtime a cada tecla (o que remontava o input).
+  const editarTexto = useCallback((id, texto) => {
+    if (tabelaAusente) return
+    setItens(p => p.map(i => i.id === id ? { ...i, texto } : i))
+    clearTimeout(saveTimers.current[id])
+    saveTimers.current[id] = setTimeout(async () => {
+      const { error } = await supabase.from('roteiro_item').update({ texto }).eq('id', id)
+      delete saveTimers.current[id]  // só limpa o marcador após confirmar no servidor
+      if (error) console.error('[useRoteiro] editarTexto:', error)
+    }, 500)
+  }, [tabelaAusente])
+
   const setUrgente  = useCallback((id, urgente) => patch(id, { urgente }), [patch])
   const setOS       = useCallback((id, osId) => patch(id, { os_id: osId }), [patch])
 

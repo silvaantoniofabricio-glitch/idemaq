@@ -353,7 +353,7 @@ export default function RoteiroDia({ T, dark, user, onClose, osList = [], pessoa
               <p style={{ margin: '10px 0 0', fontSize: 13, color: T.textPrimary, fontWeight: 600 }}>Roteiro do Dia ainda não ativado</p>
               <p style={{ margin: '4px 0 0', fontSize: 12 }}>Rode <code>sql/83-roteiro-dia.sql</code> no Supabase pra ligar.</p>
             </div>
-          ) : R.loading ? (
+          ) : (R.loading && R.itens.length === 0) ? (
             <div style={{ padding: 28, textAlign: 'center', color: T.textDim, fontSize: 12.5 }}>Carregando…</div>
           ) : isDono ? (
             <Organizador R={R} osPorId={osPorId} osList={osList} pessoas={pessoas} T={T} dark={dark} onAbrirOS={onAbrirOS} />
