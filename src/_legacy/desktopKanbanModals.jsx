@@ -283,7 +283,7 @@ function NovoClienteModalCompleto({ T, dark, onClose, onSalvar, nomeInicial, mob
 
 // ─── Modal: Nova OS (redesenhado em 16/05/2026) ─────────────────────────────
 
-function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }) {
+function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, maquinasEstoque }) {
   const cor = (d, c) => dark ? d : c
   const [tipo, setTipo] = useState(tipoInicial || 'atendimento')
   const [tipoMenuAberto, setTipoMenuAberto] = useState(false)
@@ -877,7 +877,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada }
             <FormSecao titulo="Máquina do estoque" icon="ti-package" T={T}>
               <label style={labelStyle}>SELECIONE A MÁQUINA</label>
               <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {ESTOQUE_MAQUINAS_MOCK.map(m => {
+                {(maquinasEstoque || ESTOQUE_MAQUINAS_MOCK).map(m => {
                   const sel = form.maquinaEstoque === m.id
                   return (
                     <button key={m.id} onClick={()=>setForm(f=>({ ...f, maquinaEstoque:m.id, equipamento:m.descricao, valor:m.valor }))}

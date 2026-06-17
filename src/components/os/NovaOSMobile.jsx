@@ -23,9 +23,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../../supabase'
 import { criarClientePersist } from '../../hooks/useClientes'
 import { P } from '../../theme'
-import {
-  TIPOS_OS, ESTOQUE_MAQUINAS_MOCK,
-} from '../../utils/osData'
+import { TIPOS_OS } from '../../utils/osData'
+import { useMaquinas } from '../../hooks/useMaquinas'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { semAcento } from '../../utils/fmt'
 import NovoClienteModal from '../clientes/NovoClienteModal'
@@ -47,6 +46,14 @@ export default function NovaOSMobile({
   const verde = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
   const cor = (d, c) => dark ? d : c
+
+  const { maquinas } = useMaquinas()
+  const maquinasDisponiveis = useMemo(
+    () => maquinas.filter(m => m.estado === 'disponivel').map(m => ({
+      id: m.id, descricao: m.modelo, valor: m.precoVenda,
+    })),
+    [maquinas]
+  )
 
   // ─── Estado principal ────────────────────────────────────────────────────
   const [tipo, setTipo] = useState(tipoInicial)
@@ -483,6 +490,7 @@ function VendaForm({ T, dark, form, setForm, update, notify }) {
 
       <MaquinaEstoqueBlock
         T={T} dark={dark}
+        maquinas={maquinasDisponiveis}
         selecionada={form.maquinaEstoque}
         onSelect={(m) => setForm(f => ({
           ...f, maquinaEstoque: m.id, equipamento: m.descricao, valor: m.valor,
@@ -1041,12 +1049,17 @@ function ObservacoesBlock({ T, dark, value, onChange }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // BLOCO: Máquina do estoque (Venda)
 // ═══════════════════════════════════════════════════════════════════════════
-function MaquinaEstoqueBlock({ T, dark, selecionada, onSelect }) {
+function MaquinaEstoqueBlock({ T, dark, selecionada, onSelect, maquinas = [] }) {
   const verde = corEtapa('green', dark)
   return (
     <AtlPanel T={T} dark={dark} title="Máquina do estoque">
       <div>
-        {ESTOQUE_MAQUINAS_MOCK.map((m, idx) => {
+        {maquinas.length === 0 && (
+          <div style={{ padding: '14px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>
+            Nenhuma máquina disponível no estoque.
+          </div>
+        )}
+        {maquinas.map((m, idx) => {
           const sel = selecionada === m.id
           return (
             <button key={m.id} onClick={() => onSelect(m)}

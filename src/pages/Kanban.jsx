@@ -26,6 +26,7 @@ import { useRoteiro } from '../hooks/useRoteiro'
 import { enviarOSParaRoteiro, diaRelativo } from '../utils/roteiroEnvio'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
+import { useMaquinas } from '../hooks/useMaquinas'
 
 // ─── Helpers do arraste manual dos cards ─────────────────────────────────────
 // Qual coluna (etapa) está sob o cursor — pelo data-etapa do DOM.
@@ -105,6 +106,13 @@ export default function Kanban({ T, dark, user }) {
   // ── Dados ────────────────────────────────────────────────────────────────────
   const { osList, setOsList, loading: osLoading, error: osError, refetch: osRefetch, updateOS: updateOSHook } = useOS(buscaAtiva)
   const { usuarios, apelidoDe } = useUsuarios()
+  const { maquinas } = useMaquinas()
+  const maquinasDisponiveis = useMemo(
+    () => maquinas.filter(m => m.estado === 'disponivel').map(m => ({
+      id: m.id, descricao: m.modelo, valor: m.precoVenda,
+    })),
+    [maquinas]
+  )
   const funcionariosRoteiro = useMemo(() => usuarios.filter(u => u.papel !== 'dono'), [usuarios])
   // Itens do Roteiro de HOJE (ao vivo) → mapa os_id → responsavel_id, pro avatar no card.
   const { itens: roteiroItens } = useRoteiro({})
@@ -737,7 +745,8 @@ export default function Kanban({ T, dark, user }) {
       {notasAbertas && <RoteiroDia T={T} dark={dark} user={user} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} onAbrirOS={(os) => { setNotasAbertas(false); setDetalhe(os) }} />}
       {modalNova && (
         <NovaOSModal T={T} dark={dark} onClose={() => setModalNova(false)}
-          tipoInicial="atendimento" notify={notify} onCriada={osRefetch} />
+          tipoInicial="atendimento" notify={notify} onCriada={osRefetch}
+          maquinasEstoque={maquinasDisponiveis} />
       )}
       {osDetalheAtual && (
         <OSDetalhe T={T} dark={dark} os={osDetalheAtual} user={user}
