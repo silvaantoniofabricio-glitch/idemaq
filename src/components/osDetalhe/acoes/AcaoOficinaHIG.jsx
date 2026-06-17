@@ -21,10 +21,31 @@ import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useOSItens } from '../../../hooks/useOSItens'
+import { useUsuarios } from '../../../hooks/useUsuarios'
+import { supabase } from '../../../supabase'
 import PecasComprarSection from './PecasComprarSection'
 import {
   AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
 } from './_AtlassianUI'
+
+// Extrai "Guilherme · 17/06 10:30" de { uid, em, apelido } ou retorna null
+function autorDe(val) {
+  if (!val || typeof val !== 'object') return null
+  const { apelido, em } = val
+  if (!apelido) return null
+  let dataFmt = ''
+  if (em) {
+    try {
+      const d = new Date(em)
+      const dia  = String(d.getDate()).padStart(2, '0')
+      const mes  = String(d.getMonth() + 1).padStart(2, '0')
+      const hora = String(d.getHours()).padStart(2, '0')
+      const min  = String(d.getMinutes()).padStart(2, '0')
+      dataFmt = ` · ${dia}/${mes} ${hora}:${min}`
+    } catch {}
+  }
+  return apelido + dataFmt
+}
 
 // ─── Pill de status ──────────────────────────────────────────────────────
 function StatusPill({ T, dark, status }) {
@@ -47,7 +68,7 @@ function StatusPill({ T, dark, status }) {
 }
 
 // ─── CheckRow Atlassian ──────────────────────────────────────────────────
-function CheckRow({ T, dark, label, checked, onToggle, badge, shared, first }) {
+function CheckRow({ T, dark, label, checked, onToggle, badge, shared, first, author }) {
   const [hover, setHover] = useState(false)
   const verde = corEtapa('green', dark)
   return (
@@ -85,6 +106,13 @@ function CheckRow({ T, dark, label, checked, onToggle, badge, shared, first }) {
         letterSpacing: '-0.005em',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>{label}</span>
+
+      {checked && author && (
+        <span style={{
+          fontSize: 10.5, color: T.textMuted, fontWeight: 500,
+          flexShrink: 0, letterSpacing: '-0.003em', whiteSpace: 'nowrap',
+        }}>{author}</span>
+      )}
 
       {badge && (
         <span style={{
@@ -147,12 +175,14 @@ function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal,
         label="Desmontagem"
         checked={desmDone}
         onToggle={() => onToggleDesm('feito')}
+        author={autorDe(desmVal.feito)}
         shared
       />
       <CheckRow T={T} dark={dark}
         label="Limpeza feita"
         checked={limpDone}
         onToggle={() => onToggleLimp('feito')}
+        author={autorDe(limpVal.feito)}
       />
       {montBloqueio
         ? <BloqueioRow T={T} dark={dark} msg={montBloqueio} />
@@ -161,6 +191,7 @@ function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal,
             label="Montagem"
             checked={!!montVal.feito}
             onToggle={() => onToggleMont('feito')}
+            author={autorDe(montVal.feito)}
             shared
           />
         )}
@@ -199,6 +230,7 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
             checked={!!manutVal[c.id]}
             onToggle={() => onToggleManut(c.id)}
             badge={c.badge}
+            author={autorDe(manutVal[c.id])}
           />
         ))
       ) : (
@@ -207,6 +239,7 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
           label="Manutenção feita"
           checked={!!manutVal.feito}
           onToggle={() => onToggleManut('feito')}
+          author={autorDe(manutVal.feito)}
         />
       )}
       {montBloqueio
@@ -216,6 +249,7 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
             label="Montagem"
             checked={!!montVal.feito}
             onToggle={() => onToggleMont('feito')}
+            author={autorDe(montVal.feito)}
             shared
           />
         )}
@@ -337,10 +371,18 @@ function BannerFalhas({ T, dark, falhas }) {
 export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, admin = false }) {
   const { T, dark } = useTheme()
   const { itens } = useOSItens(os?.id)
+  const { apelidoDe } = useUsuarios()
   const vermelho = corEtapa('red', dark)
   const amarelo  = corEtapa('yellow', dark)
   const azul     = corEtapa('blue', dark)
   const verde    = corEtapa('green', dark)
+
+  const [currentUid, setCurrentUid] = useState(null)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setCurrentUid(data?.session?.user?.id || null)
+    })
+  }, [])
 
   // Falta de peças — alocação GLOBAL do estoque entre todas as OS de conserto
   // (considera qtd pedida e a mesma peça pedida por várias OS).
@@ -483,7 +525,15 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   const toggleEm = (secao) => (chaveId) => {
     const atual = exec[secao] || {}
     const novo = { ...atual }
-    if (novo[chaveId]) delete novo[chaveId]; else novo[chaveId] = true
+    if (novo[chaveId]) {
+      delete novo[chaveId]
+    } else {
+      novo[chaveId] = {
+        uid:     currentUid,
+        em:      new Date().toISOString(),
+        apelido: currentUid ? apelidoDe(currentUid) : 'desconhecido',
+      }
+    }
     persistExec({ ...exec, [secao]: novo })
   }
 
