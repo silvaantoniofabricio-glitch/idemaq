@@ -23,6 +23,7 @@ import { fmtBRL, semAcento } from '../../../utils/fmt'
 import { corEtapa } from '../../../utils/colors'
 import { useOSItens } from '../../../hooks/useOSItens'
 import { usePecas } from '../../../hooks/usePecas'
+import { useMaquinas } from '../../../hooks/useMaquinas'
 import { supabase } from '../../../supabase'
 import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
@@ -33,7 +34,7 @@ import { useToast } from '../../ui'
 // ─── Tipos de item ────────────────────────────────────────────────────────
 const TIPOS = [
   { id: 'servico', label: 'Serviços',     icon: 'tool',    color: HIG_COLOR.tintIdemaq },
-  { id: 'peca',    label: 'Peças',        icon: 'package', color: '#7C5CBF'            },
+  { id: 'peca',    label: 'Itens',        icon: 'package', color: '#7C5CBF'            },
   { id: 'desloc',  label: 'Deslocamento', icon: 'truck',   color: HIG_COLOR.orange     },
 ]
 
@@ -428,7 +429,7 @@ function SugestoesPicker({ T, dark, sugestoes, termo, onEscolher }) {
   )
 }
 
-// ─── Picker de peças do estoque ───────────────────────────────────────────
+// ─── Picker de peças + máquinas do estoque ────────────────────────────────
 function PecaPicker({ T, dark, termo, onEscolher }) {
   const [busca, setBusca] = useState(termo)
   useEffect(() => {
@@ -436,8 +437,18 @@ function PecaPicker({ T, dark, termo, onEscolher }) {
     return () => clearTimeout(t)
   }, [termo])
   const { pecas, loading } = usePecas({ busca, pageSize: 8 })
+  const { maquinas } = useMaquinas()
+  const maquinasFiltradas = useMemo(() => {
+    const t = (termo || '').trim().toLowerCase()
+    return maquinas
+      .filter(m => m.estado === 'disponivel')
+      .filter(m => !t || m.modelo.toLowerCase().includes(t) || (m.marca || '').toLowerCase().includes(t))
+      .slice(0, 4)
+  }, [maquinas, termo])
 
-  if (loading && pecas.length === 0) return (
+  const semResultados = !loading && pecas.length === 0 && maquinasFiltradas.length === 0
+
+  if (loading && pecas.length === 0 && maquinasFiltradas.length === 0) return (
     <div style={{ padding: HIG_SPACE.md, textAlign: 'center' }}>
       <span style={{ ...higType('footnote'), color: T.textMuted, fontStyle: 'italic' }}>
         Buscando no estoque…
@@ -445,10 +456,10 @@ function PecaPicker({ T, dark, termo, onEscolher }) {
     </div>
   )
 
-  if (!loading && pecas.length === 0) return (
+  if (semResultados) return (
     <div style={{ padding: HIG_SPACE.md, textAlign: 'center' }}>
       <span style={{ ...higType('footnote'), color: T.textMuted, fontStyle: 'italic' }}>
-        {!(termo || '').trim() ? 'Digite para buscar peças' : 'Nenhuma peça — pode digitar livre'}
+        {!(termo || '').trim() ? 'Digite para buscar itens' : 'Nenhum item — pode digitar livre'}
       </span>
     </div>
   )
@@ -487,6 +498,50 @@ function PecaPicker({ T, dark, termo, onEscolher }) {
           </button>
         </React.Fragment>
       ))}
+      {maquinasFiltradas.length > 0 && (
+        <>
+          <div style={{
+            padding: `4px ${HIG_SPACE.md}px`,
+            fontSize: 10, fontWeight: 700, color: T.textMuted,
+            textTransform: 'uppercase', letterSpacing: '.06em',
+            borderTop: pecas.length > 0 ? `1px solid ${T.border}` : 'none',
+            background: T.cardAlt,
+          }}>
+            Máquinas disponíveis
+          </div>
+          {maquinasFiltradas.map((m, i) => (
+            <React.Fragment key={m.id}>
+              {i > 0 && <Sep T={T} indent={HIG_SPACE.md} />}
+              <button type="button"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => onEscolher({ id: null, nome: m.modelo, precoVenda: m.precoVenda })}
+                style={{
+                  width: '100%', minHeight: 44,
+                  padding: `${HIG_SPACE.xs}px ${HIG_SPACE.md}px`,
+                  background: 'transparent', border: 'none',
+                  display: 'flex', alignItems: 'center', gap: HIG_SPACE.sm,
+                  cursor: 'pointer', fontFamily: HIG_FONT,
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <i className="ti ti-device-washing-machine" style={{ fontSize: 13, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...higType('body'), color: T.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.modelo}
+                  </div>
+                  {(m.marca || m.capacidade) && (
+                    <div style={{ ...higType('caption1'), color: T.textMuted }}>
+                      {[m.marca, m.capacidade].filter(Boolean).join(' · ')} · Estoque
+                    </div>
+                  )}
+                </div>
+                <span style={{ ...higType('subheadline'), color: HIG_COLOR.tintIdemaq, fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  {m.precoVenda > 0 ? fmtBRL(m.precoVenda) : '—'}
+                </span>
+              </button>
+            </React.Fragment>
+          ))}
+        </>
+      )}
     </div>
   )
 }
@@ -1138,17 +1193,28 @@ function PecaSugestoes({ T, dark, termo, onEscolher }) {
     return () => clearTimeout(t)
   }, [termo])
   const { pecas, loading } = usePecas({ busca: buscaDebounced, pageSize: 6 })
+  const { maquinas } = useMaquinas()
+  const maquinasFiltradas = useMemo(() => {
+    const t = (termo || '').trim().toLowerCase()
+    return maquinas
+      .filter(m => m.estado === 'disponivel')
+      .filter(m => !t || m.modelo.toLowerCase().includes(t) || (m.marca || '').toLowerCase().includes(t))
+      .slice(0, 3)
+  }, [maquinas, termo])
 
-  if (loading && pecas.length === 0) return (
+  if (loading && pecas.length === 0 && maquinasFiltradas.length === 0) return (
     <div style={{ padding: '10px 14px', fontSize: 12, color: T.textMuted, fontStyle: 'italic' }}>
       Buscando…
     </div>
   )
-  if (!loading && pecas.length === 0) return (
+  if (!loading && pecas.length === 0 && maquinasFiltradas.length === 0) return (
     <div style={{ padding: '10px 14px', fontSize: 12, color: T.textMuted, fontStyle: 'italic' }}>
-      {termo.trim() ? 'Nenhuma peça encontrada — pode digitar livre' : 'Digite para sugerir peças'}
+      {termo.trim() ? 'Nenhum item encontrado — pode digitar livre' : 'Digite para sugerir itens'}
     </div>
   )
+
+  const hov = dark ? 'rgba(91,155,213,0.1)' : 'rgba(91,155,213,0.06)'
+
   return (
     <div>
       {pecas.map((p, i) => (
@@ -1162,7 +1228,7 @@ function PecaSugestoes({ T, dark, termo, onEscolher }) {
             display: 'flex', alignItems: 'center', gap: 8,
             cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(91,155,213,0.1)' : 'rgba(91,155,213,0.06)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = hov }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
           {p.favorito
             ? <i className="ti ti-star-filled" style={{ fontSize: 11, color: '#FFD966', flexShrink: 0 }} aria-hidden="true" />
@@ -1182,6 +1248,48 @@ function PecaSugestoes({ T, dark, termo, onEscolher }) {
           </span>
         </button>
       ))}
+      {maquinasFiltradas.length > 0 && (
+        <>
+          <div style={{
+            padding: '3px 14px',
+            fontSize: 10, fontWeight: 700, color: T.textMuted,
+            textTransform: 'uppercase', letterSpacing: '.06em',
+            borderTop: pecas.length > 0 ? `1px solid ${T.border}` : 'none',
+            background: T.cardAlt,
+          }}>
+            Máquinas disponíveis
+          </div>
+          {maquinasFiltradas.map((m, i) => (
+            <button key={m.id} type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => onEscolher({ id: null, nome: m.modelo, precoVenda: m.precoVenda })}
+              style={{
+                width: '100%', padding: '8px 14px',
+                background: 'transparent', border: 'none',
+                borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+                display: 'flex', alignItems: 'center', gap: 8,
+                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = hov }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
+              <i className="ti ti-device-washing-machine" style={{ fontSize: 11, color: T.textMuted, flexShrink: 0 }} aria-hidden="true" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: T.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {m.modelo}
+                </div>
+                {(m.marca || m.capacidade) && (
+                  <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
+                    {[m.marca, m.capacidade].filter(Boolean).join(' · ')} · Estoque
+                  </div>
+                )}
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#5B9BD5', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                {m.precoVenda > 0 ? fmtBRL(m.precoVenda) : '—'}
+              </span>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   )
 }
@@ -1242,7 +1350,7 @@ function AtlNovoItemRow({ T, dark, tipo, onAdd }) {
   }
 
   const placeholder = ehPeca
-    ? 'Adicionar peça…'
+    ? 'Adicionar item…'
     : tipo.id === 'desloc'
       ? 'Adicionar deslocamento…'
       : 'Adicionar serviço…'
@@ -1360,7 +1468,7 @@ function NovaItemRow({ tipo, T, dark, onAdd }) {
   }
 
   const placeholder = tipo.id === 'peca'
-    ? 'Adicionar peça…'
+    ? 'Adicionar item…'
     : tipo.id === 'desloc'
       ? 'Adicionar deslocamento…'
       : 'Adicionar serviço…'
