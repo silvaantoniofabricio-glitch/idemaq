@@ -13,19 +13,27 @@ import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { Card, Button, SectionHeader } from '../ui'
 import CardPontoFuncionario from '../ponto/CardPontoFuncionario'
 import EspelhoPonto from '../ponto/EspelhoPonto'
-import { FUNCIONARIOS_PONTO } from '../ponto/_mocks'
 import { usePainelFuncionario } from '../../hooks/usePainelFuncionario'
+import { getRole } from '../../utils/osHelpers'
 
 // Stack de fonte estilo Apple — SF Pro no iOS/macOS, fallback system-ui.
 const SYS_FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif'
 
-export default function PainelFuncionario({ T, dark, funcId = 'func1' }) {
+const LABEL_PAPEL = { logistica: 'Logística', oficina: 'Oficina', dono: 'Dono' }
+
+export default function PainelFuncionario({ T, dark, user }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const [verEspelho, setVerEspelho] = useState(false)
 
-  const funcionario = FUNCIONARIOS_PONTO.find(f => f.id === funcId) || FUNCIONARIOS_PONTO[0]
+  // Constrói objeto funcionario a partir do user real (auth + tabela usuarios)
+  const funcionario = {
+    id: user?.usuarioId || null,
+    nome: user?.apelido || 'Funcionário',
+    papel: LABEL_PAPEL[user?.papel] || user?.papel || '',
+  }
 
+  const funcId = getRole(user)
   const { osDoDia, desempenho, escopo, loading: loadingPainel } = usePainelFuncionario(funcId)
 
   const hoje = new Date()

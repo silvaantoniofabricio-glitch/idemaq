@@ -179,6 +179,12 @@ export function usePonto({
 
   // ─── Carrega batidas + jornadas da janela ────────────────────────────────
   const carregar = useCallback(async () => {
+    // funcionarioId=null significa "ainda carregando o usuário" — aguarda.
+    // funcionarioId=undefined significa "modo dono: busca todos" (intencional).
+    if (funcionarioId === null) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setErro(null)
     let qBat = supabase

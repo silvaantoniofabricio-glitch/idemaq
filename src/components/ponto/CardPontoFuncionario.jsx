@@ -2,16 +2,15 @@
 // Card de ponto em destaque no PainelFuncionario.
 // Mostra status atual + botão grande + meta diária + banco de horas.
 
-import React, { useState } from 'react'
+import React from 'react'
 import { P } from '../../theme'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { useToast } from '../ui'
 import BotaoBaterPonto from './BotaoBaterPonto'
-import {
-  TIPOS_BATIDA, proximoTipo, ultimaBatidaHoje,
-  minutosTrabalhadosHoje, fmtHora, fmtDuracao, fmtBancoHoras,
-  BATIDAS_MOCK, JORNADA_MOCK,
-} from './_mocks'
+import { usePonto } from '../../hooks/usePonto'
+import { TIPOS_BATIDA, fmtHora, fmtDuracao, fmtBancoHoras } from './_mocks'
+
+const JORNADA_PADRAO_H = 8
 
 export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspelho }) {
   const cor = (d, c) => dark ? d : c
@@ -20,14 +19,18 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
   const amarelo = corEtapa('yellow', dark)
   const verde = corEtapa('green', dark)
 
-  // Cópia local pra simular novas batidas no MVP visual
-  const [batidasLocais, setBatidasLocais] = useState(() => ({ ...BATIDAS_MOCK }))
+  const {
+    batidasHoje,
+    ultima,
+    prox,
+    minutosTrabHoje: minTrab,
+    saldoBancoMin,
+    loading,
+    tabelaAusente,
+    bater,
+  } = usePonto({ funcionarioId: funcionario.id, escopo: 'hoje' })
 
-  const ultima = ultimaBatidaHoje(funcionario.id, batidasLocais)
-  const prox = proximoTipo(ultima)
-  const minTrab = minutosTrabalhadosHoje(funcionario.id, batidasLocais)
-  const jornada = JORNADA_MOCK[funcionario.id] || {}
-  const cargaMin = (jornada.carga_diaria_horas || 8) * 60
+  const cargaMin = JORNADA_PADRAO_H * 60
   const pctDia = Math.min(100, Math.round((minTrab / cargaMin) * 100))
 
   // Status atual (texto)
@@ -46,27 +49,55 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
     }
   }
 
-  async function bater({ tipo, endereco_aproximado, lat, lng }) {
-    // TODO(ponto): trocar state local por INSERT em `ponto_registro` via usePonto.bater().
-    // Spec em idemaq-modulo-ponto-CLAUDE-CODE.md; schema em sql/09-ponto-schema.sql.
-    const novaBatida = {
-      id: Date.now(),
-      tipo,
-      bateu_em: new Date().toISOString(),
-      lat, lng, endereco_aproximado,
+  async function onBater({ tipo }) {
+    const result = await bater({ tipo })
+    if (result?.error) {
+      const msg = result.error.message || 'Erro ao bater ponto'
+      notify('erro', msg)
+      return { error: result.error }
     }
-    setBatidasLocais(prev => ({
-      ...prev,
-      [funcionario.id]: [...(prev[funcionario.id] || []), novaBatida],
-    }))
     const cfg = TIPOS_BATIDA[tipo]
-    notify('ok', `${cfg.label} registrada às ${fmtHora(novaBatida.bateu_em)} · ${endereco_aproximado}`)
+    const horaBatida = result?.data?.bateu_em
+      ? fmtHora(result.data.bateu_em)
+      : fmtHora(new Date().toISOString())
+    notify('ok', `${cfg.label} registrada às ${horaBatida}`)
+    return result
   }
 
-  // Última batida pra mostrar no card
-  const primeiraEntrada = (batidasLocais[funcionario.id] || [])
-    .filter(b => b.tipo === 'entrada' && new Date(b.bateu_em).toDateString() === new Date().toDateString())
+  const primeiraEntrada = [...batidasHoje]
+    .filter(b => b.tipo === 'entrada')
     .sort((a, b) => new Date(a.bateu_em) - new Date(b.bateu_em))[0]
+
+  if (loading && batidasHoje.length === 0) {
+    return (
+      <div className="idemaq-card" style={{
+        background: T.card, borderRadius: 14,
+        border: `1px solid ${T.border}`,
+        padding: '18px 18px 16px',
+        color: T.textMuted, fontSize: 13,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-loader-2" style={{ fontSize: 16, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
+        Carregando ponto…
+        <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+      </div>
+    )
+  }
+
+  if (tabelaAusente) {
+    return (
+      <div className="idemaq-card" style={{
+        background: T.card, borderRadius: 14,
+        border: `1px solid ${T.border}`,
+        padding: '18px 18px 16px',
+        color: T.textMuted, fontSize: 13,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-clock-off" style={{ fontSize: 18, color: amarelo }} aria-hidden="true" />
+        Sistema de ponto em configuração.
+      </div>
+    )
+  }
 
   return (
     <div className="idemaq-card" style={{
@@ -137,7 +168,7 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
       </div>
 
       {/* Botão grande */}
-      <BotaoBaterPonto T={T} dark={dark} proximoTipo={prox} onBater={bater} />
+      <BotaoBaterPonto T={T} dark={dark} proximoTipo={prox} onBater={onBater} />
 
       {/* Footer com totais */}
       <div style={{
@@ -153,7 +184,7 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
             fontSize: 15, fontWeight: 700, color: corHero(dark),
             fontVariantNumeric: 'tabular-nums',
           }}>
-            {fmtDuracao(minTrab)} <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>de {Math.floor(cargaMin/60)}h00</span>
+            {fmtDuracao(minTrab)} <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>de {JORNADA_PADRAO_H}h00</span>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -163,13 +194,13 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
           }}>Banco de horas</div>
           <div style={{
             fontSize: 15, fontWeight: 700,
-            color: jornada.banco_horas_saldo >= 0 ? azul : corEtapa('red', dark),
+            color: saldoBancoMin >= 0 ? azul : corEtapa('red', dark),
             fontVariantNumeric: 'tabular-nums',
             display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>
-            <i className={`ti ${jornada.banco_horas_saldo >= 0 ? 'ti-trending-up' : 'ti-trending-down'}`}
+            <i className={`ti ${saldoBancoMin >= 0 ? 'ti-trending-up' : 'ti-trending-down'}`}
                style={{ fontSize: 14 }} aria-hidden="true" />
-            {fmtBancoHoras(jornada.banco_horas_saldo)}
+            {fmtBancoHoras(saldoBancoMin / 60)}
           </div>
         </div>
       </div>

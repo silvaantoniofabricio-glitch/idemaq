@@ -7,18 +7,6 @@ import { P } from '../../theme'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import { TIPOS_BATIDA } from './_mocks'
 
-// Captura simulada da geolocalização — futuro: useGeolocalizacao real
-async function capturarLocalizacaoMock() {
-  await new Promise(r => setTimeout(r, 600))  // simula latência
-  // 5% chance de "negar" pra mostrar UX de erro
-  if (Math.random() < 0.05) throw new Error('Permissão negada')
-  return {
-    lat: -23.0653,
-    lng: -54.1903,
-    endereco_aproximado: 'Oficina Idemaq · Naviraí/MS',
-  }
-}
-
 export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disabled = false }) {
   const cor = (d, c) => dark ? d : c
   const [loading, setLoading] = useState(false)
@@ -50,8 +38,10 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
     setErro(null)
     setLoading(true)
     try {
-      const loc = await capturarLocalizacaoMock()
-      await onBater?.({ tipo: proximoTipo, ...loc })
+      const result = await onBater?.({ tipo: proximoTipo })
+      if (result?.error) {
+        setErro(result.error.message || 'Erro ao bater ponto')
+      }
     } catch (e) {
       setErro(e.message || 'Erro ao bater ponto')
     } finally {
@@ -81,7 +71,7 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
         {loading ? (
           <>
             <i className="ti ti-loader" style={{ fontSize: 20, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
-            Capturando localização…
+            Registrando…
           </>
         ) : (
           <>

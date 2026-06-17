@@ -149,7 +149,7 @@ function PainelPorPerfil({ T, dark, user, isMobile }) {
       ? <PainelMobile T={T} dark={dark} user={user} />
       : <Painel T={T} dark={dark} />
   }
-  return <PainelFuncionario T={T} dark={dark} funcId={getRole(user)} />
+  return <PainelFuncionario T={T} dark={dark} user={user} />
 }
 
 // Bloqueia o acesso direto via URL às páginas adminOnly — redireciona pro Painel.
