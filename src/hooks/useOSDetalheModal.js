@@ -79,6 +79,14 @@ export function useOSDetalheModal({ notify, buscando = false } = {}) {
       notify?.('erro', 'Erro ao mover OS — mudança revertida')
       return
     }
+    const { data: session } = await supabase.auth.getSession()
+    const uid = session?.session?.user?.id || null
+    await supabase.from('os_historico').insert({
+      os_id: os.id,
+      etapa_de: uiEtapaToDb(os.tipo, os.etapa),
+      etapa_para: dbEtapa,
+      funcionario_id: uid,
+    })
     const labelFinal = TIPOS_OS[os.tipo].etapas.find(e => e.id === etapaFinal)?.label || etapaFinal
     notify?.('ok', `OS #${numero} movida para ${labelFinal}`)
   }, [osList, setOsList, notify])

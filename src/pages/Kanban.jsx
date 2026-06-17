@@ -223,6 +223,12 @@ export default function Kanban({ T, dark, user }) {
       else if (os.etapa === 'recusado') patch.recusada = false
       const { error } = await supabase.from('os').update(patch).eq('id', os.id)
       if (error) throw error
+      await supabase.from('os_historico').insert({
+        os_id: os.id,
+        etapa_de: uiEtapaToDb(os.tipo, os.etapa),
+        etapa_para: dbEtapa,
+        funcionario_id: user?.id || null,
+      })
     } catch { setOsList(osPrev); notify('erro', 'Erro ao mover OS — revertido') }
   }
 
