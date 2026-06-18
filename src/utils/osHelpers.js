@@ -87,8 +87,10 @@ export function responsavelAtual(os) {
 }
 
 // Status de prazo: 'ok' | 'vencido' | 'hoje' | 'amanha'
+// Prazo só é relevante até a entrega — etapas posteriores não mostram atraso
+const ETAPAS_SEM_PRAZO = new Set(['entrega', 'a_receber', 'concluido', 'recusado'])
 export function calcStatusPrazo(prazoIso, etapaId) {
-  if (etapaId === 'concluido' || etapaId === 'recusado') return 'ok'
+  if (ETAPAS_SEM_PRAZO.has(etapaId)) return 'ok'
   if (!prazoIso) return 'ok'
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
   const prazo = new Date(prazoIso); prazo.setHours(0, 0, 0, 0)
