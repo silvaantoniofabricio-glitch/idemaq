@@ -78,8 +78,37 @@ const HeaderMobile = ({
   const [menuAberto, setMenuAberto] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
-  const [prazoModo, setPrazoModo] = useState(false);
-  const [prazoVal, setPrazoVal]   = useState('');
+  const [prazoModo, setPrazoModo]     = useState(false);
+  const [prazoVal, setPrazoVal]       = useState('');
+  const [entregaModo, setEntregaModo] = useState(false);
+  const [entregaData, setEntregaData] = useState('');
+  const [entregaHora, setEntregaHora] = useState('');
+
+  function abrirEntrega() {
+    const iso = os?.data_agendamento
+    setEntregaData(iso ? iso.slice(0, 10) : '')
+    setEntregaHora(iso ? iso.slice(11, 16) : '')
+    setEntregaModo(true)
+  }
+  async function salvarEntrega() {
+    if (!entregaData) { notify('erro', 'Selecione uma data'); return }
+    const hora = entregaHora || '08:00'
+    const iso = `${entregaData}T${hora}:00.000Z`
+    try {
+      await onUpdateOS?.(os.numero, { data_agendamento: iso })
+      notify('ok', 'Entrega agendada')
+      setEntregaModo(false)
+      setMenuAberto(false)
+    } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
+  }
+  async function limparEntrega() {
+    try {
+      await onUpdateOS?.(os.numero, { data_agendamento: null })
+      notify('ok', 'Agendamento removido')
+      setEntregaModo(false)
+      setMenuAberto(false)
+    } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
+  }
 
   function prazoParaInput(iso) {
     if (!iso) return ''
@@ -616,8 +645,65 @@ const HeaderMobile = ({
               OS #{os?.numero}
             </div>
 
-            {/* Painel de prazo */}
-            {prazoModo ? (
+            {/* Painel de prazo / entrega */}
+            {entregaModo ? (
+              <div style={{ padding: '12px 20px 18px' }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8,
+                }}>Agendar entrega</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input
+                    type="date"
+                    value={entregaData}
+                    onChange={e => setEntregaData(e.target.value)}
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      padding: '12px 12px', borderRadius: 9,
+                      border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                      fontSize: 16, fontWeight: 600, outline: 'none', fontFamily: 'inherit',
+                      colorScheme: dark ? 'dark' : 'light',
+                    }}
+                  />
+                  <input
+                    type="time"
+                    value={entregaHora}
+                    onChange={e => setEntregaHora(e.target.value)}
+                    style={{
+                      width: '100%', boxSizing: 'border-box',
+                      padding: '12px 12px', borderRadius: 9,
+                      border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                      fontSize: 16, fontWeight: 600, outline: 'none', fontFamily: 'inherit',
+                      colorScheme: dark ? 'dark' : 'light',
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button onClick={salvarEntrega}
+                    style={{
+                      flex: 1, minHeight: 48, borderRadius: 10, border: 'none',
+                      background: '#5B9BD5', color: '#fff', fontSize: 15, fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Salvar</button>
+                  {os?.data_agendamento && (
+                    <button onClick={limparEntrega}
+                      style={{
+                        minHeight: 48, padding: '0 16px', borderRadius: 10,
+                        border: `1px solid ${T.border}`, background: 'transparent',
+                        color: '#FF6B6B', fontSize: 15, fontWeight: 600,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                      }}>Limpar</button>
+                  )}
+                  <button onClick={() => setEntregaModo(false)}
+                    style={{
+                      minHeight: 48, padding: '0 16px', borderRadius: 10,
+                      border: `1px solid ${T.border}`, background: 'transparent',
+                      color: T.textMuted, fontSize: 15, fontWeight: 600,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Voltar</button>
+                </div>
+              </div>
+            ) : prazoModo ? (
               <div style={{ padding: '12px 20px 18px' }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, color: T.textMuted,
@@ -670,6 +756,14 @@ const HeaderMobile = ({
                   label={os?.prazo ? 'Alterar prazo' : 'Definir prazo'}
                   T={T} dark={dark}
                   onClick={abrirPrazo}
+                />
+              )}
+              {onUpdateOS && (
+                <SheetItem
+                  icon="truck-delivery"
+                  label={os?.data_agendamento ? 'Reagendar entrega' : 'Agendar entrega'}
+                  T={T} dark={dark}
+                  onClick={abrirEntrega}
                 />
               )}
               {onDuplicar && (

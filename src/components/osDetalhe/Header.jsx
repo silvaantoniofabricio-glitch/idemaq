@@ -65,8 +65,11 @@ export default function Header({
   const [menuAberto, setMenuAberto] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [duplicando, setDuplicando] = useState(false)
-  const [prazoModo, setPrazoModo] = useState(false)
-  const [prazoVal, setPrazoVal]   = useState('')
+  const [prazoModo, setPrazoModo]     = useState(false)
+  const [prazoVal, setPrazoVal]       = useState('')
+  const [entregaModo, setEntregaModo] = useState(false)
+  const [entregaData, setEntregaData] = useState('')
+  const [entregaHora, setEntregaHora] = useState('')
 
   // ── "Mandar pro roteiro" (só dono organiza a agenda) ──────────────────────
   const { usuarios, apelidoDe } = useUsuarios()
@@ -120,6 +123,33 @@ export default function Header({
       setMenuAberto(false)
     } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
   }
+
+  function abrirEntrega() {
+    const iso = os?.data_agendamento
+    setEntregaData(iso ? iso.slice(0, 10) : '')
+    setEntregaHora(iso ? iso.slice(11, 16) : '')
+    setEntregaModo(true)
+  }
+  async function salvarEntrega() {
+    if (!entregaData) { notify('erro', 'Selecione uma data'); return }
+    const hora = entregaHora || '08:00'
+    const iso = `${entregaData}T${hora}:00.000Z`
+    try {
+      await onUpdateOS?.(os.numero, { data_agendamento: iso })
+      notify('ok', 'Entrega agendada')
+      setEntregaModo(false)
+      setMenuAberto(false)
+    } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
+  }
+  async function limparEntrega() {
+    try {
+      await onUpdateOS?.(os.numero, { data_agendamento: null })
+      notify('ok', 'Agendamento removido')
+      setEntregaModo(false)
+      setMenuAberto(false)
+    } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
+  }
+
   useEffect(() => {
     if (!menuAberto) return
     function onDocClick(e) {
@@ -135,7 +165,7 @@ export default function Header({
       document.removeEventListener('keydown', onEsc, true)
     }
   }, [menuAberto])
-  useEffect(() => { if (!menuAberto) { setPrazoModo(false); setRoteiroModo(false) } }, [menuAberto])
+  useEffect(() => { if (!menuAberto) { setPrazoModo(false); setRoteiroModo(false); setEntregaModo(false) } }, [menuAberto])
 
   async function duplicarOSHandler() {
     if (duplicando || !onDuplicar) return
@@ -369,6 +399,64 @@ export default function Header({
                         cursor: 'pointer', fontFamily: 'inherit',
                       }}>Voltar</button>
                   </div>
+                ) : entregaModo ? (
+                  <div style={{ padding: 6 }}>
+                    <div style={{
+                      fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+                      textTransform: 'uppercase', letterSpacing: '.05em', padding: '0 2px 6px',
+                    }}>Agendar entrega</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <input
+                        type="date"
+                        value={entregaData}
+                        autoFocus
+                        onChange={e => setEntregaData(e.target.value)}
+                        style={{
+                          width: '100%', boxSizing: 'border-box',
+                          padding: '8px 10px', borderRadius: 7,
+                          border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                          fontSize: 13, fontWeight: 600, outline: 'none', fontFamily: 'inherit',
+                          colorScheme: dark ? 'dark' : 'light',
+                        }}
+                      />
+                      <input
+                        type="time"
+                        value={entregaHora}
+                        onChange={e => setEntregaHora(e.target.value)}
+                        style={{
+                          width: '100%', boxSizing: 'border-box',
+                          padding: '8px 10px', borderRadius: 7,
+                          border: `1px solid ${T.border}`, background: T.bg, color: T.textPrimary,
+                          fontSize: 13, fontWeight: 600, outline: 'none', fontFamily: 'inherit',
+                          colorScheme: dark ? 'dark' : 'light',
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <button onClick={salvarEntrega}
+                        style={{
+                          flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none',
+                          background: azul, color: '#fff', fontSize: 12.5, fontWeight: 700,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}>Salvar</button>
+                      {os.data_agendamento && (
+                        <button onClick={limparEntrega}
+                          style={{
+                            padding: '8px 10px', borderRadius: 7,
+                            border: `1px solid ${T.border}`, background: 'transparent',
+                            color: cor(P.red, P.redDark), fontSize: 12.5, fontWeight: 600,
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}>Limpar</button>
+                      )}
+                      <button onClick={() => setEntregaModo(false)}
+                        style={{
+                          padding: '8px 10px', borderRadius: 7,
+                          border: `1px solid ${T.border}`, background: 'transparent',
+                          color: T.textMuted, fontSize: 12.5, fontWeight: 600,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}>Voltar</button>
+                    </div>
+                  </div>
                 ) : prazoModo ? (
                   <div style={{ padding: 6 }}>
                     <div style={{
@@ -427,6 +515,11 @@ export default function Header({
                 {onUpdateOS && (
                   <MenuItem T={T} icon="ti-calendar-clock" onClick={abrirPrazo}>
                     {os.prazo ? 'Alterar prazo' : 'Definir prazo'}
+                  </MenuItem>
+                )}
+                {onUpdateOS && (
+                  <MenuItem T={T} icon="ti-truck-delivery" onClick={abrirEntrega}>
+                    {os.data_agendamento ? 'Reagendar entrega' : 'Agendar entrega'}
                   </MenuItem>
                 )}
                 {onDuplicar && (
