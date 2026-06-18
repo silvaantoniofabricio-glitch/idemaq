@@ -15,6 +15,7 @@ import { useToast } from '../ui'
 import { supabase } from '../../supabase'
 import { useUsuarios } from '../../hooks/useUsuarios'
 import { enviarOSParaRoteiro } from '../../utils/roteiroEnvio'
+import MandarRoteiroDialog from '../roteiro/MandarRoteiroDialog'
 import ClienteDetalheModal from '../clientes/ClienteDetalheModal'
 import FormEquipamentoEdit from './FormEquipamentoEdit'
 
@@ -73,8 +74,9 @@ export default function Header({
   const [roteiroModo, setRoteiroModo] = useState(false)
   const [roteiroDia, setRoteiroDia]   = useState('hoje')  // 'hoje' | 'amanha'
   const [enviandoRot, setEnviandoRot] = useState(false)
+  const [roteiroDialog, setRoteiroDialog] = useState(null) // { funcionario } | null
 
-  async function enviarRoteiro(responsavelId) {
+  async function enviarRoteiro(responsavelId, texto) {
     if (enviandoRot) return
     setEnviandoRot(true)
     try {
@@ -84,7 +86,7 @@ export default function Header({
       const diaIso = dia
         ? dia.toLocaleDateString('pt-BR', { timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-')
         : undefined
-      const r = await enviarOSParaRoteiro({ os, responsavelId, dia: diaIso, apelidoDe })
+      const r = await enviarOSParaRoteiro({ os, responsavelId, dia: diaIso, texto, apelidoDe })
       const quando = roteiroDia === 'amanha' ? 'amanhã' : 'hoje'
       if (r.error) { notify('erro', `Erro: ${r.error.message || 'desconhecido'}`) }
       else if (r.jaExiste) { notify('erro', `OS #${os.numero} já está no roteiro de ${r.responsavelNome || 'alguém'} (${quando})`) }
@@ -329,7 +331,7 @@ export default function Header({
                       <div style={{ padding: '4px 2px 8px', fontSize: 12, color: T.textMuted }}>Nenhum funcionário cadastrado.</div>
                     )}
                     {funcionarios.map(f => (
-                      <button key={f.id} onClick={() => enviarRoteiro(f.id)} disabled={enviandoRot}
+                      <button key={f.id} onClick={() => { setRoteiroDialog({ funcionario: f }); setRoteiroModo(false); setMenuAberto(false) }} disabled={enviandoRot}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 9,
                           padding: '9px 10px', marginBottom: 5, borderRadius: 7,
@@ -542,6 +544,14 @@ export default function Header({
           os={os}
           onClose={() => setModalEquipamento(false)}
           onUpdateOS={onUpdateOS}
+        />
+      )}
+      {roteiroDialog && (
+        <MandarRoteiroDialog
+          T={T} dark={dark} os={os}
+          funcionario={roteiroDialog.funcionario} diaKey={roteiroDia}
+          onConfirm={(texto) => { enviarRoteiro(roteiroDialog.funcionario.id, texto); setRoteiroDialog(null) }}
+          onClose={() => setRoteiroDialog(null)}
         />
       )}
     </div>

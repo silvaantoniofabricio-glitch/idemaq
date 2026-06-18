@@ -237,10 +237,10 @@ export default function Kanban({ T, dark, user }) {
     if (!res.ok) notify('erro', 'Erro ao salvar — mudança revertida')
   }
 
-  async function mandarOSparaRoteiro(os, responsavelId, diaKey) {
+  async function mandarOSparaRoteiro(os, responsavelId, diaKey, texto) {
     const dia = diaKey === 'amanha' ? diaRelativo(1) : undefined
     const quando = diaKey === 'amanha' ? 'amanhã' : 'hoje'
-    const r = await enviarOSParaRoteiro({ os, responsavelId, dia, apelidoDe })
+    const r = await enviarOSParaRoteiro({ os, responsavelId, dia, texto, apelidoDe })
     if (r.error) notify('erro', `Erro: ${r.error.message || 'desconhecido'}`)
     else if (r.jaExiste) notify('erro', `OS #${os.numero} já está no roteiro de ${r.responsavelNome || 'alguém'} (${quando})`)
     else notify('ok', `OS #${os.numero} → roteiro de ${apelidoDe(responsavelId)} · ${quando}`)

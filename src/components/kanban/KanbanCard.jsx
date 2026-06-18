@@ -3,6 +3,7 @@
 
 import React from 'react'
 import { createPortal } from 'react-dom'
+import MandarRoteiroDialog from '../roteiro/MandarRoteiroDialog'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub, secoesOficinaVisiveis } from '../../utils/osHelpers'
@@ -29,6 +30,7 @@ export default function KanbanCard({
   const [hover, setHover]   = React.useState(false)
   const [menu, setMenu]     = React.useState(false)
   const [diaKey, setDiaKey] = React.useState('hoje')  // 'hoje' | 'amanha'
+  const [dialog, setDialog] = React.useState(null)    // { funcionario, diaKey } | null
   const podeRoteiro = admin && funcionarios.length > 0 && !!onMandarRoteiro
   // Trava propagação pra o ⋮ não disparar arraste do card nem abrir a OS.
   const trava = e => { e.stopPropagation() }
@@ -164,7 +166,7 @@ export default function KanbanCard({
           </div>
           {funcionarios.map(f => (
             <button key={f.id}
-              onClick={() => { onMandarRoteiro?.(os, f.id, diaKey); setMenu(false) }}
+              onClick={() => { setDialog({ funcionario: f, diaKey }); setMenu(false) }}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                 padding: '7px 8px', marginBottom: 4, borderRadius: 6,
@@ -191,6 +193,14 @@ export default function KanbanCard({
           </div>
         </div>,
         document.body
+      )}
+      {dialog && (
+        <MandarRoteiroDialog
+          T={T} dark={dark} os={os}
+          funcionario={dialog.funcionario} diaKey={dialog.diaKey}
+          onConfirm={(texto) => { onMandarRoteiro?.(os, dialog.funcionario.id, dialog.diaKey, texto); setDialog(null) }}
+          onClose={() => setDialog(null)}
+        />
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 10, rowGap: 3, alignItems: 'baseline' }}>
