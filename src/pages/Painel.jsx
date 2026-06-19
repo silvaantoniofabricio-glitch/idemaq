@@ -371,7 +371,7 @@ export default function Painel({ T, dark, user }) {
     let uteis = 0
     for (let d = hojeData.getDate(); d <= ultimoDia; d++) {
       const data = new Date(ano, mes, d)
-      if (!ehFimDeSemana(data) && !ehFeriadoBancario(data)) uteis++
+      if (data.getDay() !== 0 && !ehFeriadoBancario(data)) uteis++
     }
     return uteis
   })()
