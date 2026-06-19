@@ -199,6 +199,89 @@ function rotaCompletaUrl(enderecos) {
   return `https://www.google.com/maps/dir/${enderecos.map(e => encodeURIComponent(e)).join('/')}`
 }
 
+// Header Atlassian da página Logística — espelha o padrão do OSDetalhe/Header.jsx:
+// Linha 1: ícone · título · stats (OS + rotas) | ações (icon-btn + primário)
+// Linha 2: filtros de etapa + filtro de agenda
+// Separador: border-bottom 1px
+function LogisticaPageHeader({
+  T, dark, azul,
+  osFiltradas, slotsRotas,
+  etapasAtivas, onToggleEtapa,
+  filtroAgenda, onFiltroAgenda,
+  onMaps, onNovaRota,
+}) {
+  const totalOS     = osFiltradas.length
+  const rotasAtivas = slotsRotas.filter(s => (s.rota?.paradas?.length || 0) > 0).length
+
+  return (
+    <div style={{ borderBottom: `1px solid ${T.border}`, paddingBottom: 14 }}>
+      {/* Linha 1 — ícone · título · stats | ações */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 10, marginBottom: 12,
+      }}>
+        {/* Esquerda */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 6, flexShrink: 0,
+            background: dark ? 'rgba(91,155,213,0.15)' : '#E3F2FD',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <i className="ti ti-route" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
+          </div>
+          <h1 style={{
+            fontSize: 20, fontWeight: 700, color: T.textPrimary,
+            margin: 0, letterSpacing: '-0.01em', lineHeight: 1.1, whiteSpace: 'nowrap',
+          }}>Logística</h1>
+          {totalOS > 0 && (
+            <span style={{
+              padding: '2px 9px', borderRadius: 999, flexShrink: 0,
+              background: dark ? 'rgba(91,155,213,0.15)' : '#E3F2FD',
+              color: azul, fontSize: 11.5, fontWeight: 600,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {totalOS} OS
+            </span>
+          )}
+          {rotasAtivas > 0 && (
+            <span style={{
+              padding: '2px 9px', borderRadius: 999, flexShrink: 0,
+              background: dark ? 'rgba(255,255,255,0.07)' : '#F4F5F7',
+              color: T.textMuted, fontSize: 11.5, fontWeight: 600,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {rotasAtivas} {rotasAtivas === 1 ? 'rota ativa' : 'rotas ativas'}
+            </span>
+          )}
+        </div>
+
+        {/* Direita — ações */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <IconButton T={T} dark={dark}
+            icon="ti-external-link"
+            title="Abrir rota completa no Google Maps"
+            onClick={onMaps}
+          />
+          <Button T={T} dark={dark} variant="primary" size="sm" iconLeft="ti-plus"
+            onClick={onNovaRota}>
+            Nova rota
+          </Button>
+        </div>
+      </div>
+
+      {/* Linha 2 — filtros */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <FiltroEtapas
+          T={T} dark={dark}
+          ativas={etapasAtivas}
+          onToggle={onToggleEtapa}
+        />
+        <FiltroAgenda T={T} dark={dark} ativo={filtroAgenda} onChange={onFiltroAgenda} />
+      </div>
+    </div>
+  )
+}
+
 // Botão icon-only com tooltip — usado pras ações secundárias do header
 // (mantém a UI minimalista sem perder a função).
 function IconButton({ T, dark, icon, title, onClick }) {
@@ -553,41 +636,20 @@ function LogisticaDesktop({ T, dark }) {
       flex: 1,
       display: 'flex', flexDirection: 'column', gap: 14,
     }}>
-      <PageHeader T={T} dark={dark}
-        title="Logística"
-        subtitle="Planejamento de rotas"
-        actions={
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <IconButton T={T} dark={dark}
-              icon="ti-external-link"
-              title="Abrir rota completa no Google Maps"
-              onClick={abrirRotaCompletaNoMaps}
-            />
-            <Button T={T} dark={dark} variant="primary" size="sm" iconLeft="ti-plus"
-              onClick={() => setNovaRotaAberta(true)}>
-              Nova rota
-            </Button>
-          </div>
-        }
+      <LogisticaPageHeader
+        T={T} dark={dark} azul={azul}
+        osFiltradas={osFiltradas} slotsRotas={slotsRotas}
+        etapasAtivas={etapasAtivas}
+        onToggleEtapa={(id) => setEtapasAtivas(prev => {
+          const next = new Set(prev)
+          if (next.has(id)) next.delete(id)
+          else next.add(id)
+          return next
+        })}
+        filtroAgenda={filtroAgenda} onFiltroAgenda={setFiltroAgenda}
+        onMaps={abrirRotaCompletaNoMaps}
+        onNovaRota={() => setNovaRotaAberta(true)}
       />
-
-      {/* Toolbar — filtro etapas + filtro agenda */}
-      <div style={{
-        display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
-        padding: '4px 4px',
-      }}>
-        <FiltroEtapas
-          T={T} dark={dark}
-          ativas={etapasAtivas}
-          onToggle={(id) => setEtapasAtivas(prev => {
-            const next = new Set(prev)
-            if (next.has(id)) next.delete(id)
-            else next.add(id)
-            return next
-          })}
-        />
-        <FiltroAgenda T={T} dark={dark} ativo={filtroAgenda} onChange={setFiltroAgenda} />
-      </div>
 
       {/* Grid principal — mapa à esquerda, accordions à direita */}
       <div style={{
