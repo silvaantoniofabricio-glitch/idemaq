@@ -503,7 +503,7 @@ export default function Kanban({ T, dark, user }) {
                 }}>Ordens de serviço</h1>
                 {/* Stats row */}
                 <div style={{ display: 'flex', gap: 10, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <StatBadge v={totalKanban} label="ativas" color={T.textMuted} />
+                  <StatBadge v={totalKanban} label="ativas" color={T.textSecondary} />
                   {totVencidas > 0 && <StatBadge v={totVencidas} label="vencidas" color={vermelho} dot />}
                   {totalAgPeca > 0 && <StatBadge v={totalAgPeca} label="ag. peça" color={amarelo} dot />}
                   {totGarantia > 0 && <StatBadge v={totGarantia} label="garantia" color={azul} dot />}
@@ -777,7 +777,7 @@ function StatBadge({ v, label, color, dot }) {
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontSize: 12 }}>
       {dot && <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, display: 'inline-block', alignSelf: 'center', flexShrink: 0 }} />}
       <span style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
-      <span style={{ color: 'inherit', opacity: 0.65 }}>{label}</span>
+      <span style={{ color, opacity: 0.75 }}>{label}</span>
     </span>
   )
 }
