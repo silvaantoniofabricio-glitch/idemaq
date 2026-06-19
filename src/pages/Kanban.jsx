@@ -748,7 +748,7 @@ export default function Kanban({ T, dark, user }) {
         )}
       </div>
 
-      {notasAbertas && <RoteiroDia T={T} dark={dark} user={user} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} onAbrirOS={(os) => { setNotasAbertas(false); setDetalhe(os) }} />}
+      {notasAbertas && <RoteiroDia T={T} dark={dark} user={user} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} onAbrirOS={(os) => setDetalhe(os)} />}
       {modalNova && (
         <NovaOSModal T={T} dark={dark} onClose={() => setModalNova(false)}
           tipoInicial="atendimento" notify={notify} onCriada={osRefetch}

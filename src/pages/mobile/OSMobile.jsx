@@ -418,7 +418,7 @@ export default function OSMobile({ T, dark, user }) {
       )}
 
       {/* Roteiro do dia */}
-      {notasAbertas && <RoteiroDia T={T} dark={dark} user={user} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} onAbrirOS={(os) => { setNotasAbertas(false); setOsAberta(os) }} />}
+      {notasAbertas && <RoteiroDia T={T} dark={dark} user={user} onClose={() => setNotasAbertas(false)} osList={osList} pessoas={usuarios} onAbrirOS={(os) => setOsAberta(os)} />}
 
       {/* OSDetalhe modal */}
       {osVigente && (
