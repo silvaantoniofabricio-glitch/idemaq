@@ -1,18 +1,18 @@
 // src/components/ponto/BotaoBaterPonto.jsx
 // Botão grande de bater ponto — visual muda conforme próxima ação.
-// Captura geolocalização (placeholder no MVP visual) e dispara onBater.
+// Tenta capturar geolocalização; se negada, mostra aviso + opção de registrar sem geo.
 
 import React, { useState } from 'react'
-import { P } from '../../theme'
-import { corEtapa, bgEtapa } from '../../utils/colors'
+import { corEtapa } from '../../utils/colors'
 import { TIPOS_BATIDA } from './_mocks'
+
+const ERR_GEO = 'Permissão de localização negada'
 
 export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disabled = false }) {
   const cor = (d, c) => dark ? d : c
   const [loading, setLoading] = useState(false)
-  const [erro, setErro] = useState(null)
+  const [semGeo, setSemGeo] = useState(false)   // true quando geo foi negada
 
-  // Sem próximo tipo = expediente encerrado
   if (!proximoTipo) {
     return (
       <button disabled style={{
@@ -33,25 +33,28 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
   const corBtn = corEtapa(cfg.cor, dark)
   const isAmarelo = cfg.cor === 'yellow'
 
-  async function clicar() {
+  async function clicar(forcarSemGeo = false) {
     if (disabled || loading) return
-    setErro(null)
+    setSemGeo(false)
     setLoading(true)
     try {
-      const result = await onBater?.({ tipo: proximoTipo })
+      const result = await onBater?.({ tipo: proximoTipo, semGeo: forcarSemGeo })
       if (result?.error) {
-        setErro(result.error.message || 'Erro ao bater ponto')
+        const msg = result.error.message || ''
+        if (msg === ERR_GEO || msg.includes('localização') || msg.includes('geoloc')) {
+          setSemGeo(true)  // mostra opção de registrar sem geo
+        }
       }
     } catch (e) {
-      setErro(e.message || 'Erro ao bater ponto')
+      if ((e.message || '').includes('localização')) setSemGeo(true)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div>
-      <button onClick={clicar} disabled={disabled || loading}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <button onClick={() => clicar(false)} disabled={disabled || loading}
         style={{
           width: '100%', padding: '18px 20px', borderRadius: 12, border: 'none',
           background: loading
@@ -81,16 +84,40 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
         )}
       </button>
 
-      {erro && (
+      {semGeo && (
         <div style={{
-          marginTop: 8, padding: '8px 12px',
-          background: cor('#3a2200', '#fff4e0'),
-          border: `1px solid #ff980055`,
-          borderRadius: 7, fontSize: 11.5, color: '#ff9800',
-          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '10px 12px',
+          background: cor('#2a1f00', '#fff8e6'),
+          border: `1px solid #ff980044`,
+          borderRadius: 8,
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <i className="ti ti-alert-triangle" style={{ fontSize: 13 }} aria-hidden="true" />
-          {erro} — permita a localização e tente de novo.
+          <div style={{
+            fontSize: 12, color: '#ff9800',
+            display: 'flex', alignItems: 'flex-start', gap: 6,
+          }}>
+            <i className="ti ti-map-pin-off" style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+            <span>
+              Localização bloqueada no navegador. Permita e tente de novo, ou registre sem localização.
+            </span>
+          </div>
+          <button
+            onClick={() => clicar(true)}
+            disabled={loading}
+            style={{
+              background: 'transparent',
+              border: `1px solid #ff980066`,
+              borderRadius: 6,
+              color: '#ff9800',
+              fontSize: 12, fontWeight: 700,
+              padding: '7px 12px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+            <i className="ti ti-pencil-check" style={{ fontSize: 13 }} aria-hidden="true" />
+            Registrar sem localização
+          </button>
         </div>
       )}
 

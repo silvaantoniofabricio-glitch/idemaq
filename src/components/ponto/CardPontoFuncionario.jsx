@@ -49,8 +49,8 @@ export default function CardPontoFuncionario({ T, dark, funcionario, onAbrirEspe
     }
   }
 
-  async function onBater({ tipo }) {
-    const result = await bater({ tipo })
+  async function onBater({ tipo, semGeo = false }) {
+    const result = await bater({ tipo, semGeo })
     if (result?.error) {
       const msg = result.error.message || 'Erro ao bater ponto'
       notify('erro', msg)
