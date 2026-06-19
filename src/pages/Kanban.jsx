@@ -290,10 +290,17 @@ export default function Kanban({ T, dark, user }) {
     : ETAPAS_TODOS.filter(e => zonaCfg.etapas.includes(e.id))
   const etapasVisiveis = etapasAtivas.filter(e => admin || !e.adminOnly)
 
+  // OS "aguarda peça" automaticamente: tem pelo menos 1 item no orçamento
+  // sem estoque suficiente (calculado pelo fetchFaltaPecas compartilhado).
+  const osAguardaPeca = o => {
+    const parts = pecasPorOS.get(o.id)
+    return !!parts?.length && parts.some(p => faltaSet.has(p.itemId))
+  }
+
   const osFiltradas = todasUniverso
     .filter(o => buscando ? true : !o.oculta_no_kanban)
     .filter(o => verRecusados ? true : o.etapa !== 'recusado')
-    .filter(o => !verAgPeca ? true : !!o.aguardando_peca)
+    .filter(o => !verAgPeca ? true : osAguardaPeca(o))
     .filter(o => !verLimpeza ? true : temLimpeza.has(o.id))
     .filter(o => !verManutencao ? true : temManutencao.has(o.id))
     .filter(o => {
@@ -414,7 +421,7 @@ export default function Kanban({ T, dark, user }) {
 
   const totalKanban    = Object.values(porEtapa).reduce((s, a) => s + a.length, 0)
   const totalRecusados = todasUniverso.filter(o => o.etapa === 'recusado').length
-  const totalAgPeca    = todasUniverso.filter(o => !!o.aguardando_peca).length
+  const totalAgPeca    = todasUniverso.filter(osAguardaPeca).length
   const totalLimpeza   = todasUniverso.filter(o => temLimpeza.has(o.id)).length
   const totalManutencao = todasUniverso.filter(o => temManutencao.has(o.id)).length
   const totVencidas    = todasUniverso.filter(o => calcStatusPrazo(o.prazo, o.etapa) === 'vencido').length
