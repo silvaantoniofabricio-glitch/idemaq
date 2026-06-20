@@ -453,6 +453,11 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
         defeito_relatado: form.defeito?.trim() || null,
         data_agendamento: dataAgIso,
       }
+      // Venda: preenche modelo a partir da máquina selecionada do estoque
+      if (tipo === 'venda' && form.maquinaEstoque) {
+        const maq = (maquinasEstoque || []).find(m => m.id === form.maquinaEstoque)
+        if (maq) payload.modelo_equipamento = maq.descricao
+      }
       if (tipo === 'fabricacao' && form.valor) {
         const v = parseFloat(String(form.valor).replace(',', '.'))
         if (!isNaN(v)) payload.valor_total = v

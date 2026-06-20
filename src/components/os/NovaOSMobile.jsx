@@ -176,6 +176,11 @@ export default function NovaOSMobile({
         data_agendamento: dataAgIso,
         endereco: form.enderecoSelecionado || null,
       }
+      // Venda: preenche modelo a partir da máquina selecionada do estoque
+      if (tipo === 'venda' && form.maquinaEstoque) {
+        const maq = maquinasDisponiveis.find(m => m.id === form.maquinaEstoque)
+        if (maq) payload.modelo_equipamento = maq.descricao
+      }
       if (tipo === 'fabricacao' && form.valor) {
         const v = parseFloat(String(form.valor).replace(',', '.'))
         if (!isNaN(v)) payload.valor_total = v
