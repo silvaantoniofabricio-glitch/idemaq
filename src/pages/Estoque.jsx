@@ -32,7 +32,7 @@ const ESTADO_MAQUINA = {
 }
 
 const ABAS = [
-  { id: 'pecas',    label: 'Peças',    icon: 'ti-puzzle' },
+  { id: 'pecas',    label: 'Itens',    icon: 'ti-package' },
   { id: 'maquinas', label: 'Máquinas', icon: 'ti-device-washing-machine' },
 ]
 
@@ -269,12 +269,12 @@ export default function Estoque({ T, dark, user }) {
     const { data, error: err } = await supabase.from('peca')
       .select('nome, sku, modelo, modelos_compativeis, marca, qtd_atual, qtd_minima')
       .is('deleted_at', null).order('nome')
-    if (err) { notify('erro', 'Erro ao buscar peças'); return }
+    if (err) { notify('erro', 'Erro ao buscar itens'); return }
     const emFalta = (data || []).filter(p => {
       const qtd = Number(p.qtd_atual ?? 0), min = Number(p.qtd_minima ?? 0)
       return qtd <= 0 || (min > 0 && qtd <= min)
     })
-    if (emFalta.length === 0) { notify('info', 'Nenhuma peça com estoque baixo ou esgotado'); return }
+    if (emFalta.length === 0) { notify('info', 'Nenhum item com estoque baixo ou esgotado'); return }
     const hoje = new Date().toLocaleDateString('pt-BR')
     const itensMontados = emFalta.map((p, i) => {
       let compat = p.modelos_compativeis
@@ -319,7 +319,7 @@ export default function Estoque({ T, dark, user }) {
               width: 32, height: 32, borderRadius: 8, background: azulBg,
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
-              <i className={`ti ${onPecas ? 'ti-puzzle' : 'ti-device-washing-machine'}`}
+              <i className={`ti ${onPecas ? 'ti-package' : 'ti-device-washing-machine'}`}
                 style={{ fontSize: 16, color: azul }} aria-hidden="true" />
             </div>
             <div>
@@ -333,7 +333,7 @@ export default function Estoque({ T, dark, user }) {
                     <StatBadge v={totalGlobal} label="referências" color={T.textSecondary} />
                     <StatBadge v={totalPecasQtd} label="itens" color={azul} />
                     {pecasBaixas > 0 && <StatBadge v={pecasBaixas} label="baixo/esgotado" color={amarelo} dot />}
-                    {mostraValores && <StatBadge v={fmtBRL(valorPecas)} label="em peças" color={T.textSecondary} />}
+                    {mostraValores && <StatBadge v={fmtBRL(valorPecas)} label="em itens" color={T.textSecondary} />}
                   </>
                 ) : (
                   <>
@@ -370,7 +370,7 @@ export default function Estoque({ T, dark, user }) {
               onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
               onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
               <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-              {onPecas ? 'Nova peça' : 'Nova máquina'}
+              {onPecas ? 'Novo item' : 'Nova máquina'}
             </button>
           </div>
         </div>
@@ -422,7 +422,7 @@ export default function Estoque({ T, dark, user }) {
               type="search"
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder={onPecas ? 'Nome, SKU ou referência…' : 'Modelo, marca ou capacidade…'}
+              placeholder={onPecas ? 'Buscar item por nome, SKU ou referência…' : 'Modelo, marca ou capacidade…'}
               style={{
                 width: '100%', boxSizing: 'border-box',
                 paddingLeft: 30, paddingRight: busca ? 28 : 10,
@@ -631,11 +631,11 @@ function ListaPecas({
   if (itens.length === 0) {
     return (
       <EmptyState T={T}
-        icon={busca ? 'ti-search-off' : 'ti-puzzle-off'}
-        title={busca ? 'Nenhuma peça encontrada' : 'Nenhuma peça cadastrada'}
+        icon={busca ? 'ti-search-off' : 'ti-package-off'}
+        title={busca ? 'Nenhum item encontrado' : 'Nenhum item cadastrado'}
         description={busca
           ? `Sem resultados para "${busca}".`
-          : 'Cadastre a primeira peça pra começar a controlar o estoque.'}
+          : 'Cadastre o primeiro item pra começar a controlar o estoque.'}
         compact height="auto"
       />
     )
@@ -650,12 +650,12 @@ function ListaPecas({
   return (
     <Card T={T} dark={dark} padding={0}>
       <div style={{ padding: '12px 16px 10px' }}>
-        <SectionHeader T={T} dark={dark} icon="ti-puzzle" mb={0}
+        <SectionHeader T={T} dark={dark} icon="ti-package" mb={0}
           action={
             <span style={{ fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
               {contagemHeader}
             </span>
-          }>Peças</SectionHeader>
+          }>Itens</SectionHeader>
       </div>
       <div style={{
         display: 'grid', gridTemplateColumns: gridCols,
@@ -697,7 +697,7 @@ function ListaPecas({
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
-                {p.favorito && <i className="ti ti-star-filled" title="Peça favorita" style={{ color: '#f59e0b', flexShrink: 0, fontSize: 14 }} />}
+                {p.favorito && <i className="ti ti-star-filled" title="Item favorito" style={{ color: '#f59e0b', flexShrink: 0, fontSize: 14 }} />}
                 {p.nome}
                 {p.categoria && catInfo && (
                   <span style={{
@@ -895,7 +895,7 @@ function ListaCompras({ T, dark, itens, onClickOS, onClickPeca }) {
           cursor: 'pointer', outline: 'none',
         }}>
         <i className="ti ti-tools" style={{ color: accentColor, fontSize: 15, flexShrink: 0 }} aria-hidden="true" />
-        <span style={{ fontWeight: 700, fontSize: 13, color: accentColor }}>Peças em Conserto</span>
+        <span style={{ fontWeight: 700, fontSize: 13, color: accentColor }}>Itens em Conserto</span>
         <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 8, background: accentColor + '25', color: accentColor, fontVariantNumeric: 'tabular-nums' }}>
           {itens.length} {itens.length === 1 ? 'item' : 'itens'}
         </span>
@@ -963,8 +963,8 @@ function PecasSkeleton({ T, dark, mostraValores }) {
   return (
     <Card T={T} dark={dark} padding={0}>
       <div style={{ padding: '12px 16px 10px' }}>
-        <SectionHeader T={T} dark={dark} icon="ti-puzzle" mb={0}>
-          <span style={{ opacity: 0.5 }}>Carregando peças…</span>
+        <SectionHeader T={T} dark={dark} icon="ti-package" mb={0}>
+          <span style={{ opacity: 0.5 }}>Carregando itens…</span>
         </SectionHeader>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, alignItems: 'center', padding: '8px 16px', borderTop: `1px solid ${T.border}`, background: T.cardAlt, fontSize: 10.5, color: T.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -994,7 +994,7 @@ function EstoqueErro({ T, dark, mensagem }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px 16px', color: corEtapa('red', dark), fontSize: 13 }}>
         <i className="ti ti-alert-triangle" style={{ fontSize: 18 }} aria-hidden="true" />
         <div>
-          <div style={{ fontWeight: 600 }}>Erro ao carregar peças</div>
+          <div style={{ fontWeight: 600 }}>Erro ao carregar itens</div>
           <div style={{ color: T.textMuted, fontSize: 11.5, marginTop: 2 }}>{mensagem}</div>
         </div>
       </div>
