@@ -9,6 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import TopbarMobile from './TopbarMobile'
+import { usePresencaHeartbeat } from '../../hooks/usePresenca'
 
 // Mapa pagina-id → rota
 const ROUTES = {
@@ -43,6 +44,9 @@ export default function AppLayout({
   const navigate = useNavigate()
   const location = useLocation()
   const pagina = pageFromPath(location.pathname)
+
+  // Heartbeat de presença (online/offline ao vivo) enquanto o usuário usa o app.
+  usePresencaHeartbeat(user?.id)
 
   const setPagina = (id) => {
     const route = ROUTES[id]

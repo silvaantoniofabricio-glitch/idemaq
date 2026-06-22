@@ -23,6 +23,7 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { getRole } from '../../utils/osHelpers'
 import { useRoteiro } from '../../hooks/useRoteiro'
+import { usePresencaLista, fmtDuracao } from '../../hooks/usePresenca'
 import MentionTextInput from '../notas/MentionTextInput'
 
 const AZUL = '#5B9BD5'
@@ -31,6 +32,26 @@ const AZUL = '#5B9BD5'
 function semToken(texto, numero) {
   if (!numero) return texto
   return texto.replace(new RegExp(`@${numero}\\b\\s?`), '').trim()
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Badge de presença online/offline (Deutan: azul=online, cinza=offline + texto)
+// ════════════════════════════════════════════════════════════════════════════
+function PresencaBadge({ presenca, T }) {
+  const online = !!presenca?.online
+  const cor = online ? AZUL : T.textDim
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 1 }}>
+      <span style={{
+        width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+        background: cor, boxShadow: online ? `0 0 0 2px ${AZUL}33` : 'none',
+      }} />
+      <span style={{ fontSize: 10.5, color: cor, fontWeight: online ? 600 : 400 }}>
+        {online ? 'Online' : 'Offline'}
+        {presenca ? ` · há ${fmtDuracao(presenca.desdeMs)}` : ''}
+      </span>
+    </div>
+  )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -61,7 +82,7 @@ function OSChip({ os, T, dark, onAbrir }) {
 // ════════════════════════════════════════════════════════════════════════════
 // MODO ORGANIZADOR (dono) — coluna por funcionário
 // ════════════════════════════════════════════════════════════════════════════
-function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R, onAbrirOS }) {
+function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R, onAbrirOS, presenca }) {
   const [novo, setNovo]   = useState('')
   const [novoOS, setNovoOS] = useState(null) // { id, numero } da OS vinculada à nova tarefa
   const [dragId, setDragId] = useState(null)
@@ -101,7 +122,10 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
           background: (pessoa.cor || AZUL) + '2e', color: pessoa.cor || AZUL,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
         }}>{(pessoa.nome || '?').slice(0, 2).toUpperCase()}</span>
-        <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: T.textPrimary }}>{pessoa.nome}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: T.textPrimary }}>{pessoa.nome}</div>
+          <PresencaBadge presenca={presenca} T={T} />
+        </div>
         <span style={{ fontSize: 11, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
           {feitas}/{itens.length}
         </span>
@@ -200,7 +224,7 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
   )
 }
 
-function Organizador({ R, osPorId, osList, pessoas, T, dark, onAbrirOS }) {
+function Organizador({ R, osPorId, osList, pessoas, T, dark, onAbrirOS, presencaPorId }) {
   // Só funcionários (dono não tem "Meu Dia" pra organizar).
   const funcionarios = pessoas.filter(p => p.papel !== 'dono')
   if (funcionarios.length === 0) {
@@ -214,6 +238,7 @@ function Organizador({ R, osPorId, osList, pessoas, T, dark, onAbrirOS }) {
           itens={R.itens.filter(i => i.responsavel_id === p.id)}
           osPorId={osPorId} osList={osList} pessoas={pessoas} R={R} T={T} dark={dark}
           onAbrirOS={onAbrirOS}
+          presenca={presencaPorId?.get(p.id)}
         />
       ))}
     </div>
@@ -303,6 +328,7 @@ function MeuDia({ R, osPorId, T, dark, pessoa, onAbrirOS }) {
 export default function RoteiroDia({ T, dark, user, onClose, osList = [], pessoas = [], onAbrirOS }) {
   const isDono = getRole(user) === 'dono'
   const R = useRoteiro(isDono ? {} : { responsavelId: user?.id })
+  const { porId: presencaPorId } = usePresencaLista()
   const osPorId = useMemo(() => new Map((osList || []).map(o => [o.id, o])), [osList])
   const _mdb = useRef(false)
 
@@ -356,7 +382,7 @@ export default function RoteiroDia({ T, dark, user, onClose, osList = [], pessoa
           ) : (R.loading && R.itens.length === 0) ? (
             <div style={{ padding: 28, textAlign: 'center', color: T.textDim, fontSize: 12.5 }}>Carregando…</div>
           ) : isDono ? (
-            <Organizador R={R} osPorId={osPorId} osList={osList} pessoas={pessoas} T={T} dark={dark} onAbrirOS={onAbrirOS} />
+            <Organizador R={R} osPorId={osPorId} osList={osList} pessoas={pessoas} T={T} dark={dark} onAbrirOS={onAbrirOS} presencaPorId={presencaPorId} />
           ) : (
             <MeuDia R={R} osPorId={osPorId} T={T} dark={dark} pessoa={pessoaAtual} onAbrirOS={onAbrirOS} />
           )}
