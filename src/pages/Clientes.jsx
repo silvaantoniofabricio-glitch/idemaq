@@ -1,9 +1,9 @@
 // idemaq-src/pages/Clientes.jsx
-// Tela de Clientes — lista real do Supabase (tabela `cliente`).
-// Lote 1 do Módulo 00c: troca CLIENTES_MOCK por useClientes().
-// NovoClienteModal próprio (substitui o NovoClienteModalCompleto do _legacy/,
-// que continua sendo usado pela NovaOSModal — não tocar lá).
-// Detalhe do cliente abre ClienteDetalheModal e lista as OS dele.
+// Reconstruída do zero (22/06/2026) — padrão Atlassian idêntico ao Kanban.jsx.
+// Layout: flex-column + header sticky (borderBottom) + busca inline + lista scrollável.
+// Linha 1 header: icon-box 32px · h1 · stats | "Novo cliente" button
+// Linha 2 header: search input + contagem
+// Content: lista de clientes com paginação
 
 import React, { useState, useMemo } from 'react'
 import { corEtapa, corHero } from '../utils/colors'
@@ -11,33 +11,24 @@ import { semAcento } from '../utils/fmt'
 import { useIsMobile } from '../theme'
 import { useClientes } from '../hooks/useClientes'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
-import {
-  Card, Button, Input,
-  EmptyState, PageHeader, SectionHeader,
-  useToast,
-} from '../components/ui'
+import { useToast } from '../components/ui'
 import NovoClienteModal from '../components/clientes/NovoClienteModal'
 import ClienteDetalheModal from '../components/clientes/ClienteDetalheModal'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
+const POR_PAGINA = 20
+
 function iniciais(nome) {
   return (nome || '?')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(p => p[0]?.toUpperCase())
-    .join('') || '?'
+    .split(' ').filter(Boolean).slice(0, 2)
+    .map(p => p[0]?.toUpperCase()).join('') || '?'
 }
 
-// Detecta nome 'ruim' (telefone na coluna nome — comum na importacao Bling).
-// Se o nome so tem digitos, + e separadores telefonicos -> trata como sem nome.
 function nomeEhTelefone(nome) {
   if (!nome) return false
   const limpo = nome.trim()
   if (limpo.length < 3) return false
-  // se removendo digitos, +, espacos, parenteses, traco, ponto sobra <2 chars
-  const semFone = limpo.replace(/[\d+\-\s().]+/g, '').trim()
-  return semFone.length < 2
+  return limpo.replace(/[\d+\-\s().]+/g, '').trim().length < 2
 }
 
 function exibirNome(c) {
@@ -45,22 +36,40 @@ function exibirNome(c) {
   return c.nome || 'Sem nome'
 }
 
+// ─── Sub-componentes ─────────────────────────────────────────────────────────
+
+function StatBadge({ v, label, color, dot }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontSize: 12 }}>
+      {dot && (
+        <span style={{
+          width: 5, height: 5, borderRadius: '50%',
+          background: color, display: 'inline-block',
+          alignSelf: 'center', flexShrink: 0,
+        }} />
+      )}
+      <span style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+      <span style={{ color, opacity: 0.75 }}>{label}</span>
+    </span>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
 export default function Clientes({ T, dark }) {
-  const cor = (d, c) => dark ? d : c
   const isMobile = useIsMobile()
-  const notify = useToast()
-  const azul = corEtapa('blue', dark)
+  const notify   = useToast()
+  const azul     = corEtapa('blue', dark)
+  const azulBg   = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
+  const vermelho  = corEtapa('red', dark)
 
   const { clientes, loading, error, refetch, criar, atualizar, excluir } = useClientes()
-  // useOSDetalheModal com buscando=true: pega TODAS as OS (inclusive concluídas >24h)
-  // pra montar o histórico completo. Também expõe abrirOSPorId + modalProps.
   const { abrirOSPorId, modalProps, osList } = useOSDetalheModal({ notify, buscando: true })
 
-  const [busca, setBusca] = useState('')
+  const [busca, setBusca]         = useState('')
   const [modalNovo, setModalNovo] = useState(false)
   const [clienteAberto, setClienteAberto] = useState(null)
-  const [pagina, setPagina] = useState(1)
-  const POR_PAGINA = 20
+  const [pagina, setPagina]       = useState(1)
 
   const filtrados = useMemo(() => {
     const q = semAcento(busca.trim())
@@ -72,293 +81,411 @@ export default function Clientes({ T, dark }) {
     )
   }, [clientes, busca])
 
-  const buscando = busca.trim().length > 0
+  const buscando     = busca.trim().length > 0
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / POR_PAGINA))
-  const paginaAtual = Math.min(pagina, totalPaginas)
-  const visiveis = filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA)
+  const paginaAtual  = Math.min(pagina, totalPaginas)
+  const visiveis     = filtrados.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA)
 
-  function mudarBusca(v) {
-    setBusca(v)
-    setPagina(1)
-  }
-
-  function abrirFicha(c) {
-    setClienteAberto(c)
-  }
+  function mudarBusca(v) { setBusca(v); setPagina(1) }
 
   async function salvarCliente(atualizado) {
     const { id, ...patch } = atualizado
     const { data, error: err } = await atualizar(id, patch)
-    if (err) {
-      notify('erro', err.message || 'Erro ao atualizar cliente')
-      return { error: err }
-    }
+    if (err) { notify('erro', err.message || 'Erro ao atualizar cliente'); return { error: err } }
     notify('ok', 'Cliente atualizado')
-    // Atualiza clienteAberto com dados novos — modal não fecha após salvar,
-    // apenas volta pro modo visualização com as informações atualizadas.
     if (data) setClienteAberto(data)
     return { data }
   }
 
   async function excluirCliente(c) {
-    if (!window.confirm(`Excluir o cliente "${c.nome}"? Isso só esconde da lista — o histórico fica preservado no banco.`)) return
+    if (!window.confirm(`Excluir "${c.nome}"? O histórico fica preservado no banco.`)) return
     const { error: err } = await excluir(c.id)
-    if (err) {
-      notify('erro', err.message || 'Erro ao excluir cliente')
-      return
-    }
+    if (err) { notify('erro', err.message || 'Erro ao excluir cliente'); return }
     setClienteAberto(null)
     notify('ok', 'Cliente excluído')
   }
 
+  // ─── Layout ────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      padding: '20px 24px 32px',
-      overflowY: 'auto',
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 14,
+      display: 'flex', flexDirection: 'column', flex: 1,
+      minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
-      {/* PageHeader so no desktop — no mobile o titulo ja aparece na topbar */}
-      {!isMobile && (
-        <PageHeader T={T} dark={dark}
-          title="Clientes"
-          subtitle={
-            loading
-              ? 'Carregando…'
-              : `${clientes.length} ${clientes.length === 1 ? 'cadastrado' : 'cadastrados'}`
-          }
-          stats={[
-            { label: 'Ativos', value: clientes.length, color: azul },
-          ]}
-          actions={
-            <Button variant="primary" iconLeft="ti-plus" onClick={() => setModalNovo(true)}>
-              Novo cliente
-            </Button>
-          }
-        />
-      )}
 
-      {/* Busca + botao Novo cliente icone (so mobile) */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Input T={T} dark={dark}
-            value={busca}
-            onChange={mudarBusca}
-            icon="ti-search"
-            placeholder={isMobile ? 'Buscar nome, telefone ou endereço…' : 'Buscar por nome, telefone ou endereço…'}
-          />
-        </div>
-        {isMobile && (
-          <button
-            type="button"
-            onClick={() => setModalNovo(true)}
-            aria-label="Novo cliente"
-            title="Novo cliente"
-            style={{
-              width: 32, height: 32, borderRadius: 3,
-              background: azul, color: '#fff',
-              border: 'none', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, fontFamily: 'inherit',
-              WebkitTapHighlightColor: 'transparent',
-              alignSelf: 'flex-end',
-            }}>
-            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
-          </button>
+      {/* ═══════════════════════════════════════════════════════
+          PAGE HEADER — título + stats + busca
+      ═══════════════════════════════════════════════════════ */}
+      <div style={{
+        padding: isMobile ? '12px 16px 0' : '18px 22px 0',
+        borderBottom: `1px solid ${T.border}`,
+        background: T.bg, flexShrink: 0,
+      }}>
+        {/* Linha 1: icon + h1 + stats | "Novo cliente" */}
+        {!isMobile && (
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', marginBottom: 6,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: azulBg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <i className="ti ti-users" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
+              </div>
+              <div>
+                <h1 style={{
+                  fontSize: 17, fontWeight: 700, color: T.textPrimary,
+                  margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
+                }}>Clientes</h1>
+                <div style={{ display: 'flex', gap: 10, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {loading
+                    ? <span style={{ fontSize: 11.5, color: T.textDim }}>Carregando…</span>
+                    : <>
+                        <StatBadge v={clientes.length} label="cadastrados" color={T.textSecondary} />
+                        {buscando && filtrados.length !== clientes.length && (
+                          <StatBadge v={filtrados.length} label="encontrados" color={azul} dot />
+                        )}
+                      </>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setModalNovo(true)}
+              style={{
+                padding: '7px 16px', borderRadius: 4,
+                background: azul, color: '#fff',
+                border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 600,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontFamily: 'inherit', flexShrink: 0,
+                boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
+              }}
+              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+              onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
+              <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
+              Novo cliente
+            </button>
+          </div>
         )}
+
+        {/* Linha 2: busca + paginação info + botão "+" mobile */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          gap: 8, paddingBottom: 10,
+        }}>
+          {/* Search input inline */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <i className="ti ti-search" style={{
+              position: 'absolute', left: 9, top: '50%',
+              transform: 'translateY(-50%)',
+              fontSize: 13, color: T.textDim, pointerEvents: 'none',
+            }} aria-hidden="true" />
+            <input
+              type="search"
+              value={busca}
+              onChange={e => mudarBusca(e.target.value)}
+              placeholder="Buscar por nome, telefone ou endereço…"
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                paddingLeft: 30, paddingRight: busca ? 28 : 10,
+                paddingTop: 6, paddingBottom: 6,
+                borderRadius: 4, border: `1px solid ${T.border}`,
+                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+                color: T.textPrimary, fontSize: 13,
+                outline: 'none', fontFamily: 'inherit',
+                transition: 'border-color .12s',
+              }}
+              onFocus={e => e.target.style.borderColor = azul}
+              onBlur={e => e.target.style.borderColor = T.border}
+            />
+            {busca && (
+              <button
+                onClick={() => mudarBusca('')}
+                aria-label="Limpar busca"
+                style={{
+                  position: 'absolute', right: 6, top: '50%',
+                  transform: 'translateY(-50%)',
+                  border: 'none', background: 'none',
+                  cursor: 'pointer', color: T.textDim,
+                  padding: 2, display: 'flex',
+                }}>
+                <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          {/* Paginação info — só quando há dados */}
+          {!loading && !error && filtrados.length > 0 && (
+            <span style={{
+              fontSize: 11, color: T.textDim,
+              fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+              whiteSpace: 'nowrap',
+            }}>
+              {(paginaAtual - 1) * POR_PAGINA + 1}–{Math.min(paginaAtual * POR_PAGINA, filtrados.length)}
+              {' '}de {filtrados.length}
+              {buscando && filtrados.length !== clientes.length && ` (${clientes.length} total)`}
+            </span>
+          )}
+
+          {/* Botão "+" só no mobile */}
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setModalNovo(true)}
+              aria-label="Novo cliente"
+              style={{
+                width: 32, height: 32, borderRadius: 4,
+                background: azul, color: '#fff',
+                border: 'none', cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, fontFamily: 'inherit',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {error && (
-        <Card T={T} dark={dark} accent={corEtapa('red', dark)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <i className="ti ti-alert-triangle" style={{
-              fontSize: 20, color: corEtapa('red', dark),
-            }} aria-hidden="true" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: corHero(dark) }}>
+      {/* ═══════════════════════════════════════════════════════
+          CONTENT — lista scrollável
+      ═══════════════════════════════════════════════════════ */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+
+        {/* Loading */}
+        {loading && !error && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 10, padding: '48px 24px',
+            color: T.textMuted, fontSize: 13,
+          }}>
+            <i className="ti ti-loader-2"
+              style={{ fontSize: 20, animation: 'spin 1s linear infinite' }}
+              aria-hidden="true" />
+            Carregando clientes…
+            <style>{`@keyframes spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }`}</style>
+          </div>
+        )}
+
+        {/* Erro */}
+        {error && !loading && (
+          <div style={{
+            margin: isMobile ? '16px' : '24px 22px',
+            padding: '14px 16px',
+            borderRadius: 4,
+            border: `1px solid ${vermelho}44`,
+            background: dark ? 'rgba(192,66,66,0.10)' : '#fff5f5',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <i className="ti ti-alert-triangle"
+              style={{ fontSize: 20, color: vermelho, flexShrink: 0 }}
+              aria-hidden="true" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
                 Erro ao carregar clientes
               </div>
               <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
                 {error.message || 'Erro desconhecido'}
               </div>
             </div>
-            <Button T={T} dark={dark} variant="secondary" size="sm"
-              iconLeft="ti-refresh" onClick={refetch}>
-              Tentar de novo
-            </Button>
+            <button
+              onClick={refetch}
+              style={{
+                padding: '5px 12px', borderRadius: 4,
+                border: `1px solid ${T.border}`,
+                background: 'transparent', color: T.textPrimary,
+                fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                fontFamily: 'inherit', flexShrink: 0,
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+              }}>
+              <i className="ti ti-refresh" style={{ fontSize: 13 }} aria-hidden="true" />
+              Tentar novamente
+            </button>
           </div>
-        </Card>
-      )}
+        )}
 
-      {loading && !error && (
-        <Card T={T} dark={dark}>
+        {/* Vazio */}
+        {!loading && !error && filtrados.length === 0 && (
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: 10, padding: '24px 12px',
-            color: T.textMuted, fontSize: 13,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '56px 24px', gap: 12, textAlign: 'center',
           }}>
-            <i className="ti ti-loader-2" style={{ fontSize: 18, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
-            Carregando clientes…
-          </div>
-          <style>{`@keyframes spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }`}</style>
-        </Card>
-      )}
-
-      {!loading && !error && filtrados.length === 0 && (
-        <EmptyState T={T}
-          icon={busca ? 'ti-search-off' : 'ti-user-off'}
-          title={busca ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
-          description={busca
-            ? `Sem resultados para "${busca}".`
-            : 'Cadastre o primeiro cliente pra começar.'}
-          action={!busca && (
-            <Button variant="primary" iconLeft="ti-plus" onClick={() => setModalNovo(true)}>
-              Cadastrar
-            </Button>
-          )}
-        />
-      )}
-
-      {!loading && !error && filtrados.length > 0 && (
-        <Card T={T} dark={dark} padding={0}>
-          <div style={{ padding: '12px 16px 10px' }}>
-            <SectionHeader T={T} dark={dark} icon="ti-users" mb={0}
-              action={
-                <span style={{
-                  fontSize: 11, color: T.textMuted,
-                  fontVariantNumeric: 'tabular-nums',
-                }}>
-                  {`${(paginaAtual - 1) * POR_PAGINA + 1}–${Math.min(paginaAtual * POR_PAGINA, filtrados.length)} de ${filtrados.length}${buscando ? ` (de ${clientes.length})` : ''}`}
-                </span>
-              }
-            >Lista</SectionHeader>
-          </div>
-
-          {visiveis.map((c) => {
-            const semNome = nomeEhTelefone(c.nome)
-            return (
-              <div key={c.id}
-                onClick={() => abrirFicha(c)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirFicha(c) } }}
+            <i className={`ti ${buscando ? 'ti-search-off' : 'ti-user-off'}`}
+              style={{ fontSize: 40, color: T.textDim }}
+              aria-hidden="true" />
+            <div style={{ fontSize: 15, fontWeight: 600, color: T.textPrimary, letterSpacing: '-0.01em' }}>
+              {buscando ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+            </div>
+            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 280 }}>
+              {buscando
+                ? `Sem resultados para "${busca}". Tente outro termo.`
+                : 'Cadastre o primeiro cliente pra começar.'}
+            </div>
+            {!buscando && (
+              <button
+                onClick={() => setModalNovo(true)}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'auto 1fr auto',
-                  gap: isMobile ? 10 : 14, alignItems: 'center',
-                  padding: '12px 14px',
-                  borderTop: `1px solid ${T.border}`,
-                  cursor: 'pointer',
-                  transition: 'background .12s',
-                  outline: 'none',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                onFocus={e => e.currentTarget.style.background = T.cardAlt}
-                onBlur={e => e.currentTarget.style.background = 'transparent'}
-              >
-                {/* Avatar — icone person quando nome ruim, iniciais quando ok */}
-                <div style={{
-                  width: 36, height: 36, borderRadius: 4,
-                  background: azul + '22',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 700, color: azul,
-                  letterSpacing: '0.5px',
-                  flexShrink: 0,
+                  marginTop: 4, padding: '8px 18px', borderRadius: 4,
+                  background: azul, color: '#fff',
+                  border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
                 }}>
-                  {semNome
-                    ? <i className="ti ti-user" style={{ fontSize: 17 }} aria-hidden="true" />
-                    : iniciais(c.nome)}
-                </div>
+                <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
+                Cadastrar
+              </button>
+            )}
+          </div>
+        )}
 
-                {/* Stack: Nome + Endereco + Telefone */}
-                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Lista */}
+        {!loading && !error && filtrados.length > 0 && (
+          <div style={{
+            background: T.card,
+            borderBottom: `1px solid ${T.border}`,
+          }}>
+            {visiveis.map((c) => {
+              const semNome = nomeEhTelefone(c.nome)
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => setClienteAberto(c)}
+                  role="button" tabIndex={0}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setClienteAberto(c)
+                    }
+                  }}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr auto',
+                    gap: isMobile ? 10 : 14,
+                    alignItems: 'center',
+                    padding: isMobile ? '11px 14px' : '11px 22px',
+                    borderBottom: `1px solid ${T.border}`,
+                    cursor: 'pointer',
+                    transition: 'background .1s',
+                    outline: 'none',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.03)' : '#F7F8F9'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  onFocus={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.03)' : '#F7F8F9'}
+                  onBlur={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  {/* Avatar */}
                   <div style={{
-                    fontSize: 13.5, fontWeight: 600,
-                    color: semNome ? T.textMuted : T.textPrimary,
-                    fontStyle: semNome ? 'italic' : 'normal',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    letterSpacing: '-0.005em',
+                    width: 36, height: 36, borderRadius: 4,
+                    background: azul + '22',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 700, color: azul,
+                    letterSpacing: '0.5px', flexShrink: 0,
                   }}>
-                    {exibirNome(c)}
+                    {semNome
+                      ? <i className="ti ti-user" style={{ fontSize: 17 }} aria-hidden="true" />
+                      : iniciais(c.nome)}
                   </div>
 
-                  {c.endereco && (
+                  {/* Nome + endereço + telefone */}
+                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{
-                      fontSize: 11.5, color: T.textMuted,
-                      display: 'flex', alignItems: 'center', gap: 5,
+                      fontSize: 13.5, fontWeight: 600,
+                      color: semNome ? T.textMuted : T.textPrimary,
+                      fontStyle: semNome ? 'italic' : 'normal',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       letterSpacing: '-0.005em',
                     }}>
-                      <i className="ti ti-map-pin"
-                         style={{ fontSize: 11, flexShrink: 0 }}
-                         aria-hidden="true" />
-                      <span style={{
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        flex: 1, minWidth: 0,
-                      }}>{c.endereco}</span>
+                      {exibirNome(c)}
                     </div>
-                  )}
+                    {c.endereco && (
+                      <div style={{
+                        fontSize: 11.5, color: T.textMuted,
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        letterSpacing: '-0.005em',
+                      }}>
+                        <i className="ti ti-map-pin" style={{ fontSize: 11, flexShrink: 0 }} aria-hidden="true" />
+                        <span style={{
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap', flex: 1, minWidth: 0,
+                        }}>{c.endereco}</span>
+                      </div>
+                    )}
+                    {c.telefone && (
+                      <div style={{
+                        fontSize: 11.5, color: azul, fontWeight: 500,
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.005em',
+                      }}>
+                        <i className="ti ti-brand-whatsapp" style={{ fontSize: 11, flexShrink: 0 }} aria-hidden="true" />
+                        {c.telefone}
+                      </div>
+                    )}
+                  </div>
 
-                  {c.telefone && (
-                    <div style={{
-                      fontSize: 11.5, color: azul, fontWeight: 500,
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      fontVariantNumeric: 'tabular-nums',
-                      letterSpacing: '-0.005em',
-                    }}>
-                      <i className="ti ti-brand-whatsapp"
-                         style={{ fontSize: 11, flexShrink: 0 }}
-                         aria-hidden="true" />
-                      {c.telefone}
-                    </div>
-                  )}
+                  {/* Chevron */}
+                  <i className="ti ti-chevron-right"
+                    style={{ fontSize: 14, color: T.textDim, flexShrink: 0 }}
+                    aria-hidden="true" />
                 </div>
+              )
+            })}
 
-                {/* Chevron */}
-                <i className="ti ti-chevron-right"
-                   style={{ fontSize: 14, color: T.textDim, flexShrink: 0 }}
-                   aria-hidden="true" />
+            {/* Paginação */}
+            {totalPaginas > 1 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 10, padding: isMobile ? '12px 14px' : '12px 22px',
+                borderTop: `1px solid ${T.border}`,
+                background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
+              }}>
+                <span style={{
+                  fontSize: 12, color: T.textMuted,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  Página {paginaAtual} de {totalPaginas}
+                </span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[
+                    { label: 'Anterior', icon: 'ti-chevron-left', fn: () => setPagina(p => Math.max(1, p - 1)), disabled: paginaAtual <= 1 },
+                    { label: 'Próxima',  icon: 'ti-chevron-right', fn: () => setPagina(p => Math.min(totalPaginas, p + 1)), disabled: paginaAtual >= totalPaginas, iconDir: 'right' },
+                  ].map(btn => (
+                    <button key={btn.label} onClick={btn.fn} disabled={btn.disabled}
+                      style={{
+                        padding: '5px 12px', borderRadius: 4,
+                        border: `1px solid ${T.border}`,
+                        background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
+                        color: btn.disabled ? T.textDim : T.textPrimary,
+                        fontSize: 12, fontWeight: 500,
+                        cursor: btn.disabled ? 'not-allowed' : 'pointer',
+                        fontFamily: 'inherit', opacity: btn.disabled ? 0.5 : 1,
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                      }}>
+                      {!btn.iconDir && <i className={`ti ${btn.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />}
+                      {btn.label}
+                      {btn.iconDir && <i className={`ti ${btn.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )
-          })}
+            )}
+          </div>
+        )}
+      </div>
 
-          {totalPaginas > 1 && (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              gap: 10, padding: '12px 16px',
-              borderTop: `1px solid ${T.border}`,
-            }}>
-              <span style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                Página {paginaAtual} de {totalPaginas}
-              </span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <Button T={T} dark={dark} variant="secondary" size="sm"
-                  iconLeft="ti-chevron-left"
-                  disabled={paginaAtual <= 1}
-                  onClick={() => setPagina(p => Math.max(1, p - 1))}>
-                  Anterior
-                </Button>
-                <Button T={T} dark={dark} variant="secondary" size="sm"
-                  iconRight="ti-chevron-right"
-                  disabled={paginaAtual >= totalPaginas}
-                  onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}>
-                  Próxima
-                </Button>
-              </div>
-            </div>
-          )}
-        </Card>
-      )}
-
+      {/* Modais */}
       {modalNovo && (
         <NovoClienteModal
           T={T} dark={dark}
           nomeInicial={busca.trim()}
           criar={criar}
           onClose={() => setModalNovo(false)}
-          onCriado={() => { /* useClientes já refetch internamente */ }}
+          onCriado={() => {}}
         />
       )}
 
