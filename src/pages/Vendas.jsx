@@ -1,12 +1,12 @@
 // src/pages/Vendas.jsx
-// Reconstruída (22/06/2026) — padrão Atlassian idêntico ao Kanban.jsx.
-// Layout: flex-column + header sticky 2 linhas (icon+KPIs | filtros inline) + tabela scroll.
+// Layout: flex-column + header sticky 2 linhas (icon+KPIs | filtros dropdown) + tabela scroll.
+// Filtros: dropdown multi-select com checkbox visual — neutro = sem filtro, ativo = azul + ×.
 
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { corEtapa, corHero } from '../utils/colors'
 import { fmtBRL, semAcento } from '../utils/fmt'
 import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
-import { Badge, ChipToggle, useToast } from '../components/ui'
+import { Badge, useToast } from '../components/ui'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import NovaOSAntigaModal from '../components/vendas/NovaOSAntigaModal'
@@ -45,25 +45,24 @@ function labelPeriodo(periodo) {
   return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[2]).label
 }
 
-// ─── Filtros ──────────────────────────────────────────────────────────────────
-const FILTROS_TIPO = [
+// ─── Opções de filtro ─────────────────────────────────────────────────────────
+const OPTS_TIPO = [
   { id: 'atendimento', label: 'Atendimento' },
   { id: 'fabricacao',  label: 'Fabricação'  },
   { id: 'venda',       label: 'Venda'       },
 ]
-
-const FILTROS_STATUS = [
+const OPTS_STATUS = [
   { id: 'concluido', label: 'Concluídas'   },
   { id: 'recusado',  label: 'Recusadas'    },
   { id: 'aberto',    label: 'Em andamento' },
 ]
-
-const FILTROS_PAGAMENTO = [
-  { id: 'total',   label: 'Pago'      },
-  { id: 'parcial', label: 'Parcial'   },
-  { id: 'nao',     label: 'Não pago'  },
+const OPTS_PAGTO = [
+  { id: 'total',   label: 'Pago'     },
+  { id: 'parcial', label: 'Parcial'  },
+  { id: 'nao',     label: 'Não pago' },
 ]
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function labelPagto(os) {
   if (os.pago === 'total') return 'Pago'
   if (os.pago === 'parcial') return 'Parcial'
@@ -97,7 +96,6 @@ function fmtDataBR(iso) {
 }
 
 // ─── Sub-componentes do header ────────────────────────────────────────────────
-
 function StatBadge({ v, label, color, dot }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontSize: 12 }}>
@@ -112,23 +110,165 @@ function HdrDivider({ T, dark }) {
   return <div style={{ width: 1, height: 16, flexShrink: 0, background: dark ? 'rgba(255,255,255,0.12)' : T.border, alignSelf: 'center' }} />
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ─── FilterDropdown ──────────────────────────────────────────────────────────
+// Seleção múltipla estilo Jira: Set vazio = sem filtro (mostra tudo).
+// Neutro: botão cinza com label genérico.
+// Ativo: botão azul com labels das seleções + × pra limpar sem abrir.
+function FilterDropdown({ T, dark, azul, label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
 
+  useEffect(() => {
+    if (!open) return
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const isFiltered = selected.size > 0
+
+  // Label do botão
+  const btnLabel = !isFiltered
+    ? label
+    : options.filter(o => selected.has(o.id)).map(o => o.label).join(' · ')
+
+  function toggle(id) {
+    onChange(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  function clearFilter(e) {
+    e.stopPropagation()
+    onChange(new Set())
+    setOpen(false)
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '0 10px', height: 30, borderRadius: 4,
+          border: `1px solid ${isFiltered ? azul + '88' : T.border}`,
+          background: isFiltered
+            ? (dark ? azul + '22' : '#e8f0fb')
+            : (dark ? 'rgba(255,255,255,0.04)' : '#fff'),
+          color: isFiltered ? azul : T.textSecondary,
+          fontSize: 12.5, fontWeight: isFiltered ? 600 : 500,
+          cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+          maxWidth: 220, transition: 'all .12s',
+        }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
+          {btnLabel}
+        </span>
+        {isFiltered ? (
+          <span
+            onClick={clearFilter}
+            title={`Limpar filtro ${label}`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 15, height: 15, borderRadius: '50%',
+              background: azul, color: '#fff',
+              fontSize: 9, flexShrink: 0, cursor: 'pointer',
+              marginLeft: -2,
+            }}>
+            <i className="ti ti-x" style={{ fontSize: 9 }} aria-hidden="true" />
+          </span>
+        ) : (
+          <i className={`ti ti-chevron-${open ? 'up' : 'down'}`}
+            style={{ fontSize: 11, opacity: 0.6, flexShrink: 0 }} aria-hidden="true" />
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200,
+          minWidth: 170,
+          background: T.card, border: `1px solid ${T.border}`,
+          borderRadius: 4,
+          boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 4px 16px rgba(9,30,66,0.14)',
+          padding: 6,
+        }}>
+          {/* Todos — limpa o filtro */}
+          <button
+            onClick={() => { onChange(new Set()); setOpen(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              padding: '5px 6px 8px', marginBottom: 4,
+              borderBottom: `1px solid ${T.border}`,
+              border: 'none', background: 'transparent',
+              color: !isFiltered ? azul : T.textMuted,
+              fontSize: 12.5, fontWeight: !isFiltered ? 700 : 500,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+            <span style={{
+              width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+              border: `1.5px solid ${!isFiltered ? azul : T.border}`,
+              background: !isFiltered ? azul : 'transparent',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {!isFiltered && <i className="ti ti-check" style={{ fontSize: 9, color: '#fff' }} aria-hidden="true" />}
+            </span>
+            Todos
+          </button>
+
+          {/* Opções individuais */}
+          {options.map(o => {
+            const checked = selected.has(o.id)
+            return (
+              <button key={o.id}
+                onClick={() => toggle(o.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  padding: '6px 6px', borderRadius: 3,
+                  border: 'none',
+                  background: checked ? (dark ? azul + '18' : '#e8f0fb') : 'transparent',
+                  color: checked ? azul : T.textSecondary,
+                  fontSize: 12.5, fontWeight: checked ? 600 : 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'background .1s',
+                }}>
+                <span style={{
+                  width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                  border: `1.5px solid ${checked ? azul : T.border}`,
+                  background: checked ? azul : 'transparent',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {checked && <i className="ti ti-check" style={{ fontSize: 9, color: '#fff' }} aria-hidden="true" />}
+                </span>
+                {o.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function Vendas({ T, dark, user }) {
-  const notify = useToast()
+  const notify  = useToast()
   const azul    = corEtapa('blue', dark)
   const azulBg  = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
   const amarelo = corEtapa('yellow', dark)
   const verde   = corEtapa('green', dark)
 
-  // ─── Filtros ────────────────────────────────────────────────────────────────
-  const [periodo, setPeriodo]                 = useState({ id: 'mes' })
-  const [periodoAberto, setPeriodoAberto]     = useState(false)
-  const periodoRef                            = useRef(null)
-  const [tiposAtivos, setTiposAtivos]         = useState(new Set(['atendimento', 'fabricacao', 'venda']))
-  const [statusAtivos, setStatusAtivos]       = useState(new Set(['concluido', 'recusado', 'aberto']))
-  const [pagamentosAtivos, setPagamentosAtivos] = useState(new Set(['total', 'parcial', 'nao']))
-  const [busca, setBusca]                     = useState('')
+  // ─── Estado dos filtros ──────────────────────────────────────────────────────
+  // Set vazio = sem filtro (mostra tudo). Non-empty = mostra só os selecionados.
+  const [periodo, setPeriodo]             = useState({ id: 'mes' })
+  const [periodoAberto, setPeriodoAberto] = useState(false)
+  const periodoRef                        = useRef(null)
+  const [tiposSel, setTiposSel]           = useState(new Set())
+  const [statusSel, setStatusSel]         = useState(new Set())
+  const [pagtoSel, setPagtoSel]           = useState(new Set())
+  const [busca, setBusca]                 = useState('')
   const [novaOSAntigaAberta, setNovaOSAntigaAberta] = useState(false)
 
   useEffect(() => {
@@ -146,7 +286,7 @@ export default function Vendas({ T, dark, user }) {
   const [ordemCol, setOrdemCol] = useState('numero')
   const [ordemDir, setOrdemDir] = useState('desc')
 
-  // ─── Range + filtro ─────────────────────────────────────────────────────────
+  // ─── Filtragem ───────────────────────────────────────────────────────────────
   const range = useMemo(() => rangeDoPeriodo(periodo), [periodo])
 
   const filtradas = useMemo(() => {
@@ -162,19 +302,18 @@ export default function Vendas({ T, dark, user }) {
       })
     }
 
-    if (tiposAtivos.size < 3) r = r.filter(os => tiposAtivos.has(os.tipo))
+    // Set vazio = sem filtro
+    if (tiposSel.size > 0)  r = r.filter(os => tiposSel.has(os.tipo))
 
-    if (statusAtivos.size < 3) {
+    if (statusSel.size > 0) {
       r = r.filter(os => {
         const c = os.etapa === 'concluido', re = os.etapa === 'recusado'
-        if (c && !statusAtivos.has('concluido')) return false
-        if (re && !statusAtivos.has('recusado')) return false
-        if (!c && !re && !statusAtivos.has('aberto')) return false
-        return true
+        const key = c ? 'concluido' : re ? 'recusado' : 'aberto'
+        return statusSel.has(key)
       })
     }
 
-    if (pagamentosAtivos.size < 3) r = r.filter(os => pagamentosAtivos.has(os.pago || 'nao'))
+    if (pagtoSel.size > 0) r = r.filter(os => pagtoSel.has(os.pago || 'nao'))
 
     const termo = semAcento((busca || '').trim())
     if (termo) {
@@ -196,7 +335,7 @@ export default function Vendas({ T, dark, user }) {
       if (va > vb) return ordemDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [osList, range, tiposAtivos, statusAtivos, pagamentosAtivos, busca, ordemCol, ordemDir])
+  }, [osList, range, tiposSel, statusSel, pagtoSel, busca, ordemCol, ordemDir])
 
   // ─── KPIs ────────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
@@ -209,14 +348,12 @@ export default function Vendas({ T, dark, user }) {
     return { faturado, total: filtradas.length, ticket: qtdConcluidas > 0 ? faturado / qtdConcluidas : 0, pendente }
   }, [filtradas])
 
-  function toggleSet(set, id, setter) {
-    setter(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
-  }
-
   function ordenarPor(col) {
     if (col === ordemCol) setOrdemDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setOrdemCol(col); setOrdemDir(col === 'numero' || col === 'abertura' ? 'desc' : 'asc') }
   }
+
+  const temFiltroAtivo = tiposSel.size > 0 || statusSel.size > 0 || pagtoSel.size > 0 || busca.trim()
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -225,16 +362,16 @@ export default function Vendas({ T, dark, user }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      {/* ═══════════════════════════════════════════════════════
-          PAGE HEADER — KPIs + filtros inline
-      ═══════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════
+          PAGE HEADER
+      ══════════════════════════════════════════════════ */}
       <div style={{
         padding: '18px 22px 0',
         borderBottom: `1px solid ${T.border}`,
         background: T.bg, flexShrink: 0,
       }}>
 
-        {/* Linha 1: icon-box + h1 + KPI stats | "Nova OS antiga" */}
+        {/* Linha 1: icon + h1 + KPIs | "Nova OS antiga" */}
         <div style={{
           display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', marginBottom: 8,
@@ -247,10 +384,9 @@ export default function Vendas({ T, dark, user }) {
               <i className="ti ti-chart-bar" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
             </div>
             <div>
-              <h1 style={{
-                fontSize: 17, fontWeight: 700, color: T.textPrimary,
-                margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
-              }}>Vendas</h1>
+              <h1 style={{ fontSize: 17, fontWeight: 700, color: T.textPrimary, margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2 }}>
+                Vendas
+              </h1>
               <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center', flexWrap: 'wrap' }}>
                 {loading ? (
                   <span style={{ fontSize: 11.5, color: T.textDim }}>Carregando…</span>
@@ -270,8 +406,7 @@ export default function Vendas({ T, dark, user }) {
             onClick={() => setNovaOSAntigaAberta(true)}
             style={{
               padding: '7px 16px', borderRadius: 4,
-              background: azul, color: '#fff',
-              border: 'none', cursor: 'pointer',
+              background: azul, color: '#fff', border: 'none', cursor: 'pointer',
               fontSize: 13, fontWeight: 600,
               display: 'inline-flex', alignItems: 'center', gap: 6,
               fontFamily: 'inherit', flexShrink: 0,
@@ -290,13 +425,13 @@ export default function Vendas({ T, dark, user }) {
           gap: 6, paddingBottom: 10, flexWrap: 'wrap',
         }}>
 
-          {/* Período dropdown */}
+          {/* Período */}
           <div ref={periodoRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setPeriodoAberto(o => !o)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 10px', height: 30, borderRadius: 4,
+                padding: '0 10px', height: 30, borderRadius: 4,
                 border: `1px solid ${T.border}`,
                 background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
                 color: T.textSecondary,
@@ -304,14 +439,14 @@ export default function Vendas({ T, dark, user }) {
               }}>
               <i className="ti ti-calendar" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
               {labelPeriodo(periodo)}
-              <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
-                style={{ fontSize: 11, color: T.textMuted }} aria-hidden="true" />
+              <i className={`ti ti-chevron-${periodoAberto ? 'up' : 'down'}`}
+                style={{ fontSize: 11, opacity: 0.6 }} aria-hidden="true" />
             </button>
 
             {periodoAberto && (
               <div style={{
                 position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200,
-                minWidth: 220,
+                minWidth: 200,
                 background: T.card, border: `1px solid ${T.border}`,
                 borderRadius: 4,
                 boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 4px 16px rgba(9,30,66,0.14)',
@@ -324,12 +459,11 @@ export default function Vendas({ T, dark, user }) {
                       onClick={() => { setPeriodo({ id: p.id }); setPeriodoAberto(false) }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                        padding: '7px 10px', borderRadius: 4,
-                        border: 'none',
+                        padding: '7px 10px', borderRadius: 3, border: 'none',
                         background: ativo ? (dark ? '#0d2035' : '#e6f1fb') : 'transparent',
                         color: ativo ? azul : T.textSecondary,
                         fontSize: 12.5, fontWeight: ativo ? 700 : 500,
-                        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                        cursor: 'pointer', fontFamily: 'inherit',
                       }}>
                       {ativo
                         ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
@@ -339,7 +473,7 @@ export default function Vendas({ T, dark, user }) {
                   )
                 })}
                 <div style={{ height: 1, background: T.border, margin: '4px' }} />
-                <div style={{ padding: '3px 6px', fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                <div style={{ padding: '3px 8px', fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
                   Personalizado
                 </div>
                 <div style={{ display: 'flex', gap: 5, padding: '4px 6px 6px' }}>
@@ -356,36 +490,18 @@ export default function Vendas({ T, dark, user }) {
 
           <HdrDivider T={T} dark={dark} />
 
-          {/* Tipo chips */}
-          {FILTROS_TIPO.map(f => (
-            <ChipToggle key={f.id} T={T} dark={dark}
-              ativo={tiposAtivos.has(f.id)}
-              onClick={() => toggleSet(tiposAtivos, f.id, setTiposAtivos)}>
-              {f.label}
-            </ChipToggle>
-          ))}
+          {/* Dropdowns de filtro */}
+          <FilterDropdown T={T} dark={dark} azul={azul}
+            label="Tipo" options={OPTS_TIPO}
+            selected={tiposSel} onChange={setTiposSel} />
 
-          <HdrDivider T={T} dark={dark} />
+          <FilterDropdown T={T} dark={dark} azul={azul}
+            label="Status" options={OPTS_STATUS}
+            selected={statusSel} onChange={setStatusSel} />
 
-          {/* Status chips */}
-          {FILTROS_STATUS.map(f => (
-            <ChipToggle key={f.id} T={T} dark={dark}
-              ativo={statusAtivos.has(f.id)}
-              onClick={() => toggleSet(statusAtivos, f.id, setStatusAtivos)}>
-              {f.label}
-            </ChipToggle>
-          ))}
-
-          <HdrDivider T={T} dark={dark} />
-
-          {/* Pagamento chips */}
-          {FILTROS_PAGAMENTO.map(f => (
-            <ChipToggle key={f.id} T={T} dark={dark}
-              ativo={pagamentosAtivos.has(f.id)}
-              onClick={() => toggleSet(pagamentosAtivos, f.id, setPagamentosAtivos)}>
-              {f.label}
-            </ChipToggle>
-          ))}
+          <FilterDropdown T={T} dark={dark} azul={azul}
+            label="Pagto" options={OPTS_PAGTO}
+            selected={pagtoSel} onChange={setPagtoSel} />
 
           <HdrDivider T={T} dark={dark} />
 
@@ -403,28 +519,46 @@ export default function Vendas({ T, dark, user }) {
               style={{
                 width: '100%', boxSizing: 'border-box', height: 30,
                 paddingLeft: 27, paddingRight: busca ? 26 : 8,
-                borderRadius: 4, border: `1px solid ${T.border}`,
+                borderRadius: 4, border: `1px solid ${busca ? azul + '88' : T.border}`,
                 background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
                 color: T.textPrimary, fontSize: 12.5,
                 outline: 'none', fontFamily: 'inherit',
                 transition: 'border-color .12s',
               }}
               onFocus={e => e.target.style.borderColor = azul}
-              onBlur={e => e.target.style.borderColor = T.border}
+              onBlur={e => e.target.style.borderColor = busca ? azul + '88' : T.border}
             />
             {busca && (
-              <button onClick={() => setBusca('')} aria-label="Limpar"
+              <button onClick={() => setBusca('')} aria-label="Limpar busca"
                 style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: T.textDim, padding: 2, display: 'flex' }}>
                 <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
               </button>
             )}
           </div>
+
+          {/* Limpar todos os filtros */}
+          {temFiltroAtivo && (
+            <button
+              onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setBusca('') }}
+              style={{
+                height: 30, padding: '0 10px', borderRadius: 4,
+                border: 'none', background: 'transparent',
+                color: T.textMuted, fontSize: 12, cursor: 'pointer',
+                fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4,
+                transition: 'color .12s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = T.textPrimary}
+              onMouseLeave={e => e.currentTarget.style.color = T.textMuted}>
+              <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+              Limpar filtros
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════
-          CONTENT — tabela scrollável
-      ═══════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════
+          CONTENT — tabela
+      ══════════════════════════════════════════════════ */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
 
         {loading && (
@@ -440,15 +574,20 @@ export default function Vendas({ T, dark, user }) {
             <i className="ti ti-search-off" style={{ fontSize: 40, color: T.textDim }} aria-hidden="true" />
             <div style={{ fontSize: 15, fontWeight: 600, color: T.textPrimary, letterSpacing: '-0.01em' }}>Nenhuma OS encontrada</div>
             <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 320 }}>
-              {kpis.total === 0
-                ? 'Os filtros não retornaram resultados. Tente limpar os filtros ou ajuste o período.'
-                : 'Ajuste os filtros para ver mais resultados.'}
+              {temFiltroAtivo ? 'Tente ajustar ou limpar os filtros.' : 'Nenhuma OS no período selecionado.'}
             </div>
+            {temFiltroAtivo && (
+              <button
+                onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setBusca('') }}
+                style={{ padding: '6px 14px', borderRadius: 4, border: `1px solid ${T.border}`, background: 'transparent', color: T.textPrimary, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Limpar filtros
+              </button>
+            )}
           </div>
         )}
 
         {!loading && filtradas.length > 0 && (
-          <div style={{ overflowX: 'auto', minWidth: 0 }}>
+          <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 12.5, fontFamily: 'inherit' }}>
               <thead>
                 <tr style={{ background: dark ? 'rgba(255,255,255,0.03)' : '#F7F8F9', position: 'sticky', top: 0, zIndex: 1 }}>
@@ -469,13 +608,11 @@ export default function Vendas({ T, dark, user }) {
               </tbody>
             </table>
 
-            {/* Rodapé com contagem */}
             <div style={{
               padding: '10px 22px',
               borderTop: `1px solid ${T.border}`,
               background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
-              fontSize: 11.5, color: T.textMuted,
-              fontVariantNumeric: 'tabular-nums',
+              fontSize: 11.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
             }}>
               {filtradas.length} OS exibidas
               {filtradas.length !== osList.length && ` · ${osList.length} no total`}
@@ -497,7 +634,6 @@ export default function Vendas({ T, dark, user }) {
 }
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
-
 function HeaderCell({ T, col, label, curr, dir, onClick, align = 'left' }) {
   const ativo = curr === col
   return (
@@ -511,10 +647,7 @@ function HeaderCell({ T, col, label, curr, dir, onClick, align = 'left' }) {
         cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
       }}>
       {label}
-      {ativo && (
-        <i className={`ti ${dir === 'asc' ? 'ti-chevron-up' : 'ti-chevron-down'}`}
-          style={{ fontSize: 11, marginLeft: 3 }} aria-hidden="true" />
-      )}
+      {ativo && <i className={`ti ${dir === 'asc' ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 11, marginLeft: 3 }} aria-hidden="true" />}
     </th>
   )
 }
@@ -542,14 +675,10 @@ function LinhaOS({ os, T, dark, onClick }) {
         {os.cliente || (os.tipo === 'fabricacao' ? 'Fabricação' : '—')}
       </td>
       <td style={tdStyle(T)}>
-        <Badge dark={dark} color={corTipo} bg={`${corTipo}22`}>
-          {configTipo?.label || os.tipo}
-        </Badge>
+        <Badge dark={dark} color={corTipo} bg={`${corTipo}22`}>{configTipo?.label || os.tipo}</Badge>
       </td>
       <td style={tdStyle(T)}>
-        <span style={{ fontSize: 11.5, color: corEt, fontWeight: 600 }}>
-          {etapaInfo?.label || os.etapa}
-        </span>
+        <span style={{ fontSize: 11.5, color: corEt, fontWeight: 600 }}>{etapaInfo?.label || os.etapa}</span>
       </td>
       <td style={{ ...tdStyle(T), textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: corHero(dark) }}>
         {fmtBRL(valorLiq)}
@@ -564,16 +693,9 @@ function LinhaOS({ os, T, dark, onClick }) {
 }
 
 function inputDateStyle(T, dark) {
-  return {
-    padding: '5px 7px', fontSize: 12, borderRadius: 4, flex: 1,
-    border: `1px solid ${T.border}`, background: T.card, color: T.textPrimary,
-    fontFamily: 'inherit', outline: 'none', colorScheme: dark ? 'dark' : 'light',
-  }
+  return { padding: '5px 7px', fontSize: 12, borderRadius: 4, flex: 1, border: `1px solid ${T.border}`, background: T.card, color: T.textPrimary, fontFamily: 'inherit', outline: 'none', colorScheme: dark ? 'dark' : 'light' }
 }
 
 function tdStyle(T) {
-  return {
-    padding: '10px 12px', borderBottom: `1px solid ${T.border}`,
-    fontSize: 12.5, color: T.textPrimary, verticalAlign: 'middle',
-  }
+  return { padding: '10px 12px', borderBottom: `1px solid ${T.border}`, fontSize: 12.5, color: T.textPrimary, verticalAlign: 'middle' }
 }
