@@ -116,6 +116,7 @@ export default function OSMobile({ T, dark, user }) {
     const etapasZona = zonaCfg ? new Set(zonaCfg.etapas) : null
     return (osList || []).filter(os => {
       if (os.deleted_at) return false
+      if (!buscando && os.oculta_no_kanban) return false
       if (!filtros.tipos.has(os.tipo)) return false
       if (filtros.limpeza && !temLimpeza.has(os.id)) return false
       if (filtros.manutencao && !temManutencao.has(os.id)) return false
