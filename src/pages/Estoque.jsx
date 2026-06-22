@@ -3,7 +3,7 @@
 // Layout: flex-column + header 3-linhas (icon+stats | tabs+search | chips de categoria) + content scroll.
 // Sub-componentes (ListaPecas, ListaMaquinas, ListaCompras, etc.) preservados integralmente.
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { corEtapa, corHero } from '../utils/colors'
 import { fmtBRL, semAcento } from '../utils/fmt'
@@ -123,6 +123,8 @@ export default function Estoque({ T, dark, user }) {
   const [busca, setBusca]                 = useState('')
   const [buscaDebounced, setBuscaDebounced] = useState('')
   const [categoriaSel, setCategoriaSel]   = useState('todas')
+  const [categoriaAberta, setCategoriaAberta] = useState(false)
+  const categoriaBtnRef                   = useRef(null)
   const [pecaAberta, setPecaAberta]       = useState(null)
   const [maquinaAberta, setMaquinaAberta] = useState(null)
   const [novaPecaAberta, setNovaPecaAberta]     = useState(false)
@@ -134,6 +136,18 @@ export default function Estoque({ T, dark, user }) {
     const t = setTimeout(() => setBuscaDebounced(busca), 300)
     return () => clearTimeout(t)
   }, [busca])
+
+  // Fecha dropdown de categoria ao clicar fora
+  useEffect(() => {
+    if (!categoriaAberta) return
+    function onDown(e) {
+      if (categoriaBtnRef.current && !categoriaBtnRef.current.contains(e.target)) {
+        setCategoriaAberta(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [categoriaAberta])
 
   useEffect(() => { setPaginaAtual(1) }, [categoriaSel, buscaDebounced])
 
@@ -361,15 +375,15 @@ export default function Estoque({ T, dark, user }) {
           </div>
         </div>
 
-        {/* Linha 2: aba tabs (Peças | Máquinas) + divider + search */}
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+        {/* Linha 2: aba tabs (Peças | Máquinas) + divider + search + botão Categoria */}
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, paddingBottom: 1 }}>
           {/* Tabs underline */}
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexShrink: 0 }}>
             {ABAS.map(a => {
               const ativo = a.id === aba
               return (
                 <button key={a.id}
-                  onClick={() => { setAba(a.id); setBusca(''); setBuscaDebounced(''); setCategoriaSel('todas') }}
+                  onClick={() => { setAba(a.id); setBusca(''); setBuscaDebounced(''); setCategoriaSel('todas'); setCategoriaAberta(false) }}
                   style={{
                     padding: '8px 14px 10px',
                     border: 'none',
@@ -393,12 +407,12 @@ export default function Estoque({ T, dark, user }) {
           </div>
 
           {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 9 }}>
             <HdrDivider T={T} dark={dark} />
           </div>
 
           {/* Search input */}
-          <div style={{ position: 'relative', flex: '0 0 280px', paddingBottom: 8 }}>
+          <div style={{ position: 'relative', flex: '0 0 260px', paddingBottom: 9 }}>
             <i className="ti ti-search" style={{
               position: 'absolute', left: 9, top: '50%',
               transform: 'translateY(-55%)',
@@ -422,71 +436,95 @@ export default function Estoque({ T, dark, user }) {
               onFocus={e => e.target.style.borderColor = azul}
               onBlur={e => e.target.style.borderColor = T.border}
             />
-            {/* Spinner debounce */}
             {onPecas && busca !== buscaDebounced && (
-              <span style={{
-                position: 'absolute', right: 8, top: '50%',
-                transform: 'translateY(-55%)',
-                fontSize: 11, color: T.textMuted, pointerEvents: 'none',
-              }}>
+              <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-55%)', fontSize: 11, color: T.textMuted, pointerEvents: 'none' }}>
                 <i className="ti ti-loader-2 ti-spin" aria-hidden="true" />
               </span>
             )}
-            {/* Limpar */}
             {busca && !(onPecas && busca !== buscaDebounced) && (
               <button onClick={() => { setBusca(''); setBuscaDebounced('') }}
                 aria-label="Limpar busca"
-                style={{
-                  position: 'absolute', right: 6, top: '50%',
-                  transform: 'translateY(-55%)',
-                  border: 'none', background: 'none',
-                  cursor: 'pointer', color: T.textDim,
-                  padding: 2, display: 'flex',
-                }}>
+                style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-55%)', border: 'none', background: 'none', cursor: 'pointer', color: T.textDim, padding: 2, display: 'flex' }}>
                 <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
               </button>
             )}
           </div>
+
+          {/* Botão Categoria — só na aba Peças */}
+          {onPecas && (
+            <div ref={categoriaBtnRef} style={{ position: 'relative', paddingBottom: 9, display: 'flex', alignItems: 'center' }}>
+              {(() => {
+                const catInfo = categoriaSel !== 'todas' ? CATEGORIAS_PECA.find(c => c.id === categoriaSel) : null
+                const catCor  = catInfo ? corDaCategoria(catInfo.id) : azul
+                const ativo   = categoriaSel !== 'todas'
+                return (
+                  <button
+                    onClick={() => setCategoriaAberta(v => !v)}
+                    style={{
+                      height: 30, padding: '0 10px',
+                      borderRadius: 4,
+                      border: `1px solid ${ativo ? catCor + '99' : T.border}`,
+                      background: ativo
+                        ? (dark ? catCor + '22' : catCor + '15')
+                        : (dark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                      color: ativo ? catCor : T.textSecondary,
+                      fontSize: 12.5, fontWeight: ativo ? 600 : 500,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      whiteSpace: 'nowrap', flexShrink: 0,
+                      transition: 'all .12s',
+                    }}>
+                    <i className="ti ti-category" style={{ fontSize: 13 }} aria-hidden="true" />
+                    {catInfo ? catInfo.label : 'Categoria'}
+                    {ativo && (
+                      <button
+                        onClick={e => { e.stopPropagation(); setCategoriaSel('todas'); setCategoriaAberta(false) }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: catCor, display: 'flex', marginLeft: -2 }}>
+                        <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
+                      </button>
+                    )}
+                    {!ativo && <i className={`ti ti-chevron-${categoriaAberta ? 'up' : 'down'}`} style={{ fontSize: 11, marginLeft: -2 }} aria-hidden="true" />}
+                  </button>
+                )
+              })()}
+
+              {/* Dropdown */}
+              {categoriaAberta && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% - 0px)', left: 0,
+                  zIndex: 300, minWidth: 240, maxWidth: 340,
+                  background: T.card,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 4,
+                  boxShadow: dark
+                    ? '0 4px 16px rgba(0,0,0,0.5)'
+                    : '0 4px 16px rgba(9,30,66,0.14)',
+                  padding: 10,
+                  display: 'flex', flexWrap: 'wrap', gap: 6,
+                }}>
+                  <ChipCategoria T={T} dark={dark}
+                    label="Todas" count={totalGlobal}
+                    ativo={categoriaSel === 'todas'}
+                    cor={azul}
+                    onClick={() => { setCategoriaSel('todas'); setCategoriaAberta(false) }}
+                  />
+                  {CATEGORIAS_PECA.map(cat => {
+                    const count = contagemCat[cat.id] || 0
+                    if (count === 0) return null
+                    return (
+                      <ChipCategoria key={cat.id} T={T} dark={dark}
+                        label={cat.label} count={count}
+                        ativo={categoriaSel === cat.id}
+                        cor={corDaCategoria(cat.id)}
+                        onClick={() => { setCategoriaSel(cat.id); setCategoriaAberta(false) }}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-
-        {/* Linha 3: chips de categoria — só na aba Peças */}
-        {onPecas && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            paddingBottom: 10,
-            overflowX: 'auto', overflowY: 'hidden',
-            scrollbarWidth: 'thin',
-          }}>
-            <span style={{
-              fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: '.04em',
-              flexShrink: 0, marginRight: 2,
-            }}>
-              <i className="ti ti-category" style={{ fontSize: 12, marginRight: 3, verticalAlign: 'middle' }} aria-hidden="true" />
-              Categoria
-            </span>
-
-            <ChipCategoria T={T} dark={dark}
-              label="Todas" count={totalGlobal}
-              ativo={categoriaSel === 'todas'}
-              cor={azul}
-              onClick={() => setCategoriaSel('todas')}
-            />
-
-            {CATEGORIAS_PECA.map(cat => {
-              const count = contagemCat[cat.id] || 0
-              if (count === 0) return null
-              return (
-                <ChipCategoria key={cat.id} T={T} dark={dark}
-                  label={cat.label} count={count}
-                  ativo={categoriaSel === cat.id}
-                  cor={corDaCategoria(cat.id)}
-                  onClick={() => setCategoriaSel(cat.id)}
-                />
-              )
-            })}
-          </div>
-        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════
