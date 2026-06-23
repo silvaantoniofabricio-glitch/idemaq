@@ -8,12 +8,11 @@
 // Visível só pro dono — rota `/relatorios` envolvida em <AdminOnly> no App.jsx.
 
 import React, { useState, useMemo } from 'react'
-import { useIsMobile } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
-  Card, SubCard, Button, Badge, Tabs,
-  EmptyState, PageHeader, SectionHeader,
+  Card, Button, Badge,
+  EmptyState, SectionHeader,
   Sparkline, DeltaPill,
   useToast,
 } from '../components/ui'
@@ -73,127 +72,242 @@ function fmtMesBR(yyyymm) {
   return `${MESES_PT[Number(m) - 1] || ''}/${y}`
 }
 
+// ─── StatBadge local ─────────────────────────────────────────────────────────
+function StatBadge({ v, label, color }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontSize: 12 }}>
+      <span style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+      <span style={{ color, opacity: .75 }}>{label}</span>
+    </span>
+  )
+}
+
+function HdrDivider({ T, dark }) {
+  return <div style={{ width: 1, height: 16, flexShrink: 0, background: dark ? 'rgba(255,255,255,0.12)' : T.border, alignSelf: 'center', margin: '0 4px' }} />
+}
+
+function inputDateStyle(T, dark, active, azul) {
+  return {
+    height: 28, padding: '0 8px', fontSize: 12, borderRadius: 4,
+    border: `1px solid ${active ? azul + '88' : T.border}`,
+    background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+    color: T.textPrimary, fontFamily: 'inherit', outline: 'none',
+    colorScheme: dark ? 'dark' : 'light',
+  }
+}
+
 // === Página ===
 export default function Relatorios({ T, dark }) {
-  const isMobile = useIsMobile()
   const notify = useToast()
   const [relAtivo, setRelAtivo] = useState(null) // null = hub
   const [periodo, setPeriodo] = useState('mes')
-  const [mesEsp, setMesEsp]   = useState('') // 'YYYY-MM'
-  const [dataIni, setDataIni] = useState('') // 'YYYY-MM-DD'
-  const [dataFim, setDataFim] = useState('') // 'YYYY-MM-DD'
+  const [mesEsp, setMesEsp]   = useState('')
+  const [dataIni, setDataIni] = useState('')
+  const [dataFim, setDataFim] = useState('')
 
   const temCustom = !!(mesEsp || dataIni || dataFim)
 
-  // Range ISO do período atual — passado pros hooks reais.
-  // Recalcula só quando as deps mudam, evita refetch em qualquer render.
   const { iniIso, fimIso } = useMemo(
     () => computeRange(periodo, mesEsp, dataIni, dataFim),
     [periodo, mesEsp, dataIni, dataFim],
   )
 
   function escolherPreset(p) {
-    setPeriodo(p)
-    setMesEsp(''); setDataIni(''); setDataFim('')
+    setPeriodo(p); setMesEsp(''); setDataIni(''); setDataFim('')
   }
-  function mudarMesEsp(v) {
-    setMesEsp(v); setDataIni(''); setDataFim('')
-  }
+  function mudarMesEsp(v)  { setMesEsp(v); setDataIni(''); setDataFim('') }
   function mudarDataIni(v) { setDataIni(v); setMesEsp('') }
   function mudarDataFim(v) { setDataFim(v); setMesEsp('') }
   function limparCustom()  { setMesEsp(''); setDataIni(''); setDataFim('') }
 
-  function labelPeriodo() {
-    if (mesEsp) return fmtMesBR(mesEsp)
-    if (dataIni && dataFim) return `${fmtDataBR(dataIni)} → ${fmtDataBR(dataFim)}`
-    if (dataIni) return `a partir de ${fmtDataBR(dataIni)}`
-    if (dataFim) return `até ${fmtDataBR(dataFim)}`
-    return PERIODOS.find(p => p.id === periodo)?.label.toLowerCase() || ''
-  }
+  function placeholder(msg) { notify('info', msg || 'Em breve') }
 
-  function placeholder(msg) {
-    notify('info', msg || 'Em breve — Módulo 08 do plano')
+  const azul     = corEtapa('blue', dark)
+  const azulClaro = corEtapa('blueLight', dark)
+  const azulBg   = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
+  const relInfo  = RELATORIOS.find(r => r.id === relAtivo)
+
+  const btnSecondary = {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '6px 12px', borderRadius: 4, cursor: 'pointer',
+    border: `1px solid ${T.border}`,
+    background: dark ? 'rgba(255,255,255,0.06)' : '#fff',
+    color: T.textPrimary, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
   }
 
   return (
     <div style={{
-      padding: '20px 24px 32px', overflowY: 'auto', flex: 1,
-      display: 'flex', flexDirection: 'column', gap: 14,
+      display: 'flex', flexDirection: 'column', flex: 1,
+      minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
-      {!isMobile && <PageHeader T={T} dark={dark}
-        title="Relatórios"
-        subtitle={relAtivo
-          ? `${RELATORIOS.find(r => r.id === relAtivo)?.label} · período ${labelPeriodo()}`
-          : 'Escolha um relatório pra ver os números'}
-        stats={!relAtivo ? [
-          { label: '7 relatórios', value: 7, color: corEtapa('blue', dark) },
-          { label: 'Com IA',        value: 2, color: corEtapa('blueLight', dark) },
-        ] : []}
-        actions={relAtivo && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="secondary" T={T} dark={dark}
-              iconLeft="ti-arrow-left"
-              onClick={() => setRelAtivo(null)}>
-              Voltar
-            </Button>
-            <Button variant="secondary" T={T} dark={dark}
-              iconLeft="ti-file-export"
-              onClick={() => placeholder('Export PDF/Excel em breve')}>
-              Exportar
-            </Button>
-          </div>
-        )}
-      />}
 
-      {relAtivo && (
-        <Card T={T} dark={dark}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Tabs T={T} dark={dark}
-                options={PERIODOS}
-                value={temCustom ? '' : periodo}
-                onChange={escolherPreset}
-                variant="segmented"
-              />
-              <div style={{ flex: 1, fontSize: 11, color: T.textMuted, textAlign: 'right' }}>
-                {(relAtivo === 'financeiro' || relAtivo === 'funcionarios') && !IA_DEPLOYED ? (
+      {/* ══════════════════════════════════════════════════
+          PAGE HEADER
+      ══════════════════════════════════════════════════ */}
+      <div style={{
+        padding: '18px 22px 0',
+        borderBottom: `1px solid ${T.border}`,
+        background: T.bg, flexShrink: 0,
+      }}>
+
+        {/* Linha 1 */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', marginBottom: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, background: azulBg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <i className="ti ti-chart-arcs" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
+            </div>
+            <div>
+              {relAtivo && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                  <button onClick={() => setRelAtivo(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>
+                    Relatórios
+                  </button>
+                  <i className="ti ti-chevron-right" style={{ fontSize: 10, color: T.textDim }} aria-hidden="true" />
+                  <span style={{ fontSize: 11.5, fontWeight: 600, color: T.textPrimary }}>{relInfo?.label}</span>
+                </div>
+              )}
+              <h1 style={{
+                fontSize: relAtivo ? 15 : 17, fontWeight: 700,
+                color: T.textPrimary, margin: 0,
+                letterSpacing: '-0.025em', lineHeight: 1.2,
+              }}>
+                {relAtivo ? relInfo?.label : 'Relatórios'}
+              </h1>
+              <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center' }}>
+                {!relAtivo ? (
                   <>
-                    <i className="ti ti-sparkles" style={{ marginRight: 4 }} aria-hidden="true" />
-                    Análise via Claude API — em breve. Dados são reais do Supabase.
+                    <StatBadge v={8} label="relatórios" color={azul} />
+                    <StatBadge v={2} label="com IA" color={azulClaro} />
                   </>
                 ) : (
-                  <>
-                    <i className="ti ti-database" style={{ marginRight: 4 }} aria-hidden="true" />
-                    Dados em tempo real do Supabase
-                  </>
+                  <span style={{ fontSize: 11, color: T.textMuted, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {(relAtivo === 'financeiro' || relAtivo === 'funcionarios') && !IA_DEPLOYED
+                      ? <><i className="ti ti-sparkles" aria-hidden="true" /> Análise IA — em breve. Dados reais do Supabase.</>
+                      : <><i className="ti ti-database" aria-hidden="true" /> Dados em tempo real do Supabase</>
+                    }
+                  </span>
                 )}
               </div>
             </div>
-
-            <CalendarioPeriodo T={T} dark={dark}
-              mesEsp={mesEsp}   onMesEsp={mudarMesEsp}
-              dataIni={dataIni} onDataIni={mudarDataIni}
-              dataFim={dataFim} onDataFim={mudarDataFim}
-              temCustom={temCustom} onLimpar={limparCustom}
-            />
           </div>
-        </Card>
-      )}
 
-      {!relAtivo ? (
-        <RelatoriosHub T={T} dark={dark} onAbrir={setRelAtivo} />
-      ) : (
-        <>
-          {relAtivo === 'finmensal'    && <RelatorioFinanceiroMensal T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'ponto'        && <RelatorioPonto        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-        </>
-      )}
+          {relAtivo && (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button onClick={() => setRelAtivo(null)} style={btnSecondary}
+                onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
+                onMouseLeave={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#fff'}>
+                <i className="ti ti-arrow-left" style={{ fontSize: 13 }} aria-hidden="true" />
+                Voltar
+              </button>
+              <button onClick={() => placeholder('Export PDF/Excel em breve')} style={btnSecondary}
+                onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
+                onMouseLeave={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#fff'}>
+                <i className="ti ti-file-export" style={{ fontSize: 13 }} aria-hidden="true" />
+                Exportar
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Linha 2 — filtro de período (só quando relatório aberto) */}
+        {relAtivo && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 0,
+            flexWrap: 'wrap', rowGap: 6,
+          }}>
+            {/* Tabs de período underline */}
+            {PERIODOS.map(p => {
+              const ativo = !temCustom && periodo === p.id
+              return (
+                <button key={p.id} onClick={() => escolherPreset(p.id)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    padding: '8px 14px',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontSize: 13, fontWeight: ativo ? 700 : 500,
+                    color: ativo ? azul : T.textMuted,
+                    borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
+                    marginBottom: -1, fontFamily: 'inherit',
+                    transition: 'color .12s, border-color .12s',
+                  }}>
+                  {p.label}
+                </button>
+              )
+            })}
+
+            <HdrDivider T={T} dark={dark} />
+
+            {/* Mês específico */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingBottom: 8 }}>
+              <span style={{ fontSize: 11.5, color: T.textMuted }}>Mês</span>
+              <input type="month" value={mesEsp}
+                onChange={e => mudarMesEsp(e.target.value)}
+                style={inputDateStyle(T, dark, !!mesEsp, azul)}
+              />
+            </div>
+
+            <span style={{ fontSize: 11, color: T.textDim, padding: '0 6px 8px', alignSelf: 'flex-end' }}>ou</span>
+
+            {/* Intervalo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingBottom: 8 }}>
+              <input type="date" value={dataIni} max={dataFim || undefined}
+                onChange={e => mudarDataIni(e.target.value)}
+                style={inputDateStyle(T, dark, !!dataIni, azul)}
+              />
+              <i className="ti ti-arrow-right" style={{ fontSize: 12, color: T.textDim }} aria-hidden="true" />
+              <input type="date" value={dataFim} min={dataIni || undefined}
+                onChange={e => mudarDataFim(e.target.value)}
+                style={inputDateStyle(T, dark, !!dataFim, azul)}
+              />
+            </div>
+
+            {temCustom && (
+              <button onClick={limparCustom}
+                style={{
+                  height: 28, padding: '0 8px', marginLeft: 4, marginBottom: 8,
+                  borderRadius: 4, border: 'none', background: 'transparent',
+                  color: T.textMuted, fontSize: 12, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit',
+                }}>
+                <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
+                Limpar
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Linha vazia só pra espaçamento quando no hub */}
+        {!relAtivo && <div style={{ height: 10 }} />}
+      </div>
+
+      {/* ══════════════════════════════════════════════════
+          CONTENT
+      ══════════════════════════════════════════════════ */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {!relAtivo ? (
+            <RelatoriosHub T={T} dark={dark} onAbrir={setRelAtivo} />
+          ) : (
+            <>
+              {relAtivo === 'finmensal'    && <RelatorioFinanceiroMensal T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+              {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+              {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+              {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+              {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+              {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+              {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+              {relAtivo === 'ponto'        && <RelatorioPonto        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -701,106 +815,6 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
         previewTexto={semDados
           ? 'Sem atuação no período — a análise IA habilita quando houver movimentações em os_historico.'
           : 'A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números da tabela acima.'} />
-    </div>
-  )
-}
-
-// =============================================================================
-// CALENDÁRIO (mês específico OU intervalo de datas)
-// =============================================================================
-function CalendarioPeriodo({
-  T, dark,
-  mesEsp, onMesEsp,
-  dataIni, onDataIni,
-  dataFim, onDataFim,
-  temCustom, onLimpar,
-}) {
-  const azul = corEtapa('blue', dark)
-
-  const baseInput = {
-    height: 32,
-    padding: '0 10px',
-    fontSize: 12.5,
-    color: T.textPrimary,
-    background: T.card,
-    border: `1px solid ${T.border}`,
-    borderRadius: 8,
-    outline: 'none',
-    fontFamily: 'inherit',
-    boxShadow: T.shadow,
-    colorScheme: dark ? 'dark' : 'light',
-    transition: 'border-color .12s, box-shadow .12s',
-  }
-
-  function focar(e) {
-    e.currentTarget.style.borderColor = azul
-    e.currentTarget.style.boxShadow = `0 0 0 3px ${azul}22`
-  }
-  function desfocar(e) {
-    e.currentTarget.style.borderColor = T.border
-    e.currentTarget.style.boxShadow = T.shadow
-  }
-
-  const labelMini = {
-    fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-    textTransform: 'uppercase', letterSpacing: '0.04em',
-  }
-
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-      paddingTop: 10, borderTop: `1px solid ${T.border}`,
-    }}>
-      <span style={{ ...labelMini, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <i className="ti ti-calendar-event" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-        Ou escolha:
-      </span>
-
-      {/* Mês específico */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 11.5, color: T.textSecondary }}>Mês</span>
-        <input type="month"
-          value={mesEsp}
-          onChange={(e) => onMesEsp(e.target.value)}
-          onFocus={focar} onBlur={desfocar}
-          style={baseInput}
-          aria-label="Selecionar mês específico"
-        />
-      </label>
-
-      <span style={{ fontSize: 11, color: T.textDim }}>ou</span>
-
-      {/* Intervalo */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 11.5, color: T.textSecondary }}>De</span>
-        <input type="date"
-          value={dataIni}
-          max={dataFim || undefined}
-          onChange={(e) => onDataIni(e.target.value)}
-          onFocus={focar} onBlur={desfocar}
-          style={baseInput}
-          aria-label="Data inicial do período"
-        />
-      </label>
-      <i className="ti ti-arrow-right" style={{ fontSize: 14, color: T.textDim }} aria-hidden="true" />
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 11.5, color: T.textSecondary }}>Até</span>
-        <input type="date"
-          value={dataFim}
-          min={dataIni || undefined}
-          onChange={(e) => onDataFim(e.target.value)}
-          onFocus={focar} onBlur={desfocar}
-          style={baseInput}
-          aria-label="Data final do período"
-        />
-      </label>
-
-      {temCustom && (
-        <Button T={T} dark={dark} variant="ghost" size="sm" iconLeft="ti-x"
-          onClick={onLimpar}>
-          Limpar
-        </Button>
-      )}
     </div>
   )
 }
