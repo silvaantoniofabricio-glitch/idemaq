@@ -9,8 +9,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL, fmtPrazoCurto, hojeISO } from '../utils/fmt'
 import {
-  Card, SubCard, Button, Badge, Input, Tabs,
-  EmptyState, PageHeader, SectionHeader, ChipToggle,
+  Card, SubCard, Button, Badge, Input,
+  EmptyState, SectionHeader, ChipToggle,
   useToast,
 } from '../components/ui'
 import LancamentoDetalheModal from '../components/financeiro/LancamentoDetalheModal'
@@ -199,6 +199,17 @@ function labelPeriodo(periodo) {
     return `${MESES_NOME[periodo.mes]} ${periodo.ano}`
   }
   return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[0]).label
+}
+
+// ─── StatBadge local ────────────────────────────────────────────────────────
+function StatBadge({ v, label, color, dot }) {
+  return (
+    <span style={{ display:'inline-flex', alignItems:'baseline', gap:4, fontSize:12 }}>
+      {dot && <span style={{ width:5, height:5, borderRadius:'50%', background:color, display:'inline-block', alignSelf:'center', flexShrink:0 }} />}
+      <span style={{ fontWeight:700, color, fontVariantNumeric:'tabular-nums', letterSpacing:'-0.01em' }}>{v}</span>
+      <span style={{ color, opacity:.75 }}>{label}</span>
+    </span>
+  )
 }
 
 // ============================================================================
@@ -421,90 +432,158 @@ export default function Financeiro({ T, dark }) {
     return { ...a, count }
   })
 
+  const azulBg = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
+
   return (
     <div style={{
-      padding:'20px 24px 32px', overflowY:'auto', flex:1,
-      display:'flex', flexDirection:'column', gap:14,
+      display:'flex', flexDirection:'column', flex:1,
+      minHeight:0, overflow:'hidden', background:T.bg,
     }}>
-      <PageHeader T={T} dark={dark}
-        title="Financeiro"
-        subtitle="Contas a receber, contas a pagar e caixa"
-        stats={[
-          { label:'Saldo do caixa', value:fmtBRL(saldoCaixa), color:corHero(dark) },
-          { label:'A receber',      value:fmtBRL(totalReceber), color:azul },
-          { label:'A pagar',        value:fmtBRL(totalPagar),  color:amarelo },
-          { label:'Vencidos',       value:vencidos.length,
-            color:vencidos.length > 0 ? vermelho : T.textDim },
-        ]}
-        actions={
-          <div style={{ display:'flex', gap:8 }}>
-            <Button variant="secondary" T={T} dark={dark} iconLeft="ti-file-import"
-              onClick={() => placeholder('Importar OFX/CSV — Módulo 07 chat 5')}>
-              Importar
-            </Button>
-            <Button variant="primary" iconLeft="ti-plus"
-              onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}>
-              Novo lançamento
-            </Button>
-          </div>
-        }
-      />
 
-      {/* Banner sutil quando schema parte 2 ainda não foi aplicado no banco.
-          Toni roda o SQL de sql/01-lancamento-financeiro.sql e isso some sozinho. */}
-      {tabelaAusente && (
-        <Card T={T} dark={dark} accent={amarelo}>
+      {/* ══════════════════════════════════════════════════
+          PAGE HEADER — sticky, borderBottom
+      ══════════════════════════════════════════════════ */}
+      <div style={{
+        padding:'18px 22px 0',
+        borderBottom:`1px solid ${T.border}`,
+        background:T.bg, flexShrink:0,
+      }}>
+
+        {/* Linha 1: icon + h1 + KPIs | "Novo lançamento" */}
+        <div style={{
+          display:'flex', alignItems:'center',
+          justifyContent:'space-between', marginBottom:8,
+        }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <i className="ti ti-database-off" style={{ fontSize:18, color:amarelo }} aria-hidden="true" />
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:12.5, fontWeight:700, color:corHero(dark) }}>
-                Schema parte 2 ainda não aplicado
-              </div>
-              <div style={{ fontSize:11, color:T.textMuted, marginTop:2, lineHeight:1.4 }}>
-                Exibindo dados de demonstração. Quando o SQL de
-                {' '}<code style={{ background:T.cardAlt, padding:'1px 5px', borderRadius:4, fontSize:10.5 }}>sql/01-lancamento-financeiro.sql</code>
-                {' '}for aplicado no Supabase, esta tela passa a ler/escrever dados reais.
+            <div style={{
+              width:32, height:32, borderRadius:8, background:azulBg,
+              display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+            }}>
+              <i className="ti ti-cash-banknote" style={{ fontSize:16, color:azul }} aria-hidden="true" />
+            </div>
+            <div>
+              <h1 style={{ fontSize:17, fontWeight:700, color:T.textPrimary, margin:0, letterSpacing:'-0.025em', lineHeight:1.2 }}>
+                Financeiro
+              </h1>
+              <div style={{ display:'flex', gap:10, marginTop:3, alignItems:'center', flexWrap:'wrap' }}>
+                <StatBadge v={fmtBRL(saldoCaixa)} label="saldo" color={corHero(dark)} />
+                <StatBadge v={fmtBRL(totalReceber)} label="a receber" color={azul} />
+                <StatBadge v={fmtBRL(totalPagar)} label="a pagar" color={amarelo} />
+                {vencidos.length > 0 && <StatBadge v={vencidos.length} label="vencidas" color={vermelho} dot />}
               </div>
             </div>
           </div>
-        </Card>
-      )}
 
-      <Card T={T} dark={dark} padding="6px 8px">
-        <TabsComContador T={T} dark={dark} abas={abasComContador} value={aba} onChange={setAba} />
-      </Card>
+          <button
+            onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}
+            style={{
+              padding:'7px 16px', borderRadius:4,
+              background:azul, color:'#fff', border:'none', cursor:'pointer',
+              fontSize:13, fontWeight:600, fontFamily:'inherit',
+              display:'inline-flex', alignItems:'center', gap:6, flexShrink:0,
+              boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.filter='brightness(1.1)'}
+            onMouseLeave={e => e.currentTarget.style.filter='none'}>
+            <i className="ti ti-plus" style={{ fontSize:14 }} aria-hidden="true" />
+            Novo lançamento
+          </button>
+        </div>
 
-      {aba === 'receber' && (
-        <ListaLancamentos T={T} dark={dark}
-          itens={receber} tipo="receber"
-          categorias={CATEGORIAS_RECEITA} contas={CONTAS}
-          onAbrir={(item) => setSelecionado({ tipo:'receber', item })}
-          onBaixarUm={baixarReceber}
-          onBaixarLote={(ids) => baixarLote(ids, 'receber')}
-          onExcluir={(item) => excluirLancamento(item, 'receber')}
-          notify={notify}
-        />
-      )}
+        {/* Linha 2 — tabs underline */}
+        <div style={{ display:'flex', gap:0 }}>
+          {abasComContador.map(a => {
+            const ativo = a.id === aba
+            return (
+              <button key={a.id} onClick={() => setAba(a.id)}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:6,
+                  padding:'9px 14px',
+                  background:'transparent', border:'none', cursor:'pointer',
+                  fontSize:13, fontWeight: ativo ? 700 : 500,
+                  color: ativo ? azul : T.textMuted,
+                  borderBottom:`2.5px solid ${ativo ? azul : 'transparent'}`,
+                  marginBottom:-1,
+                  fontFamily:'inherit',
+                  transition:'color .12s, border-color .12s',
+                }}>
+                <i className={`ti ${a.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
+                {a.label}
+                {a.count != null && a.count > 0 && (
+                  <span style={{
+                    background: ativo ? azul : T.cardAlt,
+                    color: ativo ? '#fff' : T.textSecondary,
+                    fontSize:10.5, fontWeight:700,
+                    padding:'1px 6px', borderRadius:10,
+                    fontVariantNumeric:'tabular-nums',
+                  }}>{a.count}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-      {aba === 'pagar' && (
-        <ListaLancamentos T={T} dark={dark}
-          itens={pagar} tipo="pagar"
-          categorias={CATEGORIAS_DESPESA} contas={CONTAS}
-          onAbrir={(item) => setSelecionado({ tipo:'pagar', item })}
-          onBaixarUm={baixarPagar}
-          onBaixarLote={(ids) => baixarLote(ids, 'pagar')}
-          onExcluir={(item) => excluirLancamento(item, 'pagar')}
-          notify={notify}
-        />
-      )}
+      {/* ══════════════════════════════════════════════════
+          CONTENT — scrollable
+      ══════════════════════════════════════════════════ */}
+      <div style={{ flex:1, minHeight:0, overflowY:'auto' }}>
+        <div style={{ padding:'16px 22px', display:'flex', flexDirection:'column', gap:12 }}>
 
-      {aba === 'caixa' && (
-        <ListaCaixa T={T} dark={dark}
-          itens={caixa} contas={CONTAS}
-          onAbrir={(item) => setSelecionado({ tipo:'caixa', item })}
-        />
-      )}
+          {/* Banner sutil quando schema parte 2 ainda não foi aplicado. */}
+          {tabelaAusente && (
+            <Card T={T} dark={dark} accent={amarelo}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <i className="ti ti-database-off" style={{ fontSize:18, color:amarelo }} aria-hidden="true" />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:12.5, fontWeight:700, color:corHero(dark) }}>
+                    Schema parte 2 ainda não aplicado
+                  </div>
+                  <div style={{ fontSize:11, color:T.textMuted, marginTop:2, lineHeight:1.4 }}>
+                    Exibindo dados de demonstração. Quando o SQL de
+                    {' '}<code style={{ background:T.cardAlt, padding:'1px 5px', borderRadius:4, fontSize:10.5 }}>sql/01-lancamento-financeiro.sql</code>
+                    {' '}for aplicado no Supabase, esta tela passa a ler/escrever dados reais.
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
+          {aba === 'receber' && (
+            <ListaLancamentos T={T} dark={dark}
+              itens={receber} tipo="receber"
+              categorias={CATEGORIAS_RECEITA} contas={CONTAS}
+              onAbrir={(item) => setSelecionado({ tipo:'receber', item })}
+              onBaixarUm={baixarReceber}
+              onBaixarLote={(ids) => baixarLote(ids, 'receber')}
+              onExcluir={(item) => excluirLancamento(item, 'receber')}
+              notify={notify}
+            />
+          )}
+
+          {aba === 'pagar' && (
+            <ListaLancamentos T={T} dark={dark}
+              itens={pagar} tipo="pagar"
+              categorias={CATEGORIAS_DESPESA} contas={CONTAS}
+              onAbrir={(item) => setSelecionado({ tipo:'pagar', item })}
+              onBaixarUm={baixarPagar}
+              onBaixarLote={(ids) => baixarLote(ids, 'pagar')}
+              onExcluir={(item) => excluirLancamento(item, 'pagar')}
+              notify={notify}
+            />
+          )}
+
+          {aba === 'caixa' && (
+            <ListaCaixa T={T} dark={dark}
+              itens={caixa} contas={CONTAS}
+              onAbrir={(item) => setSelecionado({ tipo:'caixa', item })}
+            />
+          )}
+
+        </div>
+      </div>
+
+      {/* Modais */}
       {selecionado && (
         <LancamentoDetalheModal T={T} dark={dark}
           lancamento={selecionado.item} tipo={selecionado.tipo}
@@ -518,7 +597,7 @@ export default function Financeiro({ T, dark }) {
             const res = await atualizarLanc(id, patch)
             if (!res.error) {
               await refetch()
-              setSelecionado(null) // fecha pra ver lista atualizada
+              setSelecionado(null)
             }
             return res
           }}
