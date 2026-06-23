@@ -7,7 +7,7 @@
 // Claude API + (no caso do DRE) do schema parte 2 (`lancamento_financeiro`).
 // Visível só pro dono — rota `/relatorios` envolvida em <AdminOnly> no App.jsx.
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
@@ -19,7 +19,6 @@ import {
 import RelatorioPonto from './relatorios/RelatorioPonto'
 import RelatorioFinanceiroMensal from './relatorios/RelatorioFinanceiroMensal'
 import {
-  computeRange,
   useRelatorioGeral,
   useRelatorioOperacional,
   useRelatorioEstoque,
@@ -42,13 +41,6 @@ const RELATORIOS = [
   { id:'ponto',         label:'Relógio de Ponto', icon:'ti-clock',            desc:'Horas trabalhadas, faltas, banco de horas por funcionário', cor:'blue' },
 ]
 
-const PERIODOS = [
-  { id:'mes',       label:'Mês' },
-  { id:'trimestre', label:'Trimestre' },
-  { id:'semestre',  label:'Semestre' },
-  { id:'ano',       label:'Ano' },
-]
-
 // Flag de deploy da edge function `relatorio-ia`.
 // Enquanto `false`: o botão "Gerar análise" fica oculto e InsightIA mostra "Em breve".
 // Flipar pra `true` depois de:
@@ -58,18 +50,52 @@ const PERIODOS = [
 // off de propósito (Toni reportou esse freeze em prod).
 const IA_DEPLOYED = false
 
-const MESES_PT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+const MESES_PT   = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
-function fmtDataBR(iso) {
-  if (!iso) return ''
-  const [y, m, d] = iso.split('-')
-  return `${d}/${m}/${y}`
+function labelPeriodo(p) {
+  if (p.id === 'sel_period') {
+    const f = s => s ? s.split('-').reverse().join('/') : '...'
+    return `${f(p.de)} → ${f(p.ate)}`
+  }
+  if (p.id === 'sel_mes' && p.ano != null) return `${MESES_NOME[p.mes]} ${p.ano}`
+  if (p.id === 'mes_ant') return 'Mês passado'
+  return 'Mês atual'
 }
 
-function fmtMesBR(yyyymm) {
-  if (!yyyymm) return ''
-  const [y, m] = yyyymm.split('-')
-  return `${MESES_PT[Number(m) - 1] || ''}/${y}`
+function computeRangeFromPeriodo(p) {
+  function isoStart(d) { const x = new Date(d); x.setHours(0,0,0,0); return x.toISOString() }
+  function isoEnd(d)   { const x = new Date(d); x.setHours(23,59,59,999); return x.toISOString() }
+  const hoje = new Date()
+  if (p.id === 'mes') {
+    return { iniIso: isoStart(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), fimIso: isoEnd(hoje) }
+  }
+  if (p.id === 'mes_ant') {
+    return {
+      iniIso: isoStart(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)),
+      fimIso: isoEnd(new Date(hoje.getFullYear(), hoje.getMonth(), 0)),
+    }
+  }
+  if (p.id === 'sel_mes' && p.ano != null) {
+    return {
+      iniIso: isoStart(new Date(p.ano, p.mes, 1)),
+      fimIso: isoEnd(new Date(p.ano, p.mes + 1, 0)),
+    }
+  }
+  if (p.id === 'sel_period') {
+    const ini = p.de  ? new Date(p.de  + 'T00:00:00') : new Date(2000, 0, 1)
+    const fim = p.ate ? new Date(p.ate + 'T00:00:00') : hoje
+    return { iniIso: isoStart(ini), fimIso: isoEnd(fim) }
+  }
+  return { iniIso: isoStart(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), fimIso: isoEnd(hoje) }
+}
+
+function inputDate(T) {
+  return {
+    padding: '6px 8px', fontSize: 12, borderRadius: 6,
+    border: `1px solid ${T.border}`, background: T.card, color: T.textPrimary,
+    fontFamily: 'inherit', flex: 1, outline: 'none',
+  }
 }
 
 // ─── StatBadge local ─────────────────────────────────────────────────────────
@@ -82,43 +108,23 @@ function StatBadge({ v, label, color }) {
   )
 }
 
-function HdrDivider({ T, dark }) {
-  return <div style={{ width: 1, height: 16, flexShrink: 0, background: dark ? 'rgba(255,255,255,0.12)' : T.border, alignSelf: 'center', margin: '0 4px' }} />
-}
-
-function inputDateStyle(T, dark, active, azul) {
-  return {
-    height: 28, padding: '0 8px', fontSize: 12, borderRadius: 4,
-    border: `1px solid ${active ? azul + '88' : T.border}`,
-    background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-    color: T.textPrimary, fontFamily: 'inherit', outline: 'none',
-    colorScheme: dark ? 'dark' : 'light',
-  }
-}
-
 // === Página ===
 export default function Relatorios({ T, dark }) {
   const notify = useToast()
   const [relAtivo, setRelAtivo] = useState(null) // null = hub
-  const [periodo, setPeriodo] = useState('mes')
-  const [mesEsp, setMesEsp]   = useState('')
-  const [dataIni, setDataIni] = useState('')
-  const [dataFim, setDataFim] = useState('')
+  const [periodo, setPeriodo] = useState({ id: 'mes' })
+  const [periodoAberto, setPeriodoAberto] = useState(false)
+  const periodoRef = useRef(null)
 
-  const temCustom = !!(mesEsp || dataIni || dataFim)
+  useEffect(() => {
+    function handler(e) {
+      if (periodoRef.current && !periodoRef.current.contains(e.target)) setPeriodoAberto(false)
+    }
+    if (periodoAberto) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [periodoAberto])
 
-  const { iniIso, fimIso } = useMemo(
-    () => computeRange(periodo, mesEsp, dataIni, dataFim),
-    [periodo, mesEsp, dataIni, dataFim],
-  )
-
-  function escolherPreset(p) {
-    setPeriodo(p); setMesEsp(''); setDataIni(''); setDataFim('')
-  }
-  function mudarMesEsp(v)  { setMesEsp(v); setDataIni(''); setDataFim('') }
-  function mudarDataIni(v) { setDataIni(v); setMesEsp('') }
-  function mudarDataFim(v) { setDataFim(v); setMesEsp('') }
-  function limparCustom()  { setMesEsp(''); setDataIni(''); setDataFim('') }
+  const { iniIso, fimIso } = useMemo(() => computeRangeFromPeriodo(periodo), [periodo])
 
   function placeholder(msg) { notify('info', msg || 'Em breve') }
 
@@ -216,70 +222,29 @@ export default function Relatorios({ T, dark }) {
           )}
         </div>
 
-        {/* Linha 2 — filtro de período (só quando relatório aberto) */}
+        {/* Linha 2 — seletor de período (só quando relatório aberto) */}
         {relAtivo && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 0,
-            flexWrap: 'wrap', rowGap: 6,
-          }}>
-            {/* Tabs de período underline */}
-            {PERIODOS.map(p => {
-              const ativo = !temCustom && periodo === p.id
-              return (
-                <button key={p.id} onClick={() => escolherPreset(p.id)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    padding: '8px 14px',
-                    background: 'transparent', border: 'none', cursor: 'pointer',
-                    fontSize: 13, fontWeight: ativo ? 700 : 500,
-                    color: ativo ? azul : T.textMuted,
-                    borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
-                    marginBottom: -1, fontFamily: 'inherit',
-                    transition: 'color .12s, border-color .12s',
-                  }}>
-                  {p.label}
-                </button>
-              )
-            })}
-
-            <HdrDivider T={T} dark={dark} />
-
-            {/* Mês específico */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingBottom: 8 }}>
-              <span style={{ fontSize: 11.5, color: T.textMuted }}>Mês</span>
-              <input type="month" value={mesEsp}
-                onChange={e => mudarMesEsp(e.target.value)}
-                style={inputDateStyle(T, dark, !!mesEsp, azul)}
-              />
-            </div>
-
-            <span style={{ fontSize: 11, color: T.textDim, padding: '0 6px 8px', alignSelf: 'flex-end' }}>ou</span>
-
-            {/* Intervalo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingBottom: 8 }}>
-              <input type="date" value={dataIni} max={dataFim || undefined}
-                onChange={e => mudarDataIni(e.target.value)}
-                style={inputDateStyle(T, dark, !!dataIni, azul)}
-              />
-              <i className="ti ti-arrow-right" style={{ fontSize: 12, color: T.textDim }} aria-hidden="true" />
-              <input type="date" value={dataFim} min={dataIni || undefined}
-                onChange={e => mudarDataFim(e.target.value)}
-                style={inputDateStyle(T, dark, !!dataFim, azul)}
-              />
-            </div>
-
-            {temCustom && (
-              <button onClick={limparCustom}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
+            <div ref={periodoRef} style={{ position: 'relative' }}>
+              <button onClick={() => setPeriodoAberto(o => !o)}
                 style={{
-                  height: 28, padding: '0 8px', marginLeft: 4, marginBottom: 8,
-                  borderRadius: 4, border: 'none', background: 'transparent',
-                  color: T.textMuted, fontSize: 12, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '7px 12px', borderRadius: 8,
+                  border: `1px solid ${T.border}`,
+                  background: T.cardAlt, color: T.textPrimary,
+                  fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                  minWidth: 170,
                 }}>
-                <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
-                Limpar
+                <i className="ti ti-calendar" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+                <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
+                <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
+                  style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
               </button>
-            )}
+              {periodoAberto && (
+                <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo}
+                  onClose={() => setPeriodoAberto(false)} />
+              )}
+            </div>
           </div>
         )}
 
@@ -308,6 +273,108 @@ export default function Relatorios({ T, dark }) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── DropdownPeriodo ─────────────────────────────────────────────────────────
+function DropdownPeriodo({ T, dark, periodo, setPeriodo, onClose }) {
+  const azul = corEtapa('blue', dark)
+  const cor = (d, c) => dark ? d : c
+  const hoje = new Date()
+  const [selMesAno, setSelMesAno] = useState(
+    periodo.id === 'sel_mes' && periodo.ano != null
+      ? { ano: periodo.ano, mes: periodo.mes }
+      : { ano: hoje.getFullYear(), mes: hoje.getMonth() }
+  )
+
+  const itemStyle = (ativo) => ({
+    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+    padding: '8px 10px', borderRadius: 6, border: 'none',
+    background: ativo ? cor('#0d2035', '#e6f1fb') : 'transparent',
+    color: ativo ? azul : T.textSecondary,
+    fontSize: 12.5, fontWeight: ativo ? 700 : 500,
+    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+  })
+
+  return (
+    <div style={{
+      position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 50,
+      minWidth: 270,
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+      padding: 8,
+    }}>
+      <button style={itemStyle(periodo.id === 'mes')}
+        onClick={() => { setPeriodo({ id: 'mes' }); onClose() }}>
+        {periodo.id === 'mes' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Mês atual
+      </button>
+
+      <button style={itemStyle(periodo.id === 'mes_ant')}
+        onClick={() => { setPeriodo({ id: 'mes_ant' }); onClose() }}>
+        {periodo.id === 'mes_ant' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Mês passado
+      </button>
+
+      <button style={itemStyle(periodo.id === 'sel_mes')}
+        onClick={() => setPeriodo(p => p.id === 'sel_mes' ? p : { id: 'sel_mes', ano: selMesAno.ano, mes: selMesAno.mes })}>
+        {periodo.id === 'sel_mes' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Selecionar mês
+        <i className={`ti ti-chevron-${periodo.id === 'sel_mes' ? 'up' : 'down'}`} style={{ fontSize: 12, marginLeft: 'auto', color: T.textMuted }} aria-hidden="true" />
+      </button>
+
+      {periodo.id === 'sel_mes' && (
+        <div style={{ padding: '6px 10px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 0 ? { ano: selMesAno.ano - 1, mes: 11 } : { ano: selMesAno.ano, mes: selMesAno.mes - 1 }
+            setSelMesAno(novo); setPeriodo({ id: 'sel_mes', ...novo })
+          }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, padding: 2 }}>
+            <i className="ti ti-chevron-left" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          <span style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 600, color: T.textPrimary }}>
+            {MESES_NOME[selMesAno.mes]} {selMesAno.ano}
+          </span>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 11 ? { ano: selMesAno.ano + 1, mes: 0 } : { ano: selMesAno.ano, mes: selMesAno.mes + 1 }
+            setSelMesAno(novo); setPeriodo({ id: 'sel_mes', ...novo })
+          }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, padding: 2 }}>
+            <i className="ti ti-chevron-right" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          <button onClick={onClose}
+            style={{ background: azul, border: 'none', cursor: 'pointer', color: '#fff', padding: '3px 10px', borderRadius: 5, fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+            OK
+          </button>
+        </div>
+      )}
+
+      <button style={itemStyle(periodo.id === 'sel_period')}
+        onClick={() => setPeriodo(p => p.id === 'sel_period' ? p : { id: 'sel_period', de: '', ate: '' })}>
+        {periodo.id === 'sel_period' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Selecionar período
+        <i className={`ti ti-chevron-${periodo.id === 'sel_period' ? 'up' : 'down'}`} style={{ fontSize: 12, marginLeft: 'auto', color: T.textMuted }} aria-hidden="true" />
+      </button>
+
+      {periodo.id === 'sel_period' && (
+        <div style={{ padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: T.textMuted, minWidth: 24 }}>De</span>
+            <input type="date" value={periodo.de || ''} onChange={e => setPeriodo({ id: 'sel_period', de: e.target.value, ate: periodo.ate })}
+              style={inputDate(T)} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: T.textMuted, minWidth: 24 }}>Até</span>
+            <input type="date" value={periodo.ate || ''} onChange={e => setPeriodo({ id: 'sel_period', de: periodo.de, ate: e.target.value })}
+              style={inputDate(T)} />
+          </div>
+          {periodo.de && periodo.ate && (
+            <button onClick={onClose}
+              style={{ alignSelf: 'flex-end', background: azul, border: 'none', cursor: 'pointer', color: '#fff', padding: '3px 12px', borderRadius: 5, fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+              OK
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
