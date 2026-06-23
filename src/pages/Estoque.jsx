@@ -12,7 +12,7 @@ import { useIsMobile } from '../theme'
 import {
   Card, Button, Badge,
   EmptyState, SectionHeader,
-  useToast,
+  useToast, ModuleHeader,
 } from '../components/ui'
 import PecaDetalheModal from '../components/estoque/PecaDetalheModal'
 import MaquinaDetalheModal from '../components/estoque/MaquinaDetalheModal'
@@ -300,232 +300,105 @@ export default function Estoque({ T, dark, user }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      {/* ═══════════════════════════════════════════════════════
-          PAGE HEADER — 3 linhas: icon+stats | tabs+search | chips
-      ═══════════════════════════════════════════════════════ */}
-      <div style={{
-        padding: '18px 22px 0',
-        borderBottom: `1px solid ${T.border}`,
-        background: T.bg, flexShrink: 0,
-      }}>
-
-        {/* Linha 1: icon-box + h1 + stats | action buttons */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', marginBottom: 6,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, background: azulBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <i className={`ti ${onPecas ? 'ti-package' : 'ti-device-washing-machine'}`}
-                style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 style={{
-                fontSize: 17, fontWeight: 700, color: T.textPrimary,
-                margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
-              }}>Estoque</h1>
-              <div style={{ display: 'flex', gap: 10, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                {onPecas ? (
-                  <>
-                    <StatBadge v={totalGlobal} label="referências" color={T.textSecondary} />
-                    <StatBadge v={totalPecasQtd} label="itens" color={azul} />
-                    {pecasBaixas > 0 && <StatBadge v={pecasBaixas} label="baixo/esgotado" color={amarelo} dot />}
-                    {mostraValores && <StatBadge v={fmtBRL(valorPecas)} label="em itens" color={T.textSecondary} />}
-                  </>
-                ) : (
-                  <>
-                    <StatBadge v={disponiveis} label="disponíveis" color={azul} />
-                    {emRevisao > 0 && <StatBadge v={emRevisao} label="em revisão" color={amarelo} dot />}
-                    {mostraValores && <StatBadge v={fmtBRL(valorMaquinas)} label="capital parado" color={T.textSecondary} />}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Botões de ação */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-            {onPecas && (
-              <HdrIconBtn T={T} dark={dark}
-                icon="ti-file-text" title="Pedido de Orçamento"
-                onClick={abrirPedidoOrcamento} />
-            )}
-            <HdrIconBtn T={T} dark={dark}
-              icon="ti-file-upload" title="Entrada por NF"
-              onClick={() => placeholder('Entrada por nota fiscal (IA) — próximos chats')} />
-            <button
-              onClick={() => onPecas ? setNovaPecaAberta(true) : setNovaMaquinaAberta(true)}
+      <ModuleHeader
+        T={T} dark={dark}
+        icon={onPecas ? 'ti-package' : 'ti-device-washing-machine'}
+        title="Estoque"
+        stats={onPecas ? [
+          { v: totalGlobal, label: 'referências', color: T.textSecondary },
+          { v: totalPecasQtd, label: 'itens', color: azul },
+          ...(pecasBaixas > 0 ? [{ v: pecasBaixas, label: 'baixo/esgotado', color: amarelo, dot: true }] : []),
+          ...(mostraValores ? [{ v: fmtBRL(valorPecas), label: 'em itens', color: T.textSecondary }] : []),
+        ] : [
+          { v: disponiveis, label: 'disponíveis', color: azul },
+          ...(emRevisao > 0 ? [{ v: emRevisao, label: 'em revisão', color: amarelo, dot: true }] : []),
+          ...(mostraValores ? [{ v: fmtBRL(valorMaquinas), label: 'capital parado', color: T.textSecondary }] : []),
+        ]}
+        tabs={ABAS.map(a => ({ id: a.id, label: a.label, icon: a.icon }))}
+        activeTab={aba}
+        onTabChange={id => { setAba(id); setBusca(''); setBuscaDebounced(''); setCategoriaSel('todas'); setCategoriaAberta(false) }}
+        secondaryActions={[
+          ...(onPecas ? [{ label: 'Orçamento', icon: 'ti-file-text', onClick: abrirPedidoOrcamento }] : []),
+          { label: 'Entrada NF', icon: 'ti-file-upload', onClick: () => placeholder('Entrada por nota fiscal (IA) — próximos chats') },
+        ]}
+        primaryAction={{ label: onPecas ? 'Novo item' : 'Nova máquina', icon: 'ti-plus', onClick: () => onPecas ? setNovaPecaAberta(true) : setNovaMaquinaAberta(true) }}
+        filterSlot={<>
+          <div style={{ position: 'relative', width: 240 }}>
+            <i className="ti ti-search" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: T.textDim, pointerEvents: 'none' }} aria-hidden="true" />
+            <input type="search" value={busca} onChange={e => setBusca(e.target.value)}
+              placeholder={onPecas ? 'Nome, SKU ou referência…' : 'Modelo, marca ou capacidade…'}
               style={{
-                padding: '7px 16px', borderRadius: 4,
-                background: azul, color: '#fff',
-                border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontFamily: 'inherit', flexShrink: 0,
-                boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
-              }}
-              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
-              onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
-              <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-              {onPecas ? 'Novo item' : 'Nova máquina'}
-            </button>
-          </div>
-        </div>
-
-        {/* Linha 2: aba tabs (Peças | Máquinas) + divider + search + botão Categoria */}
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, paddingBottom: 1 }}>
-          {/* Tabs underline */}
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexShrink: 0 }}>
-            {ABAS.map(a => {
-              const ativo = a.id === aba
-              return (
-                <button key={a.id}
-                  onClick={() => { setAba(a.id); setBusca(''); setBuscaDebounced(''); setCategoriaSel('todas'); setCategoriaAberta(false) }}
-                  style={{
-                    padding: '8px 14px 10px',
-                    border: 'none',
-                    borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
-                    background: 'transparent',
-                    color: ativo ? azul : T.textMuted,
-                    fontSize: 13, fontWeight: ativo ? 600 : 500,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    whiteSpace: 'nowrap',
-                    transition: 'color .12s, border-color .12s',
-                    marginBottom: -1,
-                  }}
-                  onMouseEnter={e => { if (!ativo) e.currentTarget.style.color = T.textPrimary }}
-                  onMouseLeave={e => { if (!ativo) e.currentTarget.style.color = T.textMuted }}>
-                  <i className={`ti ${a.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
-                  {a.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 9 }}>
-            <HdrDivider T={T} dark={dark} />
-          </div>
-
-          {/* Search input */}
-          <div style={{ position: 'relative', flex: '0 0 260px', paddingBottom: 9 }}>
-            <i className="ti ti-search" style={{
-              position: 'absolute', left: 9, top: '50%',
-              transform: 'translateY(-55%)',
-              fontSize: 13, color: T.textDim, pointerEvents: 'none',
-            }} aria-hidden="true" />
-            <input
-              type="search"
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              placeholder={onPecas ? 'Buscar item por nome, SKU ou referência…' : 'Modelo, marca ou capacidade…'}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                paddingLeft: 30, paddingRight: busca ? 28 : 10,
-                paddingTop: 6, paddingBottom: 6,
+                width: '100%', boxSizing: 'border-box', height: 22,
+                paddingLeft: 26, paddingRight: busca ? 26 : 8,
                 borderRadius: 4, border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-                color: T.textPrimary, fontSize: 13,
-                outline: 'none', fontFamily: 'inherit',
-                transition: 'border-color .12s',
+                background: dark ? 'rgba(255,255,255,0.04)' : T.card,
+                color: T.textPrimary, fontSize: 11, outline: 'none', fontFamily: 'inherit',
               }}
               onFocus={e => e.target.style.borderColor = azul}
               onBlur={e => e.target.style.borderColor = T.border}
             />
             {onPecas && busca !== buscaDebounced && (
-              <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-55%)', fontSize: 11, color: T.textMuted, pointerEvents: 'none' }}>
+              <span style={{ position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: T.textMuted, pointerEvents: 'none' }}>
                 <i className="ti ti-loader-2 ti-spin" aria-hidden="true" />
               </span>
             )}
             {busca && !(onPecas && busca !== buscaDebounced) && (
-              <button onClick={() => { setBusca(''); setBuscaDebounced('') }}
-                aria-label="Limpar busca"
-                style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-55%)', border: 'none', background: 'none', cursor: 'pointer', color: T.textDim, padding: 2, display: 'flex' }}>
-                <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
+              <button onClick={() => { setBusca(''); setBuscaDebounced('') }} aria-label="Limpar busca"
+                style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: T.textDim, padding: 2, display: 'flex' }}>
+                <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
               </button>
             )}
           </div>
-
-          {/* Botão Categoria — só na aba Peças */}
           {onPecas && (
-            <div ref={categoriaBtnRef} style={{ position: 'relative', paddingBottom: 9, display: 'flex', alignItems: 'center' }}>
+            <div ref={categoriaBtnRef} style={{ position: 'relative' }}>
               {(() => {
                 const catInfo = categoriaSel !== 'todas' ? CATEGORIAS_PECA.find(c => c.id === categoriaSel) : null
                 const catCor  = catInfo ? corDaCategoria(catInfo.id) : azul
                 const ativo   = categoriaSel !== 'todas'
                 return (
-                  <button
-                    onClick={() => setCategoriaAberta(v => !v)}
+                  <button onClick={() => setCategoriaAberta(v => !v)}
                     style={{
-                      height: 30, padding: '0 10px',
-                      borderRadius: 4,
+                      height: 22, padding: '0 8px', borderRadius: 4,
                       border: `1px solid ${ativo ? catCor + '99' : T.border}`,
-                      background: ativo
-                        ? (dark ? catCor + '22' : catCor + '15')
-                        : (dark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                      background: ativo ? (dark ? catCor + '22' : catCor + '15') : (dark ? 'rgba(255,255,255,0.04)' : T.card),
                       color: ativo ? catCor : T.textSecondary,
-                      fontSize: 12.5, fontWeight: ativo ? 600 : 500,
+                      fontSize: 11, fontWeight: ativo ? 600 : 500,
                       cursor: 'pointer', fontFamily: 'inherit',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      whiteSpace: 'nowrap', flexShrink: 0,
-                      transition: 'all .12s',
+                      display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
                     }}>
-                    <i className="ti ti-category" style={{ fontSize: 13 }} aria-hidden="true" />
+                    <i className="ti ti-category" style={{ fontSize: 12 }} aria-hidden="true" />
                     {catInfo ? catInfo.label : 'Categoria'}
                     {ativo && (
-                      <button
-                        onClick={e => { e.stopPropagation(); setCategoriaSel('todas'); setCategoriaAberta(false) }}
+                      <button onClick={e => { e.stopPropagation(); setCategoriaSel('todas'); setCategoriaAberta(false) }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: catCor, display: 'flex', marginLeft: -2 }}>
                         <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
                       </button>
                     )}
-                    {!ativo && <i className={`ti ti-chevron-${categoriaAberta ? 'up' : 'down'}`} style={{ fontSize: 11, marginLeft: -2 }} aria-hidden="true" />}
+                    {!ativo && <i className={`ti ti-chevron-${categoriaAberta ? 'up' : 'down'}`} style={{ fontSize: 10, marginLeft: -2 }} aria-hidden="true" />}
                   </button>
                 )
               })()}
-
-              {/* Dropdown */}
               {categoriaAberta && (
                 <div style={{
-                  position: 'absolute', top: 'calc(100% - 0px)', left: 0,
-                  zIndex: 300, minWidth: 240, maxWidth: 340,
-                  background: T.card,
-                  border: `1px solid ${T.border}`,
-                  borderRadius: 4,
-                  boxShadow: dark
-                    ? '0 4px 16px rgba(0,0,0,0.5)'
-                    : '0 4px 16px rgba(9,30,66,0.14)',
-                  padding: 10,
-                  display: 'flex', flexWrap: 'wrap', gap: 6,
+                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 300, minWidth: 240, maxWidth: 340,
+                  background: T.card, border: `1px solid ${T.border}`, borderRadius: 4,
+                  boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 4px 16px rgba(9,30,66,0.14)',
+                  padding: 10, display: 'flex', flexWrap: 'wrap', gap: 6,
                 }}>
-                  <ChipCategoria T={T} dark={dark}
-                    label="Todas" count={totalGlobal}
-                    ativo={categoriaSel === 'todas'}
-                    cor={azul}
-                    onClick={() => { setCategoriaSel('todas'); setCategoriaAberta(false) }}
-                  />
+                  <ChipCategoria T={T} dark={dark} label="Todas" count={totalGlobal} ativo={categoriaSel === 'todas'} cor={azul} onClick={() => { setCategoriaSel('todas'); setCategoriaAberta(false) }} />
                   {CATEGORIAS_PECA.map(cat => {
                     const count = contagemCat[cat.id] || 0
                     if (count === 0) return null
                     return (
-                      <ChipCategoria key={cat.id} T={T} dark={dark}
-                        label={cat.label} count={count}
-                        ativo={categoriaSel === cat.id}
-                        cor={corDaCategoria(cat.id)}
-                        onClick={() => { setCategoriaSel(cat.id); setCategoriaAberta(false) }}
-                      />
+                      <ChipCategoria key={cat.id} T={T} dark={dark} label={cat.label} count={count} ativo={categoriaSel === cat.id} cor={corDaCategoria(cat.id)} onClick={() => { setCategoriaSel(cat.id); setCategoriaAberta(false) }} />
                     )
                   })}
                 </div>
               )}
             </div>
           )}
-        </div>
-      </div>
+        </>}
+      />
 
       {/* ═══════════════════════════════════════════════════════
           CONTENT — lista scrollável

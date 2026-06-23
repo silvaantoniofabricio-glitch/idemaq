@@ -6,7 +6,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { corEtapa, corHero } from '../utils/colors'
 import { fmtBRL, semAcento } from '../utils/fmt'
 import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
-import { Badge, useToast } from '../components/ui'
+import { Badge, useToast, ModuleHeader } from '../components/ui'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import NovaOSAntigaModal from '../components/vendas/NovaOSAntigaModal'
@@ -362,168 +362,79 @@ export default function Vendas({ T, dark, user }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      {/* ══════════════════════════════════════════════════
-          PAGE HEADER
-      ══════════════════════════════════════════════════ */}
-      <div style={{
-        padding: '18px 22px 0',
-        borderBottom: `1px solid ${T.border}`,
-        background: T.bg, flexShrink: 0,
-      }}>
-
-        {/* Linha 1: icon + h1 + KPIs | "Nova OS antiga" */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', marginBottom: 8,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, background: azulBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <i className="ti ti-chart-bar" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 17, fontWeight: 700, color: T.textPrimary, margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2 }}>
-                Vendas
-              </h1>
-              <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-                {loading ? (
-                  <span style={{ fontSize: 11.5, color: T.textDim }}>Carregando…</span>
-                ) : (
-                  <>
-                    <StatBadge v={fmtBRL(kpis.faturado)} label="faturado" color={verde} />
-                    <StatBadge v={kpis.total} label="OS" color={azul} />
-                    {kpis.ticket > 0 && <StatBadge v={fmtBRL(kpis.ticket)} label="ticket médio" color={T.textSecondary} />}
-                    {kpis.pendente > 0 && <StatBadge v={fmtBRL(kpis.pendente)} label="a receber" color={amarelo} dot />}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setNovaOSAntigaAberta(true)}
-            style={{
-              padding: '7px 16px', borderRadius: 4,
-              background: azul, color: '#fff', border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 600,
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontFamily: 'inherit', flexShrink: 0,
-              boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
-            }}
-            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
-            onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
-            <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-            Nova OS antiga
-          </button>
-        </div>
-
-        {/* Linha 2: filtros inline */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          gap: 6, paddingBottom: 10, flexWrap: 'wrap',
-        }}>
-
-          {/* Período */}
+      <ModuleHeader
+        T={T} dark={dark}
+        icon="ti-chart-bar"
+        title="Vendas"
+        stats={loading ? [] : [
+          { v: fmtBRL(kpis.faturado), label: 'faturado', color: verde, highlight: true },
+          { v: kpis.total, label: 'OS', color: azul },
+          ...(kpis.ticket > 0 ? [{ v: fmtBRL(kpis.ticket), label: 'ticket médio', color: T.textSecondary }] : []),
+          ...(kpis.pendente > 0 ? [{ v: fmtBRL(kpis.pendente), label: 'a receber', color: amarelo, dot: true }] : []),
+        ]}
+        primaryAction={{ label: '+ Nova OS', icon: undefined, onClick: () => setNovaOSAntigaAberta(true) }}
+        filterSlot={<>
           <div ref={periodoRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={() => setPeriodoAberto(o => !o)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '0 10px', height: 30, borderRadius: 4,
+                padding: '0 8px', height: 22, borderRadius: 4,
                 border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+                background: dark ? 'rgba(255,255,255,0.04)' : T.card,
                 color: T.textSecondary,
-                fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
               }}>
-              <i className="ti ti-calendar" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
+              <i className="ti ti-calendar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
               {labelPeriodo(periodo)}
-              <i className={`ti ti-chevron-${periodoAberto ? 'up' : 'down'}`}
-                style={{ fontSize: 11, opacity: 0.6 }} aria-hidden="true" />
+              <i className={`ti ti-chevron-${periodoAberto ? 'up' : 'down'}`} style={{ fontSize: 10, opacity: 0.6 }} aria-hidden="true" />
             </button>
-
             {periodoAberto && (
               <div style={{
-                position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200,
-                minWidth: 200,
-                background: T.card, border: `1px solid ${T.border}`,
-                borderRadius: 4,
-                boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 4px 16px rgba(9,30,66,0.14)',
-                padding: 6,
+                position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200, minWidth: 200,
+                background: T.card, border: `1px solid ${T.border}`, borderRadius: 4,
+                boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 4px 16px rgba(9,30,66,0.14)', padding: 6,
               }}>
                 {PERIODOS.map(p => {
                   const ativo = periodo.id === p.id
                   return (
-                    <button key={p.id}
-                      onClick={() => { setPeriodo({ id: p.id }); setPeriodoAberto(false) }}
+                    <button key={p.id} onClick={() => { setPeriodo({ id: p.id }); setPeriodoAberto(false) }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                         padding: '7px 10px', borderRadius: 3, border: 'none',
                         background: ativo ? (dark ? '#0d2035' : '#e6f1fb') : 'transparent',
                         color: ativo ? azul : T.textSecondary,
-                        fontSize: 12.5, fontWeight: ativo ? 700 : 500,
-                        cursor: 'pointer', fontFamily: 'inherit',
+                        fontSize: 12.5, fontWeight: ativo ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit',
                       }}>
-                      {ativo
-                        ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" />
-                        : <span style={{ width: 13 }} />}
+                      {ativo ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
                       {p.label}
                     </button>
                   )
                 })}
                 <div style={{ height: 1, background: T.border, margin: '4px' }} />
-                <div style={{ padding: '3px 8px', fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                  Personalizado
-                </div>
+                <div style={{ padding: '3px 8px', fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>Personalizado</div>
                 <div style={{ display: 'flex', gap: 5, padding: '4px 6px 6px' }}>
-                  <input type="date" value={periodo.de || ''}
-                    onChange={e => setPeriodo({ id: 'custom', de: e.target.value, ate: periodo.ate })}
-                    style={inputDateStyle(T, dark)} />
-                  <input type="date" value={periodo.ate || ''}
-                    onChange={e => setPeriodo({ id: 'custom', de: periodo.de, ate: e.target.value })}
-                    style={inputDateStyle(T, dark)} />
+                  <input type="date" value={periodo.de || ''} onChange={e => setPeriodo({ id: 'custom', de: e.target.value, ate: periodo.ate })} style={inputDateStyle(T, dark)} />
+                  <input type="date" value={periodo.ate || ''} onChange={e => setPeriodo({ id: 'custom', de: periodo.de, ate: e.target.value })} style={inputDateStyle(T, dark)} />
                 </div>
               </div>
             )}
           </div>
-
           <HdrDivider T={T} dark={dark} />
-
-          {/* Dropdowns de filtro */}
-          <FilterDropdown T={T} dark={dark} azul={azul}
-            label="Tipo" options={OPTS_TIPO}
-            selected={tiposSel} onChange={setTiposSel} />
-
-          <FilterDropdown T={T} dark={dark} azul={azul}
-            label="Status" options={OPTS_STATUS}
-            selected={statusSel} onChange={setStatusSel} />
-
-          <FilterDropdown T={T} dark={dark} azul={azul}
-            label="Pagto" options={OPTS_PAGTO}
-            selected={pagtoSel} onChange={setPagtoSel} />
-
+          <FilterDropdown T={T} dark={dark} azul={azul} label="Tipo" options={OPTS_TIPO} selected={tiposSel} onChange={setTiposSel} />
+          <FilterDropdown T={T} dark={dark} azul={azul} label="Status" options={OPTS_STATUS} selected={statusSel} onChange={setStatusSel} />
+          <FilterDropdown T={T} dark={dark} azul={azul} label="Pagto" options={OPTS_PAGTO} selected={pagtoSel} onChange={setPagtoSel} />
           <HdrDivider T={T} dark={dark} />
-
-          {/* Busca */}
-          <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 140 }}>
-            <i className="ti ti-search" style={{
-              position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 12, color: T.textDim, pointerEvents: 'none',
-            }} aria-hidden="true" />
-            <input
-              type="search"
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              placeholder="Cliente, nº OS, equipamento…"
+          <div style={{ position: 'relative', minWidth: 160 }}>
+            <i className="ti ti-search" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: T.textDim, pointerEvents: 'none' }} aria-hidden="true" />
+            <input type="search" value={busca} onChange={e => setBusca(e.target.value)}
+              placeholder="Cliente, nº OS…"
               style={{
-                width: '100%', boxSizing: 'border-box', height: 30,
-                paddingLeft: 27, paddingRight: busca ? 26 : 8,
+                width: '100%', boxSizing: 'border-box', height: 22,
+                paddingLeft: 26, paddingRight: busca ? 24 : 8,
                 borderRadius: 4, border: `1px solid ${busca ? azul + '88' : T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-                color: T.textPrimary, fontSize: 12.5,
-                outline: 'none', fontFamily: 'inherit',
-                transition: 'border-color .12s',
+                background: dark ? 'rgba(255,255,255,0.04)' : T.card,
+                color: T.textPrimary, fontSize: 11, outline: 'none', fontFamily: 'inherit',
               }}
               onFocus={e => e.target.style.borderColor = azul}
               onBlur={e => e.target.style.borderColor = busca ? azul + '88' : T.border}
@@ -535,26 +446,17 @@ export default function Vendas({ T, dark, user }) {
               </button>
             )}
           </div>
-
-          {/* Limpar todos os filtros */}
           {temFiltroAtivo && (
-            <button
-              onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setBusca('') }}
-              style={{
-                height: 30, padding: '0 10px', borderRadius: 4,
-                border: 'none', background: 'transparent',
-                color: T.textMuted, fontSize: 12, cursor: 'pointer',
-                fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4,
-                transition: 'color .12s',
-              }}
+            <button onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setBusca('') }}
+              style={{ height: 22, padding: '0 8px', borderRadius: 4, border: 'none', background: 'transparent', color: T.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               onMouseEnter={e => e.currentTarget.style.color = T.textPrimary}
               onMouseLeave={e => e.currentTarget.style.color = T.textMuted}>
-              <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
-              Limpar filtros
+              <i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" />
+              Limpar
             </button>
           )}
-        </div>
-      </div>
+        </>}
+      />
 
       {/* ══════════════════════════════════════════════════
           CONTENT — tabela

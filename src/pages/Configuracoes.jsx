@@ -81,19 +81,23 @@ export default function Configuracoes({ T, dark }) {
       display: 'flex', flexDirection: 'column', gap: 14,
       fontFamily: ATL_FONT,
     }}>
-      {/* Page header — escondido no mobile (titulo ja esta na topbar) */}
       {!isMobile && (
-        <div>
-          <h1 style={{
-            fontSize: 22, fontWeight: 700, color: T.textPrimary,
-            margin: 0, letterSpacing: '-0.01em',
-          }}>Configurações</h1>
-          <p style={{
-            fontSize: 13, color: T.textMuted, margin: '4px 0 0',
-            letterSpacing: '-0.005em',
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 6,
+            background: dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
-            Parâmetros da empresa usados pelos painéis e relatórios.
-          </p>
+            <i className="ti ti-settings" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+          </div>
+          <div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary, letterSpacing: '-0.01em' }}>
+              Configurações
+            </span>
+            <p style={{ fontSize: 12, color: T.textMuted, margin: '1px 0 0', letterSpacing: '-0.005em' }}>
+              Parâmetros da empresa usados pelos painéis e relatórios.
+            </p>
+          </div>
         </div>
       )}
 

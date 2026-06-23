@@ -7,7 +7,7 @@ import React, { useMemo, useState } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
-  Card, Badge, EmptyState,
+  Card, Badge, EmptyState, ModuleHeader,
 } from '../components/ui'
 import {
   DESPESAS_PF_POR_MES,
@@ -105,92 +105,46 @@ export default function ControleFinanceiroPF({ T, dark }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      {/* ══ PAGE HEADER ══════════════════════════════════════════════════════ */}
-      <div style={{
-        padding: '18px 22px 0',
-        borderBottom: `1px solid ${T.border}`,
-        background: T.bg, flexShrink: 0,
-      }}>
-
-        {/* Linha 1 */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', marginBottom: 10,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, background: azulBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <i className="ti ti-home-dollar" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 style={{
-                fontSize: 17, fontWeight: 700, color: T.textPrimary,
-                margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
-              }}>
-                Financeiro PF
-              </h1>
-              <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center' }}>
-                <StatBadge v={fmtBRL(analise.totalReal)} label="gasto real" color={amarelo} />
-                <StatBadge v={analise.totalItens} label="lançamentos" color={azul} />
-              </div>
-            </div>
-          </div>
-
-          {/* Mês + chips de pessoa */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-            {/* Mês — estático enquanto só tem 1 mês */}
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 8,
-              border: `1px solid ${T.border}`, background: T.cardAlt,
-              fontSize: 12.5, color: T.textMuted,
-            }}>
-              <i className="ti ti-calendar" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-              {mesLabel}
-            </span>
-
-            {/* Pessoa */}
-            {PESSOAS.map(p => {
-              const ativo = pessoaAtiva === p.id
-              return (
-                <button key={p.id} onClick={() => setPessoaAtiva(p.id)}
-                  style={{
-                    padding: '5px 12px', borderRadius: 20,
-                    border: `1px solid ${ativo ? azul : T.border}`,
-                    background: ativo ? azulBg : 'transparent',
-                    color: ativo ? azul : T.textMuted,
-                    fontSize: 12, fontWeight: ativo ? 600 : 400,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}>
-                  {p.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Linha 2 — tabs de seção (underline) */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          {SECOES.map(s => {
-            const ativo = verSecao === s.id
+      <ModuleHeader
+        T={T} dark={dark}
+        icon="ti-home-dollar"
+        title="Financeiro PF"
+        stats={[
+          { v: fmtBRL(analise.totalReal), label: 'gasto real', color: amarelo, highlight: true },
+          { v: analise.totalItens, label: 'lançamentos', color: azul },
+        ]}
+        tabs={SECOES.map(s => ({ id: s.id, label: s.label }))}
+        activeTab={verSecao}
+        onTabChange={setVerSecao}
+        filterSlot={<>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '0 8px', height: 22, borderRadius: 4,
+            border: `1px solid ${T.border}`,
+            background: dark ? 'rgba(255,255,255,0.04)' : T.card,
+            fontSize: 11, color: T.textMuted,
+          }}>
+            <i className="ti ti-calendar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
+            {mesLabel}
+          </span>
+          {PESSOAS.map(p => {
+            const ativo = pessoaAtiva === p.id
             return (
-              <button key={s.id} onClick={() => setVerSecao(s.id)}
+              <button key={p.id} onClick={() => setPessoaAtiva(p.id)}
                 style={{
-                  padding: '8px 16px', background: 'transparent', border: 'none',
-                  cursor: 'pointer', fontSize: 13, fontWeight: ativo ? 700 : 500,
+                  padding: '0 8px', height: 22, borderRadius: 4,
+                  border: `1px solid ${ativo ? azul : T.border}`,
+                  background: ativo ? azulBg : 'transparent',
                   color: ativo ? azul : T.textMuted,
-                  borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
-                  marginBottom: -1, fontFamily: 'inherit',
-                  transition: 'color .12s, border-color .12s',
+                  fontSize: 11, fontWeight: ativo ? 600 : 400,
+                  cursor: 'pointer', fontFamily: 'inherit',
                 }}>
-                {s.label}
+                {p.label}
               </button>
             )
           })}
-        </div>
-      </div>
+        </>}
+      />
 
       {/* ══ CONTENT ══════════════════════════════════════════════════════════ */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>

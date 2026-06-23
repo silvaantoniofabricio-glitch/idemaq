@@ -11,7 +11,7 @@ import { fmtBRL, fmtPrazoCurto, hojeISO } from '../utils/fmt'
 import {
   Card, SubCard, Button, Badge, Input,
   EmptyState, SectionHeader, ChipToggle,
-  useToast,
+  useToast, ModuleHeader,
 } from '../components/ui'
 import LancamentoDetalheModal from '../components/financeiro/LancamentoDetalheModal'
 import NovoLancamentoModal from '../components/financeiro/NovoLancamentoModal'
@@ -464,95 +464,22 @@ export default function Financeiro({ T, dark }) {
       minHeight:0, overflow:'hidden', background:T.bg,
     }}>
 
-      {/* ══════════════════════════════════════════════════
-          PAGE HEADER — sticky, borderBottom
-      ══════════════════════════════════════════════════ */}
-      <div style={{
-        padding:'18px 22px 0',
-        borderBottom:`1px solid ${T.border}`,
-        background:T.bg, flexShrink:0,
-      }}>
-
-        {/* Linha 1: icon + h1 + KPIs | "Novo lançamento" */}
-        <div style={{
-          display:'flex', alignItems:'center',
-          justifyContent:'space-between', marginBottom:8,
-        }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{
-              width:32, height:32, borderRadius:8, background:azulBg,
-              display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
-            }}>
-              <i className="ti ti-cash-banknote" style={{ fontSize:16, color:azul }} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 style={{ fontSize:17, fontWeight:700, color:T.textPrimary, margin:0, letterSpacing:'-0.025em', lineHeight:1.2 }}>
-                Financeiro
-              </h1>
-              <div style={{ display:'flex', gap:10, marginTop:3, alignItems:'center', flexWrap:'wrap' }}>
-                <StatBadge v={fmtBRL(saldoCaixa)} label="saldo" color={corHero(dark)} />
-                <StatBadge v={fmtBRL(totalReceber)} label="a receber" color={azul} />
-                <StatBadge v={fmtBRL(totalPagar)} label="a pagar" color={amarelo} />
-                {vencidos.length > 0 && <StatBadge v={vencidos.length} label="vencidas" color={vermelho} dot />}
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita')}
-            style={{
-              padding:'7px 16px', borderRadius:4,
-              background:azul, color:'#fff', border:'none', cursor:'pointer',
-              fontSize:13, fontWeight:600, fontFamily:'inherit',
-              display:'inline-flex', alignItems:'center', gap:6, flexShrink:0,
-              boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
-            }}
-            onMouseEnter={e => e.currentTarget.style.filter='brightness(1.1)'}
-            onMouseLeave={e => e.currentTarget.style.filter='none'}>
-            <i className="ti ti-plus" style={{ fontSize:14 }} aria-hidden="true" />
-            Novo lançamento
-          </button>
-        </div>
-
-        {/* Linha 2 — tabs underline */}
-        <div style={{ display:'flex', gap:0 }}>
-          {abasComContador.map(a => {
-            const ativo = a.id === aba
-            return (
-              <button key={a.id} onClick={() => setAba(a.id)}
-                style={{
-                  display:'inline-flex', alignItems:'center', gap:6,
-                  padding:'9px 14px',
-                  background:'transparent', border:'none', cursor:'pointer',
-                  fontSize:13, fontWeight: ativo ? 700 : 500,
-                  color: ativo ? azul : T.textMuted,
-                  borderBottom:`2.5px solid ${ativo ? azul : 'transparent'}`,
-                  marginBottom:-1,
-                  fontFamily:'inherit',
-                  transition:'color .12s, border-color .12s',
-                }}>
-                <i className={`ti ${a.icon}`} style={{ fontSize:14 }} aria-hidden="true" />
-                {a.label}
-                {a.count != null && a.count > 0 && (
-                  <span style={{
-                    background: ativo ? azul : T.cardAlt,
-                    color: ativo ? '#fff' : T.textSecondary,
-                    fontSize:10.5, fontWeight:700,
-                    padding:'1px 6px', borderRadius:10,
-                    fontVariantNumeric:'tabular-nums',
-                  }}>{a.count}</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Linha 3 — filtros (sticky no header) */}
-        <div style={{
-          borderTop:`1px solid ${T.border}`,
-          padding:'10px 0',
-          display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
-        }}>
+      <ModuleHeader
+        T={T} dark={dark}
+        icon="ti-cash-banknote"
+        title="Financeiro"
+        stats={[
+          { v: fmtBRL(saldoCaixa), label: 'saldo', color: corHero(dark), highlight: true },
+          { v: fmtBRL(totalReceber), label: 'a receber', color: azul },
+          { v: fmtBRL(totalPagar), label: 'a pagar', color: amarelo },
+          ...(vencidos.length > 0 ? [{ v: vencidos.length, label: 'vencidas', color: vermelho, dot: true }] : []),
+        ]}
+        tabs={abasComContador.map(a => ({ id: a.id, label: a.label, icon: a.icon, count: a.count > 0 ? a.count : undefined }))}
+        activeTab={aba}
+        onTabChange={setAba}
+        primaryAction={{ label: 'Novo lançamento', icon: 'ti-plus', onClick: () => setNovoLancTipo(aba === 'pagar' ? 'despesa' : 'receita') }}
+      >
+        <div style={{ padding: '10px 22px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {aba === 'caixa' && (
             <>
               <CaixaPeriodo T={T} dark={dark} periodo={cPeriodo} setPeriodo={setCPeriodo} />
@@ -594,7 +521,7 @@ export default function Financeiro({ T, dark }) {
             />
           )}
         </div>
-      </div>
+      </ModuleHeader>
 
       {/* ══════════════════════════════════════════════════
           CONTENT — scrollable

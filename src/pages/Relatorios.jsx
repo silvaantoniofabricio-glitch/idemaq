@@ -14,7 +14,7 @@ import {
   Card, Button, Badge,
   EmptyState,
   Sparkline, DeltaPill,
-  useToast,
+  useToast, ModuleHeader,
 } from '../components/ui'
 import RelatorioPonto from './relatorios/RelatorioPonto'
 import RelatorioFinanceiroMensal from './relatorios/RelatorioFinanceiroMensal'
@@ -139,106 +139,41 @@ export default function Relatorios({ T, dark }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      {/* ══════════════════════════════════════════════════
-          PAGE HEADER
-      ══════════════════════════════════════════════════ */}
-      <div style={{
-        padding: '18px 22px 0',
-        borderBottom: `1px solid ${T.border}`,
-        background: T.bg, flexShrink: 0,
-      }}>
-
-        {/* Linha 1 */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', marginBottom: 10,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, background: azulBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <i className="ti ti-chart-arcs" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 style={{
-                fontSize: 17, fontWeight: 700, color: T.textPrimary,
-                margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
-              }}>
-                Relatórios
-              </h1>
-              <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center' }}>
-                <StatBadge v={8} label="relatórios" color={azul} />
-                <StatBadge v={2} label="com IA" color={azulClaro} />
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-            {/* Dropdown de período */}
-            <div ref={periodoRef} style={{ position: 'relative' }}>
-              <button onClick={() => setPeriodoAberto(o => !o)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '7px 12px', borderRadius: 8,
-                  border: `1px solid ${T.border}`,
-                  background: T.cardAlt, color: T.textPrimary,
-                  fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-                  minWidth: 150,
-                }}>
-                <i className="ti ti-calendar" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-                <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
-                <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
-                  style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
-              </button>
-              {periodoAberto && (
-                <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo}
-                  onClose={() => setPeriodoAberto(false)} />
-              )}
-            </div>
-
-            {/* Exportar */}
-            <button onClick={() => placeholder('Export PDF/Excel em breve')}
+      <ModuleHeader
+        T={T} dark={dark}
+        icon="ti-chart-arcs"
+        title="Relatórios"
+        stats={[
+          { v: 8, label: 'relatórios', color: azul },
+          { v: 2, label: 'com IA', color: azulClaro },
+        ]}
+        tabs={RELATORIOS.map(r => ({ id: r.id, label: r.tab, icon: r.icon, ia: r.ia }))}
+        activeTab={relAtivo}
+        onTabChange={setRelAtivo}
+        secondaryActions={[{ label: 'Exportar', icon: 'ti-file-export', onClick: () => placeholder('Export PDF/Excel em breve') }]}
+        filterSlot={
+          <div ref={periodoRef} style={{ position: 'relative' }}>
+            <button onClick={() => setPeriodoAberto(o => !o)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 12px', borderRadius: 8, cursor: 'pointer',
+                padding: '0 8px', height: 22, borderRadius: 4,
                 border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.06)' : '#fff',
-                color: T.textPrimary, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
+                background: dark ? 'rgba(255,255,255,0.04)' : T.card,
+                color: T.textSecondary,
+                fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                minWidth: 130,
               }}>
-              <i className="ti ti-file-export" style={{ fontSize: 13 }} aria-hidden="true" />
-              Exportar
+              <i className="ti ti-calendar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
+              <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
+              <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 10, color: T.textMuted }} aria-hidden="true" />
             </button>
+            {periodoAberto && (
+              <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo}
+                onClose={() => setPeriodoAberto(false)} />
+            )}
           </div>
-        </div>
-
-        {/* Linha 2 — tabs de relatórios (underline) */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 0,
-          overflowX: 'auto', scrollbarWidth: 'none',
-        }}>
-          {RELATORIOS.map(r => {
-            const ativo = relAtivo === r.id
-            return (
-              <button key={r.id} onClick={() => setRelAtivo(r.id)}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '8px 14px', whiteSpace: 'nowrap',
-                  background: 'transparent', border: 'none', cursor: 'pointer',
-                  fontSize: 13, fontWeight: ativo ? 700 : 500,
-                  color: ativo ? azul : T.textMuted,
-                  borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
-                  marginBottom: -1, fontFamily: 'inherit',
-                  transition: 'color .12s, border-color .12s',
-                  flexShrink: 0,
-                }}>
-                {r.ia && <i className="ti ti-sparkles" style={{ fontSize: 11 }} aria-hidden="true" />}
-                {r.tab}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+        }
+      />
 
       {/* ══════════════════════════════════════════════════
           CONTENT

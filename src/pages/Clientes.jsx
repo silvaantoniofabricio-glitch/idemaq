@@ -11,7 +11,7 @@ import { semAcento } from '../utils/fmt'
 import { useIsMobile } from '../theme'
 import { useClientes } from '../hooks/useClientes'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
-import { useToast } from '../components/ui'
+import { useToast, ModuleHeader } from '../components/ui'
 import NovoClienteModal from '../components/clientes/NovoClienteModal'
 import ClienteDetalheModal from '../components/clientes/ClienteDetalheModal'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
@@ -112,145 +112,57 @@ export default function Clientes({ T, dark }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      {/* ═══════════════════════════════════════════════════════
-          PAGE HEADER — título + stats + busca
-      ═══════════════════════════════════════════════════════ */}
-      <div style={{
-        padding: isMobile ? '12px 16px 0' : '18px 22px 0',
-        borderBottom: `1px solid ${T.border}`,
-        background: T.bg, flexShrink: 0,
-      }}>
-        {/* Linha 1: icon + h1 + stats | "Novo cliente" */}
-        {!isMobile && (
-          <div style={{
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', marginBottom: 6,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: azulBg,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <i className="ti ti-users" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-              </div>
-              <div>
-                <h1 style={{
-                  fontSize: 17, fontWeight: 700, color: T.textPrimary,
-                  margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
-                }}>Clientes</h1>
-                <div style={{ display: 'flex', gap: 10, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                  {loading
-                    ? <span style={{ fontSize: 11.5, color: T.textDim }}>Carregando…</span>
-                    : <>
-                        <StatBadge v={clientes.length} label="cadastrados" color={T.textSecondary} />
-                        {buscando && filtrados.length !== clientes.length && (
-                          <StatBadge v={filtrados.length} label="encontrados" color={azul} dot />
-                        )}
-                      </>
-                  }
-                </div>
-              </div>
+      {isMobile ? (
+        /* ── Mobile: mantém header original simples ── */
+        <div style={{ padding: '12px 16px 0', borderBottom: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+              <i className="ti ti-search" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: T.textDim, pointerEvents: 'none' }} aria-hidden="true" />
+              <input type="search" value={busca} onChange={e => mudarBusca(e.target.value)}
+                placeholder="Buscar por nome, telefone ou endereço…"
+                style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 30, paddingRight: busca ? 28 : 10, paddingTop: 6, paddingBottom: 6, borderRadius: 4, border: `1px solid ${T.border}`, background: dark ? 'rgba(255,255,255,0.04)' : '#fff', color: T.textPrimary, fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
+                onFocus={e => e.target.style.borderColor = azul}
+                onBlur={e => e.target.style.borderColor = T.border}
+              />
+              {busca && <button onClick={() => mudarBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: T.textDim, padding: 2, display: 'flex' }}><i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" /></button>}
             </div>
-
-            <button
-              onClick={() => setModalNovo(true)}
-              style={{
-                padding: '7px 16px', borderRadius: 4,
-                background: azul, color: '#fff',
-                border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontFamily: 'inherit', flexShrink: 0,
-                boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
-              }}
-              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
-              onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
-              <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-              Novo cliente
-            </button>
-          </div>
-        )}
-
-        {/* Linha 2: busca + paginação info + botão "+" mobile */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          gap: 8, paddingBottom: 10,
-        }}>
-          {/* Search input inline */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-            <i className="ti ti-search" style={{
-              position: 'absolute', left: 9, top: '50%',
-              transform: 'translateY(-50%)',
-              fontSize: 13, color: T.textDim, pointerEvents: 'none',
-            }} aria-hidden="true" />
-            <input
-              type="search"
-              value={busca}
-              onChange={e => mudarBusca(e.target.value)}
-              placeholder="Buscar por nome, telefone ou endereço…"
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                paddingLeft: 30, paddingRight: busca ? 28 : 10,
-                paddingTop: 6, paddingBottom: 6,
-                borderRadius: 4, border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-                color: T.textPrimary, fontSize: 13,
-                outline: 'none', fontFamily: 'inherit',
-                transition: 'border-color .12s',
-              }}
-              onFocus={e => e.target.style.borderColor = azul}
-              onBlur={e => e.target.style.borderColor = T.border}
-            />
-            {busca && (
-              <button
-                onClick={() => mudarBusca('')}
-                aria-label="Limpar busca"
-                style={{
-                  position: 'absolute', right: 6, top: '50%',
-                  transform: 'translateY(-50%)',
-                  border: 'none', background: 'none',
-                  cursor: 'pointer', color: T.textDim,
-                  padding: 2, display: 'flex',
-                }}>
-                <i className="ti ti-x" style={{ fontSize: 12 }} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-
-          {/* Paginação info — só quando há dados */}
-          {!loading && !error && filtrados.length > 0 && (
-            <span style={{
-              fontSize: 11, color: T.textDim,
-              fontVariantNumeric: 'tabular-nums', flexShrink: 0,
-              whiteSpace: 'nowrap',
-            }}>
-              {(paginaAtual - 1) * POR_PAGINA + 1}–{Math.min(paginaAtual * POR_PAGINA, filtrados.length)}
-              {' '}de {filtrados.length}
-              {buscando && filtrados.length !== clientes.length && ` (${clientes.length} total)`}
-            </span>
-          )}
-
-          {/* Botão "+" só no mobile */}
-          {isMobile && (
-            <button
-              type="button"
-              onClick={() => setModalNovo(true)}
-              aria-label="Novo cliente"
-              style={{
-                width: 32, height: 32, borderRadius: 4,
-                background: azul, color: '#fff',
-                border: 'none', cursor: 'pointer',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0, fontFamily: 'inherit',
-                WebkitTapHighlightColor: 'transparent',
-              }}>
+            <button type="button" onClick={() => setModalNovo(true)} aria-label="Novo cliente"
+              style={{ width: 32, height: 32, borderRadius: 4, background: azul, color: '#fff', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'inherit', WebkitTapHighlightColor: 'transparent' }}>
               <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        /* ── Desktop: ModuleHeader ── */
+        <ModuleHeader
+          T={T} dark={dark}
+          icon="ti-users"
+          title="Clientes"
+          stats={loading ? [] : [
+            { v: clientes.length, label: 'cadastrados', color: T.textSecondary },
+            ...(buscando && filtrados.length !== clientes.length ? [{ v: filtrados.length, label: 'encontrados', color: azul, dot: true }] : []),
+          ]}
+          primaryAction={{ label: 'Novo cliente', icon: 'ti-plus', onClick: () => setModalNovo(true) }}
+          filterSlot={<>
+            <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 160 }}>
+              <i className="ti ti-search" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: T.textDim, pointerEvents: 'none' }} aria-hidden="true" />
+              <input type="search" value={busca} onChange={e => mudarBusca(e.target.value)}
+                placeholder="Nome, telefone ou endereço…"
+                style={{ width: '100%', boxSizing: 'border-box', height: 22, paddingLeft: 26, paddingRight: busca ? 24 : 8, borderRadius: 4, border: `1px solid ${T.border}`, background: dark ? 'rgba(255,255,255,0.04)' : T.card, color: T.textPrimary, fontSize: 11, outline: 'none', fontFamily: 'inherit' }}
+                onFocus={e => e.target.style.borderColor = azul}
+                onBlur={e => e.target.style.borderColor = T.border}
+              />
+              {busca && <button onClick={() => mudarBusca('')} aria-label="Limpar busca" style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: T.textDim, padding: 2, display: 'flex' }}><i className="ti ti-x" style={{ fontSize: 11 }} aria-hidden="true" /></button>}
+            </div>
+            {!loading && !error && filtrados.length > 0 && (
+              <span style={{ fontSize: 11, color: T.textDim, fontVariantNumeric: 'tabular-nums', flexShrink: 0, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+                {(paginaAtual - 1) * POR_PAGINA + 1}–{Math.min(paginaAtual * POR_PAGINA, filtrados.length)} de {filtrados.length}
+                {buscando && filtrados.length !== clientes.length && ` (${clientes.length} total)`}
+              </span>
+            )}
+          </>}
+        />
+      )}
 
       {/* ═══════════════════════════════════════════════════════
           CONTENT — lista scrollável

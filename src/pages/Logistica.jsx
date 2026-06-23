@@ -14,7 +14,7 @@ import LogisticaMobile, {
   CardFlutuanteOS, RotaAccordion, DiagnosticoMapa,
   filtrarPorAgenda,
 } from './LogisticaMobile'
-import { useToast } from '../components/ui'
+import { useToast, ModuleHeader } from '../components/ui'
 import { useRotas } from '../hooks/useRotas'
 import { useOSLogistica, FILTROS_ETAPA_LOGISTICA } from '../hooks/useOSLogistica'
 import { useGeocodeEnderecos } from '../hooks/useGeocodeEnderecos'
@@ -318,144 +318,72 @@ function LogisticaDesktop({ T, dark }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      {/* ═══════════════════════════════════════════════════════
-          PAGE HEADER — título, stats, etapa tabs, agenda chips
-      ═══════════════════════════════════════════════════════ */}
-      <div style={{
-        padding: '18px 22px 0',
-        borderBottom: `1px solid ${T.border}`,
-        background: T.bg,
-        flexShrink: 0,
-      }}>
-        {/* Linha 1: icon + título + stats | ações */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', marginBottom: 6,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: azulBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <i className="ti ti-route" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 style={{
-                fontSize: 17, fontWeight: 700, color: T.textPrimary,
-                margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
-              }}>Logística</h1>
-              <div style={{ display: 'flex', gap: 10, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                <StatBadge v={osFiltradas.length} label="OS" color={T.textSecondary} />
-                {rotasAtivas > 0 && <StatBadge v={rotasAtivas} label="rotas ativas" color={azul} dot />}
-                {totalSemRota > 0 && <StatBadge v={totalSemRota} label="sem rota" color={amarelo} dot />}
-              </div>
-            </div>
-          </div>
-
-          {/* Ações */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <HdrIconBtn T={T} dark={dark}
-              icon="ti-external-link"
-              title="Abrir rota completa no Google Maps"
-              onClick={abrirRotaCompletaNoMaps}
-            />
-            <button
-              onClick={() => setNovaRotaAberta(true)}
-              style={{
-                padding: '7px 16px', borderRadius: 4,
-                background: azul, color: '#fff',
-                border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontFamily: 'inherit', flexShrink: 0,
-                boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
-              }}
-              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
-              onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
-              <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-              Nova rota
-            </button>
-          </div>
-        </div>
-
-        {/* Linha 2: etapa tabs + divider + agenda chips */}
-        <div style={{
-          display: 'flex', alignItems: 'stretch',
-          justifyContent: 'flex-start', gap: 8,
-        }}>
-          {/* Etapas — underline tab style, multi-select */}
-          <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexShrink: 0 }}>
-            {FILTROS_ETAPA_LOGISTICA.map(f => {
-              const ativo = etapasAtivas.has(f.id)
-              const n = countEtapa[f.id] || 0
-              return (
-                <button key={f.id} onClick={() => toggleEtapa(f.id)}
-                  style={{
-                    padding: '8px 12px 10px',
-                    border: 'none',
-                    borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
-                    background: 'transparent',
+      <ModuleHeader
+        T={T} dark={dark}
+        icon="ti-route"
+        title="Logística"
+        stats={[
+          { v: osFiltradas.length, label: 'OS', color: T.textSecondary },
+          ...(rotasAtivas > 0 ? [{ v: rotasAtivas, label: 'rotas ativas', color: azul, dot: true }] : []),
+          ...(totalSemRota > 0 ? [{ v: totalSemRota, label: 'sem rota', color: amarelo, dot: true }] : []),
+        ]}
+        secondaryActions={[{ label: 'Abrir mapa', icon: 'ti-external-link', onClick: abrirRotaCompletaNoMaps }]}
+        primaryAction={{ label: 'Nova rota', icon: 'ti-plus', onClick: () => setNovaRotaAberta(true) }}
+        filterSlot={<>
+          {FILTROS_ETAPA_LOGISTICA.map(f => {
+            const ativo = etapasAtivas.has(f.id)
+            const n = countEtapa[f.id] || 0
+            return (
+              <button key={f.id} onClick={() => toggleEtapa(f.id)}
+                style={{
+                  padding: '2px 9px', borderRadius: 4,
+                  border: `1px solid ${ativo ? azul : T.border}`,
+                  background: ativo ? azulBg : 'transparent',
+                  color: ativo ? azul : T.textMuted,
+                  fontSize: 12, fontWeight: ativo ? 600 : 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  whiteSpace: 'nowrap',
+                }}>
+                <i className={`ti ${f.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+                {f.label}
+                {n > 0 && (
+                  <span style={{
+                    padding: '0 5px', borderRadius: 8,
+                    background: ativo ? `${azul}25` : (dark ? '#1e1e24' : T.cardAlt || '#f0f0f5'),
                     color: ativo ? azul : T.textMuted,
-                    fontSize: 13, fontWeight: ativo ? 600 : 500,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    whiteSpace: 'nowrap',
-                    transition: 'color .12s, border-color .12s',
-                    marginBottom: -1,
-                  }}
-                  onMouseEnter={e => { if (!ativo) e.currentTarget.style.color = T.textPrimary }}
-                  onMouseLeave={e => { if (!ativo) e.currentTarget.style.color = T.textMuted }}>
-                  <i className={`ti ${f.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
-                  {f.label}
-                  {n > 0 && (
-                    <span style={{
-                      padding: '1px 6px', borderRadius: 10,
-                      background: ativo ? azulBg : (dark ? 'rgba(255,255,255,0.08)' : '#e4e4e9'),
-                      color: ativo ? azul : T.textMuted,
-                      fontSize: 10.5, fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>{n}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 8 }}>
-            <HdrDivider T={T} dark={dark} />
-          </div>
-
-          {/* Agenda chips */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingBottom: 8, flexShrink: 0 }}>
-            {[
-              { id: 'hoje',   label: 'Hoje / Atrasadas', icon: 'ti-calendar-event' },
-              { id: 'amanha', label: 'Amanhã',           icon: 'ti-calendar-plus' },
-              { id: 'semana', label: 'Semana',           icon: 'ti-calendar-week' },
-            ].map(op => {
-              const sel = filtroAgenda === op.id
-              return (
-                <button key={op.id} onClick={() => setFiltroAgenda(op.id)}
-                  style={{
-                    padding: '4px 10px', borderRadius: 4,
-                    border: `1px solid ${sel ? azul : T.border}`,
-                    background: sel ? azulBg : 'transparent',
-                    color: sel ? azul : T.textMuted,
-                    fontSize: 12.5, fontWeight: sel ? 600 : 500,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    whiteSpace: 'nowrap',
-                  }}>
-                  <i className={`ti ${op.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-                  {op.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+                    fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  }}>{n}</span>
+                )}
+              </button>
+            )
+          })}
+          <HdrDivider T={T} dark={dark} />
+          {[
+            { id: 'hoje',   label: 'Hoje / Atrasadas', icon: 'ti-calendar-event' },
+            { id: 'amanha', label: 'Amanhã',           icon: 'ti-calendar-plus' },
+            { id: 'semana', label: 'Semana',           icon: 'ti-calendar-week' },
+          ].map(op => {
+            const sel = filtroAgenda === op.id
+            return (
+              <button key={op.id} onClick={() => setFiltroAgenda(op.id)}
+                style={{
+                  padding: '2px 9px', borderRadius: 4,
+                  border: `1px solid ${sel ? azul : T.border}`,
+                  background: sel ? azulBg : 'transparent',
+                  color: sel ? azul : T.textMuted,
+                  fontSize: 12, fontWeight: sel ? 600 : 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  whiteSpace: 'nowrap',
+                }}>
+                <i className={`ti ${op.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+                {op.label}
+              </button>
+            )
+          })}
+        </>}
+      />
 
       {/* ═══════════════════════════════════════════════════════
           CONTENT — grid mapa + rotas + agenda

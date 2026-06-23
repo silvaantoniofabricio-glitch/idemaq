@@ -27,6 +27,7 @@ import { enviarOSParaRoteiro, diaRelativo } from '../utils/roteiroEnvio'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import { useMaquinas } from '../hooks/useMaquinas'
+import { ModuleHeader } from '../components/ui'
 
 // ─── Helpers do arraste manual dos cards ─────────────────────────────────────
 // Qual coluna (etapa) está sob o cursor — pelo data-etapa do DOM.
@@ -486,224 +487,90 @@ export default function Kanban({ T, dark, user }) {
         {/* ═══════════════════════════════════════════════════════
             PAGE HEADER — título, stats, botão criar
         ═══════════════════════════════════════════════════════ */}
-        <div style={{
-          padding: '18px 22px 0',
-          borderBottom: `1px solid ${T.border}`,
-          background: T.bg,
-          flexShrink: 0,
-        }}>
-          {/* Linha 1: título + botão criar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: azulBg,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <i className="ti ti-clipboard-list" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
-              </div>
-              <div>
-                <h1 style={{
-                  fontSize: 17, fontWeight: 700, color: T.textPrimary,
-                  margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
-                }}>Ordens de serviço</h1>
-                {/* Stats row */}
-                <div style={{ display: 'flex', gap: 10, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <StatBadge v={totalKanban} label="ativas" color={T.textSecondary} />
-                  {totVencidas > 0 && <StatBadge v={totVencidas} label="vencidas" color={vermelho} dot />}
-                  {totalAgPeca > 0 && <StatBadge v={totalAgPeca} label="ag. peça" color={amarelo} dot />}
-                  {totGarantia > 0 && <StatBadge v={totGarantia} label="garantia" color={azul} dot />}
-                  {buscando && (
-                    <span style={{
-                      padding: '1px 8px', borderRadius: 4,
-                      background: azulBg, color: azul,
-                      fontSize: 10.5, fontWeight: 700,
-                    }}>Busca ativa</span>
-                  )}
-                  {!admin && (
-                    <span style={{ fontSize: 10.5, color: T.textDim }}>· você não vê Concluído</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Botão criar — estilo Atlassian primary */}
-            <button onClick={() => setModalNova(true)}
-              style={{
-                padding: '7px 16px', borderRadius: 4,
-                background: azul, color: '#fff',
-                border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontFamily: 'inherit', flexShrink: 0,
-                boxShadow: dark ? 'none' : '0 1px 3px rgba(0,0,0,.15)',
-              }}
-              onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
-              onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
-              <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-              Criar OS
-            </button>
-          </div>
-
-          {/* Linha 2: zone tabs + filtros inline */}
-          <div ref={barraRef} style={{
-            display: 'flex', alignItems: 'stretch',
-            justifyContent: 'flex-start', gap: 8,
-          }}>
-            {/* Zone tabs — underline style */}
-            <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, flexShrink: 0 }}>
-              {abas.map(a => {
-                const ativo = a.id === zona
-                const n = contarZona(a.id)
-                return (
-                  <button key={a.id} onClick={() => setZona(a.id)}
-                    style={{
-                      padding: '8px 14px 10px',
-                      border: 'none',
-                      borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
-                      background: 'transparent',
-                      color: ativo ? azul : T.textMuted,
-                      fontSize: 13, fontWeight: ativo ? 600 : 500,
-                      cursor: 'pointer', fontFamily: 'inherit',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      whiteSpace: 'nowrap',
-                      transition: 'color .12s, border-color .12s',
-                      marginBottom: -1,
-                    }}
-                    onMouseEnter={e => { if (!ativo) e.currentTarget.style.color = T.textPrimary }}
-                    onMouseLeave={e => { if (!ativo) e.currentTarget.style.color = T.textMuted }}>
-                    <i className={`ti ${a.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
-                    {a.label}
-                    {n > 0 && (
-                      <span style={{
-                        padding: '1px 6px', borderRadius: 10,
-                        background: ativo ? azulBg : (dark ? 'rgba(255,255,255,0.08)' : '#e4e4e9'),
-                        color: ativo ? azul : T.textMuted,
-                        fontSize: 10.5, fontWeight: 700,
-                        fontVariantNumeric: 'tabular-nums',
-                      }}>{n}</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Filtros à direita */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingBottom: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-
-              {/* Busca */}
-              <div style={{ position: 'relative' }}>
-                <i className="ti ti-search" style={{
-                  position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)',
-                  fontSize: 13, color: T.textDim, pointerEvents: 'none',
-                }} aria-hidden="true" />
-                <input
-                  value={busca} onChange={e => setBusca(e.target.value)}
-                  placeholder="Buscar…"
-                  style={{
-                    padding: '5px 10px 5px 28px', width: 190,
-                    borderRadius: 4, border: `1px solid ${T.border}`,
-                    background: T.card, color: T.textPrimary,
-                    fontSize: 12.5, outline: 'none',
-                    fontFamily: 'inherit',
-                    transition: 'border-color .15s, width .2s',
-                  }}
-                  onFocus={e => { e.target.style.borderColor = azul; e.target.style.width = '230px' }}
-                  onBlur={e => { e.target.style.borderColor = T.border; e.target.style.width = '190px' }}
-                />
-              </div>
-
-              <Divider dark={dark} T={T} />
-
-              {/* Prazo dropdown */}
-              <DropdownFilter
-                label={`Prazo: ${lblPrazo}`}
-                ativo={statusF !== 'todos'}
-                open={menuAberto === 'prazo'}
-                onToggle={() => setMenuAberto(m => m === 'prazo' ? null : 'prazo')}
-                T={T} dark={dark} azul={azul} azulBg={azulBg}>
-                {[['todos', 'Todos'], ['vencido', 'Vencidas'], ['hoje', 'Hoje / amanhã'], ['ok', 'Em dia']].map(([v, l]) => (
-                  <DropdownItem key={v} label={l} ativo={statusF === v} azul={azul} azulBg={azulBg} T={T}
-                    onClick={() => { setStatusF(v); setMenuAberto(null) }} />
-                ))}
-              </DropdownFilter>
-
-              {/* Tipos dropdown */}
-              <DropdownFilter
-                label={tiposCount < totalTipos ? `Tipos (${tiposCount}/${totalTipos})` : 'Tipos'}
-                ativo={tiposCount < totalTipos}
-                open={menuAberto === 'tipos'}
-                onToggle={() => setMenuAberto(m => m === 'tipos' ? null : 'tipos')}
-                T={T} dark={dark} azul={azul} azulBg={azulBg}>
-                {Object.entries(TIPOS_OS).map(([id, cfg]) => {
-                  const ativo = tiposAtivos.has(id)
-                  return (
-                    <DropdownItem key={id} label={cfg.label} icon={cfg.icon} ativo={ativo}
-                      azul={azul} azulBg={azulBg} T={T}
-                      onClick={() => toggleTipo(id)} />
-                  )
-                })}
-              </DropdownFilter>
-
-              <Divider dark={dark} T={T} />
-
-              {/* Toggle Peça */}
-              <ToggleChip
-                ativo={verAgPeca}
-                icon={verAgPeca ? 'ti-package' : 'ti-package-off'}
-                label={`Peça${totalAgPeca > 0 ? ` (${totalAgPeca})` : ''}`}
-                title={verAgPeca ? 'Ocultar filtro peça' : 'Só OS aguardando peça'}
-                onClick={() => setVerAgPeca(v => !v)}
-                T={T} dark={dark} azul={azul} azulBg={azulBg}
-              />
-
-              {/* Toggle Limpeza */}
-              <ToggleChip
-                ativo={verLimpeza}
-                icon="ti-bubble"
-                label={`Limpeza${totalLimpeza > 0 ? ` (${totalLimpeza})` : ''}`}
-                title={verLimpeza ? 'Ocultar filtro limpeza' : 'Só OS com serviço de limpeza'}
-                onClick={() => setVerLimpeza(v => !v)}
-                T={T} dark={dark} azul={azul} azulBg={azulBg}
-              />
-
-              {/* Toggle Manutenção */}
-              <ToggleChip
-                ativo={verManutencao}
-                icon="ti-tool"
-                label={`Manutenção${totalManutencao > 0 ? ` (${totalManutencao})` : ''}`}
-                title={verManutencao ? 'Ocultar filtro manutenção' : 'Só OS com serviço de manutenção'}
-                onClick={() => setVerManutencao(v => !v)}
-                T={T} dark={dark} azul={azul} azulBg={azulBg}
-              />
-
-              {/* Toggle Recusadas */}
-              {(zona === 'todos' || zona === 'financeiro') && (
-                <ToggleChip
-                  ativo={verRecusados}
-                  icon={verRecusados ? 'ti-eye' : 'ti-eye-off'}
-                  label={`Recusadas${totalRecusados > 0 ? ` (${totalRecusados})` : ''}`}
-                  title={verRecusados ? 'Ocultar recusadas' : 'Mostrar recusadas'}
-                  onClick={() => setVerRecusados(v => !v)}
-                  T={T} dark={dark} azul={azul} azulBg={azulBg}
-                />
-              )}
-
-              <Divider dark={dark} T={T} />
-
-              {/* Roteiro do dia */}
-              <ToggleChip
-                ativo={notasAbertas}
-                icon="ti-checklist"
-                label="Roteiro"
-                title="Roteiro do dia"
-                onClick={() => setNotasAbertas(v => !v)}
-                T={T} dark={dark} azul={azul} azulBg={azulBg}
+        <ModuleHeader
+          T={T} dark={dark}
+          icon="ti-clipboard-list"
+          title="Ordens de serviço"
+          stats={[
+            { v: totalKanban, label: 'ativas', color: T.textSecondary },
+            ...(totVencidas > 0 ? [{ v: totVencidas, label: 'vencidas', color: vermelho, dot: true }] : []),
+            ...(totalAgPeca > 0 ? [{ v: totalAgPeca, label: 'ag. peça', color: amarelo, dot: true }] : []),
+            ...(totGarantia > 0 ? [{ v: totGarantia, label: 'garantia', color: azul }] : []),
+          ]}
+          tabs={abas.map(a => { const n = contarZona(a.id); return { ...a, count: n > 0 ? n : undefined } })}
+          activeTab={zona}
+          onTabChange={setZona}
+          primaryAction={{ label: 'Criar OS', icon: 'ti-plus', onClick: () => setModalNova(true) }}
+          filterRef={barraRef}
+          filterSlot={<>
+            <div style={{ position: 'relative' }}>
+              <i className="ti ti-search" style={{
+                position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)',
+                fontSize: 13, color: T.textDim, pointerEvents: 'none',
+              }} aria-hidden="true" />
+              <input
+                value={busca} onChange={e => setBusca(e.target.value)}
+                placeholder="Buscar…"
+                style={{
+                  padding: '5px 10px 5px 28px', width: 180,
+                  borderRadius: 4, border: `1px solid ${T.border}`,
+                  background: T.card, color: T.textPrimary,
+                  fontSize: 12, outline: 'none', fontFamily: 'inherit',
+                  transition: 'border-color .15s, width .2s',
+                }}
+                onFocus={e => { e.target.style.borderColor = azul; e.target.style.width = '210px' }}
+                onBlur={e => { e.target.style.borderColor = T.border; e.target.style.width = '180px' }}
               />
             </div>
-          </div>
-        </div>
+            <Divider dark={dark} T={T} />
+            <DropdownFilter
+              label={`Prazo: ${lblPrazo}`} ativo={statusF !== 'todos'}
+              open={menuAberto === 'prazo'} onToggle={() => setMenuAberto(m => m === 'prazo' ? null : 'prazo')}
+              T={T} dark={dark} azul={azul} azulBg={azulBg}>
+              {[['todos', 'Todos'], ['vencido', 'Vencidas'], ['hoje', 'Hoje / amanhã'], ['ok', 'Em dia']].map(([v, l]) => (
+                <DropdownItem key={v} label={l} ativo={statusF === v} azul={azul} azulBg={azulBg} T={T}
+                  onClick={() => { setStatusF(v); setMenuAberto(null) }} />
+              ))}
+            </DropdownFilter>
+            <DropdownFilter
+              label={tiposCount < totalTipos ? `Tipos (${tiposCount}/${totalTipos})` : 'Tipos'}
+              ativo={tiposCount < totalTipos} open={menuAberto === 'tipos'}
+              onToggle={() => setMenuAberto(m => m === 'tipos' ? null : 'tipos')}
+              T={T} dark={dark} azul={azul} azulBg={azulBg}>
+              {Object.entries(TIPOS_OS).map(([id, cfg]) => (
+                <DropdownItem key={id} label={cfg.label} icon={cfg.icon} ativo={tiposAtivos.has(id)}
+                  azul={azul} azulBg={azulBg} T={T} onClick={() => toggleTipo(id)} />
+              ))}
+            </DropdownFilter>
+            <Divider dark={dark} T={T} />
+            <ToggleChip ativo={verAgPeca} icon={verAgPeca ? 'ti-package' : 'ti-package-off'}
+              label={`Peça${totalAgPeca > 0 ? ` (${totalAgPeca})` : ''}`}
+              title={verAgPeca ? 'Ocultar filtro peça' : 'Só OS aguardando peça'}
+              onClick={() => setVerAgPeca(v => !v)} T={T} dark={dark} azul={azul} azulBg={azulBg} />
+            <ToggleChip ativo={verLimpeza} icon="ti-bubble"
+              label={`Limpeza${totalLimpeza > 0 ? ` (${totalLimpeza})` : ''}`}
+              title={verLimpeza ? 'Ocultar filtro limpeza' : 'Só OS com limpeza'}
+              onClick={() => setVerLimpeza(v => !v)} T={T} dark={dark} azul={azul} azulBg={azulBg} />
+            <ToggleChip ativo={verManutencao} icon="ti-tool"
+              label={`Manutenção${totalManutencao > 0 ? ` (${totalManutencao})` : ''}`}
+              title={verManutencao ? 'Ocultar filtro manutenção' : 'Só OS com manutenção'}
+              onClick={() => setVerManutencao(v => !v)} T={T} dark={dark} azul={azul} azulBg={azulBg} />
+            {(zona === 'todos' || zona === 'financeiro') && (
+              <ToggleChip ativo={verRecusados} icon={verRecusados ? 'ti-eye' : 'ti-eye-off'}
+                label={`Recusadas${totalRecusados > 0 ? ` (${totalRecusados})` : ''}`}
+                title={verRecusados ? 'Ocultar recusadas' : 'Mostrar recusadas'}
+                onClick={() => setVerRecusados(v => !v)} T={T} dark={dark} azul={azul} azulBg={azulBg} />
+            )}
+            <Divider dark={dark} T={T} />
+            <ToggleChip ativo={notasAbertas} icon="ti-checklist" label="Roteiro" title="Roteiro do dia"
+              onClick={() => setNotasAbertas(v => !v)} T={T} dark={dark} azul={azul} azulBg={azulBg} />
+            {buscando && (
+              <span style={{ padding: '1px 8px', borderRadius: 4, background: azulBg, color: azul, fontSize: 10.5, fontWeight: 700 }}>
+                Busca ativa
+              </span>
+            )}
+          </>}
+        />
 
         {/* ═══════════════════════════════════════════════════════
             BOARD — colunas kanban
