@@ -424,6 +424,30 @@ export default function Financeiro({ T, dark }) {
     }
   }
 
+  // ─── Filtros por aba (lifted state) ──────────────────────────────────────
+  const [cPeriodo,   setCPeriodo]   = useState({ id:'mes' })
+  const [cTipo,      setCTipo]      = useState('todos')
+  const [cBusca,     setCBusca]     = useState('')
+  const [cConta,     setCConta]     = useState('')
+  function limparCaixa() { setCPeriodo({ id:'mes' }); setCTipo('todos'); setCBusca(''); setCConta('') }
+  const cPodeLimpar = cPeriodo.id !== 'mes' || cTipo !== 'todos' || cBusca || cConta
+
+  const [rPeriodo,   setRPeriodo]   = useState({ id:'mes' })
+  const [rStatus,    setRStatus]    = useState('aberto')
+  const [rBusca,     setRBusca]     = useState('')
+  const [rCategoria, setRCategoria] = useState('')
+  const [rConta,     setRConta]     = useState('')
+  function limparReceber() { setRPeriodo({ id:'mes' }); setRStatus('aberto'); setRBusca(''); setRCategoria(''); setRConta('') }
+  const rPodeLimpar = rPeriodo.id !== 'mes' || rStatus !== 'aberto' || rBusca || rCategoria || rConta
+
+  const [pPeriodo,   setPPeriodo]   = useState({ id:'mes' })
+  const [pStatus,    setPStatus]    = useState('aberto')
+  const [pBusca,     setPBusca]     = useState('')
+  const [pCategoria, setPCategoria] = useState('')
+  const [pConta,     setPConta]     = useState('')
+  function limparPagar() { setPPeriodo({ id:'mes' }); setPStatus('aberto'); setPBusca(''); setPCategoria(''); setPConta('') }
+  const pPodeLimpar = pPeriodo.id !== 'mes' || pStatus !== 'aberto' || pBusca || pCategoria || pConta
+
   // ─── Contadores das tabs ─────────────────────────────────────────────────
   const abasComContador = ABAS.map(a => {
     let count = null
@@ -522,6 +546,54 @@ export default function Financeiro({ T, dark }) {
             )
           })}
         </div>
+
+        {/* Linha 3 — filtros (sticky no header) */}
+        <div style={{
+          borderTop:`1px solid ${T.border}`,
+          padding:'10px 0',
+          display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+        }}>
+          {aba === 'caixa' && (
+            <>
+              <CaixaPeriodo T={T} dark={dark} periodo={cPeriodo} setPeriodo={setCPeriodo} />
+              <div style={{ display:'flex', gap:6 }}>
+                {[{ id:'todos', label:'Todos' }, { id:'receita', label:'Entradas' }, { id:'despesa', label:'Saídas' }].map(t => (
+                  <ChipToggle key={t.id} T={T} dark={dark} ativo={cTipo === t.id} onClick={() => setCTipo(t.id)}>
+                    {t.label}
+                  </ChipToggle>
+                ))}
+              </div>
+              <div style={{ flex:1, minWidth:180 }}>
+                <Input T={T} dark={dark} value={cBusca} onChange={setCBusca} icon="ti-search" placeholder="Buscar movimentação…" />
+              </div>
+              <select value={cConta} onChange={e => setCConta(e.target.value)} style={selectStyle(T)}>
+                <option value="">Conta (todas)</option>
+                {CONTAS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              {cPodeLimpar && (
+                <Button T={T} dark={dark} variant="ghost" size="sm" iconLeft="ti-x" onClick={limparCaixa}>Limpar</Button>
+              )}
+            </>
+          )}
+          {(aba === 'receber' || aba === 'pagar') && (
+            <BarraFiltros T={T} dark={dark} tipo={aba}
+              periodo={aba === 'receber' ? rPeriodo : pPeriodo}
+              setPeriodo={aba === 'receber' ? setRPeriodo : setPPeriodo}
+              statusFilt={aba === 'receber' ? rStatus : pStatus}
+              setStatusFilt={aba === 'receber' ? setRStatus : setPStatus}
+              busca={aba === 'receber' ? rBusca : pBusca}
+              setBusca={aba === 'receber' ? setRBusca : setPBusca}
+              categoria={aba === 'receber' ? rCategoria : pCategoria}
+              setCategoria={aba === 'receber' ? setRCategoria : setPCategoria}
+              categorias={aba === 'receber' ? CATEGORIAS_RECEITA : CATEGORIAS_DESPESA}
+              conta={aba === 'receber' ? rConta : pConta}
+              setConta={aba === 'receber' ? setRConta : setPConta}
+              contas={CONTAS}
+              onLimpar={aba === 'receber' ? limparReceber : limparPagar}
+              podeLimpar={aba === 'receber' ? rPodeLimpar : pPodeLimpar}
+            />
+          )}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════
@@ -553,6 +625,7 @@ export default function Financeiro({ T, dark }) {
             <ListaLancamentos T={T} dark={dark}
               itens={receber} tipo="receber"
               categorias={CATEGORIAS_RECEITA} contas={CONTAS}
+              periodo={rPeriodo} statusFilt={rStatus} busca={rBusca} categoria={rCategoria} conta={rConta}
               onAbrir={(item) => setSelecionado({ tipo:'receber', item })}
               onBaixarUm={baixarReceber}
               onBaixarLote={(ids) => baixarLote(ids, 'receber')}
@@ -565,6 +638,7 @@ export default function Financeiro({ T, dark }) {
             <ListaLancamentos T={T} dark={dark}
               itens={pagar} tipo="pagar"
               categorias={CATEGORIAS_DESPESA} contas={CONTAS}
+              periodo={pPeriodo} statusFilt={pStatus} busca={pBusca} categoria={pCategoria} conta={pConta}
               onAbrir={(item) => setSelecionado({ tipo:'pagar', item })}
               onBaixarUm={baixarPagar}
               onBaixarLote={(ids) => baixarLote(ids, 'pagar')}
@@ -576,6 +650,7 @@ export default function Financeiro({ T, dark }) {
           {aba === 'caixa' && (
             <ListaCaixa T={T} dark={dark}
               itens={caixa} contas={CONTAS}
+              periodo={cPeriodo} tipoFilt={cTipo} busca={cBusca} conta={cConta}
               onAbrir={(item) => setSelecionado({ tipo:'caixa', item })}
             />
           )}
@@ -804,8 +879,7 @@ function BarraFiltros({
   ]
 
   return (
-    <Card T={T} dark={dark}>
-      <div style={{ display:'flex', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+    <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', width:'100%' }}>
 
         {/* Período (dropdown) */}
         <div ref={periodoRef} style={{ position:'relative' }}>
@@ -862,8 +936,7 @@ function BarraFiltros({
             Limpar
           </Button>
         )}
-      </div>
-    </Card>
+    </div>
   )
 }
 
@@ -890,6 +963,7 @@ function selectStyle(T) {
 function ListaLancamentos({
   T, dark, itens, tipo,
   categorias, contas,
+  periodo, statusFilt, busca, categoria, conta,
   onAbrir, onBaixarUm, onBaixarLote, onExcluir, notify,
 }) {
   const azul     = corEtapa('blue', dark)
@@ -897,20 +971,9 @@ function ListaLancamentos({
   const vermelho = corEtapa('red', dark)
   const corT     = tipo === 'receber' ? azul : amarelo
 
-  const [periodo, setPeriodo]       = useState({ id:'mes' })
-  const [statusFilt, setStatusFilt] = useState('aberto')
-  const [busca, setBusca]           = useState('')
-  const [categoria, setCategoria]   = useState('')
-  const [conta, setConta]           = useState('')
-  const [selecao, setSelecao]       = useState([])    // ids selecionados
-  const [ordem, setOrdem]           = useState({ campo:'vencimento', dir:'asc' })
-  const [menuLinha, setMenuLinha]   = useState(null)
-
-  const podeLimpar = periodo.id !== 'mes' || statusFilt !== 'aberto' || busca || categoria || conta
-  function limpar() {
-    setPeriodo({ id:'mes' }); setStatusFilt('aberto')
-    setBusca(''); setCategoria(''); setConta(''); setSelecao([])
-  }
+  const [selecao, setSelecao] = useState([])
+  const [ordem, setOrdem]     = useState({ campo:'vencimento', dir:'asc' })
+  const [menuLinha, setMenuLinha] = useState(null)
 
   // ─── Filtragem ───────────────────────────────────────────────────────────
   const filtrados = useMemo(() => {
@@ -966,15 +1029,6 @@ function ListaLancamentos({
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <>
-      <BarraFiltros T={T} dark={dark} tipo={tipo}
-        periodo={periodo} setPeriodo={setPeriodo}
-        statusFilt={statusFilt} setStatusFilt={setStatusFilt}
-        busca={busca} setBusca={setBusca}
-        categoria={categoria} setCategoria={setCategoria} categorias={categorias}
-        conta={conta} setConta={setConta} contas={contas}
-        onLimpar={limpar} podeLimpar={podeLimpar}
-      />
-
       {/* KPI strip */}
       <KpiStrip T={T} dark={dark} tipo={tipo} itens={ordenados} corT={corT} />
 
@@ -1306,21 +1360,11 @@ function BulkBar({ T, dark, tipo, count, total, onBaixar, onLimpar }) {
 // ============================================================================
 // CAIXA — read-only com saldo running por conta
 // ============================================================================
-function ListaCaixa({ T, dark, itens, contas, onAbrir }) {
+function ListaCaixa({ T, dark, itens, contas, periodo, tipoFilt, busca, conta, onAbrir }) {
   const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const verde   = corEtapa('green', dark)
   const vermelho= corEtapa('red', dark)
-
-  const [periodo, setPeriodo] = useState({ id:'mes' })
-  const [busca, setBusca]     = useState('')
-  const [conta, setConta]     = useState('')
-  const [tipoFilt, setTipoFilt] = useState('todos') // todos/receita/despesa
-
-  const podeLimpar = periodo.id !== 'mes' || busca || conta || tipoFilt !== 'todos'
-  function limpar() {
-    setPeriodo({ id:'mes' }); setBusca(''); setConta(''); setTipoFilt('todos')
-  }
 
   const filtrados = useMemo(() => {
     let arr = filtrarPorPeriodo(itens, periodo, 'data')
@@ -1358,43 +1402,8 @@ function ListaCaixa({ T, dark, itens, contas, onAbrir }) {
   const totalDespesas = ordenados.filter(m => m.tipo === 'despesa').reduce((s,m) => s + m.valor, 0)
   const saldo = totalReceitas - totalDespesas
 
-  const tipoChips = [
-    { id:'todos',   label:'Todos' },
-    { id:'receita', label:'Entradas' },
-    { id:'despesa', label:'Saídas' },
-  ]
-
   return (
     <>
-      {/* Filtros do Caixa (sem status/categoria, só período/tipo/conta/busca) */}
-      <Card T={T} dark={dark}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <CaixaPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} />
-          <div style={{ display:'flex', gap:6 }}>
-            {tipoChips.map(t => (
-              <ChipToggle key={t.id} T={T} dark={dark}
-                ativo={tipoFilt === t.id} onClick={() => setTipoFilt(t.id)}>
-                {t.label}
-              </ChipToggle>
-            ))}
-          </div>
-          <div style={{ flex:1, minWidth:200 }}>
-            <Input T={T} dark={dark}
-              value={busca} onChange={setBusca}
-              icon="ti-search" placeholder="Buscar movimentação…" />
-          </div>
-          <select value={conta} onChange={e => setConta(e.target.value)} style={selectStyle(T)}>
-            <option value="">Conta (todas)</option>
-            {contas.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          {podeLimpar && (
-            <Button T={T} dark={dark} variant="ghost" size="sm" iconLeft="ti-x" onClick={limpar}>
-              Limpar
-            </Button>
-          )}
-        </div>
-      </Card>
-
       {/* KPI strip do Caixa */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
         <KpiCaixa T={T} dark={dark} label="Saldo do período"
