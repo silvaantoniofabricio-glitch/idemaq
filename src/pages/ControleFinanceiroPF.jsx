@@ -4,11 +4,10 @@
 // futuramente sera tabela propria (sistema isolado).
 
 import React, { useMemo, useState } from 'react'
-import { useIsMobile } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
-  Card, SubCard, Badge, EmptyState, PageHeader, SectionHeader, Tabs,
+  Card, Badge, EmptyState,
 } from '../components/ui'
 import {
   DESPESAS_PF_POR_MES,
@@ -41,23 +40,55 @@ const MESES_DISPONIVEIS = [
   { id: '2026-05', label: 'Maio/2026' },
 ]
 
-const RENDA_ESTIMADA_PADRAO = null
+const PESSOAS = [
+  { id: 'total',   label: 'Total (casal)' },
+  { id: 'toni',    label: 'Toni' },
+  { id: 'rafa',    label: 'Rafa' },
+  { id: 'empresa', label: 'Empresa' },
+]
+
+const SECOES = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'tabela',    label: 'Planilha' },
+  { id: 'conselhos', label: 'Análise' },
+]
+
+// ─── StatBadge local ─────────────────────────────────────────────────────────
+function StatBadge({ v, label, color }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, fontSize: 12 }}>
+      <span style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+      <span style={{ color, opacity: .75 }}>{label}</span>
+    </span>
+  )
+}
+
+// ─── SecHeader local ─────────────────────────────────────────────────────────
+function SecHeader({ T, icon, cor, mb = 14, children }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7, marginBottom: mb,
+      fontSize: 11, fontWeight: 700, color: T.textMuted,
+      textTransform: 'uppercase', letterSpacing: '.04em',
+    }}>
+      {icon && <i className={`ti ${icon}`} style={{ fontSize: 14, color: cor }} aria-hidden="true" />}
+      {children}
+    </div>
+  )
+}
 
 export default function ControleFinanceiroPF({ T, dark }) {
-  const isMobile = useIsMobile()
-  const azul = corEtapa('blue', dark)
+  const azul     = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
-  const amarelo = corEtapa('yellow', dark)
-  const vermelho = corEtapa('red', dark)
+  const amarelo  = corEtapa('yellow', dark)
+  const azulBg   = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
 
-  const [mesAtivo, setMesAtivo] = useState('2026-05')
-  const [pessoaAtiva, setPessoaAtiva] = useState('total') // total | toni | rafa | empresa
-  const [verSecao, setVerSecao] = useState('dashboard') // dashboard | tabela | conselhos
+  const [mesAtivo, setMesAtivo]     = useState('2026-05')
+  const [pessoaAtiva, setPessoaAtiva] = useState('total')
+  const [verSecao, setVerSecao]     = useState('dashboard')
 
-  // Empresa: vem do Supabase (lancamento_financeiro). Sempre busca, mesmo se aba
-  // empresa nao estiver ativa — barato e mantem hooks estaveis.
   const filtroEmp = FILTRO_EMPRESA_POR_MES[mesAtivo] || FILTRO_EMPRESA_POR_MES['2026-05']
-  const { lancamentos: lancsEmpresa, loading: loadingEmpresa } = useFinanceiro(filtroEmp)
+  const { lancamentos: lancsEmpresa } = useFinanceiro(filtroEmp)
   const despesasEmpresa = useMemo(() => adaptarEmpresaParaPF(lancsEmpresa), [lancsEmpresa])
 
   const despesas = pessoaAtiva === 'empresa'
@@ -66,65 +97,109 @@ export default function ControleFinanceiroPF({ T, dark }) {
 
   const analise = useMemo(() => analisarDespesas(despesas), [despesas])
 
+  const mesLabel = MESES_DISPONIVEIS.find(m => m.id === mesAtivo)?.label || mesAtivo
+
   return (
     <div style={{
-      padding: '20px 24px 32px', overflowY: 'auto', flex: 1,
-      display: 'flex', flexDirection: 'column', gap: 14,
+      display: 'flex', flexDirection: 'column', flex: 1,
+      minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
-      {!isMobile && (
-        <PageHeader T={T} dark={dark}
-          title="Controle Financeiro PF"
-          subtitle="Suas finanças pessoais — separadas da empresa. Sistema isolado em breve."
-          stats={[
-            { label: 'Gasto total bruto', value: fmtBRL(analise.totalBruto), color: amarelo },
-            { label: 'Gasto real (s/ transf)', value: fmtBRL(analise.totalReal), color: corHero(dark) },
-            { label: 'Itens', value: analise.totalItens, color: azul },
-          ]}
-        />
-      )}
 
-      <Card T={T} dark={dark}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Tabs T={T} dark={dark}
-            options={MESES_DISPONIVEIS}
-            value={mesAtivo}
-            onChange={setMesAtivo}
-            variant="segmented"
-          />
-          <Tabs T={T} dark={dark}
-            options={[
-              { id: 'total',   label: 'Total (casal)' },
-              { id: 'toni',    label: 'Toni (eu)' },
-              { id: 'rafa',    label: 'Rafa' },
-              { id: 'empresa', label: 'Empresa' },
-            ]}
-            value={pessoaAtiva}
-            onChange={setPessoaAtiva}
-            variant="segmented"
-          />
-          <div style={{ flex: 1 }} />
-          <Tabs T={T} dark={dark}
-            options={[
-              { id: 'dashboard', label: 'Dashboard' },
-              { id: 'tabela',    label: 'Planilha completa' },
-              { id: 'conselhos', label: 'Análise & conselhos' },
-            ]}
-            value={verSecao}
-            onChange={setVerSecao}
-            variant="segmented"
-          />
+      {/* ══ PAGE HEADER ══════════════════════════════════════════════════════ */}
+      <div style={{
+        padding: '18px 22px 0',
+        borderBottom: `1px solid ${T.border}`,
+        background: T.bg, flexShrink: 0,
+      }}>
+
+        {/* Linha 1 */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', marginBottom: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, background: azulBg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <i className="ti ti-home-dollar" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
+            </div>
+            <div>
+              <h1 style={{
+                fontSize: 17, fontWeight: 700, color: T.textPrimary,
+                margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
+              }}>
+                Financeiro PF
+              </h1>
+              <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center' }}>
+                <StatBadge v={fmtBRL(analise.totalReal)} label="gasto real" color={amarelo} />
+                <StatBadge v={analise.totalItens} label="lançamentos" color={azul} />
+              </div>
+            </div>
+          </div>
+
+          {/* Mês + chips de pessoa */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            {/* Mês — estático enquanto só tem 1 mês */}
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 8,
+              border: `1px solid ${T.border}`, background: T.cardAlt,
+              fontSize: 12.5, color: T.textMuted,
+            }}>
+              <i className="ti ti-calendar" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+              {mesLabel}
+            </span>
+
+            {/* Pessoa */}
+            {PESSOAS.map(p => {
+              const ativo = pessoaAtiva === p.id
+              return (
+                <button key={p.id} onClick={() => setPessoaAtiva(p.id)}
+                  style={{
+                    padding: '5px 12px', borderRadius: 20,
+                    border: `1px solid ${ativo ? azul : T.border}`,
+                    background: ativo ? azulBg : 'transparent',
+                    color: ativo ? azul : T.textMuted,
+                    fontSize: 12, fontWeight: ativo ? 600 : 400,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
-      </Card>
 
-      {verSecao === 'dashboard' && (
-        <Dashboard T={T} dark={dark} analise={analise} />
-      )}
-      {verSecao === 'tabela' && (
-        <PlanilhaCompleta T={T} dark={dark} despesas={despesas} />
-      )}
-      {verSecao === 'conselhos' && (
-        <ConselhosFinanceiros T={T} dark={dark} analise={analise} />
-      )}
+        {/* Linha 2 — tabs de seção (underline) */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {SECOES.map(s => {
+            const ativo = verSecao === s.id
+            return (
+              <button key={s.id} onClick={() => setVerSecao(s.id)}
+                style={{
+                  padding: '8px 16px', background: 'transparent', border: 'none',
+                  cursor: 'pointer', fontSize: 13, fontWeight: ativo ? 700 : 500,
+                  color: ativo ? azul : T.textMuted,
+                  borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
+                  marginBottom: -1, fontFamily: 'inherit',
+                  transition: 'color .12s, border-color .12s',
+                }}>
+                {s.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ══ CONTENT ══════════════════════════════════════════════════════════ */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {verSecao === 'dashboard' && <Dashboard T={T} dark={dark} analise={analise} />}
+          {verSecao === 'tabela'    && <PlanilhaCompleta T={T} dark={dark} despesas={despesas} />}
+          {verSecao === 'conselhos' && <ConselhosFinanceiros T={T} dark={dark} analise={analise} />}
+        </div>
+      </div>
     </div>
   )
 }
@@ -245,33 +320,33 @@ function Dashboard({ T, dark, analise }) {
 
       {/* Por categoria-mãe (macro) */}
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-chart-pie" mb={14}>
+        <SecHeader T={T} icon="ti-chart-pie" cor={amarelo}>
           Gastos por grande categoria
-        </SectionHeader>
+        </SecHeader>
         <Barras T={T} dark={dark} itens={analise.porCategoriaMae} total={analise.totalReal} cor={amarelo} />
       </Card>
 
       {/* Por categoria específica */}
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-tags" mb={14}>
+        <SecHeader T={T} icon="ti-tags" cor={azul}>
           Detalhado por categoria
-        </SectionHeader>
+        </SecHeader>
         <Barras T={T} dark={dark} itens={analise.porCategoria} total={analise.totalReal} cor={azul} />
       </Card>
 
       {/* Por origem (cartão / conta) */}
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-credit-card" mb={14}>
+        <SecHeader T={T} icon="ti-credit-card" cor={azulClaro}>
           Por cartão / conta de origem
-        </SectionHeader>
+        </SecHeader>
         <Barras T={T} dark={dark} itens={analise.porOrigem} total={analise.totalReal} cor={azulClaro} />
       </Card>
 
       {/* Top 15 maiores */}
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-list-numbers" mb={14}>
+        <SecHeader T={T} icon="ti-list-numbers" cor={azul}>
           Top 15 maiores gastos do mês
-        </SectionHeader>
+        </SecHeader>
         <ListaMaiores T={T} dark={dark} itens={analise.maiores} />
       </Card>
     </div>
@@ -401,9 +476,9 @@ function ConselhosFinanceiros({ T, dark, analise }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-bulb" mb={14}>
+        <SecHeader T={T} icon="ti-bulb" cor={amarelo}>
           Análise automática
-        </SectionHeader>
+        </SecHeader>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {conselhos.map((c, i) => (
             <div key={i} style={{
@@ -442,9 +517,9 @@ function ConselhosFinanceiros({ T, dark, analise }) {
       </Card>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-target" mb={14}>
+        <SecHeader T={T} icon="ti-target" cor={azul}>
           Recomendações de ação
-        </SectionHeader>
+        </SecHeader>
         <ul style={{ paddingLeft: 18, color: T.textSecondary, fontSize: 13, lineHeight: 1.7, margin: 0 }}>
           <li><b>Alimentação fora de casa</b>: iFood + Aiqfome + restaurantes pesam — meta de redução de 30% no próximo mês usando refeições em casa nos dias úteis.</li>
           <li><b>Combustível e manutenção do Focus</b>: somar PF dos veículos pra saber custo real ao mês. Se ultrapassar R$ 1k/mês, vale considerar reduzir uso ou planejar troca.</li>
