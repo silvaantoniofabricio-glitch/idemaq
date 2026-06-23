@@ -3,12 +3,11 @@
 // <AdminOnly>). Lê do agregado diário `jornada_funcionario` via
 // `useRelatorioPonto` — mesmo padrão visual dos outros 6 (KPI strip + tabela
 // densa). Saldo de banco de horas usa paleta Deutan: positivo = azul +
-// ti-trending-up; negativo = vermelho + ti-trending-down (cor sempre com
-// reforço de forma).
+// ti-trending-up; negativo = vermelho + ti-trending-down.
 
 import React from 'react'
 import { corEtapa, corHero } from '../../utils/colors'
-import { Card, SectionHeader, EmptyState } from '../../components/ui'
+import { Card, EmptyState } from '../../components/ui'
 import { useRelatorioPonto } from '../../hooks/useRelatorios'
 
 const LABEL_PAPEL = { dono: 'Dono', logistica: 'Logística', oficina: 'Oficina' }
@@ -20,62 +19,54 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
   if (error)   return <PontoErro T={T} dark={dark} msg={error} />
   if (!data)   return null
 
-  const azul = corEtapa('blue', dark)
+  const azul    = corEtapa('blue', dark)
   const vermelho = corEtapa('red', dark)
-  const amarelo = corEtapa('yellow', dark)
+  const amarelo  = corEtapa('yellow', dark)
 
-  const equipe = data.porFuncionario
+  const equipe  = data.porFuncionario
   const semDados = equipe.length === 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{
-        display: 'grid', gap: 12,
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-      }}>
-        <KPI T={T} dark={dark}
-          label="Horas trabalhadas (total)"
-          valor={data.totalHoras}
-          cor={azul}
-          icon="ti-clock" />
-        <KPI T={T} dark={dark}
-          label="Faltas no período"
-          valor={data.totalFaltas}
-          cor={data.totalFaltas > 0 ? amarelo : corHero(dark)}
-          icon="ti-calendar-x" />
-        <KPI T={T} dark={dark}
-          label="Pessoas com jornada"
-          valor={data.totalFuncionarios}
-          cor={corHero(dark)}
-          icon="ti-users" />
-        <KPI T={T} dark={dark}
-          label="Top performer"
+
+      {/* KPIs */}
+      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        <KPI T={T} dark={dark} label="Horas trabalhadas (total)" valor={data.totalHoras}       cor={azul}    icon="ti-clock" />
+        <KPI T={T} dark={dark} label="Faltas no período"          valor={data.totalFaltas}       cor={data.totalFaltas > 0 ? amarelo : corHero(dark)} icon="ti-calendar-x" />
+        <KPI T={T} dark={dark} label="Pessoas com jornada"        valor={data.totalFuncionarios} cor={corHero(dark)} icon="ti-users" />
+        <KPI T={T} dark={dark} label="Top performer"
           valor={data.topPerformer ? data.topPerformer.nome : '—'}
           subtitulo={data.topPerformer ? data.topPerformer.totalHoras : null}
-          cor={azul}
-          icon="ti-trophy" />
+          cor={azul} icon="ti-trophy" />
       </div>
 
+      {/* Tabela de jornadas */}
       <Card T={T} dark={dark} padding={0}>
-        <div style={{ padding: '12px 16px 10px' }}>
-          <SectionHeader T={T} dark={dark} icon="ti-clock-pin" mb={0}>
-            Jornada por funcionário
-          </SectionHeader>
+        {/* Header da card */}
+        <div style={{
+          padding: '12px 16px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 7,
+          fontSize: 11, fontWeight: 700, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>
+          <i className="ti ti-clock-pin" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
+          Jornada por funcionário
         </div>
 
         {semDados ? (
-          <div style={{ padding: '8px 16px 18px' }}>
+          <div style={{ padding: '16px 16px 20px' }}>
             <EmptyState T={T} compact icon="ti-clock-off"
               title="Sem jornadas registradas no período"
               description="Linhas em jornada_funcionario aparecem aqui quando funcionário bate ponto ou cronjob de falta automática roda." />
           </div>
         ) : (
           <>
+            {/* Cabeçalho da tabela */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1.4fr 130px 100px 140px',
               gap: 10, padding: '8px 16px',
-              borderTop: `1px solid ${T.border}`,
               background: T.cardAlt,
               fontSize: 10.5, color: T.textMuted, fontWeight: 600,
               textTransform: 'uppercase', letterSpacing: '0.04em',
@@ -87,8 +78,8 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
             </div>
 
             {equipe.map(f => {
-              const saldoPos = f.saldoHorasMin >= 0
-              const corSaldo = saldoPos ? azul : vermelho
+              const saldoPos  = f.saldoHorasMin >= 0
+              const corSaldo  = saldoPos ? azul : vermelho
               const iconSaldo = saldoPos ? 'ti-trending-up' : 'ti-trending-down'
               return (
                 <div key={f.id} style={{
@@ -103,26 +94,16 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
                     <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
                       {LABEL_PAPEL[f.papel] || f.papel || '—'}
                       {' · '}{f.diasComputados} dia{f.diasComputados === 1 ? '' : 's'}
-                      {f.faltasJustificadas > 0 && (
-                        <> · {f.faltasJustificadas} falta(s) justificada(s)</>
-                      )}
+                      {f.faltasJustificadas > 0 && <> · {f.faltasJustificadas} falta(s) justificada(s)</>}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
                     {f.totalHoras}
                   </div>
-                  <div style={{
-                    textAlign: 'right', fontSize: 13, fontWeight: 600,
-                    color: f.faltas > 0 ? amarelo : T.textSecondary,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
+                  <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: f.faltas > 0 ? amarelo : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
                     {f.faltas}
                   </div>
-                  <div style={{
-                    textAlign: 'right', fontSize: 13, fontWeight: 700,
-                    color: corSaldo, fontVariantNumeric: 'tabular-nums',
-                    display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end',
-                  }}>
+                  <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: corSaldo, fontVariantNumeric: 'tabular-nums', display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                     <i className={`ti ${iconSaldo}`} style={{ fontSize: 14 }} aria-hidden="true" />
                     {f.saldoHoras}
                   </div>
@@ -136,10 +117,7 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
   )
 }
 
-// =============================================================================
-// KPI local — mesmo shape do KPI de Relatorios.jsx, com extra `subtitulo`
-// pra mostrar a métrica secundária do "Top performer" (horas do top).
-// =============================================================================
+// ─── KPI ─────────────────────────────────────────────────────────────────────
 function KPI({ T, dark, label, valor, subtitulo, cor, icon }) {
   return (
     <Card T={T} dark={dark}>
@@ -151,31 +129,21 @@ function KPI({ T, dark, label, valor, subtitulo, cor, icon }) {
         {icon && <i className={`ti ${icon}`} style={{ fontSize: 14, color: cor }} aria-hidden="true" />}
         {label}
       </div>
-      <div style={{
-        fontSize: 20, fontWeight: 800, color: cor,
-        fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
-        lineHeight: 1.15,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
+      <div style={{ fontSize: 20, fontWeight: 800, color: cor, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {valor}
       </div>
-      {subtitulo && (
-        <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-          {subtitulo}
-        </div>
-      )}
+      {subtitulo && <div style={{ marginTop: 4, fontSize: 11, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>{subtitulo}</div>}
     </Card>
   )
 }
 
+// ─── Estados ──────────────────────────────────────────────────────────────────
 function PontoLoading({ T }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 48, color: T.textMuted, fontSize: 13, gap: 8,
-    }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: T.textMuted, fontSize: 13 }}>
       <i className="ti ti-loader-2" style={{ fontSize: 18, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
       Carregando jornadas…
+      <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
@@ -186,7 +154,7 @@ function PontoErro({ T, dark, msg }) {
     <Card T={T} dark={dark} accent={vermelho}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: vermelho }}>
         <i className="ti ti-alert-triangle" style={{ fontSize: 20 }} aria-hidden="true" />
-        <span style={{ fontSize: 13, fontWeight: 600 }}>Falha ao carregar relatório</span>
+        <span style={{ fontSize: 13, fontWeight: 600 }}>Falha ao carregar relatório de ponto</span>
       </div>
       <div style={{ marginTop: 6, fontSize: 12, color: T.textSecondary }}>{msg}</div>
     </Card>

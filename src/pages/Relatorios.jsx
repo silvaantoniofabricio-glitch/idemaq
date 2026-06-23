@@ -12,7 +12,7 @@ import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
   Card, Button, Badge,
-  EmptyState, SectionHeader,
+  EmptyState,
   Sparkline, DeltaPill,
   useToast,
 } from '../components/ui'
@@ -312,6 +312,20 @@ export default function Relatorios({ T, dark }) {
   )
 }
 
+// Cabeçalho de seção inline (substitui SectionHeader do ui/)
+function SecHeader({ T, icon, cor, mb = 14, children }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7, marginBottom: mb,
+      fontSize: 11, fontWeight: 700, color: T.textMuted,
+      textTransform: 'uppercase', letterSpacing: '.04em',
+    }}>
+      {icon && <i className={`ti ${icon}`} style={{ fontSize: 14, color: cor }} aria-hidden="true" />}
+      {children}
+    </div>
+  )
+}
+
 // =============================================================================
 // HUB
 // =============================================================================
@@ -396,9 +410,9 @@ function RelatorioGeral({ T, dark, iniIso, fimIso }) {
       </div>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-chart-bar" mb={14}>
+        <SecHeader T={T} icon="ti-chart-bar" cor={azul}>
           Distribuição por tipo de OS
-        </SectionHeader>
+        </SecHeader>
         {data.totalDistribuicao > 0 ? (
           <BarrasCategoria T={T} dark={dark}
             dados={data.porTipo.map(t => ({ label: t.label, valor: t.valor, cor: tipoCores[t.id] || azul }))}
@@ -446,9 +460,9 @@ function RelatorioOperacional({ T, dark, iniIso, fimIso }) {
       </div>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-hourglass" mb={14}>
+        <SecHeader T={T} icon="ti-hourglass" cor={azul}>
           Tempo médio por etapa
-        </SectionHeader>
+        </SecHeader>
         {data.tempoMedioPorEtapa.length > 0 ? (
           <BarrasHorizontais T={T} dark={dark} dados={data.tempoMedioPorEtapa} />
         ) : (
@@ -459,9 +473,9 @@ function RelatorioOperacional({ T, dark, iniIso, fimIso }) {
       </Card>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-alert-triangle" mb={14}>
+        <SecHeader T={T} icon="ti-alert-triangle" cor={azul}>
           Gargalos identificados
-        </SectionHeader>
+        </SecHeader>
         {data.gargalos.length > 0 ? (
           <ListaSimples T={T} dark={dark} itens={data.gargalos} />
         ) : (
@@ -503,9 +517,9 @@ function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
       </div>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-trending-up" mb={14}>
+        <SecHeader T={T} icon="ti-trending-up" cor={azul}>
           Peças mais usadas no período
-        </SectionHeader>
+        </SecHeader>
         {data.pecasMaisUsadas.length > 0 ? (
           <BarrasHorizontais T={T} dark={dark} dados={data.pecasMaisUsadas} />
         ) : (
@@ -516,9 +530,9 @@ function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
       </Card>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-alert-octagon" mb={14}>
+        <SecHeader T={T} icon="ti-alert-octagon" cor={azul}>
           Peças paradas (sem giro no período)
-        </SectionHeader>
+        </SecHeader>
         {data.pecasParadas.length > 0 ? (
           <ListaSimples T={T} dark={dark} itens={data.pecasParadas.map(p => ({
             titulo: p.nome,
@@ -571,9 +585,9 @@ function RelatorioVendas({ T, dark, iniIso, fimIso }) {
       </div>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-funnel" mb={14}>
+        <SecHeader T={T} icon="ti-funnel" cor={azul}>
           Funil de OS
-        </SectionHeader>
+        </SecHeader>
         {data.totalAbertas > 0 ? (
           <BarrasHorizontais T={T} dark={dark} dados={data.funil} />
         ) : (
@@ -584,9 +598,9 @@ function RelatorioVendas({ T, dark, iniIso, fimIso }) {
       </Card>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-star" mb={14}>
+        <SecHeader T={T} icon="ti-star" cor={azul}>
           Itens mais vendidos no período
-        </SectionHeader>
+        </SecHeader>
         {data.servicosMaisVendidos.length > 0 ? (
           <BarrasCategoria T={T} dark={dark}
             dados={data.servicosMaisVendidos.map(r => ({
@@ -663,9 +677,9 @@ function RelatorioFinanceiro({ T, dark, iniIso, fimIso }) {
       </div>
 
       <Card T={T} dark={dark}>
-        <SectionHeader T={T} dark={dark} icon="ti-file-invoice" mb={14}>
+        <SecHeader T={T} icon="ti-file-invoice" cor={azul}>
           DRE simplificado
-        </SectionHeader>
+        </SecHeader>
         {!semDados ? (
           <DRELinhas T={T} dark={dark} linhas={linhasDRE} />
         ) : (
@@ -741,9 +755,9 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
 
       <Card T={T} dark={dark} padding={0}>
         <div style={{ padding: '12px 16px 10px' }}>
-          <SectionHeader T={T} dark={dark} icon="ti-users" mb={0}>
+          <SecHeader T={T} icon="ti-users" cor={azul} mb={0}>
             Performance da equipe
-          </SectionHeader>
+          </SecHeader>
         </div>
 
         {semDados ? (
