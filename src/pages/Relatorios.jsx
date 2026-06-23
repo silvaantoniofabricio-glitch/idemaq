@@ -29,16 +29,16 @@ import {
 } from '../hooks/useRelatorios'
 import { useRelatorioIA } from '../hooks/useRelatorioIA'
 
-// === Catálogo dos 7 relatórios ===
+// === Catálogo dos relatórios ===
 const RELATORIOS = [
-  { id:'finmensal',     label:'Relatório Financeiro', icon:'ti-report-money',  desc:'Receitas, despesas, fluxo e comparativo do mês', cor:'blue' },
-  { id:'geral',         label:'Geral',           icon:'ti-chart-arcs',        desc:'Visão consolidada do negócio', cor:'blue' },
-  { id:'operacional',   label:'OS Operacional',  icon:'ti-clipboard-list',    desc:'Tempos por etapa, gargalos, retrabalho', cor:'blue' },
-  { id:'estoque',       label:'Estoque',         icon:'ti-package',           desc:'Giro, paradas, projeção', cor:'blue' },
-  { id:'vendas',        label:'Vendas',          icon:'ti-shopping-cart',     desc:'Funil, ticket médio, conversão', cor:'blue' },
-  { id:'financeiro',    label:'Financeiro (DRE)', icon:'ti-cash-banknote',    desc:'DRE + análise com IA', cor:'blue', ia:true },
-  { id:'funcionarios',  label:'Funcionários',    icon:'ti-users',             desc:'Performance individual + IA', cor:'blue', ia:true },
-  { id:'ponto',         label:'Relógio de Ponto', icon:'ti-clock',            desc:'Horas trabalhadas, faltas, banco de horas por funcionário', cor:'blue' },
+  { id:'finmensal',    label:'Relatório Financeiro', tab:'Fin. Mensal',   icon:'ti-report-money',   desc:'Receitas, despesas, fluxo e comparativo do mês', cor:'blue' },
+  { id:'geral',        label:'Geral',                tab:'Geral',         icon:'ti-chart-arcs',     desc:'Visão consolidada do negócio', cor:'blue' },
+  { id:'operacional',  label:'OS Operacional',       tab:'Operacional',   icon:'ti-clipboard-list', desc:'Tempos por etapa, gargalos, retrabalho', cor:'blue' },
+  { id:'estoque',      label:'Estoque',              tab:'Estoque',       icon:'ti-package',        desc:'Giro, paradas, projeção', cor:'blue' },
+  { id:'vendas',       label:'Vendas',               tab:'Vendas',        icon:'ti-shopping-cart',  desc:'Funil, ticket médio, conversão', cor:'blue' },
+  { id:'financeiro',   label:'Financeiro (DRE)',      tab:'DRE',          icon:'ti-cash-banknote',  desc:'DRE + análise com IA', cor:'blue', ia:true },
+  { id:'funcionarios', label:'Funcionários',          tab:'Funcionários', icon:'ti-users',          desc:'Performance individual + IA', cor:'blue', ia:true },
+  { id:'ponto',        label:'Ponto',                tab:'Ponto',         icon:'ti-clock',          desc:'Horas trabalhadas, faltas, banco de horas', cor:'blue' },
 ]
 
 // Flag de deploy da edge function `relatorio-ia`.
@@ -111,7 +111,7 @@ function StatBadge({ v, label, color }) {
 // === Página ===
 export default function Relatorios({ T, dark }) {
   const notify = useToast()
-  const [relAtivo, setRelAtivo] = useState(null) // null = hub
+  const [relAtivo, setRelAtivo] = useState('finmensal')
   const [periodo, setPeriodo] = useState({ id: 'mes' })
   const [periodoAberto, setPeriodoAberto] = useState(false)
   const periodoRef = useRef(null)
@@ -128,18 +128,10 @@ export default function Relatorios({ T, dark }) {
 
   function placeholder(msg) { notify('info', msg || 'Em breve') }
 
-  const azul     = corEtapa('blue', dark)
+  const azul    = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
-  const azulBg   = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
-  const relInfo  = RELATORIOS.find(r => r.id === relAtivo)
-
-  const btnSecondary = {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '6px 12px', borderRadius: 4, cursor: 'pointer',
-    border: `1px solid ${T.border}`,
-    background: dark ? 'rgba(255,255,255,0.06)' : '#fff',
-    color: T.textPrimary, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
-  }
+  const azulBg  = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
+  const relInfo = RELATORIOS.find(r => r.id === relAtivo)
 
   return (
     <div style={{
@@ -159,7 +151,7 @@ export default function Relatorios({ T, dark }) {
         {/* Linha 1 */}
         <div style={{
           display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', marginBottom: 8,
+          justifyContent: 'space-between', marginBottom: 10,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
@@ -169,62 +161,21 @@ export default function Relatorios({ T, dark }) {
               <i className="ti ti-chart-arcs" style={{ fontSize: 16, color: azul }} aria-hidden="true" />
             </div>
             <div>
-              {relAtivo && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                  <button onClick={() => setRelAtivo(null)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>
-                    Relatórios
-                  </button>
-                  <i className="ti ti-chevron-right" style={{ fontSize: 10, color: T.textDim }} aria-hidden="true" />
-                  <span style={{ fontSize: 11.5, fontWeight: 600, color: T.textPrimary }}>{relInfo?.label}</span>
-                </div>
-              )}
               <h1 style={{
-                fontSize: relAtivo ? 15 : 17, fontWeight: 700,
-                color: T.textPrimary, margin: 0,
-                letterSpacing: '-0.025em', lineHeight: 1.2,
+                fontSize: 17, fontWeight: 700, color: T.textPrimary,
+                margin: 0, letterSpacing: '-0.025em', lineHeight: 1.2,
               }}>
-                {relAtivo ? relInfo?.label : 'Relatórios'}
+                Relatórios
               </h1>
               <div style={{ display: 'flex', gap: 10, marginTop: 3, alignItems: 'center' }}>
-                {!relAtivo ? (
-                  <>
-                    <StatBadge v={8} label="relatórios" color={azul} />
-                    <StatBadge v={2} label="com IA" color={azulClaro} />
-                  </>
-                ) : (
-                  <span style={{ fontSize: 11, color: T.textMuted, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    {(relAtivo === 'financeiro' || relAtivo === 'funcionarios') && !IA_DEPLOYED
-                      ? <><i className="ti ti-sparkles" aria-hidden="true" /> Análise IA — em breve. Dados reais do Supabase.</>
-                      : <><i className="ti ti-database" aria-hidden="true" /> Dados em tempo real do Supabase</>
-                    }
-                  </span>
-                )}
+                <StatBadge v={8} label="relatórios" color={azul} />
+                <StatBadge v={2} label="com IA" color={azulClaro} />
               </div>
             </div>
           </div>
 
-          {relAtivo && (
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button onClick={() => setRelAtivo(null)} style={btnSecondary}
-                onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
-                onMouseLeave={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#fff'}>
-                <i className="ti ti-arrow-left" style={{ fontSize: 13 }} aria-hidden="true" />
-                Voltar
-              </button>
-              <button onClick={() => placeholder('Export PDF/Excel em breve')} style={btnSecondary}
-                onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
-                onMouseLeave={e => e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#fff'}>
-                <i className="ti ti-file-export" style={{ fontSize: 13 }} aria-hidden="true" />
-                Exportar
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Linha 2 — seletor de período (só quando relatório aberto) */}
-        {relAtivo && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            {/* Dropdown de período */}
             <div ref={periodoRef} style={{ position: 'relative' }}>
               <button onClick={() => setPeriodoAberto(o => !o)}
                 style={{
@@ -233,7 +184,7 @@ export default function Relatorios({ T, dark }) {
                   border: `1px solid ${T.border}`,
                   background: T.cardAlt, color: T.textPrimary,
                   fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-                  minWidth: 170,
+                  minWidth: 150,
                 }}>
                 <i className="ti ti-calendar" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
                 <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
@@ -245,11 +196,48 @@ export default function Relatorios({ T, dark }) {
                   onClose={() => setPeriodoAberto(false)} />
               )}
             </div>
-          </div>
-        )}
 
-        {/* Linha vazia só pra espaçamento quando no hub */}
-        {!relAtivo && <div style={{ height: 10 }} />}
+            {/* Exportar */}
+            <button onClick={() => placeholder('Export PDF/Excel em breve')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 12px', borderRadius: 8, cursor: 'pointer',
+                border: `1px solid ${T.border}`,
+                background: dark ? 'rgba(255,255,255,0.06)' : '#fff',
+                color: T.textPrimary, fontSize: 12.5, fontWeight: 500, fontFamily: 'inherit',
+              }}>
+              <i className="ti ti-file-export" style={{ fontSize: 13 }} aria-hidden="true" />
+              Exportar
+            </button>
+          </div>
+        </div>
+
+        {/* Linha 2 — tabs de relatórios (underline) */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 0,
+          overflowX: 'auto', scrollbarWidth: 'none',
+        }}>
+          {RELATORIOS.map(r => {
+            const ativo = relAtivo === r.id
+            return (
+              <button key={r.id} onClick={() => setRelAtivo(r.id)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '8px 14px', whiteSpace: 'nowrap',
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: ativo ? 700 : 500,
+                  color: ativo ? azul : T.textMuted,
+                  borderBottom: `2.5px solid ${ativo ? azul : 'transparent'}`,
+                  marginBottom: -1, fontFamily: 'inherit',
+                  transition: 'color .12s, border-color .12s',
+                  flexShrink: 0,
+                }}>
+                {r.ia && <i className="ti ti-sparkles" style={{ fontSize: 11 }} aria-hidden="true" />}
+                {r.tab}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════
@@ -257,20 +245,14 @@ export default function Relatorios({ T, dark }) {
       ══════════════════════════════════════════════════ */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {!relAtivo ? (
-            <RelatoriosHub T={T} dark={dark} onAbrir={setRelAtivo} />
-          ) : (
-            <>
-              {relAtivo === 'finmensal'    && <RelatorioFinanceiroMensal T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-              {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-              {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-              {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-              {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-              {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-              {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-              {relAtivo === 'ponto'        && <RelatorioPonto        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-            </>
-          )}
+          {relAtivo === 'finmensal'    && <RelatorioFinanceiroMensal T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'ponto'        && <RelatorioPonto        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
         </div>
       </div>
     </div>
