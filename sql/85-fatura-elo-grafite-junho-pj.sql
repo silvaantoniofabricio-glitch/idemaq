@@ -1,4 +1,4 @@
--- Fatura Elo Grafite Bradesco (6550 XXXX XXXX 3558) - venc. 11/07/2026 (fatura ABERTA em 25/06)
+-- Fatura Elo Grafite Bradesco (6550 XXXX XXXX 3558) - venc. 11/06/2026 - PAGA 11/06
 -- Cartao PF do Toni. So entram itens PJ classificados na revisao.
 -- Fonte: REVISAO FECHAMENTO 2026/JUNHO/FATURAS/Bradesco Junho 26 Elo Grafite.xls
 --
@@ -19,7 +19,7 @@ INSERT INTO lancamento_financeiro (tipo, valor, categoria, descricao, conta_id,
                                     vencimento, pago_em, taxa_pct, forma_pagamento)
 SELECT 'despesa', v.valor, v.categoria, 'FAT-ELO-GRAFITE-JUN:' || v.item,
   (SELECT id FROM conta_bancaria WHERE nome='Bradesco PJ' LIMIT 1),
-  '2026-07-11', NULL, 0, 'credito_parcelado'
+  '2026-06-11', '2026-06-11', 0, 'credito_parcelado'
 FROM (VALUES
   -- Compras novas de junho
   (48.20, 'Pecas', 'Casa dos Parafusos 17/06 1/6'),
