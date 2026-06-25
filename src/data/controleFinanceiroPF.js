@@ -186,8 +186,9 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
 ]
 
 // Despesas PF junho/2026 — TONI
-// Fonte: Elo Grafite venc. 11/07/2026 + Visa Bradesco venc. 20/06/2026
-// Itens PJ excluidos (ja em sql/85 e sql/86).
+// Fonte: Elo Grafite venc. 11/06/2026 (PAGA) + Visa Bradesco venc. 20/06/2026 (PAGA)
+//        + Inter venc. 25/06/2026 + MP Cartao venc. 22/06/2026
+// Itens PJ excluidos (sql/85 Elo PJ, sql/86 Visa PJ, sql/89 Inter PJ, sql/90 MP PJ).
 export const DESPESAS_PF_TONI_JUNHO_2026 = [
   // --- Elo Grafite 3558 — venc. 11/07/2026 ---
   // Compras novas de junho
@@ -304,6 +305,16 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/06',                            valor: 7.95,   categoria: 'Alimentacao' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'Apple.com/Bill 09/05',                       valor: 19.90,  categoria: 'Software/Lazer' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/05',                            valor: 7.95,   categoria: 'Alimentacao' },
+  // --- MP Cartao (Visa 5566) — venc. 22/06/2026 ---
+  // Parcelas PF confirmadas (mesmas series do mes passado). Todos os demais itens sao PJ (sql/90).
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML EbazarComBR 01/09 10/18',  valor: 50.07,  categoria: 'Compras pessoais' },
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML GAYA 08/09 10/12',         valor: 35.83,  categoria: 'Compras pessoais' },
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML CuboShop 30/01 5/8',       valor: 18.75,  categoria: 'Compras pessoais' },
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML MercadoLivre 26/01 5/8',   valor: 27.37,  categoria: 'Compras pessoais' },
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML JoyBasico 25/02 4/12',     valor: 10.97,  categoria: 'Compras pessoais' },
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML 2Produtos 25/02 4/12',     valor: 12.43,  categoria: 'Compras pessoais' },
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML Barbearia 02/03 4/4',      valor: 13.68,  categoria: 'Cuidados pessoais' },
+  { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML MercadoLivre 09/03 4/10',  valor: 44.81,  categoria: 'Compras pessoais' },
 ]
 
 // Despesas PF junho/2026 — RAFA (esposa)
