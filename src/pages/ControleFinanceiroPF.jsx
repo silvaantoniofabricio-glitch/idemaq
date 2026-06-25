@@ -3,7 +3,7 @@
 // Por enquanto le dados estaticos de src/data/controleFinanceiroPF.js;
 // futuramente sera tabela propria (sistema isolado).
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useRef, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
@@ -16,8 +16,57 @@ import {
 } from '../data/controleFinanceiroPF'
 import { useFinanceiro } from '../hooks/useFinanceiro'
 
-const FILTRO_EMPRESA_POR_MES = {
-  '2026-05': { tipo: 'despesa', dataInicio: '2026-05-01', dataFim: '2026-05-31' },
+const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+function periodoToFiltro(periodo) {
+  const hoje = new Date()
+  let de, ate
+  if (periodo.id === 'mes') {
+    de = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+    ate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+  } else if (periodo.id === 'mes_ant') {
+    de = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)
+    ate = new Date(hoje.getFullYear(), hoje.getMonth(), 0)
+  } else if (periodo.id === 'sel_mes' && periodo.ano != null) {
+    de = new Date(periodo.ano, periodo.mes, 1)
+    ate = new Date(periodo.ano, periodo.mes + 1, 0)
+  } else if (periodo.id === 'sel_period' && periodo.de && periodo.ate) {
+    de = new Date(periodo.de + 'T00:00:00')
+    ate = new Date(periodo.ate + 'T23:59:59')
+  } else {
+    de = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+    ate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
+  }
+  const iso = (d) => d.toISOString().slice(0, 10)
+  return { tipo: 'despesa', dataInicio: iso(de), dataFim: iso(ate) }
+}
+
+function periodoToMesKey(periodo) {
+  const hoje = new Date()
+  let ano, mes
+  if (periodo.id === 'mes') {
+    ano = hoje.getFullYear(); mes = hoje.getMonth()
+  } else if (periodo.id === 'mes_ant') {
+    mes = hoje.getMonth() - 1; ano = hoje.getFullYear()
+    if (mes < 0) { mes = 11; ano-- }
+  } else if (periodo.id === 'sel_mes' && periodo.ano != null) {
+    ano = periodo.ano; mes = periodo.mes
+  } else {
+    ano = hoje.getFullYear(); mes = hoje.getMonth()
+  }
+  return `${ano}-${String(mes + 1).padStart(2, '0')}`
+}
+
+function labelPeriodoPF(periodo) {
+  if (periodo.id === 'sel_period') {
+    const fmt = (s) => s ? s.split('-').reverse().join('/') : '...'
+    return `${fmt(periodo.de)} → ${fmt(periodo.ate)}`
+  }
+  if (periodo.id === 'sel_mes' && periodo.ano != null) {
+    return `${MESES_NOME[periodo.mes]} ${periodo.ano}`
+  }
+  const map = { mes: 'Mês atual', mes_ant: 'Mês passado' }
+  return map[periodo.id] || 'Mês atual'
 }
 
 function isoParaBR(iso) {
@@ -35,10 +84,6 @@ function adaptarEmpresaParaPF(lancs) {
     categoria: l.categoria || 'Diverso',
   }))
 }
-
-const MESES_DISPONIVEIS = [
-  { id: '2026-05', label: 'Maio/2026' },
-]
 
 const PESSOAS = [
   { id: 'total',   label: 'Total (casal)' },
@@ -83,21 +128,21 @@ export default function ControleFinanceiroPF({ T, dark }) {
   const amarelo  = corEtapa('yellow', dark)
   const azulBg   = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
 
-  const [mesAtivo, setMesAtivo]     = useState('2026-05')
+  const [periodo, setPeriodo]         = useState({ id: 'mes' })
   const [pessoaAtiva, setPessoaAtiva] = useState('total')
-  const [verSecao, setVerSecao]     = useState('dashboard')
+  const [verSecao, setVerSecao]       = useState('dashboard')
 
-  const filtroEmp = FILTRO_EMPRESA_POR_MES[mesAtivo] || FILTRO_EMPRESA_POR_MES['2026-05']
+  const filtroEmp = useMemo(() => periodoToFiltro(periodo), [periodo])
+  const mesKey    = useMemo(() => periodoToMesKey(periodo), [periodo])
+
   const { lancamentos: lancsEmpresa } = useFinanceiro(filtroEmp)
   const despesasEmpresa = useMemo(() => adaptarEmpresaParaPF(lancsEmpresa), [lancsEmpresa])
 
   const despesas = pessoaAtiva === 'empresa'
     ? despesasEmpresa
-    : ((DESPESAS_PF_POR_MES[mesAtivo] || {})[pessoaAtiva] || [])
+    : ((DESPESAS_PF_POR_MES[mesKey] || {})[pessoaAtiva] || [])
 
   const analise = useMemo(() => analisarDespesas(despesas), [despesas])
-
-  const mesLabel = MESES_DISPONIVEIS.find(m => m.id === mesAtivo)?.label || mesAtivo
 
   return (
     <div style={{
@@ -117,16 +162,7 @@ export default function ControleFinanceiroPF({ T, dark }) {
         activeTab={verSecao}
         onTabChange={setVerSecao}
         filterSlot={<>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '0 8px', height: 22, borderRadius: 4,
-            border: `1px solid ${T.border}`,
-            background: dark ? 'rgba(255,255,255,0.04)' : T.card,
-            fontSize: 11, color: T.textMuted,
-          }}>
-            <i className="ti ti-calendar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-            {mesLabel}
-          </span>
+          <CaixaPeriodoPF T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} />
           {PESSOAS.map(p => {
             const ativo = pessoaAtiva === p.id
             return (
@@ -154,6 +190,105 @@ export default function ControleFinanceiroPF({ T, dark }) {
           {verSecao === 'conselhos' && <ConselhosFinanceiros T={T} dark={dark} analise={analise} />}
         </div>
       </div>
+    </div>
+  )
+}
+
+// =====================================================================
+// Seletor de período (espelho do Financeiro.jsx)
+// =====================================================================
+function DropdownPeriodoPF({ T, dark, periodo, setPeriodo, onClose }) {
+  const azul = corEtapa('blue', dark)
+  const cor = (d, c) => dark ? d : c
+  const hoje = new Date()
+  const [selMesAno, setSelMesAno] = useState(
+    periodo.id === 'sel_mes' && periodo.ano != null
+      ? { ano: periodo.ano, mes: periodo.mes }
+      : { ano: hoje.getFullYear(), mes: hoje.getMonth() }
+  )
+  const itemStyle = (ativo) => ({
+    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+    padding: '8px 10px', borderRadius: 6, border: 'none',
+    background: ativo ? cor('#0d2035', '#e6f1fb') : 'transparent',
+    color: ativo ? azul : T.textSecondary,
+    fontSize: 12.5, fontWeight: ativo ? 700 : 500,
+    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+  })
+  return (
+    <div style={{
+      position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 50,
+      minWidth: 270, background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', padding: 8,
+    }}>
+      <button style={itemStyle(periodo.id === 'mes')}
+        onClick={() => { setPeriodo({ id: 'mes' }); onClose() }}>
+        {periodo.id === 'mes' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Mês atual
+      </button>
+      <button style={itemStyle(periodo.id === 'mes_ant')}
+        onClick={() => { setPeriodo({ id: 'mes_ant' }); onClose() }}>
+        {periodo.id === 'mes_ant' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Mês passado
+      </button>
+      <button style={itemStyle(periodo.id === 'sel_mes')}
+        onClick={() => setPeriodo(p => p.id === 'sel_mes' ? p : { id: 'sel_mes', ano: selMesAno.ano, mes: selMesAno.mes })}>
+        {periodo.id === 'sel_mes' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Selecionar mês
+        <i className={`ti ti-chevron-${periodo.id === 'sel_mes' ? 'up' : 'down'}`} style={{ fontSize: 12, marginLeft: 'auto', color: T.textMuted }} aria-hidden="true" />
+      </button>
+      {periodo.id === 'sel_mes' && (
+        <div style={{ padding: '6px 10px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 0 ? { ano: selMesAno.ano - 1, mes: 11 } : { ano: selMesAno.ano, mes: selMesAno.mes - 1 }
+            setSelMesAno(novo); setPeriodo({ id: 'sel_mes', ...novo })
+          }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, padding: 2 }}>
+            <i className="ti ti-chevron-left" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          <span style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 600, color: T.textPrimary }}>
+            {MESES_NOME[selMesAno.mes]} {selMesAno.ano}
+          </span>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 11 ? { ano: selMesAno.ano + 1, mes: 0 } : { ano: selMesAno.ano, mes: selMesAno.mes + 1 }
+            setSelMesAno(novo); setPeriodo({ id: 'sel_mes', ...novo })
+          }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, padding: 2 }}>
+            <i className="ti ti-chevron-right" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          <button onClick={onClose}
+            style={{ background: azul, border: 'none', cursor: 'pointer', color: '#fff', padding: '3px 10px', borderRadius: 5, fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+            OK
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CaixaPeriodoPF({ T, dark, periodo, setPeriodo }) {
+  const azul = corEtapa('blue', dark)
+  const [aberto, setAberto] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    function handler(e) { if (ref.current && !ref.current.contains(e.target)) setAberto(false) }
+    if (aberto) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [aberto])
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={() => setAberto(o => !o)} style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '0 10px', height: 26, borderRadius: 6,
+        border: `1px solid ${T.border}`,
+        background: dark ? 'rgba(255,255,255,0.04)' : T.card,
+        color: T.textPrimary, fontSize: 11.5, fontWeight: 500,
+        cursor: 'pointer', fontFamily: 'inherit', minWidth: 140,
+      }}>
+        <i className="ti ti-calendar" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
+        <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodoPF(periodo)}</span>
+        <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 12, color: T.textMuted }} aria-hidden="true" />
+      </button>
+      {aberto && (
+        <DropdownPeriodoPF T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} onClose={() => setAberto(false)} />
+      )}
     </div>
   )
 }
