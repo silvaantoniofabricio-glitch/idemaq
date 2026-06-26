@@ -37,6 +37,8 @@ export const CATEGORIAS_PECA = [
   { id: 'mangueira_entrada',  label: 'Mangueira de entrada',  grupo: 'agua' },
   { id: 'mangueira_saida',    label: 'Mangueira de saída',    grupo: 'agua' },
   { id: 'pressostato',       label: 'Pressostato',          grupo: 'agua' },
+  { id: 'mangueira_pressostato', label: 'Mangueira do pressostato', grupo: 'agua' },
+  { id: 'camera_ar',         label: 'Câmera de ar',         grupo: 'agua' },
   { id: 'braco_injetor',     label: 'Braço injetor',        grupo: 'agua' },
 
   // Sistema elétrico
