@@ -282,7 +282,7 @@ export default function ControleFinanceiroPF({ T, dark }) {
     ? despesasEmpresa
     : ((DESPESAS_PF_POR_MES[mesKey] || {})[pessoaAtiva] || [])
 
-  const analise = useMemo(() => analisarDespesas(despesas), [despesas])
+  const analise = useMemo(() => analisarDespesas(despesas, { isEmpresa: pessoaAtiva === 'empresa' }), [despesas, pessoaAtiva])
 
   const mesLabel    = labelPeriodoPF(periodo)
   const pessoaLabel = PESSOAS.find(p => p.id === pessoaAtiva)?.label || pessoaAtiva
@@ -440,7 +440,7 @@ function CaixaPeriodoPF({ T, dark, periodo, setPeriodo }) {
 // =====================================================================
 // Funções de análise
 // =====================================================================
-function analisarDespesas(despesas) {
+function analisarDespesas(despesas, { isEmpresa = false } = {}) {
   let totalBruto = 0
   let totalReal = 0
   let totalTransferencia = 0
@@ -458,7 +458,9 @@ function analisarDespesas(despesas) {
     const v = Number(d.valor || 0)
     totalBruto += v
 
-    if (ORIGENS_CARTAO.has(d.origem)) totalCartaoItens += v
+    // Para empresa os lançamentos já vêm item a item do banco — não há
+    // boleto de fatura separado, então ORIGENS_CARTAO não se aplica.
+    if (!isEmpresa && ORIGENS_CARTAO.has(d.origem)) totalCartaoItens += v
 
     if (d.categoria === 'Transferencia') {
       totalTransferencia += v
