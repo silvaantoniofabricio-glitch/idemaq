@@ -137,7 +137,7 @@ export async function montarLancamentosDoPagamento(os, { valor, forma, taxa_pct 
       categoria: 'Taxa maquininha',
       descricao: descricaoOS(os, `taxa ${taxa_pct.toFixed(2).replace('.', ',')}%`),
       vencimento: calcularD1UtilISO(hoje),
-      pago_em: null,
+      pago_em: calcularD1UtilISO(hoje),
       taxa_pct: 0,
       forma_pagamento: null,
       os_id: os.id,
