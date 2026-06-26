@@ -328,6 +328,7 @@ function analisarDespesas(despesas) {
     }
     if (d.categoria === 'Doacao/Igreja') {
       totalOferta += v
+      continue
     }
 
     totalReal += v
