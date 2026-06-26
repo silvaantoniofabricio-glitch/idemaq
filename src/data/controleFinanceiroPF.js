@@ -316,6 +316,13 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 30/03 2/2 (Focus)',  valor: 106.00, categoria: 'Veiculo PF' },
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'MP MeliMais 06/05',                       valor: 74.90,  categoria: 'Lazer' },
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Anuidade Bradesco Elo Mais 06/12 27/05',  valor: 22.00,  categoria: 'Tarifa cartao' },
+  // --- Extratos PF Toni (conta corrente/Nubank - sem data exata, agrupados 30/06) ---
+  { data: '30/06/2026', origem: 'Nubank', descricao: 'Sarah Regina - joias/presente',  valor: 75.00,  categoria: 'Compras pessoais' },
+  { data: '30/06/2026', origem: 'Nubank', descricao: 'Mercado Kraus',                  valor: 18.00,  categoria: 'Supermercado' },
+  { data: '30/06/2026', origem: 'Nubank', descricao: 'Mazinho Lanchonete',             valor: 44.00,  categoria: 'Alimentacao' },
+  { data: '30/06/2026', origem: 'Nubank', descricao: 'Farmacia',                       valor: 56.99,  categoria: 'Farmacia' },
+  { data: '30/06/2026', origem: 'Nubank', descricao: 'Jose Carlos de Souza Barbearia', valor: 35.00,  categoria: 'Cuidados pessoais' },
+  { data: '30/06/2026', origem: 'Nubank', descricao: 'MeliMais assinatura',            valor: 74.00,  categoria: 'Lazer' },
   // --- Nubank — venc. 02/06/2026 (PAGA) ---
   // PJ excluidos: Claude.Ai Subscription R$480,41 + IOF R$16,81 (sql/92)
   { data: '02/06/2026', origem: 'Nubank', descricao: 'Plano NuCel 19/05',         valor: 10.00, categoria: 'Diverso' },
