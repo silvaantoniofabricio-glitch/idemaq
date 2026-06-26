@@ -41,7 +41,7 @@ function periodoToFiltro(periodo) {
     ate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
   }
   const iso = (d) => d.toISOString().slice(0, 10)
-  return { tipo: 'despesa', dataInicio: iso(de), dataFim: iso(ate) }
+  return { tipo: 'despesa', status: 'pago', dataInicio: iso(de), dataFim: iso(ate) }
 }
 
 function periodoToMesKey(periodo) {
