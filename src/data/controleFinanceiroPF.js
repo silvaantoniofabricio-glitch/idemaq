@@ -353,6 +353,18 @@ export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Joias 11/06',                        valor: 48.00,   categoria: 'Compras pessoais' },
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Gasolina 11/06',                     valor: 100.00,  categoria: 'Combustivel' },
   { data: '15/06/2026', origem: 'Bradesco CC', descricao: 'Livraria Progresso 15/06',           valor: 43.00,   categoria: 'Educacao' },
+  // Aba 2 — despesas manuais (poupanca/dinheiro, sem data exata — agrupadas em 30/06)
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Almoco pesque e pague',            valor: 43.25,   categoria: 'Alimentacao' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Bobs',                             valor: 10.00,   categoria: 'Alimentacao' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Nilza Braga',                      valor: 10.00,   categoria: 'PIX terceiros' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Luana Fernandes',                  valor: 48.90,   categoria: 'PIX terceiros' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Henrique Makino (chipa)',           valor: 10.00,   categoria: 'Alimentacao' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Salao Neto Aguiar',                valor: 300.00,  categoria: 'Cuidados pessoais' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Meire Vieira',                     valor: 24.00,   categoria: 'PIX terceiros' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Nelson Peres',                     valor: 37.00,   categoria: 'PIX terceiros' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Farmacia do Povo',                 valor: 7.00,    categoria: 'Farmacia' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Ana Paula Batista',                valor: 14.00,   categoria: 'PIX terceiros' },
+  { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Unha',                             valor: 110.00,  categoria: 'Cuidados pessoais' },
 ]
 
 // Despesas PF maio/2026 — RAFA (esposa)
