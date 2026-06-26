@@ -8,7 +8,7 @@ INSERT INTO lancamento_financeiro (tipo, valor, categoria, descricao, conta_id,
 SELECT 'despesa', 1198.00, 'Emprestimo',
   'RAFA-JUN:Emprestimo PJ jun/2026 (pago conta Rafa)',
   (SELECT id FROM conta_bancaria WHERE nome='Cresol' LIMIT 1),
-  '2026-06-30', '2026-06-30', 0, 'debito'
+  '2026-06-20', '2026-06-20', 0, 'debito'
 WHERE NOT EXISTS(SELECT 1 FROM lancamento_financeiro
   WHERE descricao = 'RAFA-JUN:Emprestimo PJ jun/2026 (pago conta Rafa)'
     AND deleted_at IS NULL);
