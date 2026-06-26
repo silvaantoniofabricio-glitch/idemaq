@@ -27,6 +27,7 @@ export const CATEGORIA_MAE = {
   'Tarifa cartao': 'Tarifas & Encargos',
   'IOF': 'Tarifas & Encargos',
   'Emprestimo': 'Empréstimos',
+  'Financiamento': 'Financiamentos',
   'Doacao/Igreja': 'Doações',
   'Dizimo': 'Doações',
   'Multa transito': 'Multas',
@@ -102,7 +103,6 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'JIM COM Wellynton 3/4 (Focus)',                        valor: 91.25,   categoria: 'Veiculo PF' },
   { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'Cristiano Xavier Per 2/3 (Bateria Focus)',             valor: 116.66,  categoria: 'Veiculo PF' },
   { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'MP Marineshop 2/10',                                   valor: 93.27,   categoria: 'Compras pessoais' },
-  { data: '18/05/2026', origem: 'Bradesco PF',      descricao: 'Emprestimo carro PF',                                  valor: 1398.82, categoria: 'Emprestimo' },
   { data: '19/05/2026', origem: 'Nubank',           descricao: 'PIX Rodrigo Cardoso',                                  valor: 7.00,    categoria: 'PIX terceiros' },
   { data: '20/05/2026', origem: 'Nubank',           descricao: 'PIX Telma Rosana (1)',                                 valor: 71.50,   categoria: 'PIX terceiros' },
   { data: '20/05/2026', origem: 'Nubank',           descricao: 'PIX Telma Rosana (2)',                                 valor: 13.00,   categoria: 'PIX terceiros' },
@@ -349,7 +349,7 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
 // Despesas PF junho/2026 — RAFA (esposa)
 // Fonte: Extrato Rafaela/Extrato conta corrente - 062026.xlsx
 export const DESPESAS_PF_RAFA_JUNHO_2026 = [
-  { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Casa (parcela) 05/06',               valor: 690.00,  categoria: 'Moradia' },
+  { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Casa (parcela) 05/06',               valor: 690.00,  categoria: 'Financiamento' },
   { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Mensalidade plano celular 05/06',    valor: 38.92,   categoria: 'Diverso' },
   { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Parcela CRP (psicologia) 05/06',     valor: 153.50,  categoria: 'Educacao' },
   { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Mensalidade pos-grad 05/06',         valor: 85.78,   categoria: 'Educacao' },
@@ -361,7 +361,7 @@ export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Joias 11/06',                        valor: 48.00,   categoria: 'Compras pessoais' },
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Gasolina 11/06',                     valor: 100.00,  categoria: 'Combustivel' },
   { data: '15/06/2026', origem: 'Bradesco CC', descricao: 'Livraria Progresso 15/06',           valor: 43.00,   categoria: 'Educacao' },
-  { data: '16/06/2026', origem: 'Cresol',     descricao: 'Parcela Civic (emprestimo PF) 16/06', valor: 1526.48, categoria: 'Emprestimo' },
+  { data: '16/06/2026', origem: 'Cresol',     descricao: 'Parcela Civic (emprestimo PF) 16/06', valor: 1526.48, categoria: 'Financiamento' },
   // Aba 2 — despesas manuais (poupanca/dinheiro, sem data exata — agrupadas em 30/06)
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Almoco pesque e pague',            valor: 43.25,   categoria: 'Alimentacao' },
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Bobs',                             valor: 10.00,   categoria: 'Alimentacao' },
@@ -392,7 +392,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '06/05/2026', origem: 'Bradesco CC',  descricao: 'Tarifa Pacote de Servicos',                    valor: 4.53,   categoria: 'Tarifa banco' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 500.00, categoria: 'Transferencia' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 700.00, categoria: 'Transferencia' },
-  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Rafaela (Parcela da Casa)',                valor: 689.00, categoria: 'Moradia' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Rafaela (Parcela da Casa)',                valor: 689.00, categoria: 'Financiamento' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX TELEFONICA BRAS',                          valor: 38.92,  categoria: 'Diverso' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Boleto CONSELHO REGIONAL DE PSICOLOGI',        valor: 153.50, categoria: 'Educacao' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX UNINTER',                                  valor: 85.78,  categoria: 'Educacao' },
@@ -428,7 +428,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   // Pagos no sabado 30/05 (caiu so segunda 01/06 no extrato — lancados na data real pra controle)
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'PIX PAULO RICARDO PRADELLA',                   valor: 500.00,   categoria: 'PIX terceiros' },
   { data: '30/05/2026', origem: 'Bradesco Poup', descricao: "PIX MINAMI'S (planta pra casa)",              valor: 30.00,    categoria: 'Casa' },
-  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'Parcela Civic',                                valor: 1398.82,  categoria: 'Veiculo PF' },
+  { data: '30/05/2026', origem: 'Bradesco Poup', descricao: 'Parcela Civic',                                valor: 1398.82,  categoria: 'Financiamento' },
 
   // Plano de saude (mensalidade + co-participacao)
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Plano de saude',                              valor: 250.00,   categoria: 'Saude/Plano' },
