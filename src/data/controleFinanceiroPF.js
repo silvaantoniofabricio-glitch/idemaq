@@ -308,8 +308,7 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'Apple.com/Bill 09/05',                       valor: 19.90,  categoria: 'Software/Lazer' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/05',                            valor: 7.95,   categoria: 'Alimentacao' },
   // --- Cresol PJ (138286-1) — debitos junho ---
-  // PJ excluidos (sql/94). So item PF: parcela Civic.
-  { data: '16/06/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 16/06', valor: 1526.48, categoria: 'Veiculo PF' },
+  // PJ excluidos (sql/94). Parcela Civic e PF da Rafa (em DESPESAS_PF_RAFA_JUNHO_2026).
   // --- Bradesco PJ Elo Mais 3914 — venc. 10/06/2026 ---
   // Todos os itens sao PF (Focus + MeliMais + anuidade). Sem SQL PJ.
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 27/02 3/10 (Focus)', valor: 107.40, categoria: 'Veiculo PF' },
@@ -362,6 +361,7 @@ export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Joias 11/06',                        valor: 48.00,   categoria: 'Compras pessoais' },
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Gasolina 11/06',                     valor: 100.00,  categoria: 'Combustivel' },
   { data: '15/06/2026', origem: 'Bradesco CC', descricao: 'Livraria Progresso 15/06',           valor: 43.00,   categoria: 'Educacao' },
+  { data: '16/06/2026', origem: 'Cresol',     descricao: 'Parcela Civic (emprestimo PF) 16/06', valor: 1526.48, categoria: 'Emprestimo' },
   // Aba 2 — despesas manuais (poupanca/dinheiro, sem data exata — agrupadas em 30/06)
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Almoco pesque e pague',            valor: 43.25,   categoria: 'Alimentacao' },
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Bobs',                             valor: 10.00,   categoria: 'Alimentacao' },
