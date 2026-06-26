@@ -10,8 +10,13 @@ WITH grupos AS (
     lf.id,
     lf.descricao,
     COUNT(*) OVER (PARTITION BY lf.valor, lf.vencimento) AS qtd,
-    MIN(lf.id)  OVER (PARTITION BY lf.valor, lf.vencimento) AS min_id,
-    BOOL_OR(lf.descricao LIKE 'FAT-%') OVER (PARTITION BY lf.valor, lf.vencimento) AS tem_fat
+    BOOL_OR(lf.descricao LIKE 'FAT-%') OVER (PARTITION BY lf.valor, lf.vencimento) AS tem_fat,
+    ROW_NUMBER() OVER (
+      PARTITION BY lf.valor, lf.vencimento
+      ORDER BY
+        CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END,
+        lf.created_at
+    ) AS rn
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
     AND lf.deleted_at IS NULL
@@ -20,28 +25,24 @@ WITH grupos AS (
 a_remover AS (
   SELECT id, descricao, valor, vencimento
   FROM grupos
-  WHERE qtd > 1
-    AND (
-      -- tem FAT- no grupo: remove os PARC-
-      (tem_fat AND descricao LIKE 'PARC-%')
-      OR
-      -- nao tem FAT- no grupo: remove todos exceto o id mais antigo
-      (NOT tem_fat AND id <> min_id)
-    )
+  WHERE qtd > 1 AND rn > 1
 )
 SELECT vencimento, valor, descricao AS sera_removido
 FROM a_remover
 ORDER BY vencimento, valor DESC;
 
--- APLICAR (descomente apos conferir):
+-- APLICAR (descomente apos conferir a lista acima):
 /*
 WITH grupos AS (
   SELECT
     lf.id,
-    lf.descricao,
     COUNT(*) OVER (PARTITION BY lf.valor, lf.vencimento) AS qtd,
-    MIN(lf.id)  OVER (PARTITION BY lf.valor, lf.vencimento) AS min_id,
-    BOOL_OR(lf.descricao LIKE 'FAT-%') OVER (PARTITION BY lf.valor, lf.vencimento) AS tem_fat
+    ROW_NUMBER() OVER (
+      PARTITION BY lf.valor, lf.vencimento
+      ORDER BY
+        CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END,
+        lf.created_at
+    ) AS rn
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
     AND lf.deleted_at IS NULL
@@ -50,15 +51,10 @@ WITH grupos AS (
 UPDATE lancamento_financeiro
 SET deleted_at = NOW()
 WHERE id IN (
-  SELECT id FROM grupos
-  WHERE qtd > 1
-    AND (
-      (tem_fat AND descricao LIKE 'PARC-%')
-      OR
-      (NOT tem_fat AND id <> min_id)
-    )
+  SELECT id FROM grupos WHERE qtd > 1 AND rn > 1
 );
 
-SELECT 'Removidos: ' || COUNT(*) FROM lancamento_financeiro
+SELECT 'Removidos: ' || COUNT(*) AS resultado
+FROM lancamento_financeiro
 WHERE deleted_at::date = CURRENT_DATE AND tipo = 'despesa';
 */
