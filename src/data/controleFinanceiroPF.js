@@ -307,6 +307,9 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/06',                            valor: 7.95,   categoria: 'Alimentacao' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'Apple.com/Bill 09/05',                       valor: 19.90,  categoria: 'Software/Lazer' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/05',                            valor: 7.95,   categoria: 'Alimentacao' },
+  // --- Cresol PJ (138286-1) — debitos junho ---
+  // PJ excluidos (sql/94). So item PF: parcela Civic.
+  { data: '16/06/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 16/06', valor: 1526.48, categoria: 'Veiculo PF' },
   // --- Bradesco PJ Elo Mais 3914 — venc. 10/06/2026 ---
   // Todos os itens sao PF (Focus + MeliMais + anuidade). Sem SQL PJ.
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 27/02 3/10 (Focus)', valor: 107.40, categoria: 'Veiculo PF' },
