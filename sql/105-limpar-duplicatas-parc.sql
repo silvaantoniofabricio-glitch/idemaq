@@ -15,7 +15,7 @@ WITH grupos AS (
       PARTITION BY lf.valor, lf.vencimento
       ORDER BY
         CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END,
-        lf.created_at
+        lf.criado_em
     ) AS rn
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
@@ -41,7 +41,7 @@ WITH grupos AS (
       PARTITION BY lf.valor, lf.vencimento
       ORDER BY
         CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END,
-        lf.created_at
+        lf.criado_em
     ) AS rn
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
