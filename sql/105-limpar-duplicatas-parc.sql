@@ -11,7 +11,15 @@ WITH base AS (
     lf.vencimento,
     lf.descricao,
     -- extrai o numero de parcela "N/M" da descricao (ex: "3/6" -> "3/6")
-    (regexp_match(lf.descricao, '\d+/\d+'))[1] AS parcela
+    -- extrai N/M somente quando M >= N (parcela real, nao data DD/MM)
+    CASE
+      WHEN (regexp_match(lf.descricao, '(\d+)/(\d+)'))[2]::int
+         >= (regexp_match(lf.descricao, '(\d+)/(\d+)'))[1]::int
+      THEN (regexp_match(lf.descricao, '(\d+)/(\d+)'))[1]
+           || '/' ||
+           (regexp_match(lf.descricao, '(\d+)/(\d+)'))[2]
+      ELSE NULL
+    END AS parcela
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
     AND lf.deleted_at IS NULL
@@ -37,7 +45,15 @@ ORDER BY vencimento, valor DESC;
 /*
 WITH base AS (
   SELECT lf.id, lf.valor, lf.vencimento, lf.descricao,
-    (regexp_match(lf.descricao, '\d+/\d+'))[1] AS parcela
+    -- extrai N/M somente quando M >= N (parcela real, nao data DD/MM)
+    CASE
+      WHEN (regexp_match(lf.descricao, '(\d+)/(\d+)'))[2]::int
+         >= (regexp_match(lf.descricao, '(\d+)/(\d+)'))[1]::int
+      THEN (regexp_match(lf.descricao, '(\d+)/(\d+)'))[1]
+           || '/' ||
+           (regexp_match(lf.descricao, '(\d+)/(\d+)'))[2]
+      ELSE NULL
+    END AS parcela
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
     AND lf.deleted_at IS NULL
