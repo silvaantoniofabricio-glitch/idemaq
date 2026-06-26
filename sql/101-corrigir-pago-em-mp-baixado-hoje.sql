@@ -3,7 +3,7 @@
 -- Substitua '2026-XX-XX' pela data correta antes de rodar.
 
 -- VER o que foi baixado hoje no MP:
-SELECT id, descricao, valor, vencimento, pago_em
+SELECT lf.id, lf.descricao, lf.valor, lf.vencimento, lf.pago_em, cb.nome AS conta
 FROM lancamento_financeiro lf
 LEFT JOIN conta_bancaria cb ON cb.id = lf.conta_id
 WHERE lf.pago_em = '2026-06-26'
