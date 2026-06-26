@@ -224,6 +224,8 @@ export default function Financeiro({ T, dark }) {
   const [selecionado, setSelecionado] = useState(null)
   // Modal de novo lançamento: null=fechado, 'receita'|'despesa'=aberto com tipo inicial
   const [novoLancTipo, setNovoLancTipo] = useState(null)
+  // Modal confirmação de baixa com data: null=fechado, { item, tipo, ids? }=aberto
+  const [confirmBaixa, setConfirmBaixa] = useState(null)
 
   // Hook real do Supabase. Schema parte 2 (`lancamento_financeiro`) ainda
   // pode não existir — o hook trata graciosamente via `tabelaAusente` e
@@ -554,8 +556,8 @@ export default function Financeiro({ T, dark }) {
               categorias={CATEGORIAS_RECEITA} contas={CONTAS}
               periodo={rPeriodo} statusFilt={rStatus} busca={rBusca} categoria={rCategoria} conta={rConta}
               onAbrir={(item) => setSelecionado({ tipo:'receber', item })}
-              onBaixarUm={baixarReceber}
-              onBaixarLote={(ids) => baixarLote(ids, 'receber')}
+              onBaixarUm={(it) => setConfirmBaixa({ item: it, tipo: 'receber' })}
+              onBaixarLote={(ids) => setConfirmBaixa({ ids, tipo: 'receber' })}
               onExcluir={(item) => excluirLancamento(item, 'receber')}
               notify={notify}
             />
@@ -567,8 +569,8 @@ export default function Financeiro({ T, dark }) {
               categorias={CATEGORIAS_DESPESA} contas={CONTAS}
               periodo={pPeriodo} statusFilt={pStatus} busca={pBusca} categoria={pCategoria} conta={pConta}
               onAbrir={(item) => setSelecionado({ tipo:'pagar', item })}
-              onBaixarUm={baixarPagar}
-              onBaixarLote={(ids) => baixarLote(ids, 'pagar')}
+              onBaixarUm={(it) => setConfirmBaixa({ item: it, tipo: 'pagar' })}
+              onBaixarLote={(ids) => setConfirmBaixa({ ids, tipo: 'pagar' })}
               onExcluir={(item) => excluirLancamento(item, 'pagar')}
               notify={notify}
             />
@@ -584,6 +586,34 @@ export default function Financeiro({ T, dark }) {
 
         </div>
       </div>
+
+      {/* Modal confirmação de baixa com data */}
+      {confirmBaixa && (
+        <ConfirmarBaixaModal T={T} dark={dark}
+          confirmBaixa={confirmBaixa}
+          receber={receber} pagar={pagar}
+          onConfirmar={(pago_em) => {
+            const { item, ids, tipo } = confirmBaixa
+            if (ids) {
+              // lote
+              if (tipo === 'receber') {
+                const itens = receber.filter(r => ids.includes(r.id) && r.status === 'aberto')
+                itens.forEach(it => baixarReceber(it, { pago_em }))
+                notify('ok', `${itens.length} recebimentos confirmados`)
+              } else {
+                const itens = pagar.filter(p => ids.includes(p.id) && p.status === 'aberto')
+                itens.forEach(it => baixarPagar(it, { pago_em }))
+                notify('ok', `${itens.length} pagamentos registrados`)
+              }
+            } else {
+              if (tipo === 'receber') baixarReceber(item, { pago_em })
+              else baixarPagar(item, { pago_em })
+            }
+            setConfirmBaixa(null)
+          }}
+          onClose={() => setConfirmBaixa(null)}
+        />
+      )}
 
       {/* Modais */}
       {selecionado && (
@@ -1739,5 +1769,106 @@ function Td({ T, children, style, ...rest }) {
         verticalAlign:'middle',
         ...style,
       }}>{children}</td>
+  )
+}
+
+// ─── Modal de confirmação de baixa com data ───────────────────────────────────
+function ConfirmarBaixaModal({ T, dark, confirmBaixa, receber, pagar, onConfirmar, onClose }) {
+  const azul    = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const { item, ids, tipo } = confirmBaixa
+
+  // Data padrão: vencimento do item (individual) ou hoje (lote)
+  const defaultDate = ids
+    ? hojeISO()
+    : item?.vencimentoIso || item?.vencimento || hojeISO()
+
+  const [dataBaixa, setDataBaixa] = useState(defaultDate)
+
+  // Informações resumidas pro lote
+  const lotItens = ids
+    ? (tipo === 'receber' ? receber : pagar).filter(r => ids.includes(r.id) && r.status === 'aberto')
+    : null
+  const lotTotal = lotItens ? lotItens.reduce((s, i) => s + Number(i.valor || 0), 0) : 0
+
+  const labelAcao  = tipo === 'receber' ? 'Recebimento' : 'Pagamento'
+  const labelBotao = tipo === 'receber' ? 'Confirmar recebimento' : 'Confirmar pagamento'
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: T.card, borderRadius: 12,
+        border: `1px solid ${T.border}`,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+        padding: 24, width: 360, display: 'flex', flexDirection: 'column', gap: 18,
+      }}>
+        {/* Cabeçalho */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <i className={`ti ${tipo === 'receber' ? 'ti-arrow-down-circle' : 'ti-arrow-up-circle'}`}
+            style={{ fontSize: 20, color: tipo === 'receber' ? azul : amarelo }} aria-hidden="true" />
+          <span style={{ fontSize: 15, fontWeight: 700, color: T.textPrimary }}>
+            {ids ? `Baixa em lote — ${lotItens?.length} itens` : `Confirmar ${labelAcao}`}
+          </span>
+        </div>
+
+        {/* Resumo */}
+        {ids ? (
+          <div style={{ fontSize: 13, color: T.textSecondary }}>
+            Total: <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(lotTotal)}</strong>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ fontSize: 13, color: T.textMuted }}>{item?.descricao}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+              {fmtBRL(Number(item?.valor || 0))}
+            </div>
+          </div>
+        )}
+
+        {/* Data */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+            Data do pagamento
+          </label>
+          <input
+            type="date"
+            value={dataBaixa}
+            onChange={e => setDataBaixa(e.target.value)}
+            style={{
+              background: T.cardAlt, border: `1px solid ${T.border}`,
+              borderRadius: 8, padding: '9px 12px',
+              color: T.textPrimary, fontSize: 14,
+              fontFamily: 'inherit', width: '100%',
+            }}
+          />
+        </div>
+
+        {/* Botões */}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button onClick={onClose} style={{
+            padding: '8px 16px', borderRadius: 8,
+            border: `1px solid ${T.border}`, background: 'transparent',
+            color: T.textMuted, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            Cancelar
+          </button>
+          <button
+            onClick={() => dataBaixa && onConfirmar(dataBaixa)}
+            disabled={!dataBaixa}
+            style={{
+              padding: '8px 18px', borderRadius: 8,
+              border: 'none', background: tipo === 'receber' ? azul : amarelo,
+              color: '#fff', fontSize: 13, fontWeight: 600,
+              cursor: dataBaixa ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+            }}>
+            {labelBotao}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
