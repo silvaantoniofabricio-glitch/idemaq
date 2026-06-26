@@ -360,7 +360,7 @@ function analisarDespesas(despesas) {
     totalTransferencia,
     totalFaturas,
     totalDizimo,
-    totalGastos: totalBruto - totalDizimo - totalOferta,
+    totalGastos: totalReal - totalOferta,
     totalItens: despesas.length,
     porCategoria: mapObj(porCategoria),
     porCategoriaMae: mapObj(porCategoriaMae),
