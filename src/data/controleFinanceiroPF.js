@@ -338,8 +338,22 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
 ]
 
 // Despesas PF junho/2026 — RAFA (esposa)
-// Ainda nao lancadas — adicionar quando disponivel
-export const DESPESAS_PF_RAFA_JUNHO_2026 = []
+// Fonte: Extrato Rafaela/Extrato conta corrente - 062026.xlsx
+// Excluidos: Dizimo R$650 e Oferta R$300 (nao lancados por escolha).
+export const DESPESAS_PF_RAFA_JUNHO_2026 = [
+  { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Casa (parcela) 05/06',               valor: 690.00,  categoria: 'Moradia' },
+  { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Mensalidade plano celular 05/06',    valor: 38.92,   categoria: 'Diverso' },
+  { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Parcela CRP (psicologia) 05/06',     valor: 153.50,  categoria: 'Educacao' },
+  { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Mensalidade pos-grad 05/06',         valor: 85.78,   categoria: 'Educacao' },
+  { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Servicos banco 05/06',               valor: 15.90,   categoria: 'Tarifa banco' },
+  { data: '08/06/2026', origem: 'Bradesco CC', descricao: 'Sara Nossa Terra 08/06',             valor: 2.00,    categoria: 'Lazer' },
+  { data: '08/06/2026', origem: 'Bradesco CC', descricao: 'Almoco Campo Grande 08/06',          valor: 84.99,   categoria: 'Alimentacao' },
+  { data: '08/06/2026', origem: 'Bradesco CC', descricao: 'Parcela C&A 08/06',                  valor: 123.20,  categoria: 'Vestuario' },
+  { data: '10/06/2026', origem: 'Bradesco CC', descricao: 'FIES amortizacao 10/06',             valor: 106.42,  categoria: 'Educacao' },
+  { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Joias 11/06',                        valor: 48.00,   categoria: 'Compras pessoais' },
+  { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Gasolina 11/06',                     valor: 100.00,  categoria: 'Combustivel' },
+  { data: '15/06/2026', origem: 'Bradesco CC', descricao: 'Livraria Progresso 15/06',           valor: 43.00,   categoria: 'Educacao' },
+]
 
 // Despesas PF maio/2026 — RAFA (esposa)
 // Fonte: REVISAO FECHAMENTO 2026/MAIO/DESPESAS PF/RAFA/
