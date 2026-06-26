@@ -13,9 +13,7 @@ WITH grupos AS (
     BOOL_OR(lf.descricao LIKE 'FAT-%') OVER (PARTITION BY lf.valor, lf.vencimento) AS tem_fat,
     ROW_NUMBER() OVER (
       PARTITION BY lf.valor, lf.vencimento
-      ORDER BY
-        CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END,
-        lf.criado_em
+      ORDER BY CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END
     ) AS rn
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
@@ -39,9 +37,7 @@ WITH grupos AS (
     COUNT(*) OVER (PARTITION BY lf.valor, lf.vencimento) AS qtd,
     ROW_NUMBER() OVER (
       PARTITION BY lf.valor, lf.vencimento
-      ORDER BY
-        CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END,
-        lf.criado_em
+      ORDER BY CASE WHEN lf.descricao LIKE 'FAT-%' THEN 0 ELSE 1 END
     ) AS rn
   FROM lancamento_financeiro lf
   WHERE lf.tipo = 'despesa'
