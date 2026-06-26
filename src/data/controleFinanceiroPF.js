@@ -177,6 +177,8 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '20/05/2026', origem: 'MP Cartao',        descricao: 'ML Barbearia 3/4',                                     valor: 13.68,   categoria: 'Cuidados pessoais' },
   { data: '20/05/2026', origem: 'MP Cartao',        descricao: 'ML MercadoLivre 3/10',                                 valor: 44.81,   categoria: 'Compras pessoais' },
   { data: '10/05/2026', origem: 'Bradesco PJ ELO',  descricao: 'Supermercado Chama (PF no cartao PJ)',                 valor: 23.83,   categoria: 'Supermercado' },
+  { data: '10/05/2026', origem: 'Bradesco PJ ELO',  descricao: 'Pronto Paulo Cesar AD 27/02 2/10 (Focus)',              valor: 107.40,  categoria: 'Veiculo PF' },
+  { data: '10/05/2026', origem: 'Bradesco PJ ELO',  descricao: 'Pronto Paulo Cesar AD 30/03 1/2 (Focus)',               valor: 106.00,  categoria: 'Veiculo PF' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Supermercado Chama (03/04)',                           valor: 39.64,   categoria: 'Supermercado' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Supermercado Chama (01/04)',                           valor: 12.64,   categoria: 'Supermercado' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Garcias Grill',                                        valor: 19.00,   categoria: 'Alimentacao' },
@@ -305,6 +307,12 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/06',                            valor: 7.95,   categoria: 'Alimentacao' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'Apple.com/Bill 09/05',                       valor: 19.90,  categoria: 'Software/Lazer' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/05',                            valor: 7.95,   categoria: 'Alimentacao' },
+  // --- Bradesco PJ Elo Mais 3914 — venc. 10/06/2026 ---
+  // Todos os itens sao PF (Focus + MeliMais + anuidade). Sem SQL PJ.
+  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 27/02 3/10 (Focus)', valor: 107.40, categoria: 'Veiculo PF' },
+  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 30/03 2/2 (Focus)',  valor: 106.00, categoria: 'Veiculo PF' },
+  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'MP MeliMais 06/05',                       valor: 74.90,  categoria: 'Compras pessoais' },
+  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Anuidade Bradesco Elo Mais 06/12 27/05',  valor: 22.00,  categoria: 'Tarifa cartao' },
   // --- Nubank — venc. 02/06/2026 (PAGA) ---
   // PJ excluidos: Claude.Ai Subscription R$480,41 + IOF R$16,81 (sql/92)
   { data: '02/06/2026', origem: 'Nubank', descricao: 'Plano NuCel 19/05',         valor: 10.00, categoria: 'Diverso' },
