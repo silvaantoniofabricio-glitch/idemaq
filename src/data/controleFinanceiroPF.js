@@ -305,6 +305,15 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/06',                            valor: 7.95,   categoria: 'Alimentacao' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'Apple.com/Bill 09/05',                       valor: 19.90,  categoria: 'Software/Lazer' },
   { data: '20/06/2026', origem: 'Visa Bradesco', descricao: 'IFD iFood 09/05',                            valor: 7.95,   categoria: 'Alimentacao' },
+  // --- Nubank — venc. 02/06/2026 (PAGA) ---
+  // PJ excluidos: Claude.Ai Subscription R$480,41 + IOF R$16,81 (sql/92)
+  { data: '02/06/2026', origem: 'Nubank', descricao: 'Plano NuCel 19/05',         valor: 10.00, categoria: 'Diverso' },
+  { data: '02/06/2026', origem: 'Nubank', descricao: 'NuTag emissao 11/05',        valor: 10.00, categoria: 'Diverso' },
+  { data: '02/06/2026', origem: 'Nubank', descricao: 'Nubank+ 02/05',              valor: 29.00, categoria: 'Software/Lazer' },
+  // --- Nubank — venc. 23/06/2026 (PAGA) ---
+  // PJ excluidos: Facebook Ads R$352,07 (sql/93)
+  { data: '23/06/2026', origem: 'Nubank', descricao: 'PIX Matheus Henrique 23/05', valor: 10.65, categoria: 'PIX terceiros' },
+  { data: '23/06/2026', origem: 'Nubank', descricao: 'Edna do Prado 21/05',        valor: 12.00, categoria: 'PIX terceiros' },
   // --- MP Cartao (Visa 5566) — venc. 22/06/2026 ---
   // Parcelas PF confirmadas (mesmas series do mes passado). Todos os demais itens sao PJ (sql/90).
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML EbazarComBR 01/09 10/18',  valor: 50.07,  categoria: 'Compras pessoais' },
