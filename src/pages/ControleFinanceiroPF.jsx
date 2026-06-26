@@ -360,7 +360,7 @@ function analisarDespesas(despesas) {
     totalTransferencia,
     totalFaturas,
     totalDizimo,
-    totalGastos: totalReal - totalOferta,
+    totalPixDinheiro: totalBruto - totalTransferencia - totalFaturas,
     totalItens: despesas.length,
     porCategoria: mapObj(porCategoria),
     porCategoriaMae: mapObj(porCategoriaMae),
@@ -402,8 +402,8 @@ function Dashboard({ T, dark, analise }) {
         <KPI T={T} dark={dark} label="Gasto real efetivo" valor={fmtBRL(analise.totalReal)} cor={amarelo}
           icon="ti-shopping-cart"
           detalhe="Já desconta transferências internas e boletos de fatura" />
-        <KPI T={T} dark={dark} label="Gastos Totais" valor={fmtBRL(analise.totalGastos)} cor={amarelo}
-          icon="ti-receipt" detalhe="Sem dízimos e ofertas" />
+        <KPI T={T} dark={dark} label="Pagamentos Pix/Dinheiro" valor={fmtBRL(analise.totalPixDinheiro)} cor={azulClaro}
+          icon="ti-cash" detalhe="Exceto boletos de fatura e transferências" />
         <KPI T={T} dark={dark} label="Pagamentos de fatura" valor={fmtBRL(analise.totalFaturas)} cor={azulClaro}
           icon="ti-credit-card" detalhe="Já contado item a item" />
         <KPI T={T} dark={dark} label="Dízimo" valor={fmtBRL(analise.totalDizimo, { fr: true })} cor={azulClaro}
