@@ -311,7 +311,7 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   // Todos os itens sao PF (Focus + MeliMais + anuidade). Sem SQL PJ.
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 27/02 3/10 (Focus)', valor: 107.40, categoria: 'Veiculo PF' },
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 30/03 2/2 (Focus)',  valor: 106.00, categoria: 'Veiculo PF' },
-  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'MP MeliMais 06/05',                       valor: 74.90,  categoria: 'Compras pessoais' },
+  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'MP MeliMais 06/05',                       valor: 74.90,  categoria: 'Lazer' },
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Anuidade Bradesco Elo Mais 06/12 27/05',  valor: 22.00,  categoria: 'Tarifa cartao' },
   // --- Nubank — venc. 02/06/2026 (PAGA) ---
   // PJ excluidos: Claude.Ai Subscription R$480,41 + IOF R$16,81 (sql/92)
