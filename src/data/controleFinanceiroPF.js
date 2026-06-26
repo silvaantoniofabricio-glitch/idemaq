@@ -167,7 +167,6 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '26/05/2026', origem: 'Inter',            descricao: 'Pamela Comercio (vestuario) 3/6',                      valor: 91.66,   categoria: 'Vestuario' },
   { data: '26/05/2026', origem: 'Inter',            descricao: 'MARSARO 3/6',                                          valor: 63.31,   categoria: 'Vestuario' },
   { data: '26/05/2026', origem: 'Inter',            descricao: 'Canva 8/12',                                           valor: 24.16,   categoria: 'Software/Lazer' },
-  { data: '26/05/2026', origem: 'Inter',            descricao: 'Magalu Carrefour 23/02 3/7',                            valor: 343.62,  categoria: 'Compras pessoais' },
   { data: '20/05/2026', origem: 'MP Cartao',        descricao: 'ML EbazarComBR 9/18',                                  valor: 50.07,   categoria: 'Compras pessoais' },
   { data: '20/05/2026', origem: 'MP Cartao',        descricao: 'ML GAYA 9/12',                                         valor: 35.83,   categoria: 'Compras pessoais' },
   { data: '20/05/2026', origem: 'MP Cartao',        descricao: 'ML MercadoLivre 6/6',                                  valor: 19.70,   categoria: 'Compras pessoais' },
@@ -284,7 +283,6 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '25/06/2026', origem: 'Inter', descricao: 'IOF Inter',                                 valor: 15.31,  categoria: 'IOF' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Juros de mora Inter',                       valor: 1.30,   categoria: 'Tarifa cartao' },
   // --- Inter 3338 — venc. 25/06/2026 ---
-  { data: '25/06/2026', origem: 'Inter', descricao: 'Magalu Carrefour 23/02 4/7',                valor: 343.62, categoria: 'Compras pessoais' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'BF Box dos Oculos 20/03 3/4',               valor: 118.15, categoria: 'Saude/Otica' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Shopcar 24/04 2/2 (Focus)',                 valor: 40.00,  categoria: 'Veiculo PF' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Auto Pecas Navirai 29/04 2/6 (Focus)',      valor: 279.66, categoria: 'Veiculo PF' },
