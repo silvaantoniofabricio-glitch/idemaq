@@ -605,10 +605,8 @@ function Dashboard({ T, dark, analise }) {
 function PlanilhaCompleta({ T, dark, despesas }) {
   const [busca, setBusca] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
+  const [ordemValor, setOrdemValor] = useState(null) // null | 'desc' | 'asc'
 
-  // Exclui fluxo interno (transferencias entre contas + pagamento de fatura)
-  // pra planilha mostrar so gasto real. Categorias e filtros tambem se
-  // baseiam nessa lista enxuta.
   const despesasReais = useMemo(
     () => despesas.filter(d => !CATEGORIAS_FLUXO_INTERNO.has(d.categoria)),
     [despesas]
@@ -621,13 +619,20 @@ function PlanilhaCompleta({ T, dark, despesas }) {
 
   const filtradas = useMemo(() => {
     const buscaLower = busca.toLowerCase().trim()
-    return despesasReais.filter(d => {
+    const lista = despesasReais.filter(d => {
       if (categoriaFiltro && d.categoria !== categoriaFiltro) return false
       if (buscaLower && !d.descricao.toLowerCase().includes(buscaLower)
           && !d.origem.toLowerCase().includes(buscaLower)) return false
       return true
     })
-  }, [despesasReais, busca, categoriaFiltro])
+    if (ordemValor === 'desc') return [...lista].sort((a, b) => b.valor - a.valor)
+    if (ordemValor === 'asc')  return [...lista].sort((a, b) => a.valor - b.valor)
+    return lista
+  }, [despesasReais, busca, categoriaFiltro, ordemValor])
+
+  function toggleOrdem() {
+    setOrdemValor(o => o === null ? 'desc' : o === 'desc' ? 'asc' : null)
+  }
 
   const totalFiltrado = filtradas.reduce((s, d) => s + d.valor, 0)
 
@@ -678,7 +683,16 @@ function PlanilhaCompleta({ T, dark, despesas }) {
         <div>Origem</div>
         <div>Descrição</div>
         <div>Categoria</div>
-        <div style={{ textAlign: 'right' }}>Valor</div>
+        <div
+          onClick={toggleOrdem}
+          style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4,
+            color: ordemValor ? corEtapa('blue', dark) : T.textMuted,
+          }}>
+          Valor
+          <i className={`ti ${ordemValor === 'asc' ? 'ti-sort-ascending' : ordemValor === 'desc' ? 'ti-sort-descending' : 'ti-arrows-sort'}`}
+            style={{ fontSize: 12, opacity: ordemValor ? 1 : 0.5 }} aria-hidden="true" />
+        </div>
       </div>
 
       <div style={{ maxHeight: 600, overflowY: 'auto' }}>
