@@ -18,6 +18,9 @@ import { useFinanceiro } from '../hooks/useFinanceiro'
 
 const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
+// Origens que sao cartoes de credito — itens listados individualmente, nao sao Pix/Dinheiro
+const ORIGENS_CARTAO = new Set(['Elo Grafite', 'Inter', 'MP Cartao', 'Bradesco PJ ELO', 'Visa Bradesco'])
+
 function periodoToFiltro(periodo) {
   const hoje = new Date()
   let de, ate
@@ -303,6 +306,7 @@ function analisarDespesas(despesas) {
   let totalFaturas = 0
   let totalDizimo = 0
   let totalOferta = 0
+  let totalCartaoItens = 0
 
   const porCategoria = {}
   const porCategoriaMae = {}
@@ -312,6 +316,8 @@ function analisarDespesas(despesas) {
   for (const d of despesas) {
     const v = Number(d.valor || 0)
     totalBruto += v
+
+    if (ORIGENS_CARTAO.has(d.origem)) totalCartaoItens += v
 
     if (d.categoria === 'Transferencia') {
       totalTransferencia += v
@@ -361,7 +367,7 @@ function analisarDespesas(despesas) {
     totalTransferencia,
     totalFaturas,
     totalDizimo,
-    totalPixDinheiro: totalBruto - totalTransferencia - totalFaturas,
+    totalPixDinheiro: totalBruto - totalTransferencia - totalFaturas - totalCartaoItens,
     totalItens: despesas.length,
     porCategoria: mapObj(porCategoria),
     porCategoriaMae: mapObj(porCategoriaMae),
