@@ -101,6 +101,143 @@ const SECOES = [
   { id: 'conselhos', label: 'Análise' },
 ]
 
+// ─── ExportDropdown ──────────────────────────────────────────────────────────
+function ExportDropdown({ T, dark, despesas, analise, mesLabel, pessoaLabel }) {
+  const [aberto, setAberto] = useState(false)
+  const ref = useRef(null)
+  const azul = corEtapa('blue', dark)
+
+  useEffect(() => {
+    if (!aberto) return
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setAberto(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [aberto])
+
+  function gerarCSV() {
+    const itens = despesas.filter(d => !CATEGORIAS_FLUXO_INTERNO.has(d.categoria))
+    const linhas = [['Data', 'Origem', 'Descrição', 'Categoria', 'Valor'].join(';')]
+    for (const d of itens) {
+      const v = d.valor.toFixed(2).replace('.', ',')
+      linhas.push([d.data, d.origem, `"${d.descricao}"`, d.categoria, v].join(';'))
+    }
+    const bom = '﻿'
+    const blob = new Blob([bom + linhas.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `financeiro-pf-${mesLabel}-${pessoaLabel}.csv`
+    a.click(); URL.revokeObjectURL(url)
+    setAberto(false)
+  }
+
+  function gerarPDF() {
+    const itens = despesas.filter(d => !CATEGORIAS_FLUXO_INTERNO.has(d.categoria))
+    const rows = itens.map(d => `
+      <tr>
+        <td>${d.data}</td>
+        <td>${d.origem}</td>
+        <td>${d.descricao}</td>
+        <td>${d.categoria}</td>
+        <td class="val">R$ ${d.valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}</td>
+      </tr>`).join('')
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Financeiro PF — ${mesLabel} — ${pessoaLabel}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 24px; }
+  h1 { font-size: 16px; margin-bottom: 4px; }
+  .sub { font-size: 11px; color: #666; margin-bottom: 16px; }
+  .kpis { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 20px; }
+  .kpi { background: #f5f7fa; border-radius: 6px; padding: 10px 16px; min-width: 140px; }
+  .kpi-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi-val { font-size: 15px; font-weight: 700; color: #1a56db; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f0f4fa; font-size: 10px; text-transform: uppercase; letter-spacing: .04em;
+       padding: 6px 8px; text-align: left; color: #555; border-bottom: 2px solid #dde; }
+  td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+  tr:nth-child(even) td { background: #fafbff; }
+  .val { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .total-row td { font-weight: 700; border-top: 2px solid #dde; background: #f0f4fa; }
+  @media print { body { margin: 0; } }
+</style></head><body>
+<h1>Financeiro Pessoal — ${mesLabel}</h1>
+<div class="sub">Pessoa: ${pessoaLabel} &nbsp;·&nbsp; ${itens.length} lançamentos</div>
+<div class="kpis">
+  <div class="kpi"><div class="kpi-label">Gasto Real Efetivo</div><div class="kpi-val">${fmtBRL(analise.totalReal)}</div></div>
+  <div class="kpi"><div class="kpi-label">Pix / Dinheiro</div><div class="kpi-val">${fmtBRL(analise.totalPixDinheiro)}</div></div>
+  <div class="kpi"><div class="kpi-label">Pagamentos de Fatura</div><div class="kpi-val">${fmtBRL(analise.totalFaturaItens)}</div></div>
+  <div class="kpi"><div class="kpi-label">Dízimo + Oferta</div><div class="kpi-val">${fmtBRL(analise.totalDizimo + analise.totalOferta)}</div></div>
+</div>
+<table>
+  <thead><tr><th>Data</th><th>Origem</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead>
+  <tbody>${rows}
+  <tr class="total-row"><td colspan="4">TOTAL</td><td class="val">R$ ${analise.totalReal.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}</td></tr>
+  </tbody>
+</table>
+<script>window.onload = () => window.print()</script>
+</body></html>`
+    const w = window.open('', '_blank')
+    w.document.write(html)
+    w.document.close()
+    setAberto(false)
+  }
+
+  const btnStyle = {
+    height: 28, padding: '0 10px',
+    background: 'transparent',
+    border: `1px solid ${dark ? '#2e2e34' : T.border}`,
+    borderRadius: 5, cursor: 'pointer',
+    color: dark ? '#999' : T.textMuted,
+    fontSize: 12, fontWeight: 500,
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    fontFamily: 'inherit',
+    boxShadow: dark ? 'none' : '0 1px 2px rgba(0,0,0,.06)',
+  }
+
+  const itemStyle = {
+    width: '100%', padding: '9px 14px', background: 'transparent',
+    border: 'none', cursor: 'pointer', textAlign: 'left',
+    fontSize: 13, color: T.textPrimary, fontFamily: 'inherit',
+    display: 'flex', alignItems: 'center', gap: 8,
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setAberto(o => !o)}
+        style={btnStyle}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = azul; e.currentTarget.style.color = azul }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = dark ? '#2e2e34' : T.border; e.currentTarget.style.color = dark ? '#999' : T.textMuted }}>
+        <i className="ti ti-file-export" style={{ fontSize: 13 }} aria-hidden="true" />
+        Exportar
+        <i className={`ti ti-chevron-${aberto ? 'up' : 'down'}`} style={{ fontSize: 11 }} aria-hidden="true" />
+      </button>
+
+      {aberto && (
+        <div style={{
+          position: 'absolute', top: 32, right: 0, zIndex: 200,
+          background: T.card, border: `1px solid ${T.border}`,
+          borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,.15)',
+          minWidth: 160, overflow: 'hidden',
+        }}>
+          <button style={itemStyle} onClick={gerarPDF}
+            onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <i className="ti ti-file-type-pdf" style={{ fontSize: 15, color: '#e53e3e' }} aria-hidden="true" />
+            Exportar PDF
+          </button>
+          <div style={{ height: 1, background: T.border }} />
+          <button style={itemStyle} onClick={gerarCSV}
+            onMouseEnter={e => e.currentTarget.style.background = T.cardAlt}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <i className="ti ti-table-export" style={{ fontSize: 15, color: '#38a169' }} aria-hidden="true" />
+            Exportar CSV
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── StatBadge local ─────────────────────────────────────────────────────────
 function StatBadge({ v, label, color }) {
   return (
@@ -147,6 +284,9 @@ export default function ControleFinanceiroPF({ T, dark }) {
 
   const analise = useMemo(() => analisarDespesas(despesas), [despesas])
 
+  const mesLabel    = labelPeriodoPF(periodo)
+  const pessoaLabel = PESSOAS.find(p => p.id === pessoaAtiva)?.label || pessoaAtiva
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', flex: 1,
@@ -182,6 +322,7 @@ export default function ControleFinanceiroPF({ T, dark }) {
               </button>
             )
           })}
+          <ExportDropdown T={T} dark={dark} despesas={despesas} analise={analise} mesLabel={mesLabel} pessoaLabel={pessoaLabel} />
         </>}
       />
 
