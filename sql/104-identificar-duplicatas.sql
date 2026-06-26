@@ -7,8 +7,8 @@ WITH duplicados AS (
     vencimento,
     COUNT(*) AS qtd,
     -- agrega ids e descricoes pra visualizacao
-    STRING_AGG(id::text,        '|' ORDER BY descricao) AS ids,
-    STRING_AGG(descricao,       ' ||| ' ORDER BY descricao) AS descricoes,
+    STRING_AGG(lf.id::text,        '|' ORDER BY lf.descricao) AS ids,
+    STRING_AGG(lf.descricao,       ' ||| ' ORDER BY lf.descricao) AS descricoes,
     STRING_AGG(COALESCE(cb.nome,'?'), '|' ORDER BY lf.descricao) AS contas
   FROM lancamento_financeiro lf
   LEFT JOIN conta_bancaria cb ON cb.id = lf.conta_id
