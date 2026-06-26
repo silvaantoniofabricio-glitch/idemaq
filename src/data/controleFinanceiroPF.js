@@ -342,11 +342,13 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML 2Produtos 25/02 4/12',     valor: 12.43,  categoria: 'Compras pessoais' },
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML Barbearia 02/03 4/4',      valor: 13.68,  categoria: 'Cuidados pessoais' },
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML MercadoLivre 09/03 4/10',  valor: 44.81,  categoria: 'Compras pessoais' },
+  // Igreja
+  { data: '07/06/2026', origem: 'Cresol', descricao: 'Dizimo jun/2026',   valor: 200.00, categoria: 'Dizimo' },
+  { data: '07/06/2026', origem: 'Cresol', descricao: 'Oferta jun/2026',   valor: 120.00, categoria: 'Doacao/Igreja' },
 ]
 
 // Despesas PF junho/2026 — RAFA (esposa)
 // Fonte: Extrato Rafaela/Extrato conta corrente - 062026.xlsx
-// Excluidos: Dizimo R$650 e Oferta R$300 (nao lancados por escolha).
 export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Casa (parcela) 05/06',               valor: 690.00,  categoria: 'Moradia' },
   { data: '05/06/2026', origem: 'Bradesco CC', descricao: 'Mensalidade plano celular 05/06',    valor: 38.92,   categoria: 'Diverso' },
@@ -372,6 +374,9 @@ export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Farmacia do Povo',                 valor: 7.00,    categoria: 'Farmacia' },
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Ana Paula Batista',                valor: 14.00,   categoria: 'PIX terceiros' },
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Unha',                             valor: 110.00,  categoria: 'Cuidados pessoais' },
+  // Igreja
+  { data: '07/06/2026', origem: 'Bradesco CC', descricao: 'Dizimo jun/2026',   valor: 650.00, categoria: 'Dizimo' },
+  { data: '07/06/2026', origem: 'Bradesco CC', descricao: 'Oferta jun/2026',   valor: 300.00, categoria: 'Doacao/Igreja' },
 ]
 
 // Despesas PF maio/2026 — RAFA (esposa)
