@@ -19,7 +19,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
-import { semAcento } from '../../../utils/fmt'
 import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
@@ -57,25 +56,6 @@ const RES_ICON = {
   ok: 'check', defeito: 'alert-triangle', barulho: 'volume', na: 'minus',
 }
 
-// ─── Autocomplete (localStorage) ──────────────────────────────────────────
-const CAUSAS_KEY = 'idemaq:diagnostico:causas_historico'
-const CAUSAS_MAX = 80
-
-function lerCausas() {
-  try {
-    const arr = JSON.parse(localStorage.getItem(CAUSAS_KEY) || '[]')
-    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : []
-  } catch { return [] }
-}
-function salvarCausa(frase) {
-  const f = (frase || '').trim()
-  if (f.length < 4) return
-  try {
-    const atual = lerCausas()
-    const novo = [f, ...atual.filter(x => x.toLowerCase() !== f.toLowerCase())].slice(0, CAUSAS_MAX)
-    localStorage.setItem(CAUSAS_KEY, JSON.stringify(novo))
-  } catch {}
-}
 
 // Migracao formato antigo (array → objeto)
 function normalizeMarcados(raw) {
@@ -281,18 +261,23 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
 
   // ── Estado ───────────────────────────────────────────────────────────────
   const preDiag = os?.pre_diagnostico || {}
-  const [causa, setCausa]               = useState(preDiag.causa_diagnostico || '')
+  const [obs, setObs]                   = useState(os?.observacoes || '')
   const [marcadosPorGrupo, setMarcados] = useState(() => normalizeMarcados(preDiag.componentes_marcados))
   const [grupoAberto, setGrupoAberto]   = useState(null)
   const [busca, setBusca]               = useState('')
-  const [causaFocada, setCausaFocada]   = useState(false)
-  const [historicoCausas, setHistorico] = useState(() => lerCausas())
   const [salvando, setSalvando]         = useState(false)
 
   useEffect(() => {
-    setCausa(os?.pre_diagnostico?.causa_diagnostico || '')
+    setObs(os?.observacoes || '')
     setMarcados(normalizeMarcados(os?.pre_diagnostico?.componentes_marcados))
   }, [os?.id])
+
+  useEffect(() => {
+    if (obs === (os?.observacoes || '')) return
+    const t = setTimeout(() => onUpdateOS?.(os.numero, { observacoes: obs }), 500)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obs])
 
   // ── Testes da avaliacao anterior ─────────────────────────────────────────
   const { itens: chkRecebido } = useChecklistEtapa(os.id, 'recebido')
@@ -322,51 +307,22 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marcadosPorGrupo, os?.id])
 
-  // ── Autocomplete ─────────────────────────────────────────────────────────
-  const sugestoes = useMemo(() => {
-    const q = semAcento(causa.trim())
-    const base = historicoCausas.filter(f => semAcento(f) !== q)
-    return q ? base.filter(f => semAcento(f).includes(q)).slice(0, 5)
-             : base.slice(0, 5)
-  }, [causa, historicoCausas])
-
-  function persistirCausa() {
-    setCausaFocada(false)
-    if (!causa.trim() || causa === (preDiag.causa_diagnostico || '')) return
-    onUpdateOS?.(os.numero, {
-      pre_diagnostico: { ...preDiag, causa_diagnostico: causa },
-    })
-    salvarCausa(causa)
-    setHistorico(lerCausas())
-  }
-
-  function aplicarSugestao(frase) {
-    setCausa(frase)
-    setCausaFocada(false)
-    onUpdateOS?.(os.numero, {
-      pre_diagnostico: { ...preDiag, causa_diagnostico: frase },
-    })
-    salvarCausa(frase)
-    setHistorico(lerCausas())
-  }
-
   // ── CTA ──────────────────────────────────────────────────────────────────
   const totalMarcados = Object.values(marcadosPorGrupo).reduce(
     (s, obj) => s + Object.keys(obj || {}).length, 0
   )
-  const podeConcluir = causa.trim().length > 0 && totalMarcados > 0
+  const podeConcluir = totalMarcados > 0
 
   async function concluir() {
     if (!podeConcluir) return
     setSalvando(true)
+    if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     onUpdateOS?.(os.numero, {
       pre_diagnostico: {
         ...preDiag,
-        causa_diagnostico: causa,
         componentes_marcados: marcadosPorGrupo,
       },
     })
-    salvarCausa(causa)
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'orcamento')
     setSalvando(false)
     if (proxima) onMoverOS?.(os.numero, proxima.id)
@@ -374,7 +330,6 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
 
   const relatoCliente = (os?.defeito || '').trim()
   const ctaLabel = salvando ? 'Salvando…'
-    : !causa.trim() ? 'Descreva a causa identificada'
     : totalMarcados === 0 ? 'Marque pelo menos 1 componente'
     : 'Concluir diagnóstico'
 
@@ -409,7 +364,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
       </AtlPanel>
 
       {/* 2. Resumo da avaliacao */}
-      {(naoLiga || locaisVaz.length > 0 || testesComResultado.length > 0 || os?.observacoes) && (
+      {(naoLiga || locaisVaz.length > 0 || testesComResultado.length > 0) && (
         <AtlPanel T={T} dark={dark} title="Resumo da avaliação">
           {naoLiga && (
             <ResumoRow T={T} dark={dark}
@@ -435,27 +390,17 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
               first={!naoLiga && locaisVaz.length === 0 && i === 0}
             />
           ))}
-          {os?.observacoes && (
-            <ResumoRow T={T} dark={dark}
-              first={!naoLiga && locaisVaz.length === 0 && testesComResultado.length === 0}
-              icon="notes" iconCor={azul}
-              label="Observações da avaliação"
-              sub={os.observacoes}
-            />
-          )}
         </AtlPanel>
       )}
 
-      {/* 3. Causa identificada */}
-      <AtlPanel T={T} dark={dark} title="Causa identificada"
-        footer={!causa.trim() ? 'Obrigatório para concluir o diagnóstico.' : undefined}>
+      {/* 3. Observações Internas */}
+      <AtlPanel T={T} dark={dark} title="Observações Internas"
+        footer="Visível e editável em todas as etapas da OS.">
         <div style={{ padding: '10px 14px' }}>
           <textarea
             placeholder="Ex: Rolamento do tambor desgastado, correia rompida…"
-            value={causa}
-            onChange={e => setCausa(e.target.value)}
-            onFocus={() => setCausaFocada(true)}
-            onBlur={() => setTimeout(persistirCausa, 150)}
+            value={obs}
+            onChange={e => setObs(e.target.value)}
             rows={3}
             style={{
               width: '100%', boxSizing: 'border-box',
@@ -470,45 +415,6 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
             }}
           />
         </div>
-
-        {causaFocada && sugestoes.length > 0 && (
-          <div style={{
-            borderTop: `1px solid ${T.border}`,
-            background: atlSurfaceSunken(dark),
-          }}>
-            <div style={{
-              padding: '8px 14px 4px',
-              display: 'flex', alignItems: 'center', gap: 4,
-              fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-            }}>
-              <i className="ti ti-history" style={{ fontSize: 11 }} aria-hidden="true" />
-              {causa.trim() ? 'Sugestões' : 'Usadas recentemente'}
-            </div>
-            {sugestoes.map((f, i) => (
-              <button key={i} type="button"
-                onMouseDown={e => e.preventDefault()}
-                onClick={() => aplicarSugestao(f)}
-                style={{
-                  width: '100%',
-                  padding: '8px 14px',
-                  borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
-                  background: 'transparent', border: 'none',
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  cursor: 'pointer', textAlign: 'left', fontFamily: ATL_FONT,
-                  WebkitTapHighlightColor: 'transparent',
-                }}>
-                <i className="ti ti-corner-down-left"
-                   style={{ fontSize: 13, color: azul, flexShrink: 0 }} aria-hidden="true" />
-                <span style={{
-                  flex: 1, fontSize: 13, color: T.textPrimary,
-                  letterSpacing: '-0.005em',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{f}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </AtlPanel>
 
       {/* 4. Componentes afetados */}

@@ -343,9 +343,9 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
         </AtlPanel>
       )}
 
-      {/* 3. Observacoes */}
-      <AtlPanel T={T} dark={dark} title="Observações"
-        footer="Visível em todas as etapas.">
+      {/* 3. Observações Internas */}
+      <AtlPanel T={T} dark={dark} title="Observações Internas"
+        footer="Visível e editável em todas as etapas da OS.">
         <div style={{ padding: '10px 14px' }}>
           <textarea
             placeholder="Ex: ficou tudo OK; cliente vai retirar amanhã…"
