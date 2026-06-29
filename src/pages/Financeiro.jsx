@@ -16,6 +16,8 @@ import {
 import LancamentoDetalheModal from '../components/financeiro/LancamentoDetalheModal'
 import NovoLancamentoModal from '../components/financeiro/NovoLancamentoModal'
 import { useFinanceiro } from '../hooks/useFinanceiro'
+import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
+import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 // ============================================================================
 // ADAPTADOR de shape: banco/hook → UI atual (Bling-style)
@@ -62,14 +64,29 @@ function mapearFormaUIparaEnum(formaUI) {
   return MAPA_FORMA_UI_BANCO[k] || 'pix' // fallback seguro
 }
 
+// Extrai número da OS e nome do cliente a partir do campo descricao.
+// Suporta dois formatos usados no banco:
+//   "OS #470 — Nome Cliente · 1ª/1 a prazo"  (formato real)
+//   "Nome Cliente — Serviço (OS #241)"         (formato mock)
+function extrairOsInfo(descricao) {
+  if (!descricao) return { osNum: null, clienteNome: null }
+  const m1 = descricao.match(/^OS\s*#(\d+)\s*[—–-]\s*([^·\n]+)/)
+  if (m1) return { osNum: Number(m1[1]), clienteNome: m1[2].trim() }
+  const m2 = descricao.match(/^(.+?)\s*[—–-].*OS\s*#(\d+)/)
+  if (m2) return { osNum: Number(m2[2]), clienteNome: m2[1].trim() }
+  const m3 = descricao.match(/OS\s*#(\d+)/)
+  return { osNum: m3 ? Number(m3[1]) : null, clienteNome: (descricao.split('—')[0] || descricao).trim() }
+}
+
 function adaptarBancoParaUI(lanc) {
   const ehReceita = lanc.tipo === 'receita'
   const pago = lanc.pago_em != null
+  const { osNum, clienteNome } = ehReceita ? extrairOsInfo(lanc.descricao) : { osNum: null, clienteNome: null }
   return {
     id: lanc.id,
-    // OS vinculada: o banco guarda os_id (uuid), não o numero. Resolve no chat 6.
-    osNum: null,
-    cliente: ehReceita ? (lanc.descricao || '').split('—')[0]?.trim() : null,
+    os_id: lanc.os_id || null,
+    osNum,
+    cliente: ehReceita ? clienteNome : null,
     descricao: lanc.descricao || '',
     fornecedor: !ehReceita ? null : undefined,
     categoria: lanc.categoria || 'Outros',
@@ -138,26 +155,41 @@ function statusVencimento(isoData) {
 }
 
 function StatusBadgePag({ item, dark }) {
+  const lozengeStyle = (bg, color) => ({
+    display: 'inline-block',
+    background: bg,
+    color,
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '2px 7px',
+    borderRadius: 3,
+    textTransform: 'uppercase',
+    letterSpacing: '.04em',
+    whiteSpace: 'nowrap',
+  })
   if (item.status === 'pago') {
-    return (
-      <Badge variant="azulClaro" dark={dark} sm>
-        <i className="ti ti-circle-check" aria-hidden="true" /> Pago
-      </Badge>
-    )
+    return <span style={lozengeStyle(
+      dark ? 'rgba(91,155,213,0.18)' : '#DEEBFF',
+      dark ? '#7ab3e0' : '#185FA5'
+    )}>Pago</span>
   }
   const st = statusVencimento(item.vencimento)
-  const map = {
-    vencido: { variant:'vermelho', icon:'ti-alert-triangle' },
-    hoje:    { variant:'amarelo',  icon:'ti-clock' },
-    amanha:  { variant:'amarelo',  icon:'ti-calendar-due' },
-    futuro:  { variant:'azul',     icon:'ti-calendar-event' },
-  }
-  const cfg = map[st.tipo] || map.futuro
-  return (
-    <Badge variant={cfg.variant} dark={dark} sm>
-      <i className={`ti ${cfg.icon}`} aria-hidden="true" /> {st.label}
-    </Badge>
-  )
+  if (st.tipo === 'vencido') return <span style={lozengeStyle(
+    dark ? 'rgba(192,66,66,0.2)' : '#FFEBE6',
+    dark ? '#e07a7a' : '#BF2600'
+  )}>{st.label}</span>
+  if (st.tipo === 'hoje') return <span style={lozengeStyle(
+    dark ? 'rgba(255,217,102,0.18)' : '#FFFAE6',
+    dark ? '#e6c05a' : '#FF8B00'
+  )}>Vence hoje</span>
+  if (st.tipo === 'amanha') return <span style={lozengeStyle(
+    dark ? 'rgba(255,180,60,0.15)' : '#FFF3E0',
+    dark ? '#d4a843' : '#E65100'
+  )}>Amanhã</span>
+  return <span style={lozengeStyle(
+    dark ? 'rgba(91,155,213,0.12)' : '#E6F1FB',
+    dark ? '#7ab3e0' : '#185FA5'
+  )}>{st.label}</span>
 }
 
 // Aplica filtro de período
@@ -217,6 +249,7 @@ function StatBadge({ v, label, color, dot }) {
 // ============================================================================
 export default function Financeiro({ T, dark }) {
   const notify = useToast()
+  const { abrirOSPorNumero, abrirOSPorId, modalProps: osModalProps } = useOSDetalheModal({ notify })
   const [aba, setAba] = useState('caixa')
   const [receber, setReceber] = useState([])
   const [pagar, setPagar]     = useState([])
@@ -559,6 +592,7 @@ export default function Financeiro({ T, dark }) {
               onBaixarUm={(it) => setConfirmBaixa({ item: it, tipo: 'receber' })}
               onBaixarLote={(ids) => setConfirmBaixa({ ids, tipo: 'receber' })}
               onExcluir={(item) => excluirLancamento(item, 'receber')}
+              onAbrirOS={abrirOSPorNumero}
               notify={notify}
             />
           )}
@@ -572,6 +606,7 @@ export default function Financeiro({ T, dark }) {
               onBaixarUm={(it) => setConfirmBaixa({ item: it, tipo: 'pagar' })}
               onBaixarLote={(ids) => setConfirmBaixa({ ids, tipo: 'pagar' })}
               onExcluir={(item) => excluirLancamento(item, 'pagar')}
+              onAbrirOS={abrirOSPorNumero}
               notify={notify}
             />
           )}
@@ -649,6 +684,8 @@ export default function Financeiro({ T, dark }) {
           onClose={() => setNovoLancTipo(null)}
         />
       )}
+
+      {osModalProps && <OSDetalhe T={T} dark={dark} {...osModalProps} />}
     </div>
   )
 }
@@ -922,6 +959,7 @@ function ListaLancamentos({
   categorias, contas,
   periodo, statusFilt, busca, categoria, conta,
   onAbrir, onBaixarUm, onBaixarLote, onExcluir, notify,
+  onAbrirOS,
 }) {
   const azul     = corEtapa('blue', dark)
   const amarelo  = corEtapa('yellow', dark)
@@ -1062,12 +1100,44 @@ function ListaLancamentos({
                     </Td>
                     <Td T={T}>
                       <div style={{ fontSize:13, fontWeight:600, color:corHero(dark), overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:340 }}>
-                        {tipo === 'receber' ? it.cliente : it.descricao}
+                        {tipo === 'receber' ? (it.cliente || it.descricao) : it.descricao}
                       </div>
-                      <div style={{ fontSize:11, color:T.textMuted, marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:340 }}>
-                        {tipo === 'receber'
-                          ? <>OS #{it.osNum} · {it.descricao}</>
-                          : <>{it.fornecedor} · {it.forma}</>}
+                      <div style={{ marginTop:3, display:'flex', alignItems:'center', gap:5 }}>
+                        {tipo === 'receber' ? (
+                          it.osNum ? (
+                            <button
+                              onClick={e => { e.stopPropagation(); onAbrirOS?.(it.osNum) }}
+                              style={{
+                                background: dark ? 'rgba(91,155,213,0.14)' : '#DEEBFF',
+                                color: dark ? '#7ab3e0' : '#185FA5',
+                                border: `1px solid ${dark ? 'rgba(91,155,213,0.3)' : '#B3D4FF'}`,
+                                borderRadius: 3,
+                                padding: '1px 6px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                                lineHeight: 1.5,
+                                flexShrink: 0,
+                              }}
+                            >
+                              OS #{it.osNum}
+                            </button>
+                          ) : (
+                            <span style={{ fontSize:11, color:T.textMuted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:300 }}>
+                              {it.descricao}
+                            </span>
+                          )
+                        ) : (
+                          <span style={{ fontSize:11, color:T.textMuted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:340 }}>
+                            {it.fornecedor ? `${it.fornecedor} · ` : ''}{it.forma}
+                          </span>
+                        )}
+                        {tipo === 'receber' && it.osNum && it.forma && (
+                          <span style={{ fontSize:11, color:T.textMuted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            · {it.forma}
+                          </span>
+                        )}
                       </div>
                     </Td>
                     <Td T={T}>
