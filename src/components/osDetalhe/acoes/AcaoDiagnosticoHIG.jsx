@@ -19,6 +19,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
+import { semAcento } from '../../../utils/fmt'
 import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'

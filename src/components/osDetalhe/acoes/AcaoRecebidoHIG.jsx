@@ -329,13 +329,12 @@ export default function AcaoRecebidoHIG({ os, onMoverOS, onUpdateOS }) {
           equipamento_nao_liga: naoLiga,
           motivo_nao_liga:      naoLiga ? motivoNaoLiga : null,
           vazamentos,
-          causa_diagnostico:    causa.trim() || null,
         },
       })
     }, 500)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [naoLiga, motivoNaoLiga, vazamentos, causa, hidratado])
+  }, [naoLiga, motivoNaoLiga, vazamentos, hidratado])
 
   async function avancar() {
     setSalvando(true)
