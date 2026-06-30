@@ -65,11 +65,12 @@ function statusVenc(isoData) {
 }
 
 const PERIODOS = [
-  { id: '7d',    label: '7d' },
-  { id: 'mes',   label: 'Mês' },
-  { id: '30d',   label: '30d' },
-  { id: '90d',   label: '90d' },
-  { id: 'todos', label: 'Todos' },
+  { id: '7d',      label: '7d' },
+  { id: 'mes',     label: 'Mês' },
+  { id: 'mes_ant', label: 'Mês ant.' },
+  { id: '30d',     label: '30d' },
+  { id: '90d',     label: '90d' },
+  { id: 'todos',   label: 'Todos' },
 ]
 
 function filtrarPorPeriodo(itens, periodoId, campo) {
@@ -79,6 +80,9 @@ function filtrarPorPeriodo(itens, periodoId, campo) {
   if (periodoId === 'mes') {
     de  = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
     ate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59)
+  } else if (periodoId === 'mes_ant') {
+    de  = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)
+    ate = new Date(hoje.getFullYear(), hoje.getMonth(), 0, 23, 59, 59)
   } else if (periodoId === '30d') {
     de = hoje; ate = new Date(hoje); ate.setDate(ate.getDate() + 30)
   } else if (periodoId === '90d') {
@@ -428,10 +432,21 @@ function ListaMobile({ T, dark, itens, tipo, onAbrir, onBaixar }) {
   const [statusFilt, setStatusFilt]   = useState('aberto')
   const [busca, setBusca]             = useState('')
   const [buscaAberta, setBuscaAberta] = useState(false)
+  const [contaFilt, setContaFilt]     = useState('')
+  const [catFilt, setCatFilt]         = useState('')
 
   const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const corT    = tipo === 'receber' ? azul : amarelo
+
+  const contasDisponiveis = useMemo(
+    () => [...new Set(itens.map(i => i.conta).filter(Boolean))].sort(),
+    [itens]
+  )
+  const categsDisponiveis = useMemo(
+    () => [...new Set(itens.map(i => i.categoria).filter(Boolean))].sort(),
+    [itens]
+  )
 
   const statusOpts = [
     { id: 'todos',   label: 'Todos' },
@@ -445,28 +460,32 @@ function ListaMobile({ T, dark, itens, tipo, onAbrir, onBaixar }) {
     if (statusFilt === 'aberto')       arr = arr.filter(i => i.status === 'aberto')
     else if (statusFilt === 'pago')    arr = arr.filter(i => i.status === 'pago')
     else if (statusFilt === 'vencido') arr = arr.filter(i => i.status === 'aberto' && statusVenc(i.vencimento).tipo === 'vencido')
+    if (contaFilt) arr = arr.filter(i => i.conta === contaFilt)
+    if (catFilt)   arr = arr.filter(i => i.categoria === catFilt)
     if (busca.trim()) {
       const q = semAcento(busca.trim())
       arr = arr.filter(i =>
         semAcento(i.descricao).includes(q) ||
-        semAcento(i.cliente).includes(q) ||
-        semAcento(i.categoria).includes(q)
+        semAcento(i.cliente || '').includes(q) ||
+        semAcento(i.categoria || '').includes(q)
       )
     }
     return [...arr].sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''))
-  }, [itens, periodo, statusFilt, busca])
+  }, [itens, periodo, statusFilt, contaFilt, catFilt, busca])
 
   const total = filtrados.reduce((s, i) => s + i.valor, 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}>
+        {/* Período */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {PERIODOS.map(p => (
             <Chip key={p.id} label={p.label} azul={azul} T={T}
               ativo={periodo === p.id} onClick={() => setPeriodo(p.id)} />
           ))}
         </div>
+        {/* Status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {statusOpts.map(s => (
             <Chip key={s.id} label={s.label} azul={azul} T={T}
@@ -477,6 +496,24 @@ function ListaMobile({ T, dark, itens, tipo, onAbrir, onBaixar }) {
             <i className="ti ti-search" style={{ fontSize: 16 }} aria-hidden="true" />
           </button>
         </div>
+        {/* Conta */}
+        {contasDisponiveis.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <Chip label="Todas as contas" azul={azul} T={T} ativo={!contaFilt} onClick={() => setContaFilt('')} />
+            {contasDisponiveis.map(c => (
+              <Chip key={c} label={c} azul={azul} T={T} ativo={contaFilt === c} onClick={() => setContaFilt(contaFilt === c ? '' : c)} />
+            ))}
+          </div>
+        )}
+        {/* Categoria */}
+        {categsDisponiveis.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <Chip label="Todas" azul={azul} T={T} ativo={!catFilt} onClick={() => setCatFilt('')} />
+            {categsDisponiveis.map(c => (
+              <Chip key={c} label={c} azul={azul} T={T} ativo={catFilt === c} onClick={() => setCatFilt(catFilt === c ? '' : c)} />
+            ))}
+          </div>
+        )}
         {buscaAberta && (
           <div style={{ padding: '8px 12px', borderBottom: `1px solid ${T.border}` }}>
             <Input T={T} dark={dark} value={busca} onChange={setBusca} icon="ti-search"
@@ -512,21 +549,28 @@ function CaixaMobile({ T, dark, itens, onAbrir }) {
   const [tipoFilt, setTipoFilt]       = useState('todos')
   const [busca, setBusca]             = useState('')
   const [buscaAberta, setBuscaAberta] = useState(false)
+  const [contaFilt, setContaFilt]     = useState('')
 
   const azul    = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
   const verde   = corEtapa('green', dark)
 
+  const contasDisponiveis = useMemo(
+    () => [...new Set(itens.map(i => i.conta).filter(Boolean))].sort(),
+    [itens]
+  )
+
   const filtrados = useMemo(() => {
     let arr = filtrarPorPeriodo(itens, periodo, 'data')
     if (tipoFilt !== 'todos') arr = arr.filter(m => m.tipo === tipoFilt)
+    if (contaFilt) arr = arr.filter(m => m.conta === contaFilt)
     if (busca.trim()) {
       const q = semAcento(busca.trim())
       arr = arr.filter(m => semAcento(m.descricao).includes(q))
     }
     return [...arr].sort((a, b) => (b.data || '').localeCompare(a.data || ''))
-  }, [itens, periodo, tipoFilt, busca])
+  }, [itens, periodo, tipoFilt, contaFilt, busca])
 
   const comSaldo = useMemo(() => {
     const asc = [...filtrados].reverse()
@@ -574,6 +618,14 @@ function CaixaMobile({ T, dark, itens, onAbrir }) {
             <i className="ti ti-search" style={{ fontSize: 16 }} aria-hidden="true" />
           </button>
         </div>
+        {contasDisponiveis.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, padding: '8px 12px', borderBottom: `1px solid ${T.border}`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <Chip label="Todas as contas" azul={azul} T={T} ativo={!contaFilt} onClick={() => setContaFilt('')} />
+            {contasDisponiveis.map(c => (
+              <Chip key={c} label={c} azul={azul} T={T} ativo={contaFilt === c} onClick={() => setContaFilt(contaFilt === c ? '' : c)} />
+            ))}
+          </div>
+        )}
         {buscaAberta && (
           <div style={{ padding: '8px 12px', borderBottom: `1px solid ${T.border}` }}>
             <Input T={T} dark={dark} value={busca} onChange={setBusca} icon="ti-search" placeholder="Buscar movimentação…" />

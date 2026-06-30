@@ -132,6 +132,11 @@ export default function PecaCardMobile({ T, dark, peca, mostraValores = true, on
         {mostraValores && (
           <Stat T={T} dark={dark} label="Custo" value={fmtBRL(peca.custoAtual)} corValor={T.textSecondary} />
         )}
+        {mostraValores && peca.custoAtual > 0 && peca.precoVenda > 0 && (
+          <Stat T={T} dark={dark} label="Lucro"
+            value={`${Math.round(((peca.precoVenda - peca.custoAtual) / peca.custoAtual) * 100)}%`}
+            corValor={peca.precoVenda > peca.custoAtual ? corEtapa('blue', dark) : corEtapa('red', dark)} />
+        )}
 
         <span style={{
           marginLeft: 'auto',

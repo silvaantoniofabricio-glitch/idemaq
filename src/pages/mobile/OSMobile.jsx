@@ -45,6 +45,8 @@ export default function OSMobile({ T, dark, user }) {
     tipos: new Set(['atendimento', 'fabricacao', 'venda']),
     limpeza: false,
     manutencao: false,
+    agPeca: false,
+    recusadas: false,
   })
 
   // Conjuntos de os_id com serviço de limpeza / manutenção (1 query separada —
@@ -120,6 +122,12 @@ export default function OSMobile({ T, dark, user }) {
       if (!filtros.tipos.has(os.tipo)) return false
       if (filtros.limpeza && !temLimpeza.has(os.id)) return false
       if (filtros.manutencao && !temManutencao.has(os.id)) return false
+      if (filtros.agPeca && !os.aguardando_peca) return false
+      // Filtro recusadas: quando ativo, mostra só recusadas (ignora dentroMesCorrente)
+      if (filtros.recusadas) {
+        if (os.etapa !== 'recusado') return false
+        return true
+      }
       const etapaUni = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === os.etapa)
       if (etapaUni?.adminOnly && !admin) return false
       if (etapasZona && etapaUni && !etapasZona.has(etapaUni.id)) return false

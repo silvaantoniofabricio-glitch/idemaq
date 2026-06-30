@@ -83,6 +83,7 @@ export default function PainelMobile({ T, dark, user }) {
     const mesAtual = hojeData.getMonth()
     const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
     const recebidoSerie = Array(12).fill(0)
+    const spark30d = Array(30).fill(0)
     let recebidoHoje = 0
     let faturamentoAntCrossYear = 0
 
@@ -95,6 +96,8 @@ export default function PainelMobile({ T, dark, user }) {
       if (mesAtual === 0 && dt.getFullYear() === ano - 1 && dt.getMonth() === 11)
         faturamentoAntCrossYear += valor
       if (dt.getTime() === hojeZero.getTime()) recebidoHoje += valor
+      const diff = Math.round((hojeZero - dt) / 86400000)
+      if (diff >= 0 && diff < 30) spark30d[29 - diff] += valor
     }
 
     const faturamentoMes = recebidoSerie[mesAtual]
@@ -104,7 +107,7 @@ export default function PainelMobile({ T, dark, user }) {
       : null
 
     return {
-      faturamentoMes, faturamentoAnt, deltaPct, recebidoHoje,
+      faturamentoMes, faturamentoAnt, deltaPct, recebidoHoje, spark30d,
       labelMesAnt: MESES_CURTO[mesAtual === 0 ? 11 : mesAtual - 1],
     }
   }, [lancsFin, hojeData])
@@ -253,6 +256,8 @@ export default function PainelMobile({ T, dark, user }) {
     { id: 'atrasadas', label: 'Atrasadas',      icon: 'calendar-x',     valor: dados.osAtrasadas,     corKey: 'red',  destaque: dados.osAtrasadas > 0 },
     { id: 'concluidas',label: 'Concluídas mês', icon: 'circle-check',   valor: dados.osConcluidasMes, corKey: 'blue' },
     { id: 'ticket',    label: 'Ticket médio',   icon: 'receipt',        valor: dados.ticketMedio,     corKey: 'yellow', isBRL: true },
+    { id: 'agpeca',    label: 'Ag. peça',       icon: 'package-off',    valor: dados.aguardPeca,      corKey: 'yellow', destaque: dados.aguardPeca > 0 },
+    { id: 'oficina',   label: 'Em oficina',     icon: 'tool',           valor: dados.naOficina,       corKey: 'blue' },
   ]
 
   return (
@@ -278,6 +283,9 @@ export default function PainelMobile({ T, dark, user }) {
 
         {/* 2. KPIs */}
         <KPIGrid T={T} dark={dark} kpis={kpis} loading={loading} />
+
+        {/* 2b. Sparkline 30 dias */}
+        <Sparkline30d T={T} dark={dark} serie={finAgg.spark30d || []} />
 
         {/* 3. Alertas */}
         {criticos.length > 0 && (
@@ -709,6 +717,68 @@ function ProximasPanel({ T, dark, proximas, onTap }) {
         )
       })}
     </AtlPanel>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Sparkline 30 dias — barras SVG simples
+// ═══════════════════════════════════════════════════════════════════════════
+function Sparkline30d({ T, dark, serie }) {
+  const azul = corEtapa('blue', dark)
+  const temDados = serie.some(v => v > 0)
+  if (!temDados) return null
+
+  const max = Math.max(...serie, 1)
+  const H = 36, gap = 2
+  const totalW = 30 * (gap + 4) - gap
+
+  const hoje = new Date()
+  const labelIni = (() => {
+    const d = new Date(hoje); d.setDate(d.getDate() - 29)
+    return `${d.getDate()}/${MESES_CURTO[d.getMonth()]}`
+  })()
+  const labelFim = `${hoje.getDate()}/${MESES_CURTO[hoje.getMonth()]}`
+
+  return (
+    <div style={{
+      background: T.card,
+      border: `1px solid ${T.border}`,
+      borderRadius: ATL_RADIUS,
+      padding: '10px 14px',
+      boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
+    }}>
+      <div style={{
+        fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <i className="ti ti-chart-bar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
+        Receita — últimos 30 dias
+      </div>
+      <svg width="100%" viewBox={`0 0 ${totalW} ${H}`} style={{ display: 'block', overflow: 'visible' }}>
+        {serie.map((v, i) => {
+          const h = Math.max(Math.round((v / max) * H), v > 0 ? 2 : 1)
+          const x = i * (4 + gap)
+          const isHoje = i === 29
+          return (
+            <rect key={i}
+              x={x} y={H - h} width={4} height={h}
+              rx={1}
+              fill={isHoje ? azul : v > 0 ? azul + 'AA' : (dark ? 'rgba(255,255,255,0.06)' : '#DFE1E6')}
+            />
+          )
+        })}
+      </svg>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        fontSize: 10, color: T.textDim, marginTop: 4,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        <span>{labelIni}</span>
+        <span style={{ color: azul, fontWeight: 600 }}>hoje</span>
+        <span>{labelFim}</span>
+      </div>
+    </div>
   )
 }
 

@@ -50,8 +50,9 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
   const tiposFiltrando = tiposAtivos < totalTipos
   const temBusca       = busca && busca.trim().length > 0
   const servicoFiltrando = !!filtros.limpeza || !!filtros.manutencao
-  const maisAtivo      = maisOpen || tiposFiltrando || temBusca || servicoFiltrando
-  const contadorMais   = (tiposFiltrando ? 1 : 0) + (temBusca ? 1 : 0) + (filtros.limpeza ? 1 : 0) + (filtros.manutencao ? 1 : 0)
+  const extraFiltrando = !!filtros.agPeca || !!filtros.recusadas
+  const maisAtivo      = maisOpen || tiposFiltrando || temBusca || servicoFiltrando || extraFiltrando
+  const contadorMais   = (tiposFiltrando ? 1 : 0) + (temBusca ? 1 : 0) + (filtros.limpeza ? 1 : 0) + (filtros.manutencao ? 1 : 0) + (filtros.agPeca ? 1 : 0) + (filtros.recusadas ? 1 : 0)
 
   // Segmented control Atlassian
   const segBg = dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7'
@@ -339,6 +340,60 @@ function MaisSheet({ T, dark, busca, setBusca, onNova, filtros, toggleTipo, togg
           {[
             { key: 'limpeza',    label: 'Limpeza',    icon: 'ti-bubble' },
             { key: 'manutencao', label: 'Manutenção', icon: 'ti-tool' },
+          ].map(s => {
+            const ativo = !!filtros[s.key]
+            return (
+              <button key={s.key} onClick={() => toggleServico(s.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px', borderRadius: 3, width: '100%',
+                  background: ativo
+                    ? (dark ? 'rgba(91,155,213,0.12)' : 'rgba(91,155,213,0.08)')
+                    : 'transparent',
+                  border: 'none', cursor: 'pointer',
+                  color: ativo ? azul : T.textPrimary,
+                  fontSize: 13.5, fontWeight: ativo ? 600 : 500,
+                  fontFamily: ATL_FONT, textAlign: 'left',
+                  boxSizing: 'border-box',
+                  letterSpacing: '-0.005em',
+                  WebkitTapHighlightColor: 'transparent',
+                  transition: 'background .12s',
+                }}>
+                <i className={`ti ${s.icon}`}
+                   style={{ fontSize: 16, width: 18, flexShrink: 0 }}
+                   aria-hidden="true" />
+                <span style={{ flex: 1 }}>{s.label}</span>
+                <div style={{
+                  width: 18, height: 18, borderRadius: 3,
+                  border: `1.5px solid ${ativo ? azul : T.border}`,
+                  background: ativo ? azul : 'transparent',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'all .12s',
+                }}>
+                  {ativo && (
+                    <i className="ti ti-check"
+                       style={{ fontSize: 11, color: '#fff' }}
+                       aria-hidden="true" />
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Divisor */}
+        <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
+
+        {/* Status extra: Ag. peça / Recusadas */}
+        <div style={{ padding: '0 8px 4px' }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+            textTransform: 'uppercase', letterSpacing: '0.07em',
+            padding: '0 8px 8px',
+          }}>Status</div>
+          {[
+            { key: 'agPeca',    label: 'Aguardando peça', icon: 'ti-package-off' },
+            { key: 'recusadas', label: 'Recusadas',        icon: 'ti-circle-x' },
           ].map(s => {
             const ativo = !!filtros[s.key]
             return (
