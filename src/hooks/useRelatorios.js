@@ -1140,7 +1140,7 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
 
               if (entradaTs) {
                 const entradaDate = new Date(entradaTs)
-                const padrao = new Date(entradaDate); padrao.setHours(7, 35, 0, 0)
+                const padrao = new Date(entradaDate); padrao.setHours(8, 5, 0, 0)
                 if (entradaDate > padrao) { statusDia = 'atraso'; diasAtraso++ }
                 else if (minDia > carga)  { statusDia = 'extra';  diasExtras++ }
                 else                       { statusDia = 'ok' }

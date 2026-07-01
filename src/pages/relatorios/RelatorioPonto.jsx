@@ -36,7 +36,10 @@ const STATUS_DIA_LABEL = {
 
 function fmtHoraCurta(iso) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Campo_Grande',
+  })
 }
 
 function fmtData(iso) {

@@ -134,8 +134,10 @@ export function minutosTrabalhadosHoje(funcId, batidas = BATIDAS_MOCK) {
 // Formatadores
 export function fmtHora(iso) {
   if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Campo_Grande',
+  })
 }
 
 export function fmtDuracao(minutos) {
