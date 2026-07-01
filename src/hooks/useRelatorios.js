@@ -1111,53 +1111,94 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
         }
 
         const diasUteis = diasUteisNoPeriodo(iniIso, fimIso)
+        const hojeIso = new Date().toISOString().slice(0, 10)
 
         const lista = Object.values(porFunc).map(f => {
           let totalHorasMin = 0
           let faltas = 0
+          let diasAtraso = 0
+          let diasExtras = 0
+          const diasDetalhados = []
 
           for (const { iso, diaSemana } of diasUteis) {
             const batidasDia = f.porDia[iso] || []
             const teveBatida = batidasDia.length > 0
             const carga = diaSemana === 6 ? JORNADA_SAB_MIN : JORNADA_DIA_MIN
 
+            let minDia = 0
+            let statusDia = 'falta'
+            let entradaTs = null
+            let saidaTs = null
+
             if (teveBatida) {
-              totalHorasMin += minutosTrabBatidas(batidasDia)
+              minDia = minutosTrabBatidas(batidasDia)
+              totalHorasMin += minDia
+
+              const sorted = [...batidasDia].sort((a, b) => new Date(a.bateu_em) - new Date(b.bateu_em))
+              entradaTs = sorted.find(b => b.tipo === 'entrada')?.bateu_em || null
+              saidaTs = [...sorted].reverse().find(b => b.tipo === 'saida')?.bateu_em || null
+
+              if (entradaTs) {
+                const entradaDate = new Date(entradaTs)
+                const padrao = new Date(entradaDate); padrao.setHours(7, 40, 0, 0)
+                if (entradaDate > padrao) { statusDia = 'atraso'; diasAtraso++ }
+                else if (minDia > carga)  { statusDia = 'extra';  diasExtras++ }
+                else                       { statusDia = 'ok' }
+              } else { statusDia = 'ok' }
             } else {
-              faltas += 1
+              faltas++
+              statusDia = 'falta'
             }
+
+            diasDetalhados.push({ iso, diaSemana, status: statusDia, totalMin: minDia, entrada: entradaTs, saida: saidaTs })
           }
 
-          const saldoHorasMin = totalHorasMin - diasUteis.length * JORNADA_DIA_MIN
+          // Status em tempo real hoje
+          const batidasHoje = f.porDia[hojeIso] || []
+          let statusHoje = 'ausente'
+          if (batidasHoje.length > 0) {
+            const ultima = [...batidasHoje].sort((a, b) => new Date(b.bateu_em) - new Date(a.bateu_em))[0]
+            statusHoje = ultima.tipo === 'saida' ? 'encerrado'
+              : ultima.tipo === 'saida_almoco' ? 'almoco'
+              : 'trabalhando'
+          }
+
+          const diasPresentes = diasUteis.length - faltas
+          const taxaPresenca  = diasUteis.length > 0 ? Math.round((diasPresentes / diasUteis.length) * 100) : 0
+          const mediaHorasDia = diasPresentes > 0 ? fmtHorasMin(Math.round(totalHorasMin / diasPresentes)) : '—'
+          const saldoHorasMin = totalHorasMin - (diasUteis.length * JORNADA_DIA_MIN)
 
           return {
-            id: f.id,
-            nome: f.nome,
-            papel: f.papel,
-            totalHorasMin,
-            totalHoras: fmtHorasMin(totalHorasMin),
-            faltas,
-            faltasJustificadas: 0,
-            saldoHorasMin,
-            saldoHoras: fmtHorasMin(saldoHorasMin),
+            id: f.id, nome: f.nome, papel: f.papel,
+            totalHorasMin, totalHoras: fmtHorasMin(totalHorasMin),
+            faltas, faltasJustificadas: 0,
+            saldoHorasMin, saldoHoras: fmtHorasMin(saldoHorasMin),
             diasComputados: diasUteis.length,
+            taxaPresenca, mediaHorasDia,
+            diasAtraso, diasExtras,
+            statusHoje, diasDetalhados,
           }
         })
 
         lista.sort((a, b) => b.totalHorasMin - a.totalHorasMin)
 
-        const totalHorasMin = lista.reduce((s, f) => s + f.totalHorasMin, 0)
-        const totalFaltas   = lista.reduce((s, f) => s + f.faltas, 0)
-        const topPerformer  = lista[0] || null
+        const totalHorasMin      = lista.reduce((s, f) => s + f.totalHorasMin, 0)
+        const totalFaltas        = lista.reduce((s, f) => s + f.faltas, 0)
+        const totalAtrasos       = lista.reduce((s, f) => s + f.diasAtraso, 0)
+        const totalHorasExtrasMin = lista.reduce((s, f) => s + Math.max(0, f.saldoHorasMin), 0)
+        const taxaPresencaGeral  = lista.length > 0
+          ? Math.round(lista.reduce((s, f) => s + f.taxaPresenca, 0) / lista.length)
+          : 0
+        const topPerformer = lista[0] || null
 
         setData({
           porFuncionario: lista,
-          totalHorasMin,
-          totalHoras: fmtHorasMin(totalHorasMin),
-          totalFaltas,
+          totalHorasMin, totalHoras: fmtHorasMin(totalHorasMin),
+          totalFaltas, totalAtrasos,
+          totalHorasExtrasMin, totalHorasExtras: fmtHorasMin(totalHorasExtrasMin),
           totalDias: diasUteis.length,
           totalFuncionarios: lista.length,
-          topPerformer,
+          taxaPresencaGeral, topPerformer,
         })
       } catch (e) {
         if (!cancelado) setError(e?.message || 'Erro ao carregar relatório de ponto')
