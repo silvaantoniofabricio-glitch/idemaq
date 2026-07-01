@@ -158,28 +158,35 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
 
   // ── Stats derivados das linhas ──────────────────────────────────────────────
   const stats = useMemo(() => {
-    const diasUteis      = linhas.filter(l => !l.ehFds && !l.ehFuturo)
+    // "Dias úteis passados + hoje" → base para presença e banco de horas
+    const diasUteisPassados = linhas.filter(l => !l.ehFds && !l.ehFuturo)
+    // "Todos os dias úteis do mês" (incluindo futuros) → base para meta total
+    const todosUteisDoMes   = linhas.filter(l => !l.ehFds)
+
     const diasTrabalhados = linhas.filter(l => l.entrada).length
-    const faltas          = linhas.filter(l => l.status === 'falta').length
-    const atrasos         = linhas.filter(l => l.status === 'atraso').length
-    const diasExtra       = linhas.filter(l => l.status === 'extra').length
-    const totalMin        = linhas.reduce((s, l) => s + l.totalMin, 0)
-    const cargaMesMin     = diasUteis.reduce((s, l) => {
-      return s + (l.ehSabado ? JORNADA_SAB_MIN : JORNADA_DIA_MIN)
-    }, 0)
-    const extraMin        = Math.max(0, totalMin - cargaMesMin)
-    const saldoMin        = totalMin - cargaMesMin
-    const diasUteisPassed = diasUteis.filter(l => !l.ehFuturo).length
-    const presenca        = diasUteisPassed > 0
-      ? Math.round((diasTrabalhados / diasUteisPassed) * 100)
+    const faltas   = linhas.filter(l => l.status === 'falta').length
+    const atrasos  = linhas.filter(l => l.status === 'atraso').length
+    const totalMin = linhas.reduce((s, l) => s + l.totalMin, 0)
+
+    // Meta total do mês (todos os dias úteis, incluindo futuros)
+    const cargaMesTotalMin = todosUteisDoMes.reduce((s, l) =>
+      s + (l.ehSabado ? JORNADA_SAB_MIN : JORNADA_DIA_MIN), 0)
+
+    // Meta até hoje (só dias passados + hoje) → para banco de horas
+    const cargaAtéHojeMin = diasUteisPassados.reduce((s, l) =>
+      s + (l.ehSabado ? JORNADA_SAB_MIN : JORNADA_DIA_MIN), 0)
+
+    const saldoMin = totalMin - cargaAtéHojeMin  // adiantado (+) ou devendo (-)
+    const pctCarga = cargaMesTotalMin > 0
+      ? Math.min(100, Math.round((totalMin / cargaMesTotalMin) * 100))
       : 0
-    const pctCarga        = cargaMesMin > 0
-      ? Math.min(100, Math.round((totalMin / cargaMesMin) * 100))
+    const presenca = diasUteisPassados.length > 0
+      ? Math.round((diasTrabalhados / diasUteisPassados.length) * 100)
       : 0
 
     return {
-      diasTrabalhados, faltas, atrasos, diasExtra,
-      totalMin, cargaMesMin, extraMin, saldoMin,
+      diasTrabalhados, faltas, atrasos, totalMin,
+      cargaMesTotalMin, cargaAtéHojeMin, saldoMin,
       presenca, pctCarga,
     }
   }, [linhas])
@@ -232,7 +239,7 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <button onClick={() => navegarMes(-1)} style={btnNavStyle(T)}>
-            <i className="ti ti-chevron-left" style={{ fontSize: 15 }} aria-hidden="true" />
+            <i className="ti ti-chevron-left" style={{ fontSize: 16, color: 'inherit' }} aria-hidden="true" />
           </button>
           <div style={{
             flex: 1, textAlign: 'center',
@@ -252,10 +259,10 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
               </span>
             )}
           </div>
-          <button onClick={() => navegarMes(1)} style={btnNavStyle(T)}
+          <button onClick={() => navegarMes(1)} style={{ ...btnNavStyle(T), opacity: ehMesAtual ? 0.35 : 1 }}
             disabled={ehMesAtual}
           >
-            <i className="ti ti-chevron-right" style={{ fontSize: 15, opacity: ehMesAtual ? 0.35 : 1 }} aria-hidden="true" />
+            <i className="ti ti-chevron-right" style={{ fontSize: 16, color: 'inherit' }} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -309,7 +316,7 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
             />
           </div>
 
-          {/* ── BARRA DE CARGA DO MÊS ─────────────────────────────────────── */}
+          {/* ── PROGRESSO DO MÊS ─────────────────────────────────────────── */}
           <div className="idemaq-card" style={{
             background: T.card, borderRadius: 12,
             border: `1px solid ${T.border}`,
@@ -318,23 +325,31 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
           }}>
             <div style={{
               display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-              marginBottom: 8,
+              marginBottom: 2,
             }}>
               <span style={{
                 fontSize: 11, fontWeight: 700, color: T.textMuted,
                 textTransform: 'uppercase', letterSpacing: '.06em',
               }}>
-                Carga do mês
+                Progresso do mês
               </span>
               <span style={{
                 fontSize: 12, fontWeight: 700, color: corHero(dark),
                 fontVariantNumeric: 'tabular-nums',
               }}>
-                {fmtDuracao(stats.totalMin)} / {fmtDuracao(stats.cargaMesMin)}
+                {fmtDuracao(stats.totalMin)}
+                <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 500, margin: '0 3px' }}>
+                  de
+                </span>
+                {fmtDuracao(stats.cargaMesTotalMin)}
                 <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4, fontWeight: 500 }}>
                   ({stats.pctCarga}%)
                 </span>
               </span>
+            </div>
+            {/* Subtítulo explicativo */}
+            <div style={{ fontSize: 10.5, color: T.textDim, marginBottom: 8 }}>
+              Horas já trabalhadas vs. total previsto para o mês
             </div>
             {/* Barra de progresso */}
             <div style={{
@@ -345,32 +360,30 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
               <div style={{
                 height: '100%',
                 width: `${stats.pctCarga}%`,
-                background: stats.pctCarga >= 100 ? azul
-                           : stats.pctCarga >= 75 ? azul
-                           : amarelo,
+                background: stats.pctCarga >= 75 ? azul : amarelo,
                 borderRadius: 4,
                 transition: 'width .4s ease',
               }} />
             </div>
-            {/* Legenda extras */}
-            {stats.extraMin > 0 && (
-              <div style={{
-                marginTop: 6, fontSize: 11,
-                color: azul, fontWeight: 600,
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}>
-                <i className="ti ti-clock-plus" style={{ fontSize: 12 }} aria-hidden="true" />
-                {fmtDuracao(stats.extraMin)} de horas extras no mês
-              </div>
-            )}
+            {/* Banco de horas vs. expectativa de hoje */}
+            <div style={{
+              marginTop: 8, fontSize: 11, fontWeight: 600,
+              color: stats.saldoMin >= 0 ? azul : vermelho,
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              <i className={`ti ${stats.saldoMin >= 0 ? 'ti-trending-up' : 'ti-trending-down'}`}
+                 style={{ fontSize: 12 }} aria-hidden="true" />
+              {stats.saldoMin >= 0
+                ? `${fmtDuracao(stats.saldoMin)} à frente da meta de hoje`
+                : `${fmtDuracao(Math.abs(stats.saldoMin))} abaixo da meta de hoje`}
+            </div>
             {stats.faltas > 0 && (
               <div style={{
-                marginTop: stats.extraMin > 0 ? 2 : 6,
-                fontSize: 11, color: vermelho, fontWeight: 600,
+                marginTop: 3, fontSize: 11, color: vermelho, fontWeight: 600,
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
                 <i className="ti ti-alert-circle" style={{ fontSize: 12 }} aria-hidden="true" />
-                {stats.faltas} {stats.faltas === 1 ? 'falta' : 'faltas'} — impacto de {fmtDuracao(stats.faltas * JORNADA_DIA_MIN)} na carga
+                {stats.faltas} {stats.faltas === 1 ? 'falta' : 'faltas'} não compensadas
               </div>
             )}
           </div>
@@ -463,7 +476,6 @@ function KPITile({ T, dark, valor, label, icon, cor }) {
 function HeatmapMes({ linhas, ano, mes, paleta, T, dark }) {
   const { azul, amarelo, vermelho } = paleta
   const primeiroDia = new Date(ano, mes, 1).getDay() // 0=Dom
-  const cellSize = 22
 
   function bgCell(l) {
     if (!l) return 'transparent'
@@ -508,46 +520,47 @@ function HeatmapMes({ linhas, ano, mes, paleta, T, dark }) {
 
       {/* Cabeçalho Dom–Sáb */}
       <div style={{
-        display: 'grid', gridTemplateColumns: `repeat(7, ${cellSize}px)`,
-        gap: 3, marginBottom: 4,
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gap: 4, marginBottom: 4,
       }}>
-        {['D','S','T','Q','Q','S','S'].map((d, i) => (
+        {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((d, i) => (
           <div key={i} style={{
-            width: cellSize, textAlign: 'center',
+            textAlign: 'center',
             fontSize: 9, fontWeight: 700, color: T.textDim,
-            textTransform: 'uppercase', letterSpacing: '.05em',
+            textTransform: 'uppercase', letterSpacing: '.03em',
           }}>
             {d}
           </div>
         ))}
       </div>
 
-      {/* Células */}
+      {/* Células — auto-fill com aspect-ratio 1:1 */}
       <div style={{
-        display: 'grid', gridTemplateColumns: `repeat(7, ${cellSize}px)`,
-        gap: 3,
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gap: 4,
       }}>
         {cells.map((l, i) =>
           l === null ? (
-            <div key={`e${i}`} style={{ width: cellSize, height: cellSize }} />
+            <div key={`e${i}`} style={{ aspectRatio: '1' }} />
           ) : (
             <div
               key={l.dia}
               title={titleCell(l)}
               style={{
-                width: cellSize, height: cellSize,
-                borderRadius: 3,
+                aspectRatio: '1',
+                borderRadius: 4,
                 background: bgCell(l),
                 border: l.ehHoje ? `2px solid ${azul}` : '2px solid transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 8.5, fontWeight: 700,
+                fontSize: 10, fontWeight: 700,
                 color: l.status === 'fds' || l.status === 'futuro'
                   ? T.textDim
                   : '#fff',
                 cursor: 'help',
-                transition: 'transform .1s',
+                transition: 'transform .12s',
+                boxSizing: 'border-box',
               }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.25)'}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.18)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             >
               {l.dia}
@@ -738,12 +751,13 @@ function Legenda({ T, dark, azul, amarelo, vermelho }) {
 // ─── Botão de navegação de mês ───────────────────────────────────────────────
 function btnNavStyle(T) {
   return {
-    background: T.cardAlt,
-    border: `1px solid ${T.border}`,
-    borderRadius: 6,
-    width: 34, height: 34,
+    background: T.card,
+    border: `1.5px solid ${T.textMuted}`,
+    borderRadius: 8,
+    width: 36, height: 36,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer',
     flexShrink: 0,
+    color: T.textSecondary,
   }
 }
