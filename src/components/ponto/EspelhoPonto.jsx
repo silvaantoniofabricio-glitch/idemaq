@@ -37,27 +37,37 @@ function agregarMes(batidas, ano, mes) {
   for (let dia = 1; dia <= ultimoDia; dia++) {
     const d = new Date(ano, mes, dia)
     const diaSemana = d.getDay()
-    const ehFds = diaSemana === 0 || diaSemana === 6
+    const ehDomingo = diaSemana === 0
+    const ehSabado = diaSemana === 6
+    const ehFds = ehDomingo          // só domingo é folga fixa
     const batidasDia = porDia[dia] || {}
 
     let totalMin = 0
     if (batidasDia.entrada && batidasDia.saida_almoco) {
+      // dia normal com almoço
       totalMin += (new Date(batidasDia.saida_almoco) - new Date(batidasDia.entrada)) / 60000
     }
     if (batidasDia.volta_almoco && batidasDia.saida) {
       totalMin += (new Date(batidasDia.saida) - new Date(batidasDia.volta_almoco)) / 60000
     }
+    if (batidasDia.entrada && batidasDia.saida && !batidasDia.saida_almoco) {
+      // sábado (ou dia sem almoço): entrada → saida direto
+      totalMin += (new Date(batidasDia.saida) - new Date(batidasDia.entrada)) / 60000
+    }
     totalMin = Math.round(totalMin)
+
+    const cargaDia = ehSabado ? (JORNADA_PADRAO_H / 2) * 60 : JORNADA_PADRAO_H * 60
 
     let status = 'normal'
     const teveBatida = !!batidasDia.entrada
     if (ehFds) status = 'fds'
+    else if (ehSabado && !teveBatida) status = 'fds'   // sábado sem batida = não trabalhou
     else if (!teveBatida && d <= new Date()) status = 'falta'
     else if (teveBatida) {
       const entrada = new Date(batidasDia.entrada)
       const entradaPadrao = new Date(ano, mes, dia, 7, 40, 0)
       if (entrada > entradaPadrao) status = 'atraso'
-      else if (totalMin > JORNADA_PADRAO_H * 60) status = 'extra'
+      else if (totalMin > cargaDia) status = 'extra'
     }
 
     linhas.push({

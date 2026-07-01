@@ -48,15 +48,14 @@ function diaIso(d = new Date()) {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
 }
 
-// Próximo tipo baseado na última batida do dia
-export function proximoTipo(ultimaBatida) {
+// Próximo tipo baseado na última batida do dia.
+// No sábado não há almoço — sequência é entrada → saida direto.
+export function proximoTipo(ultimaBatida, agora = new Date()) {
   if (!ultimaBatida) return 'entrada'
-  const mapa = {
-    entrada:      'saida_almoco',
-    saida_almoco: 'volta_almoco',
-    volta_almoco: 'saida',
-    saida:        null,  // expediente encerrado
-  }
+  const ehSabado = agora.getDay() === 6
+  const mapa = ehSabado
+    ? { entrada: 'saida', saida: null }
+    : { entrada: 'saida_almoco', saida_almoco: 'volta_almoco', volta_almoco: 'saida', saida: null }
   return mapa[ultimaBatida.tipo] ?? null
 }
 
