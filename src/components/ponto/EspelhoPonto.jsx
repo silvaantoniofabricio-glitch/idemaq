@@ -3,7 +3,7 @@
 // Seções: KPI strip · barra de carga · heatmap · tabela detalhada
 // Responsivo: mobile oculta colunas de almoço na tabela.
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { Card, Button } from '../ui'
 import { usePonto } from '../../hooks/usePonto'
@@ -139,14 +139,6 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
   const hoje = new Date()
   const [ano, setAno] = useState(hoje.getFullYear())
   const [mes, setMes] = useState(hoje.getMonth())
-
-  // Detecta viewport estreito pra esconder colunas de almoço
-  const [compact, setCompact] = useState(window.innerWidth < 600)
-  useEffect(() => {
-    const handler = () => setCompact(window.innerWidth < 600)
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
 
   const { batidas, loading } = usePonto({
     funcionarioId: funcionario.id,
@@ -417,18 +409,18 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
               </span>
             </div>
 
-            {/* Linha de cabeçalho das colunas */}
-            <TabelaHeader compact={compact} T={T} />
-
-            {/* Linhas */}
-            {linhas.map(l => (
-              <TabelaLinha
-                key={l.dia}
-                l={l} compact={compact}
-                paleta={paleta}
-                T={T} dark={dark}
-              />
-            ))}
+            {/* Scroll horizontal no mobile — todas as colunas sempre visíveis */}
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <TabelaHeader T={T} />
+              {linhas.map(l => (
+                <TabelaLinha
+                  key={l.dia}
+                  l={l}
+                  paleta={paleta}
+                  T={T} dark={dark}
+                />
+              ))}
+            </div>
           </div>
 
           {/* ── LEGENDA ───────────────────────────────────────────────────── */}
@@ -599,25 +591,24 @@ function HeatmapMes({ linhas, ano, mes, paleta, T, dark }) {
 }
 
 // ─── Cabeçalho da tabela ─────────────────────────────────────────────────────
-function TabelaHeader({ compact, T }) {
-  const cols = compact
-    ? '48px 56px 56px 64px 1fr'
-    : '48px 60px 60px 60px 60px 68px 1fr'
+const TABELA_COLS = '48px 62px 62px 62px 62px 68px 1fr'
 
+function TabelaHeader({ T }) {
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: cols,
+      display: 'grid', gridTemplateColumns: TABELA_COLS,
       gap: 4, padding: '7px 14px',
       background: T.cardAlt,
       borderBottom: `1px solid ${T.border}`,
       fontSize: 9.5, color: T.textMuted, fontWeight: 700,
       textTransform: 'uppercase', letterSpacing: '.05em',
+      minWidth: 420,
     }}>
       <div>Dia</div>
-      <div style={{ textAlign: 'center' }}>Ent.</div>
-      {!compact && <div style={{ textAlign: 'center' }}>Alm.↑</div>}
-      {!compact && <div style={{ textAlign: 'center' }}>Alm.↓</div>}
-      <div style={{ textAlign: 'center' }}>Saí.</div>
+      <div style={{ textAlign: 'center' }}>Entrada</div>
+      <div style={{ textAlign: 'center' }}>Alm. saída</div>
+      <div style={{ textAlign: 'center' }}>Alm. volta</div>
+      <div style={{ textAlign: 'center' }}>Saída</div>
       <div style={{ textAlign: 'right' }}>Total</div>
       <div style={{ paddingLeft: 8 }}>Status</div>
     </div>
@@ -625,12 +616,9 @@ function TabelaHeader({ compact, T }) {
 }
 
 // ─── Linha da tabela ─────────────────────────────────────────────────────────
-function TabelaLinha({ l, compact, paleta, T, dark }) {
+function TabelaLinha({ l, paleta, T, dark }) {
   const { azul, amarelo, vermelho } = paleta
   const cor = corStatus(l.status, paleta)
-  const cols = compact
-    ? '48px 56px 56px 64px 1fr'
-    : '48px 60px 60px 60px 60px 68px 1fr'
 
   const opacidade = l.ehFds || l.status === 'futuro' ? 0.45 : 1
   const bgLinha = l.ehHoje
@@ -641,8 +629,9 @@ function TabelaLinha({ l, compact, paleta, T, dark }) {
 
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: cols,
+      display: 'grid', gridTemplateColumns: TABELA_COLS,
       gap: 4, padding: '8px 14px',
+      minWidth: 420,
       borderTop: `1px solid ${T.border}`,
       alignItems: 'center',
       fontSize: 11.5,
@@ -667,8 +656,8 @@ function TabelaLinha({ l, compact, paleta, T, dark }) {
 
       {/* Batidas */}
       <Hora T={T} dark={dark} iso={l.entrada} />
-      {!compact && <Hora T={T} dark={dark} iso={l.saidaAlmoco} />}
-      {!compact && <Hora T={T} dark={dark} iso={l.voltaAlmoco} />}
+      <Hora T={T} dark={dark} iso={l.saidaAlmoco} />
+      <Hora T={T} dark={dark} iso={l.voltaAlmoco} />
       <Hora T={T} dark={dark} iso={l.saida} />
 
       {/* Total */}
