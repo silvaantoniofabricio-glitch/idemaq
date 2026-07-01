@@ -65,7 +65,7 @@ function agregarMes(batidas, ano, mes) {
     else if (!teveBatida && d <= new Date()) status = 'falta'
     else if (teveBatida) {
       const entrada = new Date(batidasDia.entrada)
-      const entradaPadrao = new Date(ano, mes, dia, 7, 40, 0)
+      const entradaPadrao = new Date(ano, mes, dia, 7, 35, 0)
       if (entrada > entradaPadrao) status = 'atraso'
       else if (totalMin > cargaDia) status = 'extra'
     }
