@@ -1023,17 +1023,51 @@ export function useRelatorioFuncionarios({ iniIso, fimIso }) {
 }
 
 // =============================================================================
-// useRelatorioPonto — agrega `jornada_funcionario` no período.
-// Lê o agregado diário (1 linha por funcionário/dia) com join em `usuarios`
-// pra trazer apelido. Retorna por funcionário: total de horas trabalhadas,
-// faltas, saldo de banco de horas. Saldo é INT minutos (pode ser negativo).
+// useRelatorioPonto — agrega `ponto_registro` no período (client-side).
+// Lê batidas brutas com join em `usuarios` e calcula horas/faltas no front,
+// igual ao EspelhoPonto. Não depende de `jornada_funcionario` (ainda vazia).
 //
-// Filtro opcional `funcionarioId` — quando passado, restringe a um único
-// funcionário (UI de drill-down futura).
-//
-// IMPORTANTE: `dia` em jornada_funcionario é `date` (não timestamptz). O
-// filtro precisa de YYYY-MM-DD, não ISO completo. Fatiamos `iniIso.slice(0,10)`.
+// Jornada padrão: 8h dias úteis (seg-sex), 4h sábado. Domingo = folga.
+// Falta: dia útil sem nenhuma batida até o dia de hoje.
 // =============================================================================
+const JORNADA_DIA_MIN = 8 * 60
+const JORNADA_SAB_MIN = 4 * 60
+
+function minutosTrabBatidas(batidas) {
+  const lista = [...batidas].sort((a, b) => new Date(a.bateu_em) - new Date(b.bateu_em))
+  let total = 0
+  let entrada = null
+  for (const b of lista) {
+    const t = new Date(b.bateu_em)
+    if (b.tipo === 'entrada' || b.tipo === 'volta_almoco') {
+      entrada = t
+    } else if ((b.tipo === 'saida_almoco' || b.tipo === 'saida') && entrada) {
+      total += Math.round((t - entrada) / 60000)
+      entrada = null
+    }
+  }
+  // se ainda trabalhando (sem saída), não conta — só dias encerrados
+  return total
+}
+
+function diasUteisNoPeriodo(iniIso, fimIso) {
+  // Retorna lista de { iso, diaSemana } de dias úteis (seg-sáb) no período
+  const dias = []
+  const ini = new Date(iniIso.slice(0, 10) + 'T00:00:00')
+  const fim = new Date(fimIso.slice(0, 10) + 'T00:00:00')
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0)
+  const cur = new Date(ini)
+  while (cur <= fim && cur <= hoje) {
+    const dow = cur.getDay()
+    if (dow !== 0) {  // 0 = domingo = folga
+      const iso = cur.toISOString().slice(0, 10)
+      dias.push({ iso, diaSemana: dow })
+    }
+    cur.setDate(cur.getDate() + 1)
+  }
+  return dias
+}
+
 export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1044,62 +1078,76 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
     async function run() {
       setLoading(true); setError(null)
       try {
-        const iniDate = iniIso.slice(0, 10)
-        const fimDate = fimIso.slice(0, 10)
-
         let query = supabase
-          .from('jornada_funcionario')
-          .select(`
-            funcionario_id, dia, total_horas_trabalhadas, saldo_horas, status,
-            funcionario:funcionario_id ( id, apelido, papel )
-          `)
+          .from('ponto_registro')
+          .select('funcionario_id, tipo, bateu_em, funcionario:funcionario_id(id, apelido, papel)')
           .is('deleted_at', null)
-          .gte('dia', iniDate)
-          .lte('dia', fimDate)
+          .gte('bateu_em', iniIso)
+          .lte('bateu_em', fimIso)
+          .order('bateu_em', { ascending: true })
 
         if (funcionarioId) query = query.eq('funcionario_id', funcionarioId)
 
-        const { data: jornadas, error: errJ } = await query
-        if (errJ) throw errJ
-
+        const { data: batidas, error: errB } = await query
+        if (errB) throw errB
         if (cancelado) return
 
-        // Agrega por funcionário
+        // Agrupa batidas por funcionário → por dia ISO
         const porFunc = {}
-        for (const j of jornadas || []) {
-          const fid = j.funcionario_id
+        for (const b of batidas || []) {
+          const fid = b.funcionario_id
           if (!fid) continue
           if (!porFunc[fid]) {
             porFunc[fid] = {
               id: fid,
-              nome: j.funcionario?.apelido || 'desconhecido',
-              papel: j.funcionario?.papel || null,
-              totalHorasMin: 0,
-              faltas: 0,
-              faltasJustificadas: 0,
-              saldoHorasMin: 0,
-              diasComputados: 0,
+              nome: b.funcionario?.apelido || 'desconhecido',
+              papel: b.funcionario?.papel || null,
+              porDia: {},
             }
           }
-          const f = porFunc[fid]
-          f.totalHorasMin += intervalToMinutes(j.total_horas_trabalhadas)
-          f.saldoHorasMin += intervalToMinutes(j.saldo_horas)
-          if (j.status === 'falta') f.faltas += 1
-          if (j.status === 'falta_justificada') f.faltasJustificadas += 1
-          f.diasComputados += 1
+          const diaIso = new Date(b.bateu_em).toISOString().slice(0, 10)
+          if (!porFunc[fid].porDia[diaIso]) porFunc[fid].porDia[diaIso] = []
+          porFunc[fid].porDia[diaIso].push(b)
         }
 
-        const lista = Object.values(porFunc).map(f => ({
-          ...f,
-          totalHoras: fmtHorasMin(f.totalHorasMin),
-          saldoHoras: fmtHorasMin(f.saldoHorasMin),
-        }))
-        // Ordena por mais horas trabalhadas (top performer primeiro)
+        const diasUteis = diasUteisNoPeriodo(iniIso, fimIso)
+
+        const lista = Object.values(porFunc).map(f => {
+          let totalHorasMin = 0
+          let faltas = 0
+
+          for (const { iso, diaSemana } of diasUteis) {
+            const batidasDia = f.porDia[iso] || []
+            const teveBatida = batidasDia.length > 0
+            const carga = diaSemana === 6 ? JORNADA_SAB_MIN : JORNADA_DIA_MIN
+
+            if (teveBatida) {
+              totalHorasMin += minutosTrabBatidas(batidasDia)
+            } else {
+              faltas += 1
+            }
+          }
+
+          const saldoHorasMin = totalHorasMin - diasUteis.length * JORNADA_DIA_MIN
+
+          return {
+            id: f.id,
+            nome: f.nome,
+            papel: f.papel,
+            totalHorasMin,
+            totalHoras: fmtHorasMin(totalHorasMin),
+            faltas,
+            faltasJustificadas: 0,
+            saldoHorasMin,
+            saldoHoras: fmtHorasMin(saldoHorasMin),
+            diasComputados: diasUteis.length,
+          }
+        })
+
         lista.sort((a, b) => b.totalHorasMin - a.totalHorasMin)
 
         const totalHorasMin = lista.reduce((s, f) => s + f.totalHorasMin, 0)
         const totalFaltas   = lista.reduce((s, f) => s + f.faltas, 0)
-        const totalDias     = lista.reduce((s, f) => s + f.diasComputados, 0)
         const topPerformer  = lista[0] || null
 
         setData({
@@ -1107,7 +1155,7 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
           totalHorasMin,
           totalHoras: fmtHorasMin(totalHorasMin),
           totalFaltas,
-          totalDias,
+          totalDias: diasUteis.length,
           totalFuncionarios: lista.length,
           topPerformer,
         })
