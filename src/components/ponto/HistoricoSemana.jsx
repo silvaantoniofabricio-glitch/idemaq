@@ -84,11 +84,11 @@ export default function HistoricoSemana({ T, dark, batidas = [], jornadaPadraoMi
       } else if (ehHoje && !saida) {
         status = 'parcial'
       } else {
-        // Atraso? Entrada > 07:40
         if (entrada) {
           const t = new Date(entrada.bateu_em)
           const padrao = new Date(t)
-          padrao.setHours(7, 40, 0, 0)
+          // Sábado: tolera até 07:05; dias úteis: até 08:05
+          padrao.setHours(diaSemana === 6 ? 7 : 8, 5, 0, 0)
           if (t > padrao) status = 'atraso'
           else if (minutos > jornadaPadraoMin) status = 'extra'
         }

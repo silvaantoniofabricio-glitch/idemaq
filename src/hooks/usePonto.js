@@ -240,7 +240,7 @@ export function usePonto({
   useEffect(() => {
     if (tabelaAusente) return
     const canal = supabase
-      .channel(`ponto_registro_${funcionarioId || 'todos'}`)
+      .channel(`ponto_registro_${funcionarioId || 'todos'}_${escopo}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'ponto_registro' },
         () => { carregar() }
