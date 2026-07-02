@@ -1,21 +1,27 @@
 // src/components/ponto/BotaoBaterPonto.jsx
 // Botão grande de bater ponto — visual muda conforme próxima ação.
 // Tenta capturar geolocalização; se negada, mostra aviso + opção de registrar sem geo.
+// Após sucesso: tela de confirmação por 3s antes de liberar o próximo botão (evita duplo-clique).
 
-import React, { useState, useRef } from 'react'
-import { corEtapa } from '../../utils/colors'
-import { TIPOS_BATIDA } from './_mocks'
+import React, { useState, useRef, useEffect } from 'react'
+import { corEtapa, bgEtapa } from '../../utils/colors'
+import { TIPOS_BATIDA, fmtHora } from './_mocks'
 
 const ERR_GEO = 'Permissão de localização negada'
+const CONFIRMACAO_MS = 3000
 
 export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disabled = false }) {
   const cor = (d, c) => dark ? d : c
-  const [loading, setLoading] = useState(false)
-  const [semGeo, setSemGeo] = useState(false)   // true quando geo foi negada
-  // Ref síncrona para bloquear duplo-clique antes do re-render do useState
-  const travado = useRef(false)
+  const [loading, setLoading]         = useState(false)
+  const [semGeo, setSemGeo]           = useState(false)
+  const [confirmacao, setConfirmacao] = useState(null) // { tipo, hora } após sucesso
+  const travado   = useRef(false)
+  const timerRef  = useRef(null)
 
-  if (!proximoTipo) {
+  // Limpa o timer se o componente desmontar
+  useEffect(() => () => clearTimeout(timerRef.current), [])
+
+  if (!proximoTipo && !confirmacao) {
     return (
       <button disabled style={{
         width: '100%', padding: '18px 20px', borderRadius: 12, border: 'none',
@@ -31,13 +37,42 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
     )
   }
 
-  const cfg = TIPOS_BATIDA[proximoTipo]
+  // ── Tela de confirmação (3s após sucesso) ──────────────────────────────────
+  if (confirmacao) {
+    const verde = corEtapa('green', dark)
+    const cfgConf = TIPOS_BATIDA[confirmacao.tipo]
+    return (
+      <div style={{
+        width: '100%', padding: '18px 20px', borderRadius: 12,
+        background: bgEtapa('green', dark),
+        border: `1px solid ${verde}44`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+        boxSizing: 'border-box',
+      }}>
+        <i className="ti ti-circle-check-filled"
+           style={{ fontSize: 26, color: verde, flexShrink: 0 }} aria-hidden="true" />
+        <div style={{ lineHeight: 1.3 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: verde }}>
+            {cfgConf?.label ?? confirmacao.tipo} registrada
+          </div>
+          <div style={{
+            fontSize: 13, color: T.textMuted,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            às {confirmacao.hora}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const cfg    = TIPOS_BATIDA[proximoTipo]
   const corBtn = corEtapa(cfg.cor, dark)
   const isAmarelo = cfg.cor === 'yellow'
 
   async function clicar(forcarSemGeo = false) {
     if (disabled || travado.current) return
-    travado.current = true  // bloqueia imediatamente, antes do re-render
+    travado.current = true
     setSemGeo(false)
     setLoading(true)
     try {
@@ -45,15 +80,25 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
       if (result?.error) {
         const msg = result.error.message || ''
         if (msg === ERR_GEO || msg.includes('localização') || msg.includes('geoloc')) {
-          setSemGeo(true)  // mostra opção de registrar sem geo
+          setSemGeo(true)
         }
+      } else {
+        // Sucesso: mostra confirmação por 3s (impede qualquer novo clique)
+        const hora = result?.data?.bateu_em
+          ? fmtHora(result.data.bateu_em)
+          : fmtHora(new Date().toISOString())
+        setConfirmacao({ tipo: proximoTipo, hora })
+        timerRef.current = setTimeout(() => {
+          setConfirmacao(null)
+          travado.current = false
+        }, CONFIRMACAO_MS)
+        return  // não libera travado ainda — o timer faz isso
       }
     } catch (e) {
       if ((e.message || '').includes('localização')) setSemGeo(true)
-    } finally {
-      travado.current = false
-      setLoading(false)
     }
+    travado.current = false
+    setLoading(false)
   }
 
   return (
