@@ -1,11 +1,10 @@
 // src/components/ponto/EspelhoPonto.jsx
 // Espelho de ponto do mês — design Atlassian.
-// Seções: KPI strip · barra de carga · heatmap · tabela detalhada
-// Responsivo: mobile oculta colunas de almoço na tabela.
+// Desktop (≥680px): 2 colunas — esq: calendário + progresso / dir: tabela detalhada
+// Mobile: stack vertical
 
 import React, { useState, useMemo } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
-import { Card, Button } from '../ui'
 import { usePonto } from '../../hooks/usePonto'
 import { fmtHora, fmtDuracao, fmtBancoHoras } from './_mocks'
 
@@ -15,12 +14,11 @@ const MESES = [
 ]
 const DIA_SEMANA_CURTO = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
 
-const JORNADA_DIA_MIN = 8 * 60   // 480 min
-const JORNADA_SAB_MIN = 4 * 60   // 240 min
+const JORNADA_DIA_MIN = 8 * 60
+const JORNADA_SAB_MIN = 4 * 60
 const TOLERANCIA_MIN  = 5
 
-// ─── agregarMes: 1 linha por dia do mês ─────────────────────────────────────
-// Statuses: 'normal'|'atraso'|'extra'|'falta'|'pendente'|'fds'|'futuro'
+// ─── Agregar batidas em linhas por dia ───────────────────────────────────────
 function agregarMes(batidas, ano, mes) {
   const doMes = batidas.filter(b => {
     const d = new Date(b.bateu_em)
@@ -39,7 +37,6 @@ function agregarMes(batidas, ano, mes) {
   const inicioDoDia = new Date(hoje); inicioDoDia.setHours(0, 0, 0, 0)
   const mesAtualAno = hoje.getFullYear() === ano && hoje.getMonth() === mes
   const diaHoje = mesAtualAno ? hoje.getDate() : -1
-
   const ultimoDia = new Date(ano, mes + 1, 0).getDate()
   const linhas = []
 
@@ -56,32 +53,27 @@ function agregarMes(batidas, ano, mes) {
     const batidasDia = porDia[dia] || {}
     const teveBatida = !!batidasDia.entrada
 
-    // Calcula minutos trabalhados
     let totalMin = 0
-    if (batidasDia.entrada && batidasDia.saida_almoco) {
+    if (batidasDia.entrada && batidasDia.saida_almoco)
       totalMin += (new Date(batidasDia.saida_almoco) - new Date(batidasDia.entrada)) / 60000
-    }
-    if (batidasDia.volta_almoco && batidasDia.saida) {
+    if (batidasDia.volta_almoco && batidasDia.saida)
       totalMin += (new Date(batidasDia.saida) - new Date(batidasDia.volta_almoco)) / 60000
-    }
-    if (batidasDia.entrada && batidasDia.saida && !batidasDia.saida_almoco) {
-      // sábado ou dia sem almoço
+    if (batidasDia.entrada && batidasDia.saida && !batidasDia.saida_almoco)
       totalMin += (new Date(batidasDia.saida) - new Date(batidasDia.entrada)) / 60000
-    }
     totalMin = Math.round(totalMin)
 
     const cargaDia = ehSabado ? JORNADA_SAB_MIN : JORNADA_DIA_MIN
 
     let status = 'normal'
-    if (ehFds)   status = 'fds'
-    else if (ehFuturo) status = 'futuro'
-    else if (ehSabado && !teveBatida) status = 'fds'
-    else if (!teveBatida && ehHoje)   status = 'pendente'
-    else if (!teveBatida && ehPassado) status = 'falta'
+    if (ehFds)                          status = 'fds'
+    else if (ehFuturo)                  status = 'futuro'
+    else if (ehSabado && !teveBatida)   status = 'fds'
+    else if (!teveBatida && ehHoje)     status = 'pendente'
+    else if (!teveBatida && ehPassado)  status = 'falta'
     else if (teveBatida) {
       const entrada = new Date(batidasDia.entrada)
-      const limiar  = new Date(ano, mes, dia, ehSabado ? 7 : 8, TOLERANCIA_MIN, 0)
-      if (entrada > limiar) status = 'atraso'
+      const limiar  = new Date(ano, mes, dia, ehSabado ? 7 : 8, TOLERANCIA_MIN)
+      if (entrada > limiar)                              status = 'atraso'
       else if (batidasDia.saida && totalMin > cargaDia) status = 'extra'
     }
 
@@ -91,50 +83,36 @@ function agregarMes(batidas, ano, mes) {
       saidaAlmoco: batidasDia.saida_almoco || null,
       voltaAlmoco: batidasDia.volta_almoco || null,
       saida:       batidasDia.saida        || null,
-      totalMin,
-      status,
+      totalMin, status,
     })
   }
   return linhas
 }
 
-// ─── Helpers de cor por status ───────────────────────────────────────────────
+// ─── Helpers de status ───────────────────────────────────────────────────────
 function corStatus(status, { azul, amarelo, vermelho, T }) {
-  if (status === 'normal')   return azul
-  if (status === 'extra')    return azul
-  if (status === 'atraso')   return amarelo
-  if (status === 'falta')    return vermelho
-  if (status === 'pendente') return amarelo
+  if (status === 'normal' || status === 'extra') return azul
+  if (status === 'atraso' || status === 'pendente') return amarelo
+  if (status === 'falta') return vermelho
   return T.textDim
 }
-
 function labelStatus(status) {
-  if (status === 'normal')   return 'OK'
-  if (status === 'extra')    return 'Extra'
-  if (status === 'atraso')   return 'Atraso'
-  if (status === 'falta')    return 'Falta'
-  if (status === 'pendente') return 'Pendente'
-  if (status === 'fds')      return 'Folga'
-  if (status === 'futuro')   return '—'
-  return '—'
+  const MAP = { normal:'OK', extra:'Extra', atraso:'Atraso', falta:'Falta',
+    pendente:'Pendente', fds:'Folga', futuro:'—' }
+  return MAP[status] || '—'
 }
-
 function iconStatus(status) {
-  if (status === 'normal')   return 'ti-check'
-  if (status === 'extra')    return 'ti-clock-plus'
-  if (status === 'atraso')   return 'ti-alert-triangle'
-  if (status === 'falta')    return 'ti-x'
-  if (status === 'pendente') return 'ti-clock-hour-8'
-  if (status === 'fds')      return 'ti-sun'
-  return 'ti-minus'
+  const MAP = { normal:'ti-check', extra:'ti-clock-plus', atraso:'ti-alert-triangle',
+    falta:'ti-x', pendente:'ti-clock-hour-8', fds:'ti-sun' }
+  return MAP[status] || 'ti-minus'
 }
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function EspelhoPonto({ T, dark, funcionario }) {
-  const azul     = corEtapa('blue',   dark)
-  const amarelo  = corEtapa('yellow', dark)
-  const vermelho = corEtapa('red',    dark)
-  const paleta   = { azul, amarelo, vermelho, T }
+  const azul    = corEtapa('blue',   dark)
+  const amarelo = corEtapa('yellow', dark)
+  const vermelho= corEtapa('red',    dark)
+  const paleta  = { azul, amarelo, vermelho, T }
 
   const hoje = new Date()
   const [ano, setAno] = useState(hoje.getFullYear())
@@ -142,45 +120,33 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
 
   const { batidas, loading } = usePonto({
     funcionarioId: funcionario.id,
-    escopo: 'mes',
-    ano, mes,
+    escopo: 'mes', ano, mes,
   })
 
   const linhas = useMemo(() => agregarMes(batidas, ano, mes), [batidas, ano, mes])
 
-  // ── Stats derivados das linhas ──────────────────────────────────────────────
   const stats = useMemo(() => {
-    // "Dias úteis passados + hoje" → base para presença e banco de horas
     const diasUteisPassados = linhas.filter(l => !l.ehFds && !l.ehFuturo)
-    // "Todos os dias úteis do mês" (incluindo futuros) → base para meta total
     const todosUteisDoMes   = linhas.filter(l => !l.ehFds)
-
-    const diasTrabalhados = linhas.filter(l => l.entrada).length
+    const diasTrabalhados   = linhas.filter(l => l.entrada).length
     const faltas   = linhas.filter(l => l.status === 'falta').length
     const atrasos  = linhas.filter(l => l.status === 'atraso').length
+    const extras   = linhas.filter(l => l.status === 'extra').length
     const totalMin = linhas.reduce((s, l) => s + l.totalMin, 0)
-
-    // Meta total do mês (todos os dias úteis, incluindo futuros)
     const cargaMesTotalMin = todosUteisDoMes.reduce((s, l) =>
       s + (l.ehSabado ? JORNADA_SAB_MIN : JORNADA_DIA_MIN), 0)
-
-    // Meta até hoje (só dias passados + hoje) → para banco de horas
     const cargaAtéHojeMin = diasUteisPassados.reduce((s, l) =>
       s + (l.ehSabado ? JORNADA_SAB_MIN : JORNADA_DIA_MIN), 0)
-
-    const saldoMin = totalMin - cargaAtéHojeMin  // adiantado (+) ou devendo (-)
+    const saldoMin = totalMin - cargaAtéHojeMin
     const pctCarga = cargaMesTotalMin > 0
       ? Math.min(100, Math.round((totalMin / cargaMesTotalMin) * 100))
       : 0
     const presenca = diasUteisPassados.length > 0
       ? Math.round((diasTrabalhados / diasUteisPassados.length) * 100)
       : 0
-
-    return {
-      diasTrabalhados, faltas, atrasos, totalMin,
-      cargaMesTotalMin, cargaAtéHojeMin, saldoMin,
-      presenca, pctCarga,
-    }
+    return { diasTrabalhados, faltas, atrasos, extras,
+      totalMin, cargaMesTotalMin, cargaAtéHojeMin, saldoMin,
+      presenca, pctCarga }
   }, [linhas])
 
   function navegarMes(delta) {
@@ -192,69 +158,81 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
   const ehMesAtual = ano === hoje.getFullYear() && mes === hoje.getMonth()
   const nomeFunc   = funcionario.nome || 'Funcionário'
   const iniciais   = nomeFunc.slice(0, 2).toUpperCase()
+  const corAvatar  = azul
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <style>{`
+        .espelho-main { display: flex; flex-direction: column; gap: 12px; }
+        @media (min-width: 680px) {
+          .espelho-main { flex-direction: row; align-items: flex-start; }
+          .espelho-col-left  { width: 290px; flex-shrink: 0; }
+          .espelho-col-right { flex: 1; min-width: 0; }
+        }
+        @keyframes spin-ep { from { transform: rotate(0) } to { transform: rotate(360deg) } }
+      `}</style>
 
-      {/* ── CABEÇALHO / NAVEGAÇÃO ─────────────────────────────────────────── */}
-      <div className="idemaq-card" style={{
-        background: T.card, borderRadius: 12,
+      {/* ── CABEÇALHO ──────────────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        flexWrap: 'wrap',
+        padding: '12px 16px',
+        background: T.card,
         border: `1px solid ${T.border}`,
-        padding: '14px 16px',
+        borderRadius: 10,
         boxShadow: T.shadow,
       }}>
-        {/* Identidade */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14,
-        }}>
+        {/* Avatar + identidade */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: '50%',
-            background: azul,
+            width: 38, height: 38, borderRadius: '50%',
+            background: `linear-gradient(135deg, ${azul}, ${azul}aa)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, fontWeight: 800, color: '#fff',
-            flexShrink: 0,
+            flexShrink: 0, letterSpacing: '-0.01em',
           }}>
             {iniciais}
           </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: corHero(dark), letterSpacing: '-0.01em' }}>
-              Espelho de Ponto — {nomeFunc}
+          <div style={{ minWidth: 0 }}>
+            <div style={{
+              fontSize: 14, fontWeight: 700, color: corHero(dark),
+              letterSpacing: '-0.01em', lineHeight: 1.2,
+            }}>
+              {nomeFunc}
             </div>
-            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 1 }}>
-              {funcionario.papel} · Jornada: 08:00–11:00 / 13:00–18:00 (Seg–Sex) · 07:00–11:00 (Sáb) · Tolerância: {TOLERANCIA_MIN} min
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
+              {funcionario.papel} · seg–sex 8h · sáb 4h · tolerância {TOLERANCIA_MIN} min
             </div>
           </div>
         </div>
 
         {/* Navegação de mês */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          <button onClick={() => navegarMes(-1)} style={btnNavStyle(T)}>
-            <i className="ti ti-chevron-left" style={{ fontSize: 16, color: 'inherit' }} aria-hidden="true" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <button onClick={() => navegarMes(-1)} style={estiloNavBtn(T)}>
+            <i className="ti ti-chevron-left" style={{ fontSize: 15, color: 'inherit' }} aria-hidden="true" />
           </button>
           <div style={{
-            flex: 1, textAlign: 'center',
-            fontSize: 15, fontWeight: 700, color: corHero(dark),
+            minWidth: 130, textAlign: 'center',
+            fontSize: 14, fontWeight: 700, color: corHero(dark),
             letterSpacing: '-0.01em',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}>
-            {MESES[mes]} / {ano}
+            {MESES[mes]} {ano}
             {ehMesAtual && (
               <span style={{
-                marginLeft: 8, fontSize: 10, fontWeight: 700,
-                padding: '2px 7px', borderRadius: 3,
+                fontSize: 9, fontWeight: 800, letterSpacing: '.05em',
+                padding: '2px 6px', borderRadius: 3,
                 background: azul + '1a', color: azul,
                 border: `1px solid ${azul}40`,
-                verticalAlign: 'middle', letterSpacing: '.04em',
+                textTransform: 'uppercase',
               }}>
-                MÊS ATUAL
+                Atual
               </span>
             )}
           </div>
-          <button onClick={() => navegarMes(1)} style={{ ...btnNavStyle(T), opacity: ehMesAtual ? 0.35 : 1 }}
-            disabled={ehMesAtual}
-          >
-            <i className="ti ti-chevron-right" style={{ fontSize: 16, color: 'inherit' }} aria-hidden="true" />
+          <button onClick={() => navegarMes(1)} disabled={ehMesAtual}
+            style={{ ...estiloNavBtn(T), opacity: ehMesAtual ? 0.3 : 1 }}>
+            <i className="ti ti-chevron-right" style={{ fontSize: 15, color: 'inherit' }} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -262,170 +240,301 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
       {loading ? (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          color: T.textMuted, fontSize: 13, padding: '12px 0',
+          color: T.textMuted, fontSize: 13, padding: '20px 0',
+          justifyContent: 'center',
         }}>
-          <i className="ti ti-loader-2" style={{ fontSize: 16, animation: 'spin 1s linear infinite' }} aria-hidden="true" />
-          Carregando…
-          <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
+          <i className="ti ti-loader-2" style={{
+            fontSize: 18, animation: 'spin-ep 1s linear infinite',
+          }} aria-hidden="true" />
+          Carregando jornadas…
         </div>
       ) : (
         <>
-          {/* ── KPI STRIP ──────────────────────────────────────────────────── */}
+          {/* ── KPI STRIP ────────────────────────────────────────────────────── */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(5, 1fr)',
             gap: 8,
           }}>
-            <KPITile T={T} dark={dark}
-              valor={stats.diasTrabalhados}
-              label="Dias trab."
-              icon="ti-calendar-check"
-              cor={azul}
-            />
-            <KPITile T={T} dark={dark}
-              valor={fmtDuracao(stats.totalMin)}
-              label="Horas"
-              icon="ti-clock"
-              cor={azul}
-            />
-            <KPITile T={T} dark={dark}
-              valor={`${stats.presenca}%`}
+            <KPITile T={T} dark={dark} icon="ti-calendar-check"
+              label="Dias trab." valor={stats.diasTrabalhados} cor={azul} />
+            <KPITile T={T} dark={dark} icon="ti-clock"
+              label="Horas" valor={fmtDuracao(stats.totalMin)} cor={azul} />
+            <KPITile T={T} dark={dark} icon="ti-user-check"
               label="Presença"
-              icon="ti-user-check"
-              cor={stats.presenca >= 90 ? azul : stats.presenca >= 75 ? amarelo : vermelho}
-            />
-            <KPITile T={T} dark={dark}
-              valor={stats.faltas}
+              valor={`${stats.presenca}%`}
+              cor={stats.presenca >= 90 ? azul : stats.presenca >= 75 ? amarelo : vermelho} />
+            <KPITile T={T} dark={dark} icon="ti-calendar-x"
               label="Faltas"
-              icon="ti-calendar-x"
-              cor={stats.faltas > 0 ? vermelho : T.textMuted}
-            />
+              valor={stats.faltas}
+              cor={stats.faltas > 0 ? vermelho : T.textMuted} />
             <KPITile T={T} dark={dark}
-              valor={fmtBancoHoras(stats.saldoMin / 60)}
-              label="Banco"
               icon={stats.saldoMin >= 0 ? 'ti-trending-up' : 'ti-trending-down'}
-              cor={stats.saldoMin >= 0 ? azul : vermelho}
-            />
+              label="Banco"
+              valor={fmtBancoHoras(stats.saldoMin / 60)}
+              cor={stats.saldoMin >= 0 ? azul : vermelho} />
           </div>
 
-          {/* ── PROGRESSO DO MÊS ─────────────────────────────────────────── */}
-          <div className="idemaq-card" style={{
-            background: T.card, borderRadius: 12,
-            border: `1px solid ${T.border}`,
-            padding: '12px 16px',
-            boxShadow: T.shadow,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-              marginBottom: 2,
-            }}>
-              <span style={{
-                fontSize: 11, fontWeight: 700, color: T.textMuted,
-                textTransform: 'uppercase', letterSpacing: '.06em',
-              }}>
-                Progresso do mês
-              </span>
-              <span style={{
-                fontSize: 12, fontWeight: 700, color: corHero(dark),
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {fmtDuracao(stats.totalMin)}
-                <span style={{ fontSize: 10.5, color: T.textMuted, fontWeight: 500, margin: '0 3px' }}>
-                  de
-                </span>
-                {fmtDuracao(stats.cargaMesTotalMin)}
-                <span style={{ fontSize: 10, color: T.textMuted, marginLeft: 4, fontWeight: 500 }}>
-                  ({stats.pctCarga}%)
-                </span>
-              </span>
-            </div>
-            {/* Subtítulo explicativo */}
-            <div style={{ fontSize: 10.5, color: T.textDim, marginBottom: 8 }}>
-              Horas já trabalhadas vs. total previsto para o mês
-            </div>
-            {/* Barra de progresso */}
-            <div style={{
-              height: 8, borderRadius: 4,
-              background: T.cardAlt,
-              overflow: 'hidden',
-            }}>
+          {/* ── LAYOUT PRINCIPAL 2 COLUNAS (desktop) / stack (mobile) ───────── */}
+          <div className="espelho-main">
+
+            {/* COLUNA ESQUERDA: calendário + progresso */}
+            <div className="espelho-col-left" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+              {/* Heatmap calendário */}
               <div style={{
-                height: '100%',
-                width: `${stats.pctCarga}%`,
-                background: stats.pctCarga >= 75 ? azul : amarelo,
-                borderRadius: 4,
-                transition: 'width .4s ease',
-              }} />
-            </div>
-            {/* Banco de horas vs. expectativa de hoje */}
-            <div style={{
-              marginTop: 8, fontSize: 11, fontWeight: 600,
-              color: stats.saldoMin >= 0 ? azul : vermelho,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-              <i className={`ti ${stats.saldoMin >= 0 ? 'ti-trending-up' : 'ti-trending-down'}`}
-                 style={{ fontSize: 12 }} aria-hidden="true" />
-              {stats.saldoMin >= 0
-                ? `${fmtDuracao(stats.saldoMin)} à frente da meta de hoje`
-                : `${fmtDuracao(Math.abs(stats.saldoMin))} abaixo da meta de hoje`}
-            </div>
-            {stats.faltas > 0 && (
-              <div style={{
-                marginTop: 3, fontSize: 11, color: vermelho, fontWeight: 600,
-                display: 'flex', alignItems: 'center', gap: 4,
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 10,
+                padding: '12px 14px 14px',
+                boxShadow: T.shadow,
               }}>
-                <i className="ti ti-alert-circle" style={{ fontSize: 12 }} aria-hidden="true" />
-                {stats.faltas} {stats.faltas === 1 ? 'falta' : 'faltas'} não compensadas
+                <SecLabel T={T} icon="ti-calendar-month" label="Visão do mês" />
+
+                {/* Dias da semana */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: 3, marginTop: 10, marginBottom: 3,
+                }}>
+                  {DIA_SEMANA_CURTO.map((d, i) => (
+                    <div key={i} style={{
+                      textAlign: 'center', fontSize: 8.5,
+                      fontWeight: 700, color: T.textDim,
+                      textTransform: 'uppercase', letterSpacing: '.03em',
+                    }}>
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Células */}
+                <HeatmapCells linhas={linhas} mes={mes} paleta={paleta} T={T} dark={dark} />
+
+                {/* Legenda */}
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: '5px 10px',
+                  marginTop: 10, paddingTop: 8,
+                  borderTop: `1px solid ${T.border}`,
+                }}>
+                  {[
+                    { cor: azul + 'cc',     label: 'OK/Extra' },
+                    { cor: amarelo + 'cc',  label: 'Atraso' },
+                    { cor: vermelho + 'cc', label: 'Falta' },
+                    { cor: T.cardAlt,       label: 'Folga' },
+                  ].map(({ cor, label }) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{
+                        width: 9, height: 9, borderRadius: 2,
+                        background: cor, border: `1px solid ${T.border}`,
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ fontSize: 9.5, color: T.textMuted }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* ── HEATMAP DO MÊS ────────────────────────────────────────────── */}
-          <HeatmapMes linhas={linhas} ano={ano} mes={mes} paleta={paleta} T={T} dark={dark} />
-
-          {/* ── TABELA DETALHADA ──────────────────────────────────────────── */}
-          <div className="idemaq-card" style={{
-            background: T.card, borderRadius: 12,
-            border: `1px solid ${T.border}`,
-            boxShadow: T.shadow,
-            overflow: 'hidden',
-          }}>
-            {/* Cabeçalho da tabela */}
-            <div style={{
-              padding: '10px 14px 8px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderBottom: `1px solid ${T.border}`,
-            }}>
-              <span style={{
-                fontSize: 11, fontWeight: 700, color: T.textMuted,
-                textTransform: 'uppercase', letterSpacing: '.06em',
-                display: 'flex', alignItems: 'center', gap: 6,
+              {/* Progresso + banco de horas */}
+              <div style={{
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 10,
+                padding: '12px 14px',
+                boxShadow: T.shadow,
+                display: 'flex', flexDirection: 'column', gap: 10,
               }}>
-                <i className="ti ti-calendar-stats" style={{ fontSize: 13 }} aria-hidden="true" />
-                Marcações detalhadas
-              </span>
-              <span style={{ fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-                {linhas.filter(l => l.entrada).length} dias com batida
-              </span>
+                <SecLabel T={T} icon="ti-chart-bar" label="Progresso do mês" />
+
+                {/* Barra */}
+                <div>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'baseline', marginBottom: 6,
+                  }}>
+                    <span style={{
+                      fontSize: 20, fontWeight: 800, color: corHero(dark),
+                      fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
+                      lineHeight: 1,
+                    }}>
+                      {fmtDuracao(stats.totalMin)}
+                    </span>
+                    <span style={{ fontSize: 11, color: T.textMuted }}>
+                      de {fmtDuracao(stats.cargaMesTotalMin)}
+                    </span>
+                  </div>
+                  <div style={{ height: 7, borderRadius: 4, background: T.cardAlt, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${stats.pctCarga}%`,
+                      background: stats.pctCarga >= 75 ? azul : amarelo,
+                      borderRadius: 4,
+                      transition: 'width .4s',
+                    }} />
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 10.5, color: T.textDim, textAlign: 'right' }}>
+                    {stats.pctCarga}% da carga prevista
+                  </div>
+                </div>
+
+                {/* Banco de horas */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 10px', borderRadius: 6,
+                  background: (stats.saldoMin >= 0 ? azul : vermelho) + '12',
+                  border: `1px solid ${(stats.saldoMin >= 0 ? azul : vermelho)}30`,
+                }}>
+                  <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>
+                    Banco de horas
+                  </span>
+                  <span style={{
+                    fontSize: 15, fontWeight: 800,
+                    color: stats.saldoMin >= 0 ? azul : vermelho,
+                    fontVariantNumeric: 'tabular-nums',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <i className={`ti ${stats.saldoMin >= 0 ? 'ti-trending-up' : 'ti-trending-down'}`}
+                       style={{ fontSize: 13 }} aria-hidden="true" />
+                    {fmtBancoHoras(stats.saldoMin / 60)}
+                  </span>
+                </div>
+
+                {/* Alertas */}
+                {stats.faltas > 0 && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    fontSize: 11, color: vermelho, fontWeight: 600,
+                  }}>
+                    <i className="ti ti-alert-circle" style={{ fontSize: 12 }} aria-hidden="true" />
+                    {stats.faltas} {stats.faltas === 1 ? 'falta' : 'faltas'} não compensadas
+                  </div>
+                )}
+                {stats.atrasos > 0 && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    fontSize: 11, color: amarelo, fontWeight: 600,
+                  }}>
+                    <i className="ti ti-clock-exclamation" style={{ fontSize: 12 }} aria-hidden="true" />
+                    {stats.atrasos} {stats.atrasos === 1 ? 'dia' : 'dias'} com atraso
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Scroll horizontal no mobile — todas as colunas sempre visíveis */}
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <TabelaHeader T={T} />
-              {linhas.map(l => (
-                <TabelaLinha
-                  key={l.dia}
-                  l={l}
-                  paleta={paleta}
-                  T={T} dark={dark}
-                />
-              ))}
+            {/* COLUNA DIREITA: tabela detalhada */}
+            <div className="espelho-col-right">
+              <div style={{
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 10,
+                boxShadow: T.shadow,
+                overflow: 'hidden',
+              }}>
+                {/* Título da tabela */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 14px 8px',
+                  borderBottom: `1px solid ${T.border}`,
+                }}>
+                  <span style={{
+                    fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+                    textTransform: 'uppercase', letterSpacing: '.06em',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}>
+                    <i className="ti ti-calendar-stats" style={{ fontSize: 12 }} aria-hidden="true" />
+                    Marcações detalhadas
+                  </span>
+                  <span style={{ fontSize: 10.5, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
+                    {linhas.filter(l => l.entrada).length} dias com batida
+                  </span>
+                </div>
+
+                {/* Scroll horizontal no mobile */}
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <TabelaHeader T={T} />
+                  {linhas.map(l => (
+                    <TabelaLinha key={l.dia} l={l} paleta={paleta} T={T} dark={dark} />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* ── LEGENDA ───────────────────────────────────────────────────── */}
-          <Legenda T={T} dark={dark} azul={azul} amarelo={amarelo} vermelho={vermelho} />
         </>
+      )}
+    </div>
+  )
+}
+
+// ─── Células do heatmap ──────────────────────────────────────────────────────
+function HeatmapCells({ linhas, mes, paleta, T, dark }) {
+  const { azul, amarelo, vermelho } = paleta
+  const primeiroDia = new Date(linhas[0]
+    ? new Date(linhas[0].dia > 0
+        ? new Date().getFullYear() + '-' + String(mes + 1).padStart(2, '0') + '-01'
+        : new Date())
+    : new Date()).getDay()
+
+  // Recalcula o offset corretamente
+  const ano = linhas.length > 0
+    ? new Date(
+        new Date().getFullYear(),
+        mes,
+        linhas[0].dia
+      ).getFullYear()
+    : new Date().getFullYear()
+
+  const offset = new Date(ano, mes, 1).getDay()
+
+  function bgCell(l) {
+    if (!l) return 'transparent'
+    if (l.status === 'normal' || l.status === 'extra') return azul + 'cc'
+    if (l.status === 'atraso') return amarelo + 'cc'
+    if (l.status === 'falta')  return vermelho + 'cc'
+    if (l.status === 'pendente') return amarelo + '55'
+    if (l.status === 'fds')    return T.cardAlt
+    return T.border + '40'  // futuro
+  }
+
+  function titleCell(l) {
+    const data = `${String(l.dia).padStart(2,'0')}/${String(mes+1).padStart(2,'0')}`
+    const s    = labelStatus(l.status)
+    const e    = l.entrada ? fmtHora(l.entrada) : '—'
+    const sa   = l.saida   ? fmtHora(l.saida)   : '—'
+    const dur  = l.totalMin > 0 ? fmtDuracao(l.totalMin) : '—'
+    return `${data} · ${s} · ${e} → ${sa} · ${dur}`
+  }
+
+  const cells = []
+  for (let i = 0; i < offset; i++) cells.push(null)
+  for (const l of linhas) cells.push(l)
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+      {cells.map((l, i) =>
+        l === null ? (
+          <div key={`e${i}`} style={{ aspectRatio: '1' }} />
+        ) : (
+          <div
+            key={l.dia}
+            title={titleCell(l)}
+            style={{
+              aspectRatio: '1',
+              borderRadius: 4,
+              background: bgCell(l),
+              border: l.ehHoje ? `2px solid ${azul}` : '2px solid transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9.5, fontWeight: 700,
+              color: l.status === 'fds' || l.status === 'futuro'
+                ? T.textDim
+                : l.status === 'atraso' ? '#1a1a1d' : '#fff',
+              cursor: 'help', boxSizing: 'border-box',
+              transition: 'transform .1s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            {l.dia}
+          </div>
+        )
       )}
     </div>
   )
@@ -434,19 +543,20 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
 // ─── KPI Tile ────────────────────────────────────────────────────────────────
 function KPITile({ T, dark, valor, label, icon, cor }) {
   return (
-    <div className="idemaq-card" style={{
-      background: T.card, borderRadius: 10,
+    <div style={{
+      background: T.card,
       border: `1px solid ${T.border}`,
-      padding: '10px 8px 8px',
+      borderRadius: 8,
+      padding: '10px 10px 8px',
       textAlign: 'center',
       boxShadow: T.shadow,
     }}>
       <i className={`ti ${icon}`} style={{
-        fontSize: 16, color: cor,
-        display: 'block', marginBottom: 4, opacity: 0.85,
+        fontSize: 15, color: cor,
+        display: 'block', marginBottom: 5, opacity: 0.85,
       }} aria-hidden="true" />
       <div style={{
-        fontSize: 16, fontWeight: 800, color: cor,
+        fontSize: 17, fontWeight: 800, color: cor,
         fontVariantNumeric: 'tabular-nums',
         letterSpacing: '-0.02em', lineHeight: 1,
         marginBottom: 3,
@@ -454,9 +564,8 @@ function KPITile({ T, dark, valor, label, icon, cor }) {
         {valor}
       </div>
       <div style={{
-        fontSize: 9.5, color: T.textMuted, fontWeight: 600,
+        fontSize: 9, color: T.textMuted, fontWeight: 600,
         textTransform: 'uppercase', letterSpacing: '.04em',
-        lineHeight: 1.2,
       }}>
         {label}
       </div>
@@ -464,140 +573,14 @@ function KPITile({ T, dark, valor, label, icon, cor }) {
   )
 }
 
-// ─── Heatmap do mês ──────────────────────────────────────────────────────────
-function HeatmapMes({ linhas, ano, mes, paleta, T, dark }) {
-  const { azul, amarelo, vermelho } = paleta
-  const primeiroDia = new Date(ano, mes, 1).getDay() // 0=Dom
-
-  function bgCell(l) {
-    if (!l) return 'transparent'
-    if (l.status === 'normal' || l.status === 'extra') return azul + 'cc'
-    if (l.status === 'atraso') return amarelo + 'cc'
-    if (l.status === 'falta')  return vermelho + 'cc'
-    if (l.status === 'pendente') return amarelo + '66'
-    if (l.status === 'fds')    return T.cardAlt
-    if (l.status === 'futuro') return T.border + '60'
-    return T.border
-  }
-
-  function titleCell(l) {
-    const data = `${String(l.dia).padStart(2,'0')}/${String(mes+1).padStart(2,'0')}`
-    const entrada = l.entrada ? fmtHora(l.entrada) : '—'
-    const saida   = l.saida   ? fmtHora(l.saida)   : '—'
-    const dur     = l.totalMin > 0 ? fmtDuracao(l.totalMin) : '—'
-    return `${data} · ${labelStatus(l.status)} · ${entrada} → ${saida} · ${dur}`
-  }
-
-  // Monta grade: semanas × 7 dias
-  const cells = []
-  for (let i = 0; i < primeiroDia; i++) cells.push(null)
-  for (const l of linhas) cells.push(l)
-
-  return (
-    <div className="idemaq-card" style={{
-      background: T.card, borderRadius: 12,
-      border: `1px solid ${T.border}`,
-      padding: '12px 16px 14px',
-      boxShadow: T.shadow,
-    }}>
-      <div style={{
-        fontSize: 11, fontWeight: 700, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '.06em',
-        marginBottom: 10,
-        display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <i className="ti ti-calendar-month" style={{ fontSize: 13 }} aria-hidden="true" />
-        Visão do mês
-      </div>
-
-      {/* Cabeçalho Dom–Sáb */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: 4, marginBottom: 4,
-      }}>
-        {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((d, i) => (
-          <div key={i} style={{
-            textAlign: 'center',
-            fontSize: 9, fontWeight: 700, color: T.textDim,
-            textTransform: 'uppercase', letterSpacing: '.03em',
-          }}>
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Células — auto-fill com aspect-ratio 1:1 */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: 4,
-      }}>
-        {cells.map((l, i) =>
-          l === null ? (
-            <div key={`e${i}`} style={{ aspectRatio: '1' }} />
-          ) : (
-            <div
-              key={l.dia}
-              title={titleCell(l)}
-              style={{
-                aspectRatio: '1',
-                borderRadius: 4,
-                background: bgCell(l),
-                border: l.ehHoje ? `2px solid ${azul}` : '2px solid transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, fontWeight: 700,
-                color: l.status === 'fds' || l.status === 'futuro'
-                  ? T.textDim
-                  : '#fff',
-                cursor: 'help',
-                transition: 'transform .12s',
-                boxSizing: 'border-box',
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.18)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              {l.dia}
-            </div>
-          )
-        )}
-      </div>
-
-      {/* Legenda de cores do heatmap */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        marginTop: 12, paddingTop: 10, borderTop: `1px solid ${T.border}`,
-      }}>
-        {[
-          { cor: azul + 'cc',     label: 'OK / Extra' },
-          { cor: amarelo + 'cc',  label: 'Atraso' },
-          { cor: vermelho + 'cc', label: 'Falta' },
-          { cor: T.cardAlt,       label: 'Folga' },
-          { cor: T.border + '60', label: 'Futuro' },
-        ].map(({ cor, label }) => (
-          <div key={label} style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            fontSize: 10, color: T.textMuted,
-          }}>
-            <div style={{
-              width: 10, height: 10, borderRadius: 2,
-              background: cor,
-              border: `1px solid ${T.border}`,
-            }} />
-            {label}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Cabeçalho da tabela ─────────────────────────────────────────────────────
-const TABELA_COLS = '48px 62px 62px 62px 62px 68px 1fr'
+// ─── Tabela: cabeçalho e linha ────────────────────────────────────────────────
+const COLS = '44px 62px 66px 66px 62px 66px 1fr'
 
 function TabelaHeader({ T }) {
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: TABELA_COLS,
-      gap: 4, padding: '7px 14px',
+      display: 'grid', gridTemplateColumns: COLS,
+      gap: 4, padding: '6px 14px',
       background: T.cardAlt,
       borderBottom: `1px solid ${T.border}`,
       fontSize: 9.5, color: T.textMuted, fontWeight: 700,
@@ -615,22 +598,20 @@ function TabelaHeader({ T }) {
   )
 }
 
-// ─── Linha da tabela ─────────────────────────────────────────────────────────
 function TabelaLinha({ l, paleta, T, dark }) {
-  const { azul, amarelo, vermelho } = paleta
   const cor = corStatus(l.status, paleta)
-
+  const { azul, vermelho } = paleta
   const opacidade = l.ehFds || l.status === 'futuro' ? 0.45 : 1
-  const bgLinha = l.ehHoje
-    ? (dark ? azul + '18' : azul + '0d')
+  const bgLinha   = l.ehHoje
+    ? azul + (dark ? '18' : '0d')
     : l.status === 'falta'
-      ? (dark ? vermelho + '18' : vermelho + '0a')
+      ? vermelho + (dark ? '18' : '0a')
       : 'transparent'
 
   return (
     <div style={{
-      display: 'grid', gridTemplateColumns: TABELA_COLS,
-      gap: 4, padding: '8px 14px',
+      display: 'grid', gridTemplateColumns: COLS,
+      gap: 4, padding: '7px 14px',
       minWidth: 420,
       borderTop: `1px solid ${T.border}`,
       alignItems: 'center',
@@ -638,8 +619,9 @@ function TabelaLinha({ l, paleta, T, dark }) {
       opacity: opacidade,
       background: bgLinha,
       borderLeft: l.ehHoje ? `3px solid ${azul}` : '3px solid transparent',
+      boxSizing: 'border-box',
     }}>
-      {/* Dia + dia da semana */}
+      {/* Dia */}
       <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
         <span style={{
           color: l.ehHoje ? azul : corHero(dark),
@@ -655,10 +637,10 @@ function TabelaLinha({ l, paleta, T, dark }) {
       </div>
 
       {/* Batidas */}
-      <Hora T={T} dark={dark} iso={l.entrada} />
-      <Hora T={T} dark={dark} iso={l.saidaAlmoco} />
-      <Hora T={T} dark={dark} iso={l.voltaAlmoco} />
-      <Hora T={T} dark={dark} iso={l.saida} />
+      <CelulaHora T={T} dark={dark} iso={l.entrada} />
+      <CelulaHora T={T} dark={dark} iso={l.saidaAlmoco} />
+      <CelulaHora T={T} dark={dark} iso={l.voltaAlmoco} />
+      <CelulaHora T={T} dark={dark} iso={l.saida} />
 
       {/* Total */}
       <div style={{
@@ -669,9 +651,15 @@ function TabelaLinha({ l, paleta, T, dark }) {
         {l.totalMin > 0 ? fmtDuracao(l.totalMin) : '—'}
       </div>
 
-      {/* Status — lozenge Atlassian */}
+      {/* Status — lozenge */}
       <div style={{ paddingLeft: 6 }}>
-        {l.status !== 'futuro' && l.status !== 'fds' && (
+        {l.status === 'fds' ? (
+          <span style={{ fontSize: 10, color: T.textDim, fontStyle: 'italic' }}>
+            {l.diaSemana === 0 ? 'Dom' : 'Sáb'}
+          </span>
+        ) : l.status === 'futuro' ? (
+          <span style={{ fontSize: 10, color: T.textDim }}>—</span>
+        ) : (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
             padding: '2px 7px', borderRadius: 3,
@@ -684,21 +672,13 @@ function TabelaLinha({ l, paleta, T, dark }) {
             {labelStatus(l.status)}
           </div>
         )}
-        {l.status === 'fds' && (
-          <span style={{ fontSize: 10, color: T.textDim, fontStyle: 'italic' }}>
-            {l.diaSemana === 0 ? 'Dom' : 'Sáb'}
-          </span>
-        )}
-        {l.status === 'futuro' && (
-          <span style={{ fontSize: 10, color: T.textDim }}>—</span>
-        )}
       </div>
     </div>
   )
 }
 
 // ─── Célula de hora ──────────────────────────────────────────────────────────
-function Hora({ T, dark, iso }) {
+function CelulaHora({ T, dark, iso }) {
   return (
     <div style={{
       textAlign: 'center',
@@ -711,39 +691,27 @@ function Hora({ T, dark, iso }) {
   )
 }
 
-// ─── Legenda resumida ─────────────────────────────────────────────────────────
-function Legenda({ T, dark, azul, amarelo, vermelho }) {
+// ─── Label de seção ──────────────────────────────────────────────────────────
+function SecLabel({ T, icon, label }) {
   return (
     <div style={{
-      padding: '10px 14px',
-      display: 'flex', flexWrap: 'wrap', gap: '6px 14px',
-      fontSize: 10.5, color: T.textMuted,
+      display: 'flex', alignItems: 'center', gap: 5,
+      fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+      textTransform: 'uppercase', letterSpacing: '.06em',
     }}>
-      {[
-        { cor: azul,    label: 'OK — entrou no horário' },
-        { cor: azul,    label: 'Extra — mais que a carga do dia' },
-        { cor: amarelo, label: 'Atraso — entrada após 08:05 (07:05 Sáb)' },
-        { cor: vermelho,label: 'Falta — dia útil sem batida' },
-      ].map(({ cor, label }) => (
-        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: 2,
-            background: cor + 'cc',
-          }} />
-          {label}
-        </div>
-      ))}
+      <i className={`ti ${icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
+      {label}
     </div>
   )
 }
 
 // ─── Botão de navegação de mês ───────────────────────────────────────────────
-function btnNavStyle(T) {
+function estiloNavBtn(T) {
   return {
     background: T.card,
     border: `1.5px solid ${T.textMuted}`,
-    borderRadius: 8,
-    width: 36, height: 36,
+    borderRadius: 7,
+    width: 32, height: 32,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer',
     flexShrink: 0,
