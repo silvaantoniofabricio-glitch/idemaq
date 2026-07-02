@@ -8,6 +8,7 @@ import { corEtapa } from '../../../utils/colors'
 import { criarOSDerivada } from '../../../utils/osDerivada'
 import { useToast } from '../../ui'
 import { AtlPanel, ATL_FONT, atlHover } from './_AtlassianUI'
+import { supabase } from '../../../supabase'
 
 export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
   const azul = corEtapa('blue', dark)
@@ -45,19 +46,32 @@ export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
     if (convertendo) return
     const ok = window.confirm(
       `Converter OS #${os.numero} em Fabricação?\n\n` +
-      `• Uma NOVA OS de Fabricação será criada na coluna Diagnóstico.\n` +
-      `• A OS recusada #${os.numero} fica com o cliente "${os.cliente || '—'}" preservada.\n` +
-      `• Marca, modelo e defeito vêm copiados.\n` +
-      `• Itens do orçamento NÃO são copiados.\n\nContinuar?`
+      `• Nova OS de Fabricação já entra no Conserto (processo anterior mantido).\n` +
+      `• Os itens do orçamento são copiados para a nova OS.\n` +
+      `• A OS recusada #${os.numero} fica preservada.\n\nContinuar?`
     )
     if (!ok) return
     setConvertendo(true)
     try {
-      const { error, numero } = await criarOSDerivada(os.id, {
-        tipo: 'fabricacao', etapa: 'diagnostico', cliente_id: null,
+      // Cria a nova OS já na etapa Conserto (em_oficina = DB value)
+      const { error, data, numero } = await criarOSDerivada(os.id, {
+        tipo: 'fabricacao', etapa: 'em_oficina', cliente_id: null,
       })
       if (error) throw error
-      notify('ok', `OS #${numero} (Fabricação) criada a partir da #${os.numero}`)
+
+      // Copia os itens do orçamento (best-effort — não bloqueia se falhar)
+      const { data: itensOrigem } = await supabase
+        .from('os_item')
+        .select('nome, quantidade, categoria, valor_unitario, peca_id')
+        .eq('os_id', os.id)
+        .is('deleted_at', null)
+      if (itensOrigem?.length && data?.id) {
+        const copia = itensOrigem.map(i => ({ ...i, os_id: data.id }))
+        const { error: errItens } = await supabase.from('os_item').insert(copia)
+        if (errItens) console.warn('[converterFabricacao] itens não copiados:', errItens)
+      }
+
+      notify('ok', `OS #${numero} (Fabricação) criada no Conserto com ${itensOrigem?.length || 0} iten(s) copiado(s)`)
     } catch (e) {
       notify('erro', `Erro ao converter: ${e?.message || 'desconhecido'}`)
     } finally {
@@ -106,7 +120,7 @@ export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
         <Decisao T={T} dark={dark} cor={azul}
           icon="building-factory-2"
           titulo="Converter em Fabricação"
-          texto="Aproveita as peças e a máquina vira estoque pra venda futura."
+          texto="Nova OS entra direto no Conserto com os itens do orçamento copiados."
           onClick={converterFabricacao}
           loading={convertendo}
         />
