@@ -2,7 +2,7 @@
 // Botão grande de bater ponto — visual muda conforme próxima ação.
 // Tenta capturar geolocalização; se negada, mostra aviso + opção de registrar sem geo.
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { corEtapa } from '../../utils/colors'
 import { TIPOS_BATIDA } from './_mocks'
 
@@ -12,6 +12,8 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
   const cor = (d, c) => dark ? d : c
   const [loading, setLoading] = useState(false)
   const [semGeo, setSemGeo] = useState(false)   // true quando geo foi negada
+  // Ref síncrona para bloquear duplo-clique antes do re-render do useState
+  const travado = useRef(false)
 
   if (!proximoTipo) {
     return (
@@ -34,7 +36,8 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
   const isAmarelo = cfg.cor === 'yellow'
 
   async function clicar(forcarSemGeo = false) {
-    if (disabled || loading) return
+    if (disabled || travado.current) return
+    travado.current = true  // bloqueia imediatamente, antes do re-render
     setSemGeo(false)
     setLoading(true)
     try {
@@ -48,6 +51,7 @@ export default function BotaoBaterPonto({ T, dark, proximoTipo, onBater, disable
     } catch (e) {
       if ((e.message || '').includes('localização')) setSemGeo(true)
     } finally {
+      travado.current = false
       setLoading(false)
     }
   }
