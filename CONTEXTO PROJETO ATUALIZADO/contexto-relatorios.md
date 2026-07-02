@@ -61,12 +61,17 @@
 - Tempo médio por etapa: agrega `os_historico.duracao_segundos` por `etapa_de`
 - Gargalos: top 3 etapas (Crítico/Atenção/OK)
 
-### `useRelatorioEstoque({ iniIso, fimIso })`
+### `useRelatorioEstoque({ iniIso, fimIso })` — expandido 23/06/2026 (visão de especialista em estoque)
 - Snapshot atual: total de itens (soma `qtd_atual`), valor parado (`qtd × custo`), SKUs ativos, peças em estoque baixo (`qtd_atual ≤ qtd_minima > 0`)
 - **Consumo no período** vem de `os_item` com `peca_id IS NOT NULL` no `criado_em` (Onda 4 — antes era `tipo='peca'`, coluna removida):
   - Top 5 peças mais usadas (group by `nome`, soma `quantidade`)
   - Peças paradas: `qtd_atual > 0` AND não aparecem em `os_item` do período (ordenado por capital parado)
-- Giro médio não calculado (sem histórico de movimentação)
+- **KPIs novos**: `estoqueZerado` (ruptura — `qtd_atual=0` excluindo catálogo com `qtd_minima=0`) · `giroEstoquePct` (proxy simples: % das unidades em estoque que tiveram saída no período — não é giro clássico por falta de snapshot histórico de saldo)
+- **Curva ABC** (`curvaABC`): Pareto de valor sobre SKUs ativos — ordena por `qtd_atual × custo` desc, classifica A (até 80% acumulado) / B (até 95%) / C (resto). Retorna `{classe, skus, valor, pctValor}` por classe.
+- **Sugestão de reposição** (`sugestaoReposicao`): SKUs com `qtd_atual ≤ qtd_minima`, calcula `sugestaoQtd = max(qtd_maxima ou qtd_minima×3, qtd_minima) - atual` e `custoEstimado`. Ordena ruptura (zerado) primeiro, depois por custo estimado desc. Top 8.
+- **Valor por categoria** (`valorPorCategoria`): capital parado agrupado por `categoria` (top 6 + bucket "Outras"). Label amigável via `CATEGORIA_POR_ID` de `categoriasPeca.js`.
+- **Movimentações** (`movimentacoes`): lê `peca_movimentacao` (entradas x saídas, contagem por `tipo`) no período. **Tolera tabela ausente/RLS** (códigos `42P01`/`PGRST205`/`42501` viram `movimentacoes: null` em vez de quebrar o relatório) — mesmo padrão defensivo já usado em `usePecas.logMovimentacao`.
+- UI em `Relatorios.jsx`: 6 KPIs (era 4), tabela de sugestão de reposição, 2 cards lado a lado (Curva ABC + valor por categoria), seção de movimentações condicional.
 
 ### `useRelatorioDRE({ iniIso, fimIso })` — adicionado 20/05/2026
 - **Regime de caixa**: filtra `pago_em` BETWEEN ini AND fim (NÃO `vencimento`). Lançamentos abertos (pago_em IS NULL) NÃO entram no DRE — eles ficam em A Receber/A Pagar do módulo Financeiro.

@@ -368,6 +368,17 @@ export function useRelatorioOperacional({ iniIso, fimIso }) {
 // =============================================================================
 // useRelatorioEstoque — snapshot (independente do período pros KPIs) +
 // consumo de peças via os_item no período.
+//
+// Métricas de gestão de estoque adicionadas (23/06/2026):
+//   - Curva ABC (Pareto de valor): classifica SKUs ativos por % de contribuição
+//     no capital parado (A = até 80% acumulado, B = até 95%, C = resto)
+//   - Sugestão de reposição: SKUs em/abaixo do mínimo, com qtd sugerida e custo
+//   - Estoque zerado (ruptura): qtd_atual=0 excluindo catálogo (qtd_minima=0)
+//   - Giro de estoque: % do estoque atual que teve consumo no período
+//     (proxy simples — não temos snapshot histórico de saldo pra giro clássico)
+//   - Valor por categoria: capital parado agrupado por categoria
+//   - Movimentações (peca_movimentacao): entradas x saídas no período — opcional,
+//     tolera tabela ausente/RLS (42P01/PGRST205/42501) sem quebrar o relatório
 // =============================================================================
 export function useRelatorioEstoque({ iniIso, fimIso }) {
   const [data, setData] = useState(null)
@@ -382,7 +393,7 @@ export function useRelatorioEstoque({ iniIso, fimIso }) {
         // Snapshot do estoque atual
         const { data: pecas, error: errP } = await supabase
           .from('peca')
-          .select('id, nome, categoria, qtd_atual, qtd_minima, custo_atual, custo_medio, preco_venda')
+          .select('id, nome, categoria, qtd_atual, qtd_minima, qtd_maxima, custo_atual, custo_medio, preco_venda')
           .is('deleted_at', null)
         if (errP) throw errP
 
@@ -397,20 +408,38 @@ export function useRelatorioEstoque({ iniIso, fimIso }) {
           .lte('criado_em', fimIso)
         if (errI) throw errI
 
+        // Movimentações reais (entradas/saídas) — opcional, tolera ausência da tabela
+        let movs = []
+        try {
+          const { data: m, error: errM } = await supabase
+            .from('peca_movimentacao')
+            .select('tipo, delta, criado_em')
+            .is('deleted_at', null)
+            .gte('criado_em', iniIso)
+            .lte('criado_em', fimIso)
+          if (errM) throw errM
+          movs = m || []
+        } catch (e) {
+          const code = e?.code || ''
+          if (!['42P01', 'PGRST205', '42501'].includes(code)) throw e
+          movs = null // sinaliza "indisponível" pra UI esconder a seção
+        }
+
         if (cancelado) return
 
         const ativas = (pecas || []).filter(p => Number(p.qtd_atual || 0) > 0)
         const totalItens = ativas.reduce((s, p) => s + Number(p.qtd_atual || 0), 0)
-        const valorParado = ativas.reduce((s, p) => {
-          const custo = Number(p.custo_atual || p.custo_medio || 0)
-          return s + (Number(p.qtd_atual || 0) * custo)
-        }, 0)
+        const custoDe = p => Number(p.custo_atual || p.custo_medio || 0)
+        const valorParado = ativas.reduce((s, p) => s + (Number(p.qtd_atual || 0) * custoDe(p)), 0)
         const estoqueBaixo = (pecas || []).filter(p =>
           Number(p.qtd_minima || 0) > 0 &&
           Number(p.qtd_atual || 0) <= Number(p.qtd_minima || 0)
         ).length
+        const estoqueZerado = (pecas || []).filter(p =>
+          Number(p.qtd_minima || 0) > 0 && Number(p.qtd_atual || 0) === 0
+        ).length
 
-        // Consumo por nome de peça — top 5
+        // Consumo por nome de peça — top 5 (+ mapa de qtd total pro giro/ABC)
         const consumoPorNome = {}
         for (const it of itens || []) {
           const k = (it.nome || '').trim().toLowerCase()
@@ -426,32 +455,110 @@ export function useRelatorioEstoque({ iniIso, fimIso }) {
           pct: Math.max(5, Math.round((r.qtd / maxQtd) * 100)),
         }))
 
+        // Giro de estoque: % do total de unidades em estoque que saiu no período
+        const totalConsumidoUn = (itens || []).reduce((s, it) => s + Number(it.quantidade || 1), 0)
+        const giroEstoquePct = totalItens > 0 ? Math.round((totalConsumidoUn / totalItens) * 100) : 0
+
         // Peças paradas: qtd_atual > 0 e nenhum consumo registrado no período
         const nomesUsados = new Set(
           (itens || []).map(it => (it.nome || '').trim().toLowerCase()).filter(Boolean)
         )
         const paradas = (pecas || [])
           .filter(p => Number(p.qtd_atual || 0) > 0 && !nomesUsados.has((p.nome || '').trim().toLowerCase()))
+          .map(p => ({
+            nome: p.nome,
+            categoria: p.categoria,
+            qtd: Number(p.qtd_atual || 0),
+            custoTotal: Number(p.qtd_atual || 0) * custoDe(p),
+          }))
+          .sort((a, b) => b.custoTotal - a.custoTotal)
+          .slice(0, 5)
+
+        // Curva ABC — Pareto de valor sobre SKUs ativos
+        const porValorDesc = ativas
+          .map(p => ({ nome: p.nome, valor: Number(p.qtd_atual || 0) * custoDe(p) }))
+          .sort((a, b) => b.valor - a.valor)
+        const valorTotalAtivas = porValorDesc.reduce((s, p) => s + p.valor, 0) || 1
+        let acumulado = 0
+        const classes = { A: { skus: 0, valor: 0 }, B: { skus: 0, valor: 0 }, C: { skus: 0, valor: 0 } }
+        for (const p of porValorDesc) {
+          acumulado += p.valor
+          const pctAcum = acumulado / valorTotalAtivas
+          const classe = pctAcum <= 0.8 ? 'A' : pctAcum <= 0.95 ? 'B' : 'C'
+          classes[classe].skus += 1
+          classes[classe].valor += p.valor
+        }
+        const curvaABC = ['A', 'B', 'C'].map(c => ({
+          classe: c,
+          skus: classes[c].skus,
+          valor: classes[c].valor,
+          pctValor: Math.round((classes[c].valor / valorTotalAtivas) * 100),
+        }))
+
+        // Sugestão de reposição — SKUs em/abaixo do mínimo, priorizando ruptura
+        const sugestaoReposicao = (pecas || [])
+          .filter(p => Number(p.qtd_minima || 0) > 0 && Number(p.qtd_atual || 0) <= Number(p.qtd_minima || 0))
           .map(p => {
-            const custo = Number(p.custo_atual || p.custo_medio || 0)
+            const atual = Number(p.qtd_atual || 0)
+            const minima = Number(p.qtd_minima || 0)
+            const alvo = Number(p.qtd_maxima || 0) > minima ? Number(p.qtd_maxima) : minima * 3
+            const sugestaoQtd = Math.max(alvo - atual, minima)
             return {
               nome: p.nome,
               categoria: p.categoria,
-              qtd: Number(p.qtd_atual || 0),
-              custoTotal: Number(p.qtd_atual || 0) * custo,
+              atual, minima,
+              sugestaoQtd,
+              custoEstimado: sugestaoQtd * custoDe(p),
+              zerado: atual === 0,
             }
           })
-          .sort((a, b) => b.custoTotal - a.custoTotal)
-          .slice(0, 5)
+          .sort((a, b) => (a.zerado === b.zerado ? b.custoEstimado - a.custoEstimado : a.zerado ? -1 : 1))
+          .slice(0, 8)
+
+        // Valor por categoria — capital parado agrupado (top 6 + "Outras")
+        const porCategoria = {}
+        for (const p of ativas) {
+          const cat = p.categoria || 'outros'
+          porCategoria[cat] = (porCategoria[cat] || 0) + (Number(p.qtd_atual || 0) * custoDe(p))
+        }
+        const catOrdenadas = Object.entries(porCategoria).sort((a, b) => b[1] - a[1])
+        const catTop = catOrdenadas.slice(0, 6)
+        const catResto = catOrdenadas.slice(6).reduce((s, [, v]) => s + v, 0)
+        const valorPorCategoria = [
+          ...catTop.map(([categoria, valor]) => ({ categoria, valor })),
+          ...(catResto > 0 ? [{ categoria: 'Outras', valor: catResto }] : []),
+        ]
+
+        // Movimentações no período (opcional — null se tabela indisponível)
+        let movimentacoes = null
+        if (movs !== null) {
+          const entradas = movs.filter(m => Number(m.delta) > 0)
+          const saidas = movs.filter(m => Number(m.delta) < 0)
+          movimentacoes = {
+            totalEntradasUn: entradas.reduce((s, m) => s + Number(m.delta), 0),
+            totalSaidasUn: Math.abs(saidas.reduce((s, m) => s + Number(m.delta), 0)),
+            qtdMovimentacoes: movs.length,
+            porTipo: Object.entries(
+              movs.reduce((acc, m) => { acc[m.tipo] = (acc[m.tipo] || 0) + 1; return acc }, {})
+            ).map(([tipo, n]) => ({ tipo, n })).sort((a, b) => b.n - a.n),
+          }
+        }
 
         setData({
           totalItens,
           valorParado,
           estoqueBaixo,
+          estoqueZerado,
+          giroEstoquePct,
           totalSkus: (pecas || []).length,
           pecasMaisUsadas,
           pecasParadas: paradas,
           temConsumo: (itens || []).length > 0,
+          curvaABC,
+          skusAtivos: ativas.length,
+          sugestaoReposicao,
+          valorPorCategoria,
+          movimentacoes,
         })
       } catch (e) {
         if (!cancelado) setError(e?.message || 'Erro ao carregar relatório')

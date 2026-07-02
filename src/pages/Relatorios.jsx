@@ -10,6 +10,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
+import { CATEGORIA_POR_ID } from '../utils/categoriasPeca'
 import {
   Card, Button, Badge,
   EmptyState,
@@ -478,17 +479,25 @@ function RelatorioOperacional({ T, dark, iniIso, fimIso }) {
 function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
+  const vermelho = corEtapa('red', dark)
+  const azulClaro = corEtapa('blueLight', dark)
   const { data, loading, error } = useRelatorioEstoque({ iniIso, fimIso })
 
   if (loading) return <RelatorioLoading T={T} />
   if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
   if (!data)   return null
 
+  const CLASSE_ABC_INFO = {
+    A: { cor: vermelho,  desc: 'Poucos SKUs concentram a maior parte do capital — priorize contagem e controle.' },
+    B: { cor: amarelo,   desc: 'Relevância intermediária — revisão periódica basta.' },
+    C: { cor: azulClaro, desc: 'Muitos SKUs, pouco capital — controle simplificado.' },
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{
         display: 'grid', gap: 12,
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
       }}>
         <KPI T={T} dark={dark} label="Itens em estoque" valor={data.totalItens} cor={corHero(dark)}
           icon="ti-package" />
@@ -496,8 +505,121 @@ function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
           icon="ti-cash" />
         <KPI T={T} dark={dark} label="Estoque baixo" valor={data.estoqueBaixo} cor={amarelo}
           icon="ti-alert-triangle" />
+        <KPI T={T} dark={dark} label="Ruptura (zerado)" valor={data.estoqueZerado} cor={vermelho}
+          icon="ti-alert-octagon" />
+        <KPI T={T} dark={dark} label="Giro no período" valor={`${data.giroEstoquePct}%`} cor={azulClaro}
+          icon="ti-refresh" />
         <KPI T={T} dark={dark} label="SKUs ativos" valor={data.totalSkus} cor={azul}
           icon="ti-tag" />
+      </div>
+
+      {data.sugestaoReposicao.length > 0 && (
+        <Card T={T} dark={dark} padding={0}>
+          <div style={{ padding: '12px 16px 10px' }}>
+            <SecHeader T={T} icon="ti-shopping-cart-plus" cor={azul} mb={0}>
+              Sugestão de reposição
+            </SecHeader>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1.6fr 70px 70px 90px 110px',
+            gap: 10, padding: '8px 16px',
+            borderTop: `1px solid ${T.border}`,
+            background: T.cardAlt,
+            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+            textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}>
+            <div>Item</div>
+            <div style={{ textAlign: 'right' }}>Atual</div>
+            <div style={{ textAlign: 'right' }}>Mínimo</div>
+            <div style={{ textAlign: 'right' }}>Comprar</div>
+            <div style={{ textAlign: 'right' }}>Custo est.</div>
+          </div>
+          {data.sugestaoReposicao.map((r, idx) => (
+            <div key={idx} style={{
+              display: 'grid',
+              gridTemplateColumns: '1.6fr 70px 70px 90px 110px',
+              gap: 10, alignItems: 'center',
+              padding: '10px 16px',
+              borderTop: `1px solid ${T.border}`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: corHero(dark), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.nome}
+                </span>
+                {r.zerado && <Badge variant="vermelho" dark={dark} sm>Zerado</Badge>}
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: r.zerado ? vermelho : amarelo, fontWeight: 700 }}>
+                {r.atual}
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: T.textMuted }}>
+                {r.minima}
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: azul, fontWeight: 700 }}>
+                +{r.sugestaoQtd}
+              </div>
+              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: T.textSecondary }}>
+                {fmtBRL(r.custoEstimado)}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+        <Card T={T} dark={dark}>
+          <SecHeader T={T} icon="ti-chart-pie" cor={azul}>
+            Curva ABC — concentração de capital
+          </SecHeader>
+          {data.skusAtivos > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {data.curvaABC.map(c => (
+                <div key={c.classe}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 12, marginBottom: 4 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Badge dark={dark} sm
+                        color={CLASSE_ABC_INFO[c.classe].cor}
+                        bg={`${CLASSE_ABC_INFO[c.classe].cor}22`}
+                        border={`${CLASSE_ABC_INFO[c.classe].cor}44`}>
+                        Classe {c.classe}
+                      </Badge>
+                      <span style={{ color: T.textMuted }}>{c.skus} SKU{c.skus === 1 ? '' : 's'}</span>
+                    </span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', color: corHero(dark), fontWeight: 700 }}>
+                      {fmtBRL(c.valor)} <span style={{ color: T.textMuted, fontWeight: 400 }}>· {c.pctValor}%</span>
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', height: 8, borderRadius: 5, background: T.cardAlt, overflow: 'hidden' }}>
+                    <div style={{ width: `${c.pctValor}%`, height: '100%', background: CLASSE_ABC_INFO[c.classe].cor, transition: 'width .3s' }} />
+                  </div>
+                  <div style={{ fontSize: 10.5, color: T.textMuted, marginTop: 3 }}>{CLASSE_ABC_INFO[c.classe].desc}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState T={T} compact icon="ti-chart-pie"
+              title="Sem SKUs com saldo"
+              description="A curva ABC precisa de itens com estoque atual > 0." />
+          )}
+        </Card>
+
+        <Card T={T} dark={dark}>
+          <SecHeader T={T} icon="ti-category" cor={azul}>
+            Valor parado por categoria
+          </SecHeader>
+          {data.valorPorCategoria.length > 0 ? (
+            <BarrasValorBRL T={T} dark={dark} cor={azul}
+              dados={data.valorPorCategoria.map(c => ({
+                label: CATEGORIA_POR_ID[c.categoria]?.label || c.categoria,
+                valor: c.valor,
+              }))}
+            />
+          ) : (
+            <EmptyState T={T} compact icon="ti-category"
+              title="Sem valor parado por categoria"
+              description="Cadastre custo nas peças pra esta seção calcular." />
+          )}
+        </Card>
       </div>
 
       <Card T={T} dark={dark}>
@@ -532,8 +654,41 @@ function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
               : 'Sem consumo no período — abra um período maior pra avaliar.'} />
         )}
       </Card>
+
+      {data.movimentacoes && (
+        <Card T={T} dark={dark}>
+          <SecHeader T={T} icon="ti-arrows-exchange" cor={azul}>
+            Movimentações de estoque no período
+          </SecHeader>
+          <div style={{
+            display: 'grid', gap: 10,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            marginBottom: data.movimentacoes.porTipo.length > 0 ? 12 : 0,
+          }}>
+            <StatBadge v={`+${data.movimentacoes.totalEntradasUn}`} label="un. entraram" color={azul} />
+            <StatBadge v={`-${data.movimentacoes.totalSaidasUn}`} label="un. saíram" color={amarelo} />
+            <StatBadge v={data.movimentacoes.qtdMovimentacoes} label="movimentações" color={corHero(dark)} />
+          </div>
+          {data.movimentacoes.porTipo.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {data.movimentacoes.porTipo.map(t => (
+                <Badge key={t.tipo} variant="neutro" dark={dark} sm>
+                  {LABEL_TIPO_MOV[t.tipo] || t.tipo} · {t.n}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   )
+}
+
+const LABEL_TIPO_MOV = {
+  baixa_os: 'Baixa por OS',
+  ajuste_manual: 'Ajuste manual',
+  entrada_compra: 'Entrada/compra',
+  devolucao: 'Devolução',
 }
 
 // =============================================================================
@@ -873,6 +1028,30 @@ function BarrasCategoria({ T, dark, dados, total }) {
                 width: `${pct}%`, height: '100%',
                 background: d.cor, transition: 'width .3s',
               }} />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function BarrasValorBRL({ T, dark, dados, cor }) {
+  const total = dados.reduce((s, d) => s + d.valor, 0) || 1
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {dados.map(d => {
+        const pct = Math.round((d.valor / total) * 100)
+        return (
+          <div key={d.label}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.textSecondary, marginBottom: 4 }}>
+              <span>{d.label}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', color: corHero(dark), fontWeight: 600 }}>
+                {fmtBRL(d.valor)} <span style={{ color: T.textMuted, fontWeight: 400 }}>· {pct}%</span>
+              </span>
+            </div>
+            <div style={{ width: '100%', height: 8, borderRadius: 5, background: T.cardAlt, overflow: 'hidden' }}>
+              <div style={{ width: `${Math.max(2, pct)}%`, height: '100%', background: cor, transition: 'width .3s' }} />
             </div>
           </div>
         )
