@@ -21,6 +21,7 @@ import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import { useOSItens } from '../../../hooks/useOSItens'
+import { useAutorCheck, fmtAutor } from '../../../hooks/useAutorCheck'
 import {
   AtlPanel, AtlButton, ATL_FONT,
 } from './_AtlassianUI'
@@ -81,7 +82,7 @@ const OPCOES = [
 ]
 
 // ─── Test row Atlassian — mesmo layout 2 linhas do Avaliacao ─────────────
-function TestRow({ T, dark, teste, value, onChange, first }) {
+function TestRow({ T, dark, teste, value, onChange, first, autor }) {
   const opSel = OPCOES.find(o => o.id === value)
   return (
     <div style={{
@@ -107,6 +108,13 @@ function TestRow({ T, dark, teste, value, onChange, first }) {
           color: T.textPrimary, letterSpacing: '-0.005em',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{teste.label}</span>
+
+        {value && autor && (
+          <span style={{
+            fontSize: 10.5, color: T.textMuted, fontWeight: 500,
+            flexShrink: 0, letterSpacing: '-0.003em', whiteSpace: 'nowrap',
+          }}>{autor}</span>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 4 }}>
@@ -173,6 +181,7 @@ function AcabamentoCard({ T, dark, acab, on, onClick }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
   const { T, dark } = useTheme()
+  const { carimbo } = useAutorCheck()
 
   // Checklists dinâmicos por tipo de equipamento
   const tipoEquip = os.tipoEquipamento || 'lavadora'
@@ -240,16 +249,35 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [obs, hidratado])
 
+  // Autoria: quando o valor de um item MUDA, carimba com o usuário logado;
+  // quando não muda, preserva o autor anterior (não sobrescreve quem fez).
   function serializarChecklist(novoTestes, novoAcab) {
     const t = novoTestes ?? testes
     const a = novoAcab ?? acabamento
-    const linhasTestes = TESTES.map(item => ({
-      id: `teste:${item.id}`, label: item.label,
-      checked: t[item.id] === 'ok',
-      valor: t[item.id] || null,
-    }))
+    const anteriores = chkItens || []
+    const linhasTestes = TESTES.map(item => {
+      const antigo = anteriores.find(i => i.id === `teste:${item.id}`)
+      const valor  = t[item.id] || null
+      const mudou  = valor !== (antigo?.valor ?? null)
+      const autor  = valor == null ? undefined : (mudou ? carimbo() : antigo?.autor)
+      return {
+        id: `teste:${item.id}`, label: item.label,
+        checked: t[item.id] === 'ok',
+        valor,
+        ...(autor ? { autor } : {}),
+      }
+    })
     const linhasAcab = temLimpeza
-      ? ACABAMENTO.map(item => ({ id: `acab:${item.id}`, label: item.label, checked: !!a[item.id] }))
+      ? ACABAMENTO.map(item => {
+          const antigo  = anteriores.find(i => i.id === `acab:${item.id}`)
+          const checked = !!a[item.id]
+          const mudou   = checked !== !!antigo?.checked
+          const autor   = !checked ? undefined : (mudou ? carimbo() : antigo?.autor)
+          return {
+            id: `acab:${item.id}`, label: item.label, checked,
+            ...(autor ? { autor } : {}),
+          }
+        })
       : []
     return [...linhasTestes, ...linhasAcab]
   }
@@ -310,15 +338,19 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
         title="Testes finais"
         count={preenchidos > 0 ? `${preenchidos}/${TESTES.length}` : undefined}
         footer={`${preenchidos} de ${TESTES.length} avaliados.`}>
-        {TESTES.map((t, i) => (
-          <TestRow key={t.id}
-            T={T} dark={dark}
-            teste={t}
-            value={testes[t.id]}
-            onChange={(v) => setResultado(t.id, v)}
-            first={i === 0}
-          />
-        ))}
+        {TESTES.map((t, i) => {
+          const salvo = (chkItens || []).find(x => x.id === `teste:${t.id}`)
+          return (
+            <TestRow key={t.id}
+              T={T} dark={dark}
+              teste={t}
+              value={testes[t.id]}
+              autor={fmtAutor(salvo?.autor)}
+              onChange={(v) => setResultado(t.id, v)}
+              first={i === 0}
+            />
+          )
+        })}
       </AtlPanel>
 
       {/* 2. Acabamento — so se tem Limpeza */}

@@ -381,3 +381,27 @@ Helper `itensMarcadosDoDiag` + map `ITENS_DIAG`.
 - **Scroll horizontal Kanban**: `handleWheel` em `Kanban.jsx` detecta se coluna sob cursor ainda tem espaço pra rolar verticalmente — se sim, deixa browser rolar; senão converte pra `scrollLeft += deltaY`.
 - **RelatorioTab** (ex-ResumoTab): 3 hooks `useChecklistEtapa` + `useFalhaTeste` rodam ao montar a aba (4 queries extras). Se virar gargalo, migrar pra lazy on-demand.
 - **OSDetalhe mobile**: `HeaderMobile.jsx` + `FooterMobile.jsx` são fork do desktop (`mobile=true` no `OSDetalhe.jsx`). Swipe-down-to-close só no grab handle (não no conteúdo). Desktop zero mudança.
+
+---
+
+## 17. Autoria dos checks (base do prêmio por desempenho) — 06/07/2026
+
+Toda ação de check nas etapas grava **quem fez e quando** — carimbo `{ uid, em, apelido }` via hook `src/hooks/useAutorCheck.js` (`carimbo()` + formatador `fmtAutor()` → "Guilherme · 17/06 10:30"). Objetivo: alimentar o futuro **sistema de pontuação/prêmio por desempenho** dos funcionários (relatório ainda não construído).
+
+Onde cada etapa guarda a autoria (tudo em `os.pre_diagnostico`):
+
+| Etapa | Campo | Formato |
+|---|---|---|
+| Coleta | `coleta_confirmada` | carimbo (no Confirmar coleta) |
+| Avaliação | `checklist.recebido.itens[].autor` | carimbo por teste |
+| Diagnóstico | `componentes_autores[itemId]` | carimbo por componente (paralelo a `componentes_marcados`, que segue string `troca|manutencao` — NÃO mudar o formato, tem N consumidores) |
+| Conserto | `oficina.execucao.<secao>.<check>` | o **próprio valor** do check é o carimbo (antes era `true` — consumidores devem tratar truthy) |
+| Teste final | `checklist.teste_final.itens[].autor` | carimbo por teste/acabamento |
+| Entrega | `entrega.realizada_por` | carimbo (junto do `realizada_em`) |
+
+Regras:
+- **Merge preservativo**: nos checklists (Avaliação/Teste), o autor só é carimbado quando o VALOR do item muda; salvar sem mudar preserva o autor original.
+- **Retrocompatível**: dados antigos (`true`, itens sem `autor`) continuam funcionando; `fmtAutor` retorna `null` pra eles.
+- **UI**: autor aparece em texto pequeno cinza ao lado do check (Oficina, Avaliação, Teste, Diagnóstico).
+- **os_historico agora é gravado nos 3 lugares** que movem etapa (Kanban desktop, Modal `useOSDetalheModal`, mobile `OSMobile`) com `funcionario_id` — antes só o mobile gravava, então o relatório de Funcionários subnotificava desktop.
+- Próximo passo: página/relatório de pontuação consumindo esses campos.

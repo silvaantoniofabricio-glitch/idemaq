@@ -21,31 +21,11 @@ import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useOSItens } from '../../../hooks/useOSItens'
-import { useUsuarios } from '../../../hooks/useUsuarios'
-import { supabase } from '../../../supabase'
+import { useAutorCheck, fmtAutor as autorDe } from '../../../hooks/useAutorCheck'
 import PecasComprarSection from './PecasComprarSection'
 import {
   AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
 } from './_AtlassianUI'
-
-// Extrai "Guilherme · 17/06 10:30" de { uid, em, apelido } ou retorna null
-function autorDe(val) {
-  if (!val || typeof val !== 'object') return null
-  const { apelido, em } = val
-  if (!apelido) return null
-  let dataFmt = ''
-  if (em) {
-    try {
-      const d = new Date(em)
-      const dia  = String(d.getDate()).padStart(2, '0')
-      const mes  = String(d.getMonth() + 1).padStart(2, '0')
-      const hora = String(d.getHours()).padStart(2, '0')
-      const min  = String(d.getMinutes()).padStart(2, '0')
-      dataFmt = ` · ${dia}/${mes} ${hora}:${min}`
-    } catch {}
-  }
-  return apelido + dataFmt
-}
 
 // ─── Pill de status ──────────────────────────────────────────────────────
 function StatusPill({ T, dark, status }) {
@@ -371,18 +351,11 @@ function BannerFalhas({ T, dark, falhas }) {
 export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, admin = false }) {
   const { T, dark } = useTheme()
   const { itens } = useOSItens(os?.id)
-  const { apelidoDe } = useUsuarios()
+  const { carimbo } = useAutorCheck()
   const vermelho = corEtapa('red', dark)
   const amarelo  = corEtapa('yellow', dark)
   const azul     = corEtapa('blue', dark)
   const verde    = corEtapa('green', dark)
-
-  const [currentUid, setCurrentUid] = useState(null)
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setCurrentUid(data?.session?.user?.id || null)
-    })
-  }, [])
 
   // Falta de peças — alocação GLOBAL do estoque entre todas as OS de conserto
   // (considera qtd pedida e a mesma peça pedida por várias OS).
@@ -528,11 +501,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     if (novo[chaveId]) {
       delete novo[chaveId]
     } else {
-      novo[chaveId] = {
-        uid:     currentUid,
-        em:      new Date().toISOString(),
-        apelido: currentUid ? apelidoDe(currentUid) : 'desconhecido',
-      }
+      novo[chaveId] = carimbo()
     }
     persistExec({ ...exec, [secao]: novo })
   }

@@ -31,6 +31,7 @@ import { estaPagaTotal } from '../../../utils/osHelpers'
 import {
   uploadFotoEntrega, removerFotoEntrega, resolverFotoUrl, FOTO_STORAGE_MARKER,
 } from '../../../utils/osStorage'
+import { useAutorCheck } from '../../../hooks/useAutorCheck'
 import { useToast } from '../../ui'
 import {
   AtlPanel, AtlButton, AtlListRow, AtlDayChip, AtlSegmented, AtlTimeChip,
@@ -221,6 +222,7 @@ function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
 // ═══════════════════════════════════════════════════════════════════════════
 function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   const { T, dark } = useTheme()
+  const { carimbo } = useAutorCheck()
   const notify = useToast()
   const azul = corEtapa('blue', dark)
   const verde = corEtapa('green', dark)
@@ -335,7 +337,8 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
     const patch = {
       pre_diagnostico: {
         ...(os.pre_diagnostico || {}),
-        entrega: { ...entregaSalva, realizada_em: new Date().toISOString() },
+        // realizada_por: quem confirmou a entrega (pontuação por desempenho)
+        entrega: { ...entregaSalva, realizada_em: new Date().toISOString(), realizada_por: carimbo() },
       },
     }
     // Recusada: máquina devolvida → some do Kanban (fica visível em busca/relatórios).

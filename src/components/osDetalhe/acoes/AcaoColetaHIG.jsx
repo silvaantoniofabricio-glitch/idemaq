@@ -21,6 +21,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
 import FotosColetaSection from '../FotosColetaSection'
+import { useAutorCheck } from '../../../hooks/useAutorCheck'
 import {
   AtlPanel, AtlButton, AtlListRow, AtlFieldRow,
   ATL_FONT, atlSurfaceSunken,
@@ -131,6 +132,7 @@ function AtlCountdownCard({ T, dark, os }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
+  const { carimbo } = useAutorCheck()
   const azul = corEtapa('blue', dark)
   const verde = corEtapa('green', dark)
 
@@ -201,7 +203,12 @@ export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
     if (modelo !== (os?.modelo_equipamento || os?.modelo || '')) patch.modelo_equipamento = modelo
     if (serie  !== (os?.numero_serie || os?.serie || ''))         patch.numero_serie = serie
     if (obs !== (os?.observacoes || ''))                           patch.observacoes = obs
-    if (Object.keys(patch).length) await onUpdateOS?.(os.numero, patch)
+    // Autoria: quem confirmou a coleta + quando (pontuação por desempenho)
+    patch.pre_diagnostico = {
+      ...(os.pre_diagnostico || {}),
+      coleta_confirmada: carimbo(),
+    }
+    await onUpdateOS?.(os.numero, patch)
     setSalvando(false)
     onMoverOS?.(os.numero, 'recebido')
   }

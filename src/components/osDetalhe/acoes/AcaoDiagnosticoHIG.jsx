@@ -23,6 +23,7 @@ import { semAcento } from '../../../utils/fmt'
 import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
+import { useAutorCheck, fmtAutor } from '../../../hooks/useAutorCheck'
 import {
   AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
 } from './_AtlassianUI'
@@ -190,7 +191,7 @@ function GrupoHeader({ T, dark, grupo, marcadosCount, open, onToggle, first }) {
 }
 
 // ─── Item row com Troca/Manutencao ────────────────────────────────────────
-function ItemRow({ T, dark, item, acao, onSetAcao }) {
+function ItemRow({ T, dark, item, acao, onSetAcao, autor }) {
   const vermelho = corEtapa('red', dark)
   const amarelo  = corEtapa('yellow', dark)
   const trocaOn = acao === 'troca'
@@ -206,11 +207,22 @@ function ItemRow({ T, dark, item, acao, onSetAcao }) {
     }}>
       <span style={{
         flex: 1, minWidth: 0,
-        fontSize: 13, color: T.textPrimary,
-        fontWeight: acao ? 600 : 500,
-        letterSpacing: '-0.005em',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{item.label}</span>
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <span style={{
+          fontSize: 13, color: T.textPrimary,
+          fontWeight: acao ? 600 : 500,
+          letterSpacing: '-0.005em',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{item.label}</span>
+        {acao && autor && (
+          <span style={{
+            fontSize: 10, color: T.textMuted, fontWeight: 500,
+            letterSpacing: '-0.003em', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>{autor}</span>
+        )}
+      </span>
 
       <button type="button"
         onClick={() => onSetAcao(trocaOn ? null : 'troca')}
@@ -258,12 +270,15 @@ function ItemRow({ T, dark, item, acao, onSetAcao }) {
 // ═══════════════════════════════════════════════════════════════════════════
 export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   const { T, dark } = useTheme()
+  const { carimbo } = useAutorCheck()
   const azul = corEtapa('blue', dark)
 
   // ── Estado ───────────────────────────────────────────────────────────────
   const preDiag = os?.pre_diagnostico || {}
   const [obs, setObs]                   = useState(os?.observacoes || '')
   const [marcadosPorGrupo, setMarcados] = useState(() => normalizeMarcados(preDiag.componentes_marcados))
+  // Autoria por componente: { [itemId]: { uid, em, apelido } }
+  const [autores, setAutores]           = useState(() => preDiag.componentes_autores || {})
   const [grupoAberto, setGrupoAberto]   = useState(null)
   const [busca, setBusca]               = useState('')
   const [salvando, setSalvando]         = useState(false)
@@ -271,6 +286,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   useEffect(() => {
     setObs(os?.observacoes || '')
     setMarcados(normalizeMarcados(os?.pre_diagnostico?.componentes_marcados))
+    setAutores(os?.pre_diagnostico?.componentes_autores || {})
   }, [os?.id])
 
   useEffect(() => {
@@ -301,12 +317,16 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     if (JSON.stringify(salvoServ) === JSON.stringify(marcadosPorGrupo)) return
     const t = setTimeout(() => {
       onUpdateOS?.(os.numero, {
-        pre_diagnostico: { ...preDiag, componentes_marcados: marcadosPorGrupo },
+        pre_diagnostico: {
+          ...preDiag,
+          componentes_marcados: marcadosPorGrupo,
+          componentes_autores: autores,
+        },
       })
     }, 400)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marcadosPorGrupo, os?.id])
+  }, [marcadosPorGrupo, autores, os?.id])
 
   // ── CTA ──────────────────────────────────────────────────────────────────
   const totalMarcados = Object.values(marcadosPorGrupo).reduce(
@@ -322,6 +342,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
       pre_diagnostico: {
         ...preDiag,
         componentes_marcados: marcadosPorGrupo,
+        componentes_autores: autores,
       },
     })
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'orcamento')
@@ -506,12 +527,19 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
                       T={T} dark={dark}
                       item={item}
                       acao={marcados[item.id]}
+                      autor={fmtAutor(autores[item.id])}
                       onSetAcao={(acao) => {
                         setMarcados(prev => {
                           const atual = { ...(prev[grupo.id] || {}) }
                           if (!acao) delete atual[item.id]
                           else atual[item.id] = acao
                           return { ...prev, [grupo.id]: atual }
+                        })
+                        setAutores(prev => {
+                          const novo = { ...prev }
+                          if (!acao) delete novo[item.id]
+                          else novo[item.id] = carimbo()
+                          return novo
                         })
                       }}
                     />
