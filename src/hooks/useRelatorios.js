@@ -658,19 +658,25 @@ export function useRelatorioVendas({ iniIso, fimIso }) {
         const receitaMaquinas = vendas.reduce((s, o) => s + Number(o.valor_total || 0) - Number(o.desconto || 0), 0)
 
         // Funil de OS (atendimento)
-        function countEtapa(etapa) {
+        // Aceita array de etapas — 'recebido' (aposentada 06/07/2026) e
+        // 'diagnostico' contam juntas como "Diagnosticadas".
+        function countEtapa(etapas) {
+          const listaEtapas = Array.isArray(etapas) ? etapas : [etapas]
           // Quantos chegaram nessa etapa (passaram em algum momento)
-          let n = etapasAlcancadas[etapa]?.size || 0
+          const ids = new Set()
+          for (const e of listaEtapas) {
+            for (const id of (etapasAlcancadas[e] || [])) ids.add(id)
+          }
           // Soma os que estão atualmente na etapa mas sem registro de histórico
           for (const o of osAbertas || []) {
-            if (o.etapa === etapa && !(etapasAlcancadas[etapa]?.has(o.id))) n += 1
+            if (listaEtapas.includes(o.etapa)) ids.add(o.id)
           }
-          return n
+          return ids.size
         }
         const f0 = totalAbertas
         const funil = [
           { etapa: 'criadas',     label: 'Criadas',          n: f0 },
-          { etapa: 'recebido',    label: 'Recebidas',        n: countEtapa('recebido') },
+          { etapa: 'diagnostico', label: 'Diagnosticadas',   n: countEtapa(['recebido', 'diagnostico']) },
           { etapa: 'orcamento',   label: 'Orçadas',          n: countEtapa('orcamento') },
           { etapa: 'em_oficina',  label: 'Aprovadas (ofic.)', n: countEtapa('em_oficina') },
           { etapa: 'entrega',     label: 'Entregues',        n: countEtapa('entrega') },

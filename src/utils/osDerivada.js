@@ -28,7 +28,7 @@ export async function duplicarOS(os) {
   const payload = {
     cliente_id:         os.cliente_id   || null,
     tipo:               os.tipo         || 'atendimento',
-    etapa:              'recebido',
+    etapa:              'diagnostico', // 'recebido' aposentado — Avaliação+Diagnóstico unificados
     marca_equipamento:  os.marca        || null,
     modelo_equipamento: os.modelo       || null,
     numero_serie:       os.serie        || null,

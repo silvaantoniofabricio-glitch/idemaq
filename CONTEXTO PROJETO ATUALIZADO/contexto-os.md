@@ -117,8 +117,8 @@
 `aguardando_agendamento | agendamento | recebido | diagnostico | orcamento | em_oficina | teste_final | entrega | pagamento | concluido | recusado`
 
 **Definições importantes**:
-- `Recebido` = pré-diagnóstico (primeiro teste e check do defeito aparente)
-- `Diagnóstico` = entender o motivo da falha (trabalho técnico)
+- ⚠️ **`recebido` APOSENTADO (06/07/2026)** — Avaliação + Diagnóstico unificados numa etapa só (`diagnostico`). O valor segue no enum (histórico referencia), mas nenhuma OS nova entra nele. `dbEtapaToUI` mapeia `recebido`→`diagnostico` (os.etapa antigo E os_historico). Migração: `sql/114`.
+- `Diagnóstico` = testes de funcionamento + entender o motivo da falha + marcar componentes (tela unificada)
 - `Orçamento` = único lugar onde se mexe em preço
 - **Não existe etapa "A receber"** — Pagamento já cumpre essa função (entregue mas não pago)
 - Se cliente paga **antes** da entrega, ao entregar a OS pula direto pra `Concluído` (não passa por Pagamento)
@@ -128,7 +128,7 @@
 ## 5. 3 Tipos de OS — Fluxos
 
 ### Atendimento (máquina do cliente)
-`Aguardando ag.` → `Agendado` → `Recebido` → `Diagnóstico` → `Orçamento` → `Em oficina (Limpeza + Manutenção simultâneos)` → `Teste final` → `Entrega` → `Pagamento` → `Concluído`
+`Aguardando ag.` → `Agendado` → `Diagnóstico (testes + componentes)` → `Orçamento` → `Em oficina (Limpeza + Manutenção simultâneos)` → `Teste final` → `Entrega` → `Pagamento` → `Concluído`
 
 Saída lateral: `Recusado` (dentro de Orçamento conceitualmente).
 - Opções: converter pra Fabricação **ou** seguir pra Entrega
@@ -227,11 +227,8 @@ Linha 2 do header: foto da máquina + bloco info estruturado.
 
 ## 9. Etapas com formulário estruturado
 
-### Recebido (Pré-diagnóstico)
-4 testes × OK/Defeito/Barulho + textarea obs + **foto da coleta** (input file → base64 → preview com botão trocar/remover, salva em `os.pre_diagnostico.foto`).
-
-### Diagnóstico
-Checklist técnico 2×2 colapsável + busca + campo Causa.
+### Diagnóstico (= ex-Avaliação + ex-Diagnóstico, unificados 06/07/2026)
+Tela única (`AcaoDiagnosticoHIG.jsx` reescrito): relato do cliente → testes de funcionamento (toggle "não liga" + 4 testes × OK/Defeito/Barulho) → vazamentos (lavadora/lava-louças) → componentes afetados (busca + grupos + Troca/Manut.) → observações → CTA "Concluir diagnóstico" (exige testes avaliados OU não-liga, E ≥1 componente). **Persistência mantém as chaves antigas**: testes em `checklist.recebido.itens` (compat com OS antigas + RelatorioTab). `AcaoRecebidoHIG.jsx` ficou órfão (sem uso no MAP).
 
 ### Orçamento
 - Editor completo + atalhos rápidos

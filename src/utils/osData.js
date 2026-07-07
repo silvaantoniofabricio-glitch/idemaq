@@ -38,7 +38,8 @@ export const TIPOS_OS = {
     etapas: [
       { id:'ag_agendamento', label:'Agenda',           curto:'Agenda',       cor:'neutro' },
       { id:'agendado',       label:'Coleta',           curto:'Coleta',       cor:'neutro' },
-      { id:'recebido',       label:'Avaliação',        curto:'Avaliação',    cor:'neutro' },
+      // Avaliação + Diagnóstico UNIFICADOS na etapa 'diagnostico' (06/07/2026).
+      // DB 'recebido' aposentado — dbEtapaToUI mapeia recebido→diagnostico.
       { id:'diagnostico',    label:'Diagnóstico',      curto:'Diagnóstico',  cor:'yellow', prazo24h:true },
       { id:'orcamento',      label:'Orçamento',        curto:'Orçamento',    cor:'red',    prazo24h:true },
       { id:'oficina',        label:'Conserto',         curto:'Conserto',     cor:'blueLight', dual:true },
@@ -75,7 +76,6 @@ export const TIPOS_OS = {
 export const ETAPAS_TODOS = [
   { id:'ag_agendamento', label:'Agenda',                  curto:'Agenda',       cor:'neutro',    match:{ atendimento:'ag_agendamento' } },
   { id:'agendamento',    label:'Coleta',                  curto:'Coleta',       cor:'neutro',    match:{ atendimento:'agendado', venda:'agendamento' } },
-  { id:'recebido',       label:'Avaliação',               curto:'Avaliação',    cor:'neutro',    match:{ atendimento:'recebido' } },
   { id:'diagnostico',    label:'Diagnóstico',             curto:'Diagnóstico',  cor:'yellow', prazo24h:true, match:{ atendimento:'diagnostico', fabricacao:'diagnostico' } },
   { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match:{ atendimento:'orcamento' } },
   { id:'oficina',        label:'Conserto',                curto:'Conserto',     cor:'blueLight', dual:true, match:{ atendimento:'oficina', fabricacao:'oficina' } },
@@ -89,7 +89,7 @@ export const ETAPAS_TODOS = [
 // Zonas de atividade (Externo/Interno/Financeiro) — agrupam etapas por contexto
 export const ZONAS = [
   { id:'externo',    label:'Externo',    icon:'ti-truck-delivery', cor:'blue',   etapas:['ag_agendamento','agendamento','entrega'] },
-  { id:'interno',    label:'Interno',    icon:'ti-tool',           cor:'yellow', etapas:['recebido','diagnostico','oficina','teste_final'] },
+  { id:'interno',    label:'Interno',    icon:'ti-tool',           cor:'yellow', etapas:['diagnostico','oficina','teste_final'] },
   { id:'financeiro', label:'Financeiro', icon:'ti-cash-banknote',  cor:'green',  etapas:['orcamento','pagamento','concluido'] },
 ]
 

@@ -107,7 +107,7 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             letterSpacing: '-0.005em',
           }}>#{os.numero}</span>
           {(() => {
-            const recebido = os.historico?.find(h => h.etapa === 'recebido')
+            const recebido = os.historico?.find(h => h.etapa === 'diagnostico')
             const base = recebido?.data || os.abertura
             if (!base) return null
             const dias = Math.floor((Date.now() - new Date(base).getTime()) / 86400000)

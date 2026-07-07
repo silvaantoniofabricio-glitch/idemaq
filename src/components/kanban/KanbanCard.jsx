@@ -226,9 +226,10 @@ export default function KanbanCard({
             }}>{(funcRoteiro.nome || '?').slice(0, 2).toUpperCase()}</span>
           )}
           {!cantoLimpo && (() => {
-            // Conta a partir da confirmação de coleta (entrada em 'recebido').
-            // Para fabricação/venda sem recebido, usa a abertura da OS.
-            const recebido = os.historico?.find(h => h.etapa === 'recebido')
+            // Conta a partir da confirmação de coleta (entrada em 'diagnostico';
+            // registros antigos de 'recebido' são mapeados pelo dbEtapaToUI).
+            // Para fabricação/venda sem essa etapa, usa a abertura da OS.
+            const recebido = os.historico?.find(h => h.etapa === 'diagnostico')
             const base = recebido?.data || os.abertura
             if (!base) return null
             const dias = Math.floor((Date.now() - new Date(base).getTime()) / 86400000)

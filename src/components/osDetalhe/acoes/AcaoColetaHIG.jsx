@@ -210,7 +210,7 @@ export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
     }
     await onUpdateOS?.(os.numero, patch)
     setSalvando(false)
-    onMoverOS?.(os.numero, 'recebido')
+    onMoverOS?.(os.numero, 'diagnostico')
   }
 
   return (

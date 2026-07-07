@@ -11,11 +11,14 @@ import { normalizePatchOS } from '../utils/osPatch'
 import { baixarItensDaOS } from './usePecas'
 
 // Traduz etapa do banco (DB) para o valor usado na UI
-function dbEtapaToUI(tipo, dbEtapa) {
+export function dbEtapaToUI(tipo, dbEtapa) {
   if (!dbEtapa) return dbEtapa
   if (dbEtapa === 'aguardando_agendamento') return 'ag_agendamento'
   // 'agendamento' no DB = 'agendado' na UI para atendimento, 'agendamento' para venda
   if (dbEtapa === 'agendamento' && tipo === 'atendimento') return 'agendado'
+  // Etapa 'recebido' aposentada (06/07/2026) — Avaliação+Diagnóstico unificadas.
+  // Linhas antigas (os.etapa e os_historico) aparecem como Diagnóstico na UI.
+  if (dbEtapa === 'recebido') return 'diagnostico'
   if (dbEtapa === 'em_oficina') return 'oficina'
   // 'entrega' no DB = 'entregue' na UI para venda
   if (dbEtapa === 'entrega' && tipo === 'venda') return 'entregue'

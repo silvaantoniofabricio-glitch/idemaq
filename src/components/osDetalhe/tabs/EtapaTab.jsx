@@ -25,7 +25,6 @@ import {
 } from '../acoes'
 import AcaoAgendamentoHIG from '../acoes/AcaoAgendamentoHIG'
 import AcaoColetaHIG from '../acoes/AcaoColetaHIG'
-import AcaoRecebidoHIG from '../acoes/AcaoRecebidoHIG'
 import AcaoDiagnosticoHIG from '../acoes/AcaoDiagnosticoHIG'
 import AcaoOrcamentoHIG from '../acoes/AcaoOrcamentoHIG'
 import AcaoOficinaHIG from '../acoes/AcaoOficinaHIG'
@@ -37,8 +36,9 @@ const MAP = {
   // HIG aplicado em TODAS as etapas — cada uma com arquivo dedicado.
   ag_agendamento: AcaoAgendamentoHIG,  // Agenda    (escolher dia/hora)
   agendado: AcaoColetaHIG,             // Coleta    (ir buscar no cliente)
-  recebido: AcaoRecebidoHIG,           // Avaliação (testes de funcionamento)
-  diagnostico: AcaoDiagnosticoHIG,    // Diagnóstico (causa + componentes)
+  // Avaliação + Diagnóstico UNIFICADOS (06/07/2026) — uma tela só.
+  diagnostico: AcaoDiagnosticoHIG,    // Diagnóstico (testes + componentes)
+  recebido: AcaoDiagnosticoHIG,       // alias de segurança (etapa DB aposentada)
   orcamento: AcaoOrcamentoHIG,        // Orçamento (itens + total + aprovação)
   oficina: AcaoOficinaHIG,            // Conserto  (Limpeza + Manutenção)
   teste_final: AcaoTesteHIG,          // Teste final (4 testes + acabamento)

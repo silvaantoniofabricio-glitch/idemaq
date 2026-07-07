@@ -610,7 +610,6 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
 // Bloqueio (orcamento nao fechado) — timeline progresso + voltar pro Orcamento
 // ═══════════════════════════════════════════════════════════════════════════
 const ETAPAS_SEQ = [
-  { id: 'recebido',    label: 'Pré-diagnóstico' },
   { id: 'diagnostico', label: 'Diagnóstico' },
   { id: 'orcamento',   label: 'Orçamento' },
   { id: 'oficina',     label: 'Conserto' },

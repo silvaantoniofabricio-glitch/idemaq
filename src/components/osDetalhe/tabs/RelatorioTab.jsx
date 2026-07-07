@@ -160,8 +160,11 @@ function ColDatas({ T, dark, os }) {
   }
 
   const dtAbertura  = os.abertura || os.criado_em
-  const dtColeta    = dataEtapa('recebido')
-  const dtDiag      = dataEtapa('diagnostico')
+  // Coleta confirmada: carimbo novo (06/07/2026) ou entrada no diagnóstico
+  // ('recebido' antigo é mapeado pra 'diagnostico' pelo dbEtapaToUI)
+  const dtColeta    = os.pre_diagnostico?.coleta_confirmada?.em
+    || dataEtapa(['recebido', 'diagnostico'])
+  const dtDiag      = dataEtapa(['recebido', 'diagnostico'])
   const dtOrc       = dataEtapa('orcamento')
   const dtOficina   = dataEtapa(['oficina', 'em_oficina'])
   const dtTeste     = dataEtapa('teste_final')
@@ -572,8 +575,8 @@ function ColHistorico({ T, dark, os, admin, checkRecebido, checkOficina, checkTe
 
   const blocos = []
 
-  // ── Avaliação ──
-  const dRec = dadosEtapa('recebido')
+  // ── Avaliação ── ('recebido' antigo mapeado pra 'diagnostico' pelo dbEtapaToUI)
+  const dRec = dadosEtapa(['recebido', 'diagnostico'])
   if (dRec) {
     blocos.push(
       <EtapaBlock key="recebido" T={T} dark={dark} etapa="recebido"

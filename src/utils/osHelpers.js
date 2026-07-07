@@ -178,15 +178,15 @@ export function ordenarColuna(etapaId, lista) {
     case 'agendado':
     case 'agendamento':
       return arr.sort((a, b) => new Date(a.prazo) - new Date(b.prazo))
-    case 'recebido':
     case 'diagnostico':
     case 'orcamento':
     case 'oficina':
     case 'teste_final':
-      // Mais dias aberto aparece primeiro: base = entrada em 'recebido' ou abertura
+      // Mais dias aberto aparece primeiro: base = entrada em 'diagnostico'
+      // (ex-'recebido' — dbEtapaToUI mapeia registros antigos) ou abertura
       return arr.sort((a, b) => {
-        const baseA = (a.historico || []).find(h => h.etapa === 'recebido')?.data || a.abertura
-        const baseB = (b.historico || []).find(h => h.etapa === 'recebido')?.data || b.abertura
+        const baseA = (a.historico || []).find(h => h.etapa === 'diagnostico')?.data || a.abertura
+        const baseB = (b.historico || []).find(h => h.etapa === 'diagnostico')?.data || b.abertura
         return new Date(baseA) - new Date(baseB)
       })
     case 'entrega':

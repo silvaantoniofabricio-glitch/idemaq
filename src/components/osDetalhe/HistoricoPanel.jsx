@@ -11,6 +11,7 @@ import { corEtapa, bgEtapa } from '../../utils/colors'
 import { TIPOS_OS } from '../../utils/osData'
 import { fmtDataHora } from '../../utils/fmt'
 import { useOSHistorico } from '../../hooks/useOSHistorico'
+import { dbEtapaToUI } from '../../hooks/useOS'
 
 // Mapeia papel → cor (Deutan). Usado pro avatar quando o JOIN traz apelido+papel
 // mas sem a cor (que existia no mock FUNCIONARIOS por id).
@@ -142,7 +143,10 @@ export default function HistoricoPanel({ T, dark, os, onClose, mobile = false })
               {historico.map((h, i) => {
                 // h vem da query: { id, etapa_de, etapa_para, data, duracao_segundos,
                 // observacao, funcionario_id, apelido, papel }
-                const etapaCfg = config?.etapas?.find(e => e.id === h.etapa_para) || config?.lateral
+                // etapa_para é valor do DB — traduz pra id da UI antes do lookup
+                // (recebido→diagnostico, em_oficina→oficina, etc)
+                const etapaUI = dbEtapaToUI(os.tipo, h.etapa_para)
+                const etapaCfg = config?.etapas?.find(e => e.id === etapaUI) || config?.lateral
                 const corE = etapaCfg ? corEtapa(etapaCfg.cor, dark) : T.textDim
                 const bgE = etapaCfg ? bgEtapa(etapaCfg.cor, dark) : T.bg
                 const corFunc = COR_POR_PAPEL[h.papel] || T.textMuted
