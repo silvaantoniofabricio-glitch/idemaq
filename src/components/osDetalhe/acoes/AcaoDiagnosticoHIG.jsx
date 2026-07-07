@@ -61,8 +61,13 @@ const TESTES_POR_EQUIP = {
     { id: 'visual',      label: 'Aparência geral',  icon: 'eye' },
   ],
 }
+// Lava e seca usa os mesmos testes da lavadora + secagem (mais um mecanismo)
+TESTES_POR_EQUIP.lava_seca = [
+  ...TESTES_POR_EQUIP.lavadora,
+  { id: 'secagem', label: 'Secagem', icon: 'wind' },
+]
 
-// Vazamentos: só lavadora e lava-louças têm água externa
+// Vazamentos: só lavadora, lava-louças e lava-e-seca têm água externa
 const VAZAMENTOS_POR_EQUIP = {
   lavadora: [
     { id: 'entrada',  label: 'Entrada',  icon: 'droplet' },
@@ -77,6 +82,7 @@ const VAZAMENTOS_POR_EQUIP = {
   ],
   outros: [],
 }
+VAZAMENTOS_POR_EQUIP.lava_seca = VAZAMENTOS_POR_EQUIP.lavadora
 
 const OPCOES = [
   { id: 'ok',      label: 'OK',       icon: 'check',          corKey: 'green'  },

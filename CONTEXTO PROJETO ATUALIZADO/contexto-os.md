@@ -401,4 +401,35 @@ Regras:
 - **Retrocompatível**: dados antigos (`true`, itens sem `autor`) continuam funcionando; `fmtAutor` retorna `null` pra eles.
 - **UI**: autor aparece em texto pequeno cinza ao lado do check (Oficina, Avaliação, Teste, Diagnóstico).
 - **os_historico agora é gravado nos 3 lugares** que movem etapa (Kanban desktop, Modal `useOSDetalheModal`, mobile `OSMobile`) com `funcionario_id` — antes só o mobile gravava, então o relatório de Funcionários subnotificava desktop.
-- Próximo passo: página/relatório de pontuação consumindo esses campos.
+
+## 18. Pontuação por desempenho — placar (06/07/2026, sem prêmio em R$ ainda)
+
+Motor de cálculo em `src/utils/pontuacao.js` (`calcularPontosOS(os)` pura, testada com `node` direto rodando o módulo ESM real — ver histórico do chat) + agregação em `src/hooks/usePontuacao.js` (`{ iniIso, fimIso } → { equipe: [...], totalPontos }`).
+
+**Tabela de pontos** (calibrada por tempo médio × dificuldade, aprovada pelo Toni):
+
+| Serviço | Normal | Lava e seca (+0.3 em todos os fatores) |
+|---|---|---|
+| Coleta | 5 | 6 |
+| Diagnóstico (bloco unificado) | 4 | 5 |
+| Desmontagem *(1x/OS, compartilhada)* | 4 | 5 |
+| Limpeza | 18 | 22 |
+| Manutenção *(por peça/componente)* | 3 | 4 |
+| Montagem *(1x/OS, compartilhada)* | 4 | 5 |
+| Teste final | 1 | 2 |
+| Acabamento *(só se tem limpeza)* | 2 | 3 |
+| Entrega | 5 | 6 |
+
+**Regras de atribuição**:
+- Só pontua bloco **completo** (todos os testes preenchidos, ≥1 componente marcado, etc.) **e** com carimbo válido (`{uid,em,apelido}` — dados antigos sem autor não pontuam, naturalmente).
+- Diagnóstico e Teste final (blocos com múltiplos itens) atribuem ao autor do **carimbo mais recente** dentro do bloco — assume que quem fechou por último é quem "entregou" o bloco.
+- Manutenção pontua **por chave** em `oficina.execucao.manut_serv` (cobre peças de troca E o caso "sem peças" que usa a chave `feito`).
+- Filtragem por período usa o campo `em` do carimbo (quando o check foi feito), **não** `criado_em`/`atualizado_em` da OS — uma OS aberta em junho pode pontuar em julho se só foi trabalhada depois.
+
+**Tipo de equipamento novo**: `lava_seca` adicionado em `FormEquipamentoEdit.jsx` (TIPOS_EQUIP) + reaproveita testes/vazamentos/acabamento da lavadora (+ teste extra "Secagem") em `AcaoDiagnosticoHIG.jsx` e `AcaoTesteHIG.jsx`.
+
+**Onde aparece**:
+- Painel do Funcionário (`PainelFuncionario.jsx`) → card "Meus pontos do mês" (só o próprio, mês corrente) — desktop e mobile.
+- Relatórios → Funcionários (`Relatorios.jsx`) → card "Pontuação por desempenho" (todos, no período selecionado) — componente `PontuacaoDesempenho`.
+
+**Fase 1 apenas** — sem conversão em R$, sem desconto por garantia/retrabalho, sem metas. Combinado com o Toni: rodar 1 mês só de placar antes de comprometer dinheiro ou regra de desconto.

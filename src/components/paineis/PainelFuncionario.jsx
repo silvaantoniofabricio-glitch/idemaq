@@ -14,6 +14,8 @@ import HistoricoSemana from '../ponto/HistoricoSemana'
 import EspelhoPonto from '../ponto/EspelhoPonto'
 import { usePainelFuncionario } from '../../hooks/usePainelFuncionario'
 import { usePonto, proximoTipo } from '../../hooks/usePonto'
+import { usePontuacao } from '../../hooks/usePontuacao'
+import { LABEL_SERVICO } from '../../utils/pontuacao'
 import { getRole } from '../../utils/osHelpers'
 
 const LABEL_PAPEL = { logistica: 'Logística', oficina: 'Oficina', dono: 'Dono' }
@@ -49,6 +51,16 @@ export default function PainelFuncionario({ T, dark, user }) {
 
   const funcId = getRole(user)
   const { osDoDia, desempenho, escopo, loading: loadingPainel } = usePainelFuncionario(funcId)
+
+  // Pontuação por desempenho — mês corrente, só o próprio funcionário.
+  const { iniIso: pontosIniIso, fimIso: pontosFimIso } = useMemo(() => {
+    const hoje = new Date()
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1); ini.setHours(0, 0, 0, 0)
+    const fim = new Date(hoje); fim.setHours(23, 59, 59, 999)
+    return { iniIso: ini.toISOString(), fimIso: fim.toISOString() }
+  }, [])
+  const { data: pontuacaoData, loading: loadingPontos } = usePontuacao({ iniIso: pontosIniIso, fimIso: pontosFimIso })
+  const meusPontos = pontuacaoData?.equipe?.find(f => f.funcionario_id === funcionario.id) || null
 
   const {
     batidas: batidasSemana,
@@ -229,6 +241,13 @@ export default function PainelFuncionario({ T, dark, user }) {
               </div>
             </section>
 
+            {/* Pontuação por desempenho */}
+            <section>
+              <PanelLabel T={T} icon="ti-trophy" label="Meus pontos do mês" />
+              <CardPontos T={T} dark={dark} azul={azul} amarelo={amarelo}
+                dados={meusPontos} loading={loadingPontos} />
+            </section>
+
             {/* Histórico da semana */}
             <section>
               <PanelLabel T={T} icon="ti-calendar-week" label="Últimos 7 dias" />
@@ -322,6 +341,55 @@ export default function PainelFuncionario({ T, dark, user }) {
             icon="ti-award" cor={azul} />
         </div>
       </Card>
+
+      <SecLabel T={T} icon="ti-trophy" label="Meus pontos do mês" />
+      <CardPontos T={T} dark={dark} azul={azul} amarelo={amarelo}
+        dados={meusPontos} loading={loadingPontos} />
+    </div>
+  )
+}
+
+// ─── Card de pontuação por desempenho (mês corrente) ──────────────────────────
+function CardPontos({ T, dark, azul, amarelo, dados, loading }) {
+  const total = dados?.total || 0
+  const porServico = dados?.porServico || {}
+  return (
+    <div className="idemaq-card" style={{
+      background: T.card, borderRadius: 10,
+      border: `1px solid ${T.border}`,
+      boxShadow: T.shadow,
+      padding: 16,
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 11.5, color: T.textMuted, fontWeight: 600 }}>
+          Total no mês
+        </span>
+        <span style={{
+          fontSize: 26, fontWeight: 800, color: amarelo,
+          fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
+        }}>
+          {loading ? '—' : total} <span style={{ fontSize: 13, fontWeight: 500, color: T.textMuted }}>pts</span>
+        </span>
+      </div>
+      {!loading && total === 0 && (
+        <div style={{ fontSize: 11.5, color: T.textMuted, fontStyle: 'italic' }}>
+          Seus pontos aparecem aqui quando você der check numa etapa da OS.
+        </div>
+      )}
+      {!loading && total > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {Object.entries(porServico).map(([servico, pts]) => (
+            <span key={servico} style={{
+              fontSize: 10.5, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
+              background: azul + '1a', color: azul,
+              border: `1px solid ${azul}33`,
+            }}>
+              {LABEL_SERVICO[servico] || servico} · {pts}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

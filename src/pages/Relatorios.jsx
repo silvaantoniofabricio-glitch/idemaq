@@ -29,6 +29,8 @@ import {
   fmtDuracao,
 } from '../hooks/useRelatorios'
 import { useRelatorioIA } from '../hooks/useRelatorioIA'
+import { usePontuacao } from '../hooks/usePontuacao'
+import { LABEL_SERVICO } from '../utils/pontuacao'
 
 // === Catálogo dos relatórios ===
 const RELATORIOS = [
@@ -962,6 +964,8 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
         )}
       </Card>
 
+      <PontuacaoDesempenho T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />
+
       <InsightIA T={T} dark={dark}
         markdown={markdown} loading={loadingIA} error={errorIA}
         onGerar={IA_DEPLOYED && !semDados ? () => gerar('funcionarios', dadosIA) : undefined}
@@ -969,6 +973,75 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
           ? 'Sem atuação no período — a análise IA habilita quando houver movimentações em os_historico.'
           : 'A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números da tabela acima.'} />
     </div>
+  )
+}
+
+// =============================================================================
+// PONTUAÇÃO POR DESEMPENHO — base do prêmio (06/07/2026)
+// Lê pre_diagnostico de todas as OS e calcula pontos por check carimbado
+// (src/hooks/usePontuacao.js). Placar sem conversão em R$ ainda — 1ª fase.
+// =============================================================================
+function PontuacaoDesempenho({ T, dark, iniIso, fimIso }) {
+  const azul = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const { data, loading, error } = usePontuacao({ iniIso, fimIso })
+
+  if (loading) return <RelatorioLoading T={T} />
+  if (error)   return <RelatorioErro T={T} dark={dark} msg={error} />
+  if (!data)   return null
+
+  const equipe = data.equipe || []
+
+  return (
+    <Card T={T} dark={dark} padding={0}>
+      <div style={{ padding: '12px 16px 10px' }}>
+        <SecHeader T={T} icon="ti-trophy" cor={amarelo} mb={0}>
+          Pontuação por desempenho · placar (sem prêmio em R$ ainda)
+        </SecHeader>
+      </div>
+
+      {equipe.length === 0 ? (
+        <div style={{ padding: '8px 16px 18px' }}>
+          <EmptyState T={T} compact icon="ti-trophy"
+            title="Sem pontos registrados no período"
+            description="Pontos são gerados quando um funcionário dá check numa etapa da OS (a partir de 06/07/2026)." />
+        </div>
+      ) : (
+        equipe.map((f, i) => (
+          <div key={f.funcionario_id || f.apelido} style={{
+            padding: '14px 16px',
+            borderTop: `1px solid ${T.border}`,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 26, height: 26, borderRadius: '50%',
+                  background: azul + '22', color: azul,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 800,
+                }}>{(f.apelido || '?').slice(0, 2).toUpperCase()}</span>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: corHero(dark) }}>{f.apelido}</span>
+                {i === 0 && f.total > 0 && (
+                  <i className="ti ti-crown" style={{ fontSize: 14, color: amarelo }} aria-hidden="true" title="Líder do período" />
+                )}
+              </div>
+              <span style={{
+                fontSize: 16, fontWeight: 800, color: amarelo,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{f.total} <span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted }}>pts</span></span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {Object.entries(f.porServico).map(([servico, pts]) => (
+                <Badge key={servico} variant="neutro" dark={dark} sm>
+                  {LABEL_SERVICO[servico] || servico} · {pts}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </Card>
   )
 }
 

@@ -26,6 +26,7 @@ export default function FormEquipamentoEdit({
 
   const TIPOS_EQUIP = [
     { id: 'lavadora',    label: 'Lavadora',    icon: 'ti-device-washing-machine' },
+    { id: 'lava_seca',   label: 'Lava e seca', icon: 'ti-wind' },
     { id: 'lava_loucas', label: 'Lava-louças', icon: 'ti-tool' },
     { id: 'microondas',  label: 'Microondas',  icon: 'ti-microwave' },
     { id: 'outros',      label: 'Outros',      icon: 'ti-cpu' },

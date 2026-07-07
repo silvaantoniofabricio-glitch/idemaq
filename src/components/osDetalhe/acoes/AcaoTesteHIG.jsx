@@ -53,6 +53,11 @@ const TESTES_POR_EQUIP = {
     { id: 'visual',      label: 'Aparência geral',  icon: 'eye' },
   ],
 }
+// Lava e seca usa os mesmos testes da lavadora + secagem (mais um mecanismo)
+TESTES_POR_EQUIP.lava_seca = [
+  ...TESTES_POR_EQUIP.lavadora,
+  { id: 'secagem', label: 'Secagem', icon: 'wind' },
+]
 
 const ACABAMENTO_POR_EQUIP = {
   lavadora: [
@@ -74,6 +79,7 @@ const ACABAMENTO_POR_EQUIP = {
     { id: 'visual',  label: 'Visual',  icon: 'eye' },
   ],
 }
+ACABAMENTO_POR_EQUIP.lava_seca = ACABAMENTO_POR_EQUIP.lavadora
 
 const OPCOES = [
   { id: 'ok',      label: 'OK',       icon: 'check',          corKey: 'green'  },
