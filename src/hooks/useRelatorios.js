@@ -1061,7 +1061,8 @@ export function useRelatorioFuncionarios({ iniIso, fimIso }) {
               somaDuracao: 0,
               durCount: 0,
               osSet: new Set(),
-              porEtapa: {}, // { etapa_de: { soma, n } }
+              porEtapa: {},     // { etapa_de: { soma, n } } — duração média (gargalo)
+              contagemEtapa: {}, // { etapa_de: n } — distribuição de trabalho (todas as movimentações)
             }
           }
           const f = porFunc[fid]
@@ -1077,6 +1078,7 @@ export function useRelatorioFuncionarios({ iniIso, fimIso }) {
               f.porEtapa[h.etapa_de].soma += Number(h.duracao_segundos)
               f.porEtapa[h.etapa_de].n += 1
             }
+            f.contagemEtapa[h.etapa_de] = (f.contagemEtapa[h.etapa_de] || 0) + 1
           }
         }
 
@@ -1094,6 +1096,16 @@ export function useRelatorioFuncionarios({ iniIso, fimIso }) {
             .map(([etapa, v]) => ({ etapa, label: LABEL_ETAPA[etapa] || etapa, media: v.soma / v.n }))
             .sort((a, b) => b.media - a.media)[0] || null
 
+          // Distribuição de trabalho — em que etapas essa pessoa mais atua (contagem, não duração)
+          const totalContagem = Object.values(f.contagemEtapa).reduce((s, n) => s + n, 0) || 1
+          const distribuicaoEtapas = Object.entries(f.contagemEtapa)
+            .map(([etapa, n]) => ({
+              etapa, label: LABEL_ETAPA[etapa] || etapa, n,
+              pct: Math.round((n / totalContagem) * 100),
+            }))
+            .sort((a, b) => b.n - a.n)
+            .slice(0, 4)
+
           return {
             id: f.id,
             nome: f.nome,
@@ -1109,6 +1121,7 @@ export function useRelatorioFuncionarios({ iniIso, fimIso }) {
               label: etapaMaisDemorada.label,
               tempo: fmtDuracao(etapaMaisDemorada.media),
             } : null,
+            distribuicaoEtapas,
           }
         }).sort((a, b) => b.etapasFeitas - a.etapasFeitas)
 

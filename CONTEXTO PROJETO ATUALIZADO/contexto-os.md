@@ -430,6 +430,22 @@ Motor de cálculo em `src/utils/pontuacao.js` (`calcularPontosOS(os)` pura, test
 
 **Onde aparece**:
 - Painel do Funcionário (`PainelFuncionario.jsx`) → card "Meus pontos do mês" (só o próprio, mês corrente) — desktop e mobile.
-- Relatórios → Funcionários (`Relatorios.jsx`) → card "Pontuação por desempenho" (todos, no período selecionado) — componente `PontuacaoDesempenho`.
+- Relatórios → Funcionários → ver §19 (redesenho, pontos foram absorvidos no card por pessoa).
 
 **Fase 1 apenas** — sem conversão em R$, sem desconto por garantia/retrabalho, sem metas. Combinado com o Toni: rodar 1 mês só de placar antes de comprometer dinheiro ou regra de desconto.
+
+## 19. Redesenho Relatórios/Funcionários — Atlassian Design (07/07/2026)
+
+Página inteira reconstruída em `RelatorioFuncionarios` (`src/pages/Relatorios.jsx`) usando as primitivas de `_AtlassianUI.jsx` (`AtlPanel`, `ATL_FONT`) — antes usava `Card`/`SecHeader` genéricos do design system principal. **O componente `PontuacaoDesempenho` (criado 07/07 de manhã) foi removido** — os pontos por pessoa foram absorvidos dentro do card de cada funcionário, pra não repetir a mesma lista de nomes em 3 lugares.
+
+**Estrutura nova**:
+- 6 KPIs de topo (`AtlKpi`): Pessoas ativas · Etapas registradas · OS atendidas · Pontos no período · OS c/ retrabalho · OS em garantia (as 2 últimas ficam verdes quando zero, vermelhas quando >0).
+- 1 `AtlPanel` por funcionário (grid responsivo), reunindo: pontos do período (com badges por serviço) + delta vs período anterior · grid de stats (Etapas/OS participadas/OS finalizadas/Tempo médio) · distribuição de etapas (mini barras — onde a pessoa mais atua) · qualidade (retrabalho + garantia, ou "Sem retrabalho ✓" em verde).
+- `InsightIA` no fim, inalterado.
+
+**2 hooks novos**:
+- `src/hooks/useRelatorioQualidade.js` — cruza `falha_teste` (retrabalho: OS que voltou do Teste com defeito) e `os.garantia`+`os_origem_id` (OS em garantia) com a **autoria dos checks de oficina** (`pre_diagnostico.oficina.execucao`) pra saber quem fez o conserto que falhou/voltou. Conta 1x por OS (não por defeito individual). Lógica de extração de autor (`autoresOficina`) testada isolada — não quebra com `pre_diagnostico` nulo/vazio.
+- **Comparativo com período anterior**: calculado inline em `RelatorioFuncionarios` (mesma duração do período selecionado, imediatamente antes) — chama `useRelatorioFuncionarios` e `usePontuacao` de novo com esse range e mostra `DeltaTag` (seta verde/vermelha) nos números.
+- `useRelatorioFuncionarios` (em `useRelatorios.js`) ganhou `distribuicaoEtapas` por pessoa — contagem de movimentações por etapa (não só duração/gargalo como antes).
+
+**Verificação**: build limpo + lógica de `calcularPontosOS`/`autoresOficina` testada rodando os módulos ESM reais via `node` direto (fora do bundler) com cenários simulados. **Não foi possível verificar visualmente no navegador** (sessão sem credenciais de login) — pedir pro Toni conferir a tela ao vivo na primeira oportunidade.

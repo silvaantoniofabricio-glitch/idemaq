@@ -30,7 +30,9 @@ import {
 } from '../hooks/useRelatorios'
 import { useRelatorioIA } from '../hooks/useRelatorioIA'
 import { usePontuacao } from '../hooks/usePontuacao'
+import { useRelatorioQualidade } from '../hooks/useRelatorioQualidade'
 import { LABEL_SERVICO } from '../utils/pontuacao'
+import { AtlPanel, ATL_FONT } from '../components/osDetalhe/acoes/_AtlassianUI'
 
 // === Catálogo dos relatórios ===
 const RELATORIOS = [
@@ -841,32 +843,61 @@ function RelatorioFinanceiro({ T, dark, iniIso, fimIso }) {
 }
 
 // =============================================================================
-// FUNCIONÁRIOS — dados reais (os_historico + usuarios + os)
-// Por funcionário: etapas feitas, tempo médio, OS participadas, OS finalizadas
-// no período, ticket médio e gargalo individual (etapa onde mais demora).
+// FUNCIONÁRIOS — dados reais (os_historico + usuarios + os + pontuação +
+// qualidade). Redesenho Atlassian Design (07/07/2026): 1 card por pessoa
+// reunindo performance + pontos + retrabalho/garantia, com comparativo do
+// período anterior. Ver contexto-os.md §18/19.
 // =============================================================================
 function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
   const azul = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const vermelho = corEtapa('red', dark)
+  const verde = corEtapa('green', dark)
+
   const { data, loading, error } = useRelatorioFuncionarios({ iniIso, fimIso })
+  const { data: pontosData, loading: loadingPontos } = usePontuacao({ iniIso, fimIso })
+  const { data: qualidadeData, loading: loadingQualidade } = useRelatorioQualidade({ iniIso, fimIso })
   const { markdown, loading: loadingIA, error: errorIA, gerar } = useRelatorioIA()
 
-  if (loading) return <RelatorioLoading T={T} />
-  if (error)   return <RelatorioErro    T={T} dark={dark} msg={error} />
-  if (!data)   return null
+  // Período anterior (mesma duração, imediatamente antes) — pra comparativo.
+  const { iniAntIso, fimAntIso } = useMemo(() => {
+    const ini = new Date(iniIso), fim = new Date(fimIso)
+    const dur = fim - ini
+    const fimAnt = new Date(ini.getTime() - 1)
+    const iniAnt = new Date(fimAnt.getTime() - dur)
+    return { iniAntIso: iniAnt.toISOString(), fimAntIso: fimAnt.toISOString() }
+  }, [iniIso, fimIso])
+  const { data: dataAnt } = useRelatorioFuncionarios({ iniIso: iniAntIso, fimIso: fimAntIso })
+  const { data: pontosAnt } = usePontuacao({ iniIso: iniAntIso, fimIso: fimAntIso })
+
+  const loadingGeral = loading || loadingPontos || loadingQualidade
+  if (loadingGeral && !data) return <RelatorioLoading T={T} />
+  if (error) return <RelatorioErro T={T} dark={dark} msg={error} />
+  if (!data) return null
 
   const equipe = data.equipe || []
   const semDados = equipe.length === 0
 
-  // Label amigável de papel
-  const labelPapel = {
-    dono: 'Dono', logistica: 'Logística', oficina: 'Oficina',
-  }
+  const labelPapel = { dono: 'Dono', logistica: 'Logística', oficina: 'Oficina' }
+
+  const antPorId = Object.fromEntries((dataAnt?.equipe || []).map(f => [f.id, f]))
+  const pontosPorId = Object.fromEntries((pontosData?.equipe || []).map(f => [f.funcionario_id, f]))
+  const pontosAntPorId = Object.fromEntries((pontosAnt?.equipe || []).map(f => [f.funcionario_id, f]))
+  const qualidadePorId = Object.fromEntries((qualidadeData?.equipe || []).map(f => [f.id, f]))
+
+  const totalPontos = pontosData?.totalPontos || 0
+  const totalFalhas = qualidadeData?.totalFalhas || 0
+  const totalGarantias = qualidadeData?.totalGarantias || 0
+
+  // Líder do período — maior pontuação (só se houver pontos)
+  const liderId = Object.values(pontosPorId).sort((a, b) => b.total - a.total)[0]?.funcionario_id || null
 
   // Payload pra IA — campos legíveis
   const dadosIA = {
     periodo: { ini: iniIso, fim: fimIso },
     totalEtapas: data.totalEtapas,
     totalOSAtendidas: data.totalOSAtendidas,
+    totalPontos, totalFalhas, totalGarantias,
     equipe: equipe.map(f => ({
       nome: f.nome,
       papel: f.papel,
@@ -877,171 +908,266 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
       faturamento: f.faturamento,
       ticketMedio: f.ticketMedio,
       etapaMaisDemorada: f.etapaMaisDemorada,
+      pontos: pontosPorId[f.id]?.total || 0,
+      falhasRetrabalho: qualidadePorId[f.id]?.falhas || 0,
+      garantias: qualidadePorId[f.id]?.garantias || 0,
     })),
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontFamily: ATL_FONT }}>
+
+      {/* KPIs topo */}
       <div style={{
-        display: 'grid', gap: 12,
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        display: 'grid', gap: 10,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
       }}>
-        <KPI T={T} dark={dark} label="Pessoas com atividade" valor={data.totalFuncionarios} cor={corHero(dark)}
-          icon="ti-users" />
-        <KPI T={T} dark={dark} label="Etapas registradas" valor={data.totalEtapas} cor={azul}
-          icon="ti-clipboard-check" />
-        <KPI T={T} dark={dark} label="OS atendidas" valor={data.totalOSAtendidas} cor={corHero(dark)}
-          icon="ti-clipboard-list" />
+        <AtlKpi T={T} dark={dark} icon="ti-users" cor={azul} label="Pessoas ativas" valor={data.totalFuncionarios} />
+        <AtlKpi T={T} dark={dark} icon="ti-clipboard-check" cor={azul} label="Etapas registradas" valor={data.totalEtapas} />
+        <AtlKpi T={T} dark={dark} icon="ti-clipboard-list" cor={azul} label="OS atendidas" valor={data.totalOSAtendidas} />
+        <AtlKpi T={T} dark={dark} icon="ti-trophy" cor={amarelo} label="Pontos no período" valor={totalPontos} />
+        <AtlKpi T={T} dark={dark} icon="ti-alert-triangle" cor={totalFalhas > 0 ? vermelho : verde} label="OS c/ retrabalho" valor={totalFalhas} />
+        <AtlKpi T={T} dark={dark} icon="ti-shield-check" cor={totalGarantias > 0 ? vermelho : verde} label="OS em garantia" valor={totalGarantias} />
       </div>
 
-      <Card T={T} dark={dark} padding={0}>
-        <div style={{ padding: '12px 16px 10px' }}>
-          <SecHeader T={T} icon="ti-users" cor={azul} mb={0}>
-            Performance da equipe
-          </SecHeader>
-        </div>
-
-        {semDados ? (
-          <div style={{ padding: '8px 16px 18px' }}>
+      {/* Cards por pessoa */}
+      {semDados ? (
+        <AtlPanel T={T} dark={dark}>
+          <div style={{ padding: '18px 16px' }}>
             <EmptyState T={T} compact icon="ti-users"
               title="Sem atuação registrada no período"
-              description="Funcionários aparecem aqui quando movem OS de etapa (registros em os_historico)." />
+              description="Funcionários aparecem aqui quando movem OS de etapa (registros em os_historico) ou dão check numa etapa da OS." />
           </div>
-        ) : (
-          <>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 80px 90px 100px 110px 110px',
-              gap: 10, padding: '8px 16px',
-              borderTop: `1px solid ${T.border}`,
-              background: T.cardAlt,
-              fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-              textTransform: 'uppercase', letterSpacing: '0.04em',
-            }}>
-              <div>Pessoa</div>
-              <div style={{ textAlign: 'right' }}>Etapas</div>
-              <div style={{ textAlign: 'right' }}>OS</div>
-              <div style={{ textAlign: 'right' }}>Finalizadas</div>
-              <div style={{ textAlign: 'right' }}>Tempo médio</div>
-              <div style={{ textAlign: 'right' }}>Ticket médio</div>
-            </div>
-
-            {equipe.map(f => (
-              <div key={f.id} style={{
-                display: 'grid',
-                gridTemplateColumns: '1.2fr 80px 90px 100px 110px 110px',
-                gap: 10, alignItems: 'center',
-                padding: '14px 16px',
-                borderTop: `1px solid ${T.border}`,
-              }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: corHero(dark) }}>{f.nome}</div>
-                  <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-                    {labelPapel[f.papel] || f.papel || '—'}
-                    {f.etapaMaisDemorada && (
-                      <> · gargalo: {f.etapaMaisDemorada.label} ({f.etapaMaisDemorada.tempo})</>
-                    )}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: azul, fontVariantNumeric: 'tabular-nums' }}>
-                  {f.etapasFeitas}
-                </div>
-                <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                  {f.osTotal}
-                </div>
-                <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                  {f.osFinalizadas}
-                </div>
-                <div style={{ textAlign: 'right', fontSize: 13, color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                  {f.tempoMedio}
-                </div>
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
-                  {fmtBRL(f.ticketMedio)}
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-      </Card>
-
-      <PontuacaoDesempenho T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />
+        </AtlPanel>
+      ) : (
+        <div style={{
+          display: 'grid', gap: 12,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+        }}>
+          {equipe.map(f => (
+            <PessoaCard key={f.id} T={T} dark={dark}
+              f={f}
+              ant={antPorId[f.id]}
+              pontos={pontosPorId[f.id]}
+              pontosAnt={pontosAntPorId[f.id]}
+              qualidade={qualidadePorId[f.id]}
+              labelPapel={labelPapel}
+              lider={liderId === f.id && (pontosPorId[f.id]?.total || 0) > 0}
+            />
+          ))}
+        </div>
+      )}
 
       <InsightIA T={T} dark={dark}
         markdown={markdown} loading={loadingIA} error={errorIA}
         onGerar={IA_DEPLOYED && !semDados ? () => gerar('funcionarios', dadosIA) : undefined}
         previewTexto={semDados
           ? 'Sem atuação no período — a análise IA habilita quando houver movimentações em os_historico.'
-          : 'A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números da tabela acima.'} />
+          : 'A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números acima.'} />
     </div>
   )
 }
 
-// =============================================================================
-// PONTUAÇÃO POR DESEMPENHO — base do prêmio (06/07/2026)
-// Lê pre_diagnostico de todas as OS e calcula pontos por check carimbado
-// (src/hooks/usePontuacao.js). Placar sem conversão em R$ ainda — 1ª fase.
-// =============================================================================
-function PontuacaoDesempenho({ T, dark, iniIso, fimIso }) {
+// ─── KPI compacto Atlassian ────────────────────────────────────────────────
+function AtlKpi({ T, dark, icon, cor, label, valor }) {
+  return (
+    <div style={{
+      background: T.card, border: `1px solid ${T.border}`, borderRadius: 4,
+      padding: '10px 12px', fontFamily: ATL_FONT,
+      boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 13, color: cor }} aria-hidden="true" />
+        <span style={{
+          fontSize: 10, fontWeight: 600, color: T.textMuted,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: cor, fontVariantNumeric: 'tabular-nums' }}>
+        {valor}
+      </div>
+    </div>
+  )
+}
+
+// ─── Indicador de variação vs período anterior ────────────────────────────
+function DeltaTag({ dark, diff, unidade = '' }) {
+  if (diff == null || diff === 0) return null
+  const subiu = diff > 0
+  const cor = subiu ? corEtapa('green', dark) : corEtapa('red', dark)
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 1,
+      fontSize: 10.5, fontWeight: 700, color: cor,
+    }}>
+      <i className={`ti ti-arrow-${subiu ? 'up' : 'down'}-right`} style={{ fontSize: 11 }} aria-hidden="true" />
+      {Math.abs(diff)}{unidade}
+    </span>
+  )
+}
+
+// ─── Estatística pequena (label + valor) dentro do card da pessoa ─────────
+function StatMini({ T, label, valor, dark, diff }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 10, color: T.textMuted, fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '.03em',
+      }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 1 }}>
+        <span style={{
+          fontSize: 15, fontWeight: 700, color: T.textPrimary,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{valor}</span>
+        <DeltaTag dark={dark} diff={diff} />
+      </div>
+    </div>
+  )
+}
+
+// ─── Card completo por pessoa — performance + pontos + qualidade ─────────
+function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel, lider }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
-  const { data, loading, error } = usePontuacao({ iniIso, fimIso })
+  const vermelho = corEtapa('red', dark)
+  const verde = corEtapa('green', dark)
 
-  if (loading) return <RelatorioLoading T={T} />
-  if (error)   return <RelatorioErro T={T} dark={dark} msg={error} />
-  if (!data)   return null
-
-  const equipe = data.equipe || []
+  const totalPontos = pontos?.total || 0
+  const totalPontosAnt = pontosAnt?.total ?? null
+  const falhas = qualidade?.falhas || 0
+  const garantias = qualidade?.garantias || 0
+  const semRetrabalho = falhas === 0 && garantias === 0
 
   return (
-    <Card T={T} dark={dark} padding={0}>
-      <div style={{ padding: '12px 16px 10px' }}>
-        <SecHeader T={T} icon="ti-trophy" cor={amarelo} mb={0}>
-          Pontuação por desempenho · placar (sem prêmio em R$ ainda)
-        </SecHeader>
-      </div>
-
-      {equipe.length === 0 ? (
-        <div style={{ padding: '8px 16px 18px' }}>
-          <EmptyState T={T} compact icon="ti-trophy"
-            title="Sem pontos registrados no período"
-            description="Pontos são gerados quando um funcionário dá check numa etapa da OS (a partir de 06/07/2026)." />
+    <AtlPanel T={T} dark={dark}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            width: 24, height: 24, borderRadius: '50%',
+            background: azul + '22', color: azul,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10.5, fontWeight: 800, flexShrink: 0,
+          }}>{(f.nome || '?').slice(0, 2).toUpperCase()}</span>
+          <span>{f.nome}</span>
+          {lider && (
+            <i className="ti ti-crown" style={{ fontSize: 13, color: amarelo }}
+              aria-hidden="true" title="Líder de pontos no período" />
+          )}
         </div>
-      ) : (
-        equipe.map((f, i) => (
-          <div key={f.funcionario_id || f.apelido} style={{
-            padding: '14px 16px',
-            borderTop: `1px solid ${T.border}`,
-            display: 'flex', flexDirection: 'column', gap: 8,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  width: 26, height: 26, borderRadius: '50%',
-                  background: azul + '22', color: azul,
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800,
-                }}>{(f.apelido || '?').slice(0, 2).toUpperCase()}</span>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: corHero(dark) }}>{f.apelido}</span>
-                {i === 0 && f.total > 0 && (
-                  <i className="ti ti-crown" style={{ fontSize: 14, color: amarelo }} aria-hidden="true" title="Líder do período" />
-                )}
-              </div>
+      }
+      action={
+        <span style={{
+          fontSize: 10, color: T.textMuted, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '.04em',
+        }}>{labelPapel[f.papel] || f.papel || '—'}</span>
+      }>
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Pontos — destaque */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 600 }}>Pontos no período</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
               <span style={{
-                fontSize: 16, fontWeight: 800, color: amarelo,
+                fontSize: 22, fontWeight: 800, color: amarelo,
                 fontVariantNumeric: 'tabular-nums',
-              }}>{f.total} <span style={{ fontSize: 11, fontWeight: 500, color: T.textMuted }}>pts</span></span>
+              }}>{totalPontos}</span>
+              <DeltaTag dark={dark} diff={totalPontosAnt != null ? totalPontos - totalPontosAnt : null} />
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {Object.entries(f.porServico).map(([servico, pts]) => (
-                <Badge key={servico} variant="neutro" dark={dark} sm>
-                  {LABEL_SERVICO[servico] || servico} · {pts}
-                </Badge>
+          </div>
+          {pontos && Object.keys(pontos.porServico || {}).length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+              {Object.entries(pontos.porServico).map(([s, pts]) => (
+                <span key={s} style={{
+                  fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99,
+                  background: azul + '1a', color: azul, border: `1px solid ${azul}33`,
+                }}>
+                  {LABEL_SERVICO[s] || s} · {pts}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Grid de stats */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+          paddingTop: 10, borderTop: `1px solid ${T.border}`,
+        }}>
+          <StatMini T={T} dark={dark} label="Etapas"
+            valor={f.etapasFeitas} diff={ant ? f.etapasFeitas - ant.etapasFeitas : null} />
+          <StatMini T={T} dark={dark} label="OS participadas" valor={f.osTotal} />
+          <StatMini T={T} dark={dark} label="OS finalizadas" valor={f.osFinalizadas} />
+          <StatMini T={T} dark={dark} label="Tempo médio" valor={f.tempoMedio} />
+        </div>
+
+        {/* Distribuição de etapas — onde essa pessoa mais atua */}
+        {f.distribuicaoEtapas?.length > 0 && (
+          <div>
+            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+              Onde atua mais
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {f.distribuicaoEtapas.map(d => (
+                <div key={d.etapa} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{
+                    fontSize: 11, color: T.textSecondary, width: 82, flexShrink: 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{d.label}</span>
+                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
+                    <div style={{ width: `${d.pct}%`, height: '100%', background: azul, borderRadius: 3 }} />
+                  </div>
+                  <span style={{
+                    fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
+                    width: 18, textAlign: 'right', flexShrink: 0,
+                  }}>{d.n}</span>
+                </div>
               ))}
             </div>
           </div>
-        ))
-      )}
-    </Card>
+        )}
+
+        {/* Qualidade — retrabalho e garantia */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 6,
+          paddingTop: 10, borderTop: `1px solid ${T.border}`,
+        }}>
+          {semRetrabalho ? (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: 11, fontWeight: 600, color: verde,
+            }}>
+              <i className="ti ti-shield-check" style={{ fontSize: 13 }} aria-hidden="true" />
+              Sem retrabalho no período
+            </span>
+          ) : (
+            <>
+              {falhas > 0 && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, fontWeight: 600, color: vermelho,
+                  background: vermelho + '15', padding: '3px 8px', borderRadius: 99,
+                }}>
+                  <i className="ti ti-alert-triangle" style={{ fontSize: 12 }} aria-hidden="true" />
+                  {falhas} {falhas === 1 ? 'OS voltou' : 'OS voltaram'} do teste
+                </span>
+              )}
+              {garantias > 0 && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, fontWeight: 600, color: vermelho,
+                  background: vermelho + '15', padding: '3px 8px', borderRadius: 99,
+                }}>
+                  <i className="ti ti-shield-x" style={{ fontSize: 12 }} aria-hidden="true" />
+                  {garantias} em garantia
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+      </div>
+    </AtlPanel>
   )
 }
 
