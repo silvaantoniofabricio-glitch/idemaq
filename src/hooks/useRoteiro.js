@@ -165,9 +165,29 @@ export function useRoteiro({ dia, responsavelId } = {}) {
     return { ok: true }
   }, [tabelaAusente, itens])
 
+  // ─── Reatribuir uma tarefa pra OUTRO funcionário (arrastar entre colunas) ──
+  // `idsOrdenados` é a nova ordem da coluna de DESTINO já com o item incluído.
+  const reatribuir = useCallback(async (id, responsavelId, idsOrdenados) => {
+    if (tabelaAusente) return offline()
+    const prev = itens
+    const ordemPorId = new Map(idsOrdenados.map((x, i) => [x, i]))
+    setItens(p => p.map(i => {
+      if (i.id === id) return { ...i, responsavel_id: responsavelId, ordem: ordemPorId.get(id) ?? 0 }
+      if (ordemPorId.has(i.id)) return { ...i, ordem: ordemPorId.get(i.id) }
+      return i
+    }))
+    const updates = idsOrdenados.map((x, i) =>
+      x === id
+        ? supabase.from('roteiro_item').update({ responsavel_id: responsavelId, ordem: i }).eq('id', x)
+        : supabase.from('roteiro_item').update({ ordem: i }).eq('id', x))
+    const results = await Promise.all(updates)
+    if (results.some(r => r.error)) { setItens(prev); return { error: results.find(r => r.error).error } }
+    return { ok: true }
+  }, [tabelaAusente, itens])
+
   return {
     itens, loading, tabelaAusente, erro, dia: diaAtual,
-    adicionar, marcarFeito, editarTexto, setUrgente, setOS, remover, reordenar,
+    adicionar, marcarFeito, editarTexto, setUrgente, setOS, remover, reordenar, reatribuir,
     recarregar: carregar,
   }
 }

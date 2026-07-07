@@ -87,6 +87,7 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
   const [novoOS, setNovoOS] = useState(null) // { id, numero } da OS vinculada à nova tarefa
   const [dragId, setDragId] = useState(null)
   const [overId, setOverId] = useState(null)
+  const [colOver, setColOver] = useState(false)  // arrastando algo (de outra coluna) sobre esta
   const novoRef = useRef(null)
 
   const feitas = itens.filter(i => i.feito).length
@@ -99,21 +100,43 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
     setTimeout(() => novoRef.current?.focus(), 30)
   }
 
-  function onDrop(alvoId) {
-    if (!dragId || dragId === alvoId) { setDragId(null); setOverId(null); return }
-    const ids = itens.map(i => i.id)
-    const from = ids.indexOf(dragId), to = ids.indexOf(alvoId)
-    if (from < 0 || to < 0) { setDragId(null); setOverId(null); return }
-    ids.splice(to, 0, ids.splice(from, 1)[0])
-    R.reordenar(ids)
-    setDragId(null); setOverId(null)
+  function limparDrag() { setDragId(null); setOverId(null); setColOver(false) }
+
+  // Drop numa tarefa (alvoId) ou na coluna (alvoId=null → fim). Lê o id arrastado
+  // do dataTransfer pra funcionar ENTRE colunas (reatribuir de funcionário).
+  function handleDrop(alvoId, e) {
+    e.preventDefault(); e.stopPropagation()
+    const draggedId = e.dataTransfer.getData('text/roteiro')
+    limparDrag()
+    if (!draggedId || draggedId === alvoId) return
+    const dragged = R.itens.find(i => i.id === draggedId)
+    if (!dragged) return
+    const meusIds = itens.map(i => i.id)
+    const insertAt = alvoId ? meusIds.indexOf(alvoId) : meusIds.length
+    if (dragged.responsavel_id === pessoa.id) {
+      // mesma coluna → só reordenar
+      const ids = meusIds.filter(x => x !== draggedId)
+      const at = alvoId ? ids.indexOf(alvoId) : ids.length
+      ids.splice(at < 0 ? ids.length : at, 0, draggedId)
+      R.reordenar(ids)
+    } else {
+      // outra coluna → reatribuir pra esta pessoa, na posição do alvo (ou fim)
+      const ids = [...meusIds]
+      ids.splice(insertAt < 0 ? ids.length : insertAt, 0, draggedId)
+      R.reatribuir(draggedId, pessoa.id, ids)
+    }
   }
 
   return (
-    <div style={{
+    <div
+      onDragOver={e => { if (e.dataTransfer.types.includes('text/roteiro')) { e.preventDefault(); if (!colOver) setColOver(true) } }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setColOver(false) }}
+      onDrop={e => handleDrop(null, e)}
+      style={{
       flex: '1 1 300px', minWidth: 270, display: 'flex', flexDirection: 'column',
-      border: `1px solid ${T.border}`, borderRadius: 10, overflow: 'hidden',
-      background: dark ? 'rgba(255,255,255,0.02)' : '#fbfcfe',
+      border: `1px solid ${colOver ? AZUL : T.border}`, borderRadius: 10, overflow: 'hidden',
+      background: colOver ? (dark ? 'rgba(91,155,213,0.08)' : 'rgba(91,155,213,0.05)') : (dark ? 'rgba(255,255,255,0.02)' : '#fbfcfe'),
+      transition: 'border-color .12s, background .12s',
     }}>
       {/* Cabeçalho da pessoa */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 11px', borderBottom: `1px solid ${T.border}` }}>
@@ -143,15 +166,15 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
           return (
             <div key={item.id}
               onDragOver={e => { e.preventDefault(); if (overId !== item.id) setOverId(item.id) }}
-              onDrop={() => onDrop(item.id)}
+              onDrop={e => handleDrop(item.id, e)}
               style={{
                 display: 'flex', gap: 4, padding: '3px 8px 3px 3px', alignItems: 'flex-start',
                 borderTop: overId === item.id && dragId && dragId !== item.id ? `2px solid ${AZUL}` : '2px solid transparent',
                 opacity: dragId === item.id ? 0.4 : 1,
               }}>
               <span draggable
-                onDragStart={() => setDragId(item.id)}
-                onDragEnd={() => { setDragId(null); setOverId(null) }}
+                onDragStart={e => { e.dataTransfer.setData('text/roteiro', item.id); e.dataTransfer.effectAllowed = 'move'; setDragId(item.id) }}
+                onDragEnd={limparDrag}
                 style={{ cursor: 'grab', color: T.textDim, padding: '5px 1px', opacity: 0.4, flexShrink: 0 }}>
                 <i className="ti ti-grip-vertical" style={{ fontSize: 12 }} aria-hidden="true" />
               </span>
