@@ -21,7 +21,7 @@ import { corEtapa } from '../../../utils/colors'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useOSItens } from '../../../hooks/useOSItens'
-import { useAutorCheck, fmtAutor as autorDe } from '../../../hooks/useAutorCheck'
+import { useAutorCheck, fmtAutor as autorDe, detectarTrocaAutor } from '../../../hooks/useAutorCheck'
 import PecasComprarSection from './PecasComprarSection'
 import {
   AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
@@ -463,7 +463,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   const falhas = Array.isArray(os?.pre_diagnostico?.teste_falhas)
     ? os.pre_diagnostico.teste_falhas : []
 
-  function persistExec(novoExec) {
+  function persistExec(novoExec, alerta) {
     const desmOk = !!novoExec.desmontagem?.feito
     const montOk = !!novoExec.montagem?.feito
     const limpServOk = !!novoExec.limpeza_serv?.feito
@@ -490,20 +490,36 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     novaOficina.manut_total  = manutChecks.length
     novaOficina.manut_feitos = manutChecks.filter(c => !!novoExec.manut_serv?.[c.id]).length
 
+    const base = os.pre_diagnostico || {}
     onUpdateOS?.(os.numero, {
-      pre_diagnostico: { ...(os.pre_diagnostico || {}), oficina: novaOficina },
+      pre_diagnostico: {
+        ...base,
+        oficina: novaOficina,
+        ...(alerta ? { alertas_pontuacao: [...(base.alertas_pontuacao || []), alerta] } : {}),
+      },
     })
   }
 
+  // Alerta de reatribuição: dispara sempre que quem mexe agora (marcando OU
+  // desmarcando) é diferente de quem tinha o carimbo antes — rastro pro
+  // relatório de Qualidade, ver useAutorCheck.detectarTrocaAutor.
+  const LABEL_SECAO = {
+    desmontagem: 'Desmontagem', montagem: 'Montagem', limpeza_serv: 'Limpeza',
+  }
   const toggleEm = (secao) => (chaveId) => {
     const atual = exec[secao] || {}
+    const antigoAutor = atual[chaveId]
+    const quemAgora = carimbo()
     const novo = { ...atual }
     if (novo[chaveId]) {
       delete novo[chaveId]
     } else {
-      novo[chaveId] = carimbo()
+      novo[chaveId] = quemAgora
     }
-    persistExec({ ...exec, [secao]: novo })
+    const troca = detectarTrocaAutor(antigoAutor, quemAgora)
+    const labelSecao = LABEL_SECAO[secao] || `Manutenção · ${chaveId}`
+    const alerta = troca ? { campo: `Conserto · ${labelSecao}`, ...troca, em: quemAgora.em } : null
+    persistExec({ ...exec, [secao]: novo }, alerta)
   }
 
   const limpServDone = !temLimpeza || !!limpVal.feito

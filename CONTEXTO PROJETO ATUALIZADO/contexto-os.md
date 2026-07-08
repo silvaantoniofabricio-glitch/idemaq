@@ -463,3 +463,20 @@ Página inteira reconstruída em `RelatorioFuncionarios` (`src/pages/Relatorios.
 **Correção 07/07/2026**: removidos os 3 `INSERT`s manuais (`Kanban.jsx`, `useOSDetalheModal.js`, `OSMobile.jsx`) — código agora só faz o `UPDATE` em `os.etapa`, o trigger cuida do resto. `sql/117-limpar-duplicatas-os-historico.sql` (rodar manualmente) apaga as linhas duplicadas já existentes — sinal de duplicata: `etapa_de IS NOT NULL AND duracao_segundos IS NULL` com uma "irmã" idêntica que tem `duracao_segundos` preenchido a <30s de diferença (só o INSERT manual deixava duração nula; o trigger sempre calcula).
 
 **Lição pra próximas sessões**: antes de "corrigir" uma lacuna aparente em gravação de dados, **checar se existe trigger no banco** (`SELECT * FROM pg_trigger WHERE tgrelid = 'TABELA'::regclass`) — várias tabelas deste projeto (`os`, possivelmente outras) têm triggers criados direto no Supabase dashboard, nunca versionados em `sql/`. Ver também [[feedback_verificar_coluna_antes_select]] (mesma categoria de erro: assumir a partir só do código React sem checar o banco).
+
+## 21. "Roubo de pontos" — alertas de reatribuição (07/07/2026)
+
+**O problema**: pontuação por bloco (Diagnóstico, Teste final) e por check único (Desmontagem/Montagem/Limpeza na Oficina) atribui o crédito a quem tem o carimbo **mais recente**. Como cada check é um campo único sobrescrito (não um log), qualquer pessoa pode desmarcar+remarcar um item que já era de outra pessoa e "roubar" o crédito — em 1 clique só (desmarcar já esconde o autor anterior).
+
+**Não dá pra impedir 100%** (é um problema de confiança, não de código) — decisão com o Toni: em vez de travar, **deixar rastro visível**.
+
+**Como funciona**: `detectarTrocaAutor(autorAnterior, quemMexeuAgora)` em `src/hooks/useAutorCheck.js` — dispara sempre que quem mexe agora (marcando OU desmarcando) é uma pessoa DIFERENTE de quem tinha o carimbo antes. Compara por `uid` quando os dois lados têm; cai pro `apelido` só se faltar uid de um lado (nunca cruza uid com apelido — isso dava falso positivo, testado e corrigido). Gera um alerta: `{ campo, autor_anterior, autor_novo, em }`.
+
+**Onde é gravado**: array `pre_diagnostico.alertas_pontuacao` (append-only, mesmo padrão dos outros campos — sem tabela nova). Detecção acontece nos 3 lugares com check:
+- `AcaoDiagnosticoHIG.jsx` — testes (`montarItensTestes`) e componentes (`onSetAcao`, via `alertasPendentes` state que junta no autosave debounced)
+- `AcaoTesteHIG.jsx` — testes + acabamento (`serializarChecklist`, alertas passados pro `salvarChk` que ganhou um 3º parâmetro em `useChecklistEtapa.salvar`)
+- `AcaoOficinaHIG.jsx` — `toggleEm` (desmontagem/montagem/limpeza/cada peça de manutenção), alerta passado pro `persistExec`
+
+**Onde aparece**: Relatórios → Funcionários → seção "Alertas de reatribuição" (só mostra se tiver algo no período) — lista OS #, campo, "Fulano → Beltrano", data/hora. Hook: `src/hooks/useAlertasPontuacao.js`.
+
+**Verificação**: `detectarTrocaAutor` testado isolado com 7 cenários (pessoa diferente, mesma pessoa, item nunca teve dono, desmarcar sem novo autor, dado legado sem uid) — pegou e corrigiu um bug real (comparação uid-vs-apelido cruzada dava falso positivo em dado legado). Build limpo. Não verificado visualmente (sem login).

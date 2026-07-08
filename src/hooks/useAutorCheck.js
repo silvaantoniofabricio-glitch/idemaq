@@ -39,6 +39,25 @@ export function useAutorCheck() {
   return { uid, carimbo }
 }
 
+// Detecta troca de dono num check — usado pro rastro de "alertas de
+// reatribuição" no relatório de Qualidade (07/07/2026). Dispara sempre que
+// quem mexe agora é diferente de quem tinha o carimbo antes, seja marcando
+// por cima ou desmarcando — 1 clique já basta pra detectar, não precisa
+// rastrear sequência de desmarcar+remarcar.
+// Retorna null se não houve troca real (mesma pessoa, ou item nunca teve dono).
+export function detectarTrocaAutor(autorAnterior, quemMexeuAgora) {
+  if (!autorAnterior?.apelido) return null
+  if (!quemMexeuAgora?.apelido) return null
+  // Compara por uid quando os dois têm (mais confiável); cai pro apelido só
+  // quando falta uid de um dos lados (dado legado) — nunca cruza uid com
+  // apelido, senão dado antigo sem uid sempre "parece" pessoa diferente.
+  const mesmaPessoa = autorAnterior.uid && quemMexeuAgora.uid
+    ? autorAnterior.uid === quemMexeuAgora.uid
+    : autorAnterior.apelido === quemMexeuAgora.apelido
+  if (mesmaPessoa) return null
+  return { autor_anterior: autorAnterior, autor_novo: quemMexeuAgora }
+}
+
 // Formata o carimbo pra exibição — "Guilherme · 17/06 10:30".
 // Aceita tanto o valor-carimbo da oficina quanto o campo `autor` dos
 // checklists. Retorna null pra dados antigos (true) ou vazios.

@@ -21,7 +21,7 @@ import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import { useOSItens } from '../../../hooks/useOSItens'
-import { useAutorCheck, fmtAutor } from '../../../hooks/useAutorCheck'
+import { useAutorCheck, fmtAutor, detectarTrocaAutor } from '../../../hooks/useAutorCheck'
 import {
   AtlPanel, AtlButton, ATL_FONT,
 } from './_AtlassianUI'
@@ -257,15 +257,24 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
 
   // Autoria: quando o valor de um item MUDA, carimba com o usuário logado;
   // quando não muda, preserva o autor anterior (não sobrescreve quem fez).
+  // Se quem mexeu agora é diferente de quem tinha o carimbo antes, registra
+  // um alerta de reatribuição (rastro pro relatório de Qualidade).
   function serializarChecklist(novoTestes, novoAcab) {
     const t = novoTestes ?? testes
     const a = novoAcab ?? acabamento
     const anteriores = chkItens || []
+    const alertas = []
     const linhasTestes = TESTES.map(item => {
       const antigo = anteriores.find(i => i.id === `teste:${item.id}`)
       const valor  = t[item.id] || null
       const mudou  = valor !== (antigo?.valor ?? null)
-      const autor  = valor == null ? undefined : (mudou ? carimbo() : antigo?.autor)
+      let autor = antigo?.autor
+      if (mudou) {
+        const quemAgora = carimbo()
+        autor = valor == null ? undefined : quemAgora
+        const troca = detectarTrocaAutor(antigo?.autor, quemAgora)
+        if (troca) alertas.push({ campo: `Teste final · ${item.label}`, ...troca, em: quemAgora.em })
+      }
       return {
         id: `teste:${item.id}`, label: item.label,
         checked: t[item.id] === 'ok',
@@ -278,26 +287,34 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
           const antigo  = anteriores.find(i => i.id === `acab:${item.id}`)
           const checked = !!a[item.id]
           const mudou   = checked !== !!antigo?.checked
-          const autor   = !checked ? undefined : (mudou ? carimbo() : antigo?.autor)
+          let autor = antigo?.autor
+          if (mudou) {
+            const quemAgora = carimbo()
+            autor = checked ? quemAgora : undefined
+            const troca = detectarTrocaAutor(antigo?.autor, quemAgora)
+            if (troca) alertas.push({ campo: `Teste final · ${item.label}`, ...troca, em: quemAgora.em })
+          }
           return {
             id: `acab:${item.id}`, label: item.label, checked,
             ...(autor ? { autor } : {}),
           }
         })
       : []
-    return [...linhasTestes, ...linhasAcab]
+    return { itens: [...linhasTestes, ...linhasAcab], alertas }
   }
 
   function setResultado(testeId, valor) {
     const novoTestes = { ...testes, [testeId]: valor }
     setTestes(novoTestes)
-    salvarChk(serializarChecklist(novoTestes, null), null)
+    const { itens, alertas } = serializarChecklist(novoTestes, null)
+    salvarChk(itens, null, alertas)
   }
 
   function toggleAcab(itemId) {
     const novoAcab = { ...acabamento, [itemId]: !acabamento[itemId] }
     setAcabamento(novoAcab)
-    salvarChk(serializarChecklist(null, novoAcab), null)
+    const { itens, alertas } = serializarChecklist(null, novoAcab)
+    salvarChk(itens, null, alertas)
   }
 
   const falhas = TESTES
@@ -314,7 +331,8 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
 
   async function aprovar() {
     setSalvando(true)
-    await salvarChk(serializarChecklist(), null)
+    const { itens, alertas } = serializarChecklist()
+    await salvarChk(itens, null, alertas)
     if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     await sincronizarAbertas([])
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'entrega')
@@ -324,7 +342,8 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
 
   async function voltarOficina() {
     setSalvando(true)
-    await salvarChk(serializarChecklist(), null)
+    const { itens, alertas } = serializarChecklist()
+    await salvarChk(itens, null, alertas)
     if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     await sincronizarAbertas(falhas)
     const oficina = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')

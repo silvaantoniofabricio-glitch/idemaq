@@ -57,7 +57,10 @@ export function useChecklistEtapa(osId, etapaDb) {
   // Salva o checklist da etapa em pre_diagnostico.checklist.<etapa>.
   // Lê o pre_diagnostico atual (otimisticamente do estado, fallback no DB)
   // e merge com o novo valor, preservando outros campos.
-  const salvar = useCallback(async (novosItens, novasObs) => {
+  // novosAlertas (opcional): alertas de reatribuição de autoria detectados
+  // nesta chamada — anexados (append) em pre_diagnostico.alertas_pontuacao
+  // usando o preDiagAtual recém-buscado, pra não perder alertas concorrentes.
+  const salvar = useCallback(async (novosItens, novasObs, novosAlertas) => {
     if (!isUUID(osId) || !etapaDb) {
       console.warn('[useChecklistEtapa] osId/etapa inválido', { osId, etapaDb })
       return { data: null, error: new Error('osId/etapa inválido') }
@@ -87,6 +90,9 @@ export function useChecklistEtapa(osId, etapaDb) {
         ...(preDiagAtual.checklist || {}),
         [etapaDb]: novoSlot,
       },
+      ...(novosAlertas?.length
+        ? { alertas_pontuacao: [...(preDiagAtual.alertas_pontuacao || []), ...novosAlertas] }
+        : {}),
     }
     setPreDiagnostico(novoPreDiag)
 

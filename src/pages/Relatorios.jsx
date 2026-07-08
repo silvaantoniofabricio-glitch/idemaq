@@ -31,6 +31,7 @@ import {
 import { useRelatorioIA } from '../hooks/useRelatorioIA'
 import { usePontuacao } from '../hooks/usePontuacao'
 import { useRelatorioQualidade } from '../hooks/useRelatorioQualidade'
+import { useAlertasPontuacao } from '../hooks/useAlertasPontuacao'
 import { LABEL_SERVICO } from '../utils/pontuacao'
 import { AtlPanel, ATL_FONT } from '../components/osDetalhe/acoes/_AtlassianUI'
 
@@ -857,6 +858,7 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
   const { data, loading, error } = useRelatorioFuncionarios({ iniIso, fimIso })
   const { data: pontosData, loading: loadingPontos } = usePontuacao({ iniIso, fimIso })
   const { data: qualidadeData, loading: loadingQualidade } = useRelatorioQualidade({ iniIso, fimIso })
+  const { data: alertasData, loading: loadingAlertas } = useAlertasPontuacao({ iniIso, fimIso })
   const { markdown, loading: loadingIA, error: errorIA, gerar } = useRelatorioIA()
 
   // Período anterior (mesma duração, imediatamente antes) — pra comparativo.
@@ -958,6 +960,10 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
         </div>
       )}
 
+      {!loadingAlertas && alertasData?.alertas?.length > 0 && (
+        <AlertasReatribuicao T={T} dark={dark} alertas={alertasData.alertas} />
+      )}
+
       <InsightIA T={T} dark={dark}
         markdown={markdown} loading={loadingIA} error={errorIA}
         onGerar={IA_DEPLOYED && !semDados ? () => gerar('funcionarios', dadosIA) : undefined}
@@ -965,6 +971,44 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
           ? 'Sem atuação no período — a análise IA habilita quando houver movimentações em os_historico.'
           : 'A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números acima.'} />
     </div>
+  )
+}
+
+// ─── Alertas de reatribuição — rastro de quando alguém mexeu num check que
+// já tinha o carimbo de outra pessoa (07/07/2026, ver useAutorCheck.js). Não
+// impede a reatribuição, só deixa visível pro dono revisar se quiser. ────
+function AlertasReatribuicao({ T, dark, alertas }) {
+  const vermelho = corEtapa('red', dark)
+  return (
+    <AtlPanel T={T} dark={dark}
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 13, color: vermelho }} aria-hidden="true" />
+          <span>Alertas de reatribuição</span>
+        </div>
+      }
+      count={alertas.length}>
+      {alertas.map((a, i) => (
+        <div key={i} style={{
+          padding: '10px 14px',
+          borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 10, fontFamily: ATL_FONT,
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: T.textPrimary }}>
+              OS #{a.os_numero} · {a.campo}
+            </div>
+            <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 2 }}>
+              {a.autor_anterior?.apelido} → {a.autor_novo?.apelido}
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: T.textMuted, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+            {a.em ? new Date(a.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+          </div>
+        </div>
+      ))}
+    </AtlPanel>
   )
 }
 

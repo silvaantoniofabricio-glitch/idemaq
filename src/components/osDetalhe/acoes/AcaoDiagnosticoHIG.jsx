@@ -27,7 +27,7 @@ import { semAcento } from '../../../utils/fmt'
 import { CATEGORIAS_PECA, GRUPOS_CATEGORIA } from '../../../utils/categoriasPeca'
 import { ETAPAS_TODOS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
-import { useAutorCheck, fmtAutor } from '../../../hooks/useAutorCheck'
+import { useAutorCheck, fmtAutor, detectarTrocaAutor } from '../../../hooks/useAutorCheck'
 import {
   AtlPanel, AtlButton, ATL_FONT, atlHover, atlSurfaceSunken,
 } from './_AtlassianUI'
@@ -418,6 +418,8 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   const [grupoAberto, setGrupoAberto]   = useState(null)
   const [busca, setBusca]               = useState('')
   const [salvando, setSalvando]         = useState(false)
+  // Alertas de reatribuição pendentes (componentes) — juntam no autosave debounced.
+  const [alertasPendentes, setAlertasPendentes] = useState([])
 
   // Sempre lê o pre_diagnostico mais fresco (evita closures stale nos timeouts).
   const osRef = useRef(os)
@@ -475,13 +477,22 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   // ── Persistência: testes ──────────────────────────────────────────────────
   // Autoria: quando o valor de um teste MUDA, carimba com o usuário logado;
   // quando não muda, preserva o autor anterior (não sobrescreve quem fez).
+  // Se quem mexeu agora é diferente de quem tinha o carimbo antes, registra
+  // um alerta de reatribuição (rastro pro relatório de Qualidade).
   function montarItensTestes(novoTestes, novoNaoLiga) {
     const anteriores = osRef.current?.pre_diagnostico?.checklist?.recebido?.itens || []
-    return TESTES.map(t => {
+    const alertas = []
+    const itens = TESTES.map(t => {
       const antigo = anteriores.find(i => i.id === t.id)
       const valor  = novoNaoLiga ? 'na' : (novoTestes[t.id] || null)
       const mudou  = valor !== (antigo?.valor ?? null)
-      const autor  = valor == null ? undefined : (mudou ? carimbo() : antigo?.autor)
+      let autor = antigo?.autor
+      if (mudou) {
+        const quemAgora = carimbo()
+        autor = valor == null ? undefined : quemAgora
+        const troca = detectarTrocaAutor(antigo?.autor, quemAgora)
+        if (troca) alertas.push({ campo: `Diagnóstico · ${t.label}`, ...troca, em: quemAgora.em })
+      }
       return {
         id: t.id, label: t.label,
         checked: novoNaoLiga ? false : novoTestes[t.id] === 'ok',
@@ -489,17 +500,20 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
         ...(autor ? { autor } : {}),
       }
     })
+    return { itens, alertas }
   }
 
   function salvarTestes(novoTestes, novoNaoLiga) {
     const base = osRef.current?.pre_diagnostico || {}
+    const { itens, alertas } = montarItensTestes(novoTestes, novoNaoLiga)
     onUpdateOS?.(os.numero, {
       pre_diagnostico: {
         ...base,
         checklist: {
           ...(base.checklist || {}),
-          recebido: { itens: montarItensTestes(novoTestes, novoNaoLiga), observacoes: null },
+          recebido: { itens, observacoes: null },
         },
+        ...(alertas.length ? { alertas_pontuacao: [...(base.alertas_pontuacao || []), ...alertas] } : {}),
       },
     })
   }
@@ -546,7 +560,8 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   useEffect(() => {
     if (!os?.id) return
     const salvoServ = normalizeMarcados(os?.pre_diagnostico?.componentes_marcados)
-    if (JSON.stringify(salvoServ) === JSON.stringify(marcadosPorGrupo)) return
+    const semMudancaMarcados = JSON.stringify(salvoServ) === JSON.stringify(marcadosPorGrupo)
+    if (semMudancaMarcados && alertasPendentes.length === 0) return
     const t = setTimeout(() => {
       const base = osRef.current?.pre_diagnostico || {}
       onUpdateOS?.(os.numero, {
@@ -554,12 +569,14 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
           ...base,
           componentes_marcados: marcadosPorGrupo,
           componentes_autores: autores,
+          ...(alertasPendentes.length ? { alertas_pontuacao: [...(base.alertas_pontuacao || []), ...alertasPendentes] } : {}),
         },
       })
+      if (alertasPendentes.length) setAlertasPendentes([])
     }, 400)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marcadosPorGrupo, autores, os?.id])
+  }, [marcadosPorGrupo, autores, alertasPendentes, os?.id])
 
   // ── CTA ───────────────────────────────────────────────────────────────────
   const todosPreenchidos = TESTES.every(t => testes[t.id] != null)
@@ -575,21 +592,25 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     setSalvando(true)
     // Escrita única: testes + campos da avaliação + componentes no mesmo pre_diagnostico.
     const base = osRef.current?.pre_diagnostico || {}
+    const { itens, alertas } = montarItensTestes(testes, naoLiga)
+    const todosAlertas = [...alertas, ...alertasPendentes]
     onUpdateOS?.(os.numero, {
       ...(obs !== (os?.observacoes || '') ? { observacoes: obs } : {}),
       pre_diagnostico: {
         ...base,
         checklist: {
           ...(base.checklist || {}),
-          recebido: { itens: montarItensTestes(testes, naoLiga), observacoes: null },
+          recebido: { itens, observacoes: null },
         },
         equipamento_nao_liga: naoLiga,
         motivo_nao_liga:      naoLiga ? motivoNaoLiga : null,
         vazamentos,
         componentes_marcados: marcadosPorGrupo,
         componentes_autores: autores,
+        ...(todosAlertas.length ? { alertas_pontuacao: [...(base.alertas_pontuacao || []), ...todosAlertas] } : {}),
       },
     })
+    if (alertasPendentes.length) setAlertasPendentes([])
     const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'orcamento')
     setSalvando(false)
     if (proxima) onMoverOS?.(os.numero, proxima.id)
@@ -836,6 +857,8 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
                       acao={marcados[item.id]}
                       autor={fmtAutor(autores[item.id])}
                       onSetAcao={(acao) => {
+                        const antigoAutor = autores[item.id]
+                        const quemAgora = carimbo()
                         setMarcados(prev => {
                           const atual = { ...(prev[grupo.id] || {}) }
                           if (!acao) delete atual[item.id]
@@ -845,9 +868,15 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
                         setAutores(prev => {
                           const novo = { ...prev }
                           if (!acao) delete novo[item.id]
-                          else novo[item.id] = carimbo()
+                          else novo[item.id] = quemAgora
                           return novo
                         })
+                        const troca = detectarTrocaAutor(antigoAutor, quemAgora)
+                        if (troca) {
+                          setAlertasPendentes(prev => [...prev, {
+                            campo: `Diagnóstico · ${item.label}`, ...troca, em: quemAgora.em,
+                          }])
+                        }
                       }}
                     />
                   ))}
