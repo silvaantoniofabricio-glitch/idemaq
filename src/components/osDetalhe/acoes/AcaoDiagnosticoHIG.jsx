@@ -568,7 +568,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   const totalMarcados = Object.values(marcadosPorGrupo).reduce(
     (s, obj) => s + Object.keys(obj || {}).length, 0
   )
-  const podeConcluir = testesOk && totalMarcados > 0
+  const podeConcluir = testesOk
 
   async function concluir() {
     if (!podeConcluir) return

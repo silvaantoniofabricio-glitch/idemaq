@@ -222,6 +222,26 @@ export function useFinanceiro(filtros = {}) {
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
+  // Realtime: refetch silencioso quando qualquer linha de `lancamento_financeiro`
+  // muda. Cobre o caso de dar baixa pela tela da OS enquanto o Financeiro já
+  // está aberto em outra aba/tela — sem isso a lista fica com dado velho até
+  // recarregar a página manualmente.
+  //
+  // Channel name único por instância — evita conflito de 2 channels com mesmo
+  // nome quando Painel + Financeiro montam o hook ao mesmo tempo.
+  useEffect(() => {
+    const channelName = `lancfin-changes-${Math.random().toString(36).slice(2, 10)}`
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lancamento_financeiro' },
+        () => { fetchAll() }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchAll])
+
   // ─── CRUD ──────────────────────────────────────────────────────────────
   // Em modo demo (tabelaAusente), retorna error.code='OFFLINE' pra UI saber
   // que precisa cair no comportamento in-memory.

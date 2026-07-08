@@ -1,0 +1,14 @@
+-- 111-realtime-lancamento-financeiro.sql
+-- NÃO PRECISA RODAR — mantido só como registro.
+--
+-- Verificamos em 03/07/2026: lancamento_financeiro JÁ estava na publication
+-- supabase_realtime (erro 42710 "already member" ao tentar o ALTER
+-- PUBLICATION). Ou seja, o Realtime dessa tabela nunca foi o problema.
+--
+-- A causa real da baixa não refletindo no Financeiro era só o hook
+-- useFinanceiro.js não ter subscription Realtime nenhuma (só buscava 1x ao
+-- montar) — corrigido direto no código (useFinanceiro.js), sem precisar de SQL.
+
+-- Conferir se está habilitado:
+-- SELECT * FROM pg_publication_tables
+--   WHERE pubname='supabase_realtime' AND tablename='lancamento_financeiro';

@@ -350,14 +350,10 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
   }
 
   function confirmarEntrega() {
-    if (!admin && !fotoNoStorage && !fotoUrl) {
-      notify('erro', 'Tire a foto da entrega antes de confirmar.')
-      return
-    }
     setConfirmSheet('entrega')
   }
 
-  const podeConfirmar = admin || fotoNoStorage || !!fotoUrl
+  const podeConfirmar = true
 
   return (
     <div style={{
@@ -433,9 +429,7 @@ function EntregaAgendada({ os, admin, onUpdateOS, onMoverOS, onReagendar }) {
       <AtlPanel
         T={T} dark={dark}
         title="Foto da entrega"
-        footer={admin
-          ? 'Opcional para administrador.'
-          : 'Obrigatória — comprova devolução em bom estado.'}>
+        footer="Opcional — recomendado pra comprovar devolução em bom estado.">
         <div style={{ padding: '10px 14px' }}>
           <FotoSlotAtl
             T={T} dark={dark}

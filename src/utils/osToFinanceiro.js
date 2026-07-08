@@ -147,6 +147,40 @@ export async function montarLancamentosDoPagamento(os, { valor, forma, taxa_pct 
   return payloads
 }
 
+// Depois de confirmar um pagamento à vista, fecha qualquer "a prazo" antigo
+// da MESMA OS que já esteja coberto por esse pagamento (mesmo valor, ainda
+// aberto) — sem isso, o cliente pagar uma parcela que já tinha sido agendada
+// como "a prazo" deixa as duas entradas: a nova paga e a antiga presa em
+// "A receber" pra sempre. Usa o mecanismo de `lancamento_duplicata` (sql/29)
+// — não deleta nada, só marca a antiga como duplicata da nova (paga).
+async function fecharAprazoCobertoPeloPagamento(osId, lancamentoPagoId, valor) {
+  try {
+    const { data: abertos, error: errBusca } = await supabase
+      .from('lancamento_financeiro')
+      .select('id')
+      .eq('os_id', osId)
+      .eq('tipo', 'receita')
+      .eq('forma_pagamento', 'a_prazo')
+      .is('pago_em', null)
+      .is('deleted_at', null)
+      .eq('valor', Number(valor) || 0)
+    if (errBusca || !abertos?.length) return
+
+    const rows = abertos.map(a => ({
+      id_duplicata: a.id,
+      id_principal: lancamentoPagoId,
+      cenario: 'OS-APRAZO-JA-PAGO',
+      janela_dias: 0,
+    }))
+    const { error: errIns } = await supabase
+      .from('lancamento_duplicata')
+      .upsert(rows, { onConflict: 'id_duplicata', ignoreDuplicates: true })
+    if (errIns) console.warn('[osToFinanceiro] não consegui fechar a_prazo antigo:', errIns)
+  } catch (e) {
+    console.warn('[osToFinanceiro] fecharAprazoCobertoPeloPagamento exceção:', e)
+  }
+}
+
 /**
  * Versão "fire-and-forget": monta + insere os lançamentos. Best-effort —
  * loga erros mas não interrompe o fluxo do pagamento na OS.
@@ -161,7 +195,7 @@ export async function persistirLancamentosDoPagamento(os, pagamento) {
     const { data, error } = await supabase
       .from('lancamento_financeiro')
       .insert(payloads)
-      .select('id, tipo, valor')
+      .select('id, tipo, valor, forma_pagamento, os_id')
 
     if (error) {
       console.error('[osToFinanceiro] insert falhou:', error)
@@ -169,6 +203,13 @@ export async function persistirLancamentosDoPagamento(os, pagamento) {
     }
 
     console.log(`[osToFinanceiro] OS #${os.numero}: ${data.length} lançamento(s) criado(s)`, data)
+
+    // Só pagamentos à vista (não a própria criação de a_prazo) fecham a_prazo antigo.
+    const pago = data.find(l => l.tipo === 'receita' && l.forma_pagamento !== 'a_prazo')
+    if (pago && os.id) {
+      await fecharAprazoCobertoPeloPagamento(os.id, pago.id, pago.valor)
+    }
+
     return { ok: true, criados: data.length, erros: [] }
   } catch (e) {
     console.error('[osToFinanceiro] exceção:', e)
