@@ -406,19 +406,19 @@ Regras:
 
 Motor de cálculo em `src/utils/pontuacao.js` (`calcularPontosOS(os)` pura, testada com `node` direto rodando o módulo ESM real — ver histórico do chat) + agregação em `src/hooks/usePontuacao.js` (`{ iniIso, fimIso } → { equipe: [...], totalPontos }`).
 
-**Tabela de pontos** (calibrada por tempo médio × dificuldade, aprovada pelo Toni):
+**Tabela de pontos** (normal calibrada por tempo médio × dificuldade; lava e seca ajustada manualmente pelo Toni em 08/07/2026 — desmontagem/montagem valem bem mais por causa do mecanismo extra de secagem):
 
-| Serviço | Normal | Lava e seca (+0.3 em todos os fatores) |
+| Serviço | Normal | Lava e seca |
 |---|---|---|
-| Coleta | 5 | 6 |
-| Diagnóstico (bloco unificado) | 4 | 5 |
-| Desmontagem *(1x/OS, compartilhada)* | 4 | 5 |
+| Coleta | 5 | 5 |
+| Diagnóstico (bloco unificado) | 4 | 4 |
+| Desmontagem *(1x/OS, compartilhada)* | 4 | **7** |
 | Limpeza | 18 | 22 |
 | Manutenção *(por peça/componente)* | 3 | 4 |
-| Montagem *(1x/OS, compartilhada)* | 4 | 5 |
-| Teste final | 1 | 2 |
-| Acabamento *(só se tem limpeza)* | 2 | 3 |
-| Entrega | 5 | 6 |
+| Montagem *(1x/OS, compartilhada)* | 4 | **8** |
+| Teste final | 1 | 1 |
+| Acabamento *(só se tem limpeza)* | 2 | 2 |
+| Entrega | 5 | 5 |
 
 **Regras de atribuição**:
 - Só pontua bloco **completo** (todos os testes preenchidos, ≥1 componente marcado, etc.) **e** com carimbo válido (`{uid,em,apelido}` — dados antigos sem autor não pontuam, naturalmente).

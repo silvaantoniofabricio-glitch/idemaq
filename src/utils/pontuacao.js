@@ -23,16 +23,19 @@ export const PONTOS = {
   entrega: 5,
 }
 
+// Pesos da lava e seca ajustados manualmente pelo Toni em 08/07/2026
+// (desmontagem/montagem valem bem mais que a lavadora normal — mecanismo
+// extra de secagem torna essas duas etapas mais trabalhosas).
 export const PONTOS_LAVA_SECA = {
-  coleta: 6,
-  diagnostico: 5,
-  desmontagem: 5,
+  coleta: 5,
+  diagnostico: 4,
+  desmontagem: 7,
   limpeza: 22,
   manutencao: 4,
-  montagem: 5,
-  teste_final: 2,
-  acabamento: 3,
-  entrega: 6,
+  montagem: 8,
+  teste_final: 1,
+  acabamento: 2,
+  entrega: 5,
 }
 
 export const LABEL_SERVICO = {
