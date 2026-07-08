@@ -210,7 +210,7 @@ export default function OSMobile({ T, dark, user }) {
     if (!os) return
     const etapaUnif = ETAPAS_TODOS.find(e => e.id === etapaAlvo)
     const alvoReal = etapaUnif?.match?.[os.tipo] || etapaAlvo
-    const r = podeMoverOS(os, alvoReal)
+    const r = podeMoverOS(os, alvoReal, { pularEtapas: true })
     if (!r.ok) { notify('erro', r.motivo); return }
     const etapaFinal = r.alvo || alvoReal
     const agora = new Date().toLocaleString('sv-SE', { timeZone: 'America/Cuiaba' }).slice(0, 16).replace('T', ' ')
