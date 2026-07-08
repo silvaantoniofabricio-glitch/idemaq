@@ -5,6 +5,10 @@
 // check, não em criado_em/atualizado_em da OS (uma OS aberta em maio pode
 // ter um check pontuado em julho).
 //
+// OS de garantia (os.garantia = true) NÃO geram pontos — é retrabalho
+// decorrente de um problema, não serviço novo. O desconto de quem fez o
+// serviço original é rastreado à parte, em useRelatorioQualidade.js.
+//
 // Uso: const { data, loading, error } = usePontuacao({ iniIso, fimIso })
 //   data.equipe: [{ funcionario_id, apelido, total, porServico, entries }]
 //   data.totalPontos: soma geral do período
@@ -24,7 +28,7 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
       setLoading(true); setError(null)
       const { data: rows, error: err } = await supabase
         .from('os')
-        .select('id, numero, tipo_equipamento, pre_diagnostico')
+        .select('id, numero, tipo_equipamento, pre_diagnostico, garantia')
         .is('deleted_at', null)
 
       if (cancel) return
@@ -32,6 +36,7 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
 
       const todasEntries = []
       for (const os of rows || []) {
+        if (os.garantia) continue // retrabalho de garantia não pontua
         const entries = calcularPontosOS({
           id: os.id,
           numero: os.numero,

@@ -425,6 +425,8 @@ Motor de cálculo em `src/utils/pontuacao.js` (`calcularPontosOS(os)` pura, test
 - Diagnóstico e Teste final (blocos com múltiplos itens) atribuem ao autor do **carimbo mais recente** dentro do bloco — assume que quem fechou por último é quem "entregou" o bloco.
 - Manutenção pontua **por chave** em `oficina.execucao.manut_serv` (cobre peças de troca E o caso "sem peças" que usa a chave `feito`).
 - Filtragem por período usa o campo `em` do carimbo (quando o check foi feito), **não** `criado_em`/`atualizado_em` da OS — uma OS aberta em junho pode pontuar em julho se só foi trabalhada depois.
+- **OS de garantia (`os.garantia = true`) NÃO pontuam** (corrigido 07/07/2026 — `usePontuacao.js` pula essas OS inteiras). É retrabalho decorrente de um problema, não serviço novo; o desconto de quem fez o original é rastreado à parte em `useRelatorioQualidade.js`.
+- **Retrabalho dentro da mesma OS não duplica ponto** — o check é um campo único sobrescrito a cada toggle (não um log). Se a OS volta da Oficina e alguém remarca, o carimbo antigo é substituído; só conta 1x, pro autor da versão final. Nuance: se o reparo cair num mês diferente da 1ª tentativa, o ponto "migra" inteiro pro mês da correção (não fica dividido).
 
 **Tipo de equipamento novo**: `lava_seca` adicionado em `FormEquipamentoEdit.jsx` (TIPOS_EQUIP) + reaproveita testes/vazamentos/acabamento da lavadora (+ teste extra "Secagem") em `AcaoDiagnosticoHIG.jsx` e `AcaoTesteHIG.jsx`.
 
