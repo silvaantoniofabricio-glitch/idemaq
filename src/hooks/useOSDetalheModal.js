@@ -79,14 +79,9 @@ export function useOSDetalheModal({ notify, buscando = false } = {}) {
       notify?.('erro', 'Erro ao mover OS — mudança revertida')
       return
     }
-    const { data: session } = await supabase.auth.getSession()
-    const uid = session?.session?.user?.id || null
-    await supabase.from('os_historico').insert({
-      os_id: os.id,
-      etapa_de: uiEtapaToDb(os.tipo, os.etapa),
-      etapa_para: dbEtapa,
-      funcionario_id: uid,
-    })
+    // os_historico é gravado automaticamente pelo trigger `os_registra_historico`
+    // (AFTER UPDATE OF etapa) — já preenche funcionario_id via auth.uid() e
+    // calcula duracao_segundos. Inserir aqui manualmente duplicava a linha.
     const labelFinal = TIPOS_OS[os.tipo].etapas.find(e => e.id === etapaFinal)?.label || etapaFinal
     notify?.('ok', `OS #${numero} movida para ${labelFinal}`)
   }, [osList, setOsList, notify])

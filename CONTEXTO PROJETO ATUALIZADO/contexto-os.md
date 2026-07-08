@@ -449,3 +449,15 @@ Página inteira reconstruída em `RelatorioFuncionarios` (`src/pages/Relatorios.
 - `useRelatorioFuncionarios` (em `useRelatorios.js`) ganhou `distribuicaoEtapas` por pessoa — contagem de movimentações por etapa (não só duração/gargalo como antes).
 
 **Verificação**: build limpo + lógica de `calcularPontosOS`/`autoresOficina` testada rodando os módulos ESM reais via `node` direto (fora do bundler) com cenários simulados. **Não foi possível verificar visualmente no navegador** (sessão sem credenciais de login) — pedir pro Toni conferir a tela ao vivo na primeira oportunidade.
+
+## 20. ⚠️ Trigger `os_registra_historico` já grava os_historico sozinho (achado 07/07/2026)
+
+**Regra de ouro nova**: `os` tem trigger `os_registra_historico` (`AFTER INSERT OR UPDATE OF etapa`) executando `tg_os_historico()` — grava em `os_historico` automaticamente toda vez que `os.etapa` muda, com `funcionario_id = auth.uid()` e `duracao_segundos` calculado (tempo desde a última entrada). **Nunca fazer `INSERT` manual em `os_historico` no código do app** — o trigger já cobre 100% dos casos (Kanban, Modal, Mobile, qualquer UPDATE de etapa daqui pra frente).
+
+**O que aconteceu**: o código de `moverOS` em `OSMobile.jsx` sempre teve um `INSERT` manual redundante (bug antigo, não detectado). Em 06/07/2026 eu (Claude) diagnosticei errado — vi que só o mobile tinha esse insert e concluí "só o mobile grava o histórico", então **adicionei o mesmo INSERT manual no Kanban desktop e no Modal** (`useOSDetalheModal.js`) achando que estava corrigindo uma lacuna. Na real, o trigger já gravava em TODAS as telas — meu fix **duplicou** toda movimentação de etapa no desktop a partir daquele dia, e o mobile já duplicava havia mais tempo.
+
+**Sintoma que expôs o bug**: Toni notou "140 etapas" parecendo alto demais pro Painel de Funcionários (Relatórios) — pediu confirmação, comparei triggers via `pg_trigger`/`pg_proc` (RLS bloqueia leitura anônima da tabela, precisei pedir pro Toni rodar a consulta com login real).
+
+**Correção 07/07/2026**: removidos os 3 `INSERT`s manuais (`Kanban.jsx`, `useOSDetalheModal.js`, `OSMobile.jsx`) — código agora só faz o `UPDATE` em `os.etapa`, o trigger cuida do resto. `sql/117-limpar-duplicatas-os-historico.sql` (rodar manualmente) apaga as linhas duplicadas já existentes — sinal de duplicata: `etapa_de IS NOT NULL AND duracao_segundos IS NULL` com uma "irmã" idêntica que tem `duracao_segundos` preenchido a <30s de diferença (só o INSERT manual deixava duração nula; o trigger sempre calcula).
+
+**Lição pra próximas sessões**: antes de "corrigir" uma lacuna aparente em gravação de dados, **checar se existe trigger no banco** (`SELECT * FROM pg_trigger WHERE tgrelid = 'TABELA'::regclass`) — várias tabelas deste projeto (`os`, possivelmente outras) têm triggers criados direto no Supabase dashboard, nunca versionados em `sql/`. Ver também [[feedback_verificar_coluna_antes_select]] (mesma categoria de erro: assumir a partir só do código React sem checar o banco).

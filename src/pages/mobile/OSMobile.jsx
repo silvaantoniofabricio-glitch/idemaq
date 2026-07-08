@@ -225,7 +225,10 @@ export default function OSMobile({ T, dark, user }) {
       else if (os.etapa === 'concluido') patch.data_conclusao = null
       const { error } = await supabase.from('os').update(patch).eq('id', os.id)
       if (error) throw error
-      await supabase.from('os_historico').insert({ os_id: os.id, etapa_de: uiEtapaToDb(os.tipo, os.etapa), etapa_para: dbEtapa, funcionario_id: user?.id })
+      // os_historico é gravado automaticamente pelo trigger `os_registra_historico`
+      // (AFTER UPDATE OF etapa) — já preenche funcionario_id via auth.uid() e
+      // calcula duracao_segundos. Inserir aqui manualmente duplicava a linha
+      // (bug pré-existente — o mobile já duplicava antes de qualquer mudança de hoje).
     } catch { setOsList(prev); notify('erro', 'Erro ao mover OS — revertido') }
   }
 
