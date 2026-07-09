@@ -1241,15 +1241,18 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
 
         const lista = Object.values(porFunc).map(f => {
           let totalHorasMin = 0
+          let totalJornadaMin = 0
           let faltas = 0
           let diasAtraso = 0
           let diasExtras = 0
           const diasDetalhados = []
+          const horaEntradaSab = f.papel === 'logistica' ? 8 : 7
 
           for (const { iso, diaSemana } of diasUteis) {
             const batidasDia = f.porDia[iso] || []
             const teveBatida = batidasDia.length > 0
             const carga = diaSemana === 6 ? JORNADA_SAB_MIN : JORNADA_DIA_MIN
+            totalJornadaMin += carga
 
             let minDia = 0
             let statusDia = 'falta'
@@ -1267,7 +1270,7 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
               if (entradaTs) {
                 const entradaDate = new Date(entradaTs)
                 const padrao = new Date(entradaDate)
-                padrao.setHours(diaSemana === 6 ? 7 : 8, 5, 0, 0)
+                padrao.setHours(diaSemana === 6 ? horaEntradaSab : 8, 5, 0, 0)
                 if (entradaDate > padrao) { statusDia = 'atraso'; diasAtraso++ }
                 else if (minDia > carga)  { statusDia = 'extra';  diasExtras++ }
                 else                       { statusDia = 'ok' }
@@ -1293,7 +1296,7 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
           const diasPresentes = diasUteis.length - faltas
           const taxaPresenca  = diasUteis.length > 0 ? Math.round((diasPresentes / diasUteis.length) * 100) : 0
           const mediaHorasDia = diasPresentes > 0 ? fmtHorasMin(Math.round(totalHorasMin / diasPresentes)) : '—'
-          const saldoHorasMin = totalHorasMin - (diasUteis.length * JORNADA_DIA_MIN)
+          const saldoHorasMin = totalHorasMin - totalJornadaMin
 
           return {
             id: f.id, nome: f.nome, papel: f.papel,
