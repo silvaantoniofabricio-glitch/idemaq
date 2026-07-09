@@ -621,7 +621,6 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
   const temSecaoVazamentos = VAZAMENTOS.length > 0
   const ctaLabel = salvando ? 'Salvando…'
     : !testesOk ? `Avalie os ${TESTES.length} testes para continuar`
-    : totalMarcados === 0 ? 'Marque pelo menos 1 componente'
     : 'Concluir diagnóstico'
 
   return (
@@ -773,7 +772,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
         count={totalMarcados > 0 ? totalMarcados : undefined}
         footer={totalMarcados > 0
           ? `${totalMarcados} ${totalMarcados === 1 ? 'componente marcado' : 'componentes marcados'}.`
-          : 'Selecione pelo menos 1 componente para concluir.'}>
+          : 'Opcional — marque os componentes afetados, se houver.'}>
 
         {/* Busca */}
         <div style={{
