@@ -18,8 +18,15 @@ const JORNADA_DIA_MIN = 8 * 60
 const JORNADA_SAB_MIN = 4 * 60
 const TOLERANCIA_MIN  = 5
 
+// Hora de entrada esperada no sábado por papel
+function horaEntradaSabPorPapel(papel) {
+  const p = (papel || '').toLowerCase()
+  if (p.includes('logist')) return 8   // Alessandro: sáb 08:00–12:00
+  return 7                              // Guilherme/padrão: sáb 07:00–11:00
+}
+
 // ─── Agregar batidas em linhas por dia ───────────────────────────────────────
-function agregarMes(batidas, ano, mes) {
+function agregarMes(batidas, ano, mes, sabHoraEntrada = 7) {
   const doMes = batidas.filter(b => {
     const d = new Date(b.bateu_em)
     return d.getFullYear() === ano && d.getMonth() === mes
@@ -72,7 +79,8 @@ function agregarMes(batidas, ano, mes) {
     else if (!teveBatida && ehPassado)  status = 'falta'
     else if (teveBatida) {
       const entrada = new Date(batidasDia.entrada)
-      const limiar  = new Date(ano, mes, dia, ehSabado ? 7 : 8, TOLERANCIA_MIN)
+      const horaLimiar = ehSabado ? sabHoraEntrada : 8
+      const limiar  = new Date(ano, mes, dia, horaLimiar, TOLERANCIA_MIN)
       if (entrada > limiar)                              status = 'atraso'
       else if (batidasDia.saida && totalMin > cargaDia) status = 'extra'
     }
@@ -118,12 +126,18 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
   const [ano, setAno] = useState(hoje.getFullYear())
   const [mes, setMes] = useState(hoje.getMonth())
 
+  // Threshold de entrada no sábado varia por papel
+  const sabHoraEntrada = horaEntradaSabPorPapel(funcionario.papel)
+
   const { batidas, loading } = usePonto({
     funcionarioId: funcionario.id,
     escopo: 'mes', ano, mes,
   })
 
-  const linhas = useMemo(() => agregarMes(batidas, ano, mes), [batidas, ano, mes])
+  const linhas = useMemo(
+    () => agregarMes(batidas, ano, mes, sabHoraEntrada),
+    [batidas, ano, mes, sabHoraEntrada],
+  )
 
   const stats = useMemo(() => {
     const diasUteisPassados = linhas.filter(l => !l.ehFds && !l.ehFuturo)
@@ -201,7 +215,7 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
               {nomeFunc}
             </div>
             <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-              {funcionario.papel} · seg–sex 8h · sáb 4h · tolerância {TOLERANCIA_MIN} min
+              {funcionario.papel} · seg–sex 08:00–18:00 · sáb {String(sabHoraEntrada).padStart(2,'0')}:00–{String(sabHoraEntrada + 4).padStart(2,'0')}:00 · tolerância {TOLERANCIA_MIN} min
             </div>
           </div>
         </div>

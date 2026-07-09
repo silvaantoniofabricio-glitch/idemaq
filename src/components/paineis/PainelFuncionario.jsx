@@ -251,7 +251,7 @@ export default function PainelFuncionario({ T, dark, user }) {
             {/* Histórico da semana */}
             <section>
               <PanelLabel T={T} icon="ti-calendar-week" label="Últimos 7 dias" />
-              <HistoricoSemana T={T} dark={dark} batidas={batidasSemana} jornadaPadraoMin={JORNADA_PADRAO_MIN} />
+              <HistoricoSemana T={T} dark={dark} batidas={batidasSemana} jornadaPadraoMin={JORNADA_PADRAO_MIN} horaEntradaSab={user?.papel === 'logistica' ? 8 : 7} />
             </section>
 
           </div>
@@ -305,7 +305,7 @@ export default function PainelFuncionario({ T, dark, user }) {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <SaldoBancoHoras T={T} dark={dark} saldoMinutos={saldoBancoMin} periodo={periodoHoras} />
-          <HistoricoSemana T={T} dark={dark} batidas={batidasSemana} jornadaPadraoMin={JORNADA_PADRAO_MIN} />
+          <HistoricoSemana T={T} dark={dark} batidas={batidasSemana} jornadaPadraoMin={JORNADA_PADRAO_MIN} horaEntradaSab={user?.papel === 'logistica' ? 8 : 7} />
         </div>
       </div>
 

@@ -46,7 +46,8 @@ function calcularMinutosDia(batidasDoDia) {
   return total
 }
 
-export default function HistoricoSemana({ T, dark, batidas = [], jornadaPadraoMin = 480 }) {
+// horaEntradaSab: hora de entrada esperada no sábado (7 = Guilherme, 8 = Alessandro)
+export default function HistoricoSemana({ T, dark, batidas = [], jornadaPadraoMin = 480, horaEntradaSab = 7 }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
@@ -71,11 +72,16 @@ export default function HistoricoSemana({ T, dark, batidas = [], jornadaPadraoMi
       const chave = chaveDia(d)
       const batidasDia = porDia[chave] || []
       const diaSemana = d.getDay()
-      const ehFds = diaSemana === 0 || diaSemana === 6
+      const ehDomingo = diaSemana === 0
+      const ehSabado  = diaSemana === 6
+      const ehFds     = ehDomingo   // só domingo é folga; sábado tem expediente
       const ehHoje = i === 0
       const minutos = calcularMinutosDia(batidasDia)
       const entrada = batidasDia.find(b => b.tipo === 'entrada')
       const saida = batidasDia.find(b => b.tipo === 'saida')
+
+      // Jornada do dia: sábado = 4h (240 min), dias úteis = jornadaPadraoMin
+      const jornadaDia = ehSabado ? 4 * 60 : jornadaPadraoMin
 
       let status = 'ok'
       if (ehFds) status = 'fds'
@@ -87,10 +93,10 @@ export default function HistoricoSemana({ T, dark, batidas = [], jornadaPadraoMi
         if (entrada) {
           const t = new Date(entrada.bateu_em)
           const padrao = new Date(t)
-          // Sábado: tolera até 07:05; dias úteis: até 08:05
-          padrao.setHours(diaSemana === 6 ? 7 : 8, 5, 0, 0)
+          // Sábado: threshold por funcionário; dias úteis: 08:05
+          padrao.setHours(ehSabado ? horaEntradaSab : 8, 5, 0, 0)
           if (t > padrao) status = 'atraso'
-          else if (minutos > jornadaPadraoMin) status = 'extra'
+          else if (minutos > jornadaDia) status = 'extra'
         }
       }
 
