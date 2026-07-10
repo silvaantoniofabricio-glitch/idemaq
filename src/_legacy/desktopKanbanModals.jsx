@@ -38,7 +38,7 @@ import AddressInput from '../components/logistica/AddressInput'
 import { OS_ITENS_MOCK } from '../_mocks/os'
 
 // ─── Constantes do redesign da Nova OS ──────────────────────────────────────
-const ORDEM_TIPOS_OS = ['atendimento', 'venda', 'fabricacao']
+const ORDEM_TIPOS_OS = ['atendimento', 'visita', 'venda', 'fabricacao']
 const TIPOS_EQUIPAMENTO = ['Máquina de Lavar', 'Lava e Seca', 'Tanquinho', 'Micro-ondas']
 const MARCAS_EQUIPAMENTO = ['Brastemp', 'Electrolux', 'Consul', 'Outros']
 
@@ -55,7 +55,7 @@ function adaptarClientesMock(lista) {
 
 // Helper: texto curto do status de campos obrigatórios faltando no Passo 2.
 function statusCamposFaltando(tipo, form) {
-  if (tipo === 'atendimento') {
+  if (tipo === 'atendimento' || tipo === 'visita') {
     if (!form.cliente) return 'selecione um cliente'
     return 'pronto para criar'
   }
@@ -301,7 +301,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
     enderecosDisponiveis: [], // endereços do cliente escolhido (vem da busca)
     // Pré-selecionado pro Atendimento (tipo de máquina mais comum). Pros outros tipos,
     // começa vazio e o select mantém a opção "Selecione…".
-    equipamentoTipo: (tipoInicial || 'atendimento') === 'atendimento' ? 'Máquina de Lavar' : '',
+    equipamentoTipo: ['atendimento', 'visita'].includes(tipoInicial || 'atendimento') ? 'Máquina de Lavar' : '',
     equipamentoMarca:'',      // dropdown
     equipamentoMarcaOutros:'',// campo extra quando marca = "Outros"
     equipamentoModelo:'',
@@ -432,7 +432,9 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
     setSalvando(true)
     try {
       const marcaFinal = form.equipamentoMarca === 'Outros' ? form.equipamentoMarcaOutros : form.equipamentoMarca
-      const etapaInicial = form.data ? 'agendamento' : 'aguardando_agendamento'
+      // Visita não tem Coleta: fica na Agenda (aguardando_agendamento) com a data
+      // agendada. Os demais tipos vão pra 'agendamento' quando há data marcada.
+      const etapaInicial = (tipo !== 'visita' && form.data) ? 'agendamento' : 'aguardando_agendamento'
       // Combina data + hora em ISO, assumindo timezone local de Cuiabá (UTC-4).
       // Hora vazia → default 08:00 (turno da manhã, padrão da equipe).
       const dataAgIso = form.data
@@ -479,6 +481,12 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
         ]
         const { error: errItens } = await supabase.from('os_item').insert(itensPadrao)
         if (errItens) console.warn('[NovaOS] itens padrão falharam:', errItens)
+      } else if (tipo === 'visita') {
+        // Visita: só Deslocamento por padrão; o serviço vai no Orçamento.
+        const { error: errItens } = await supabase.from('os_item').insert([
+          { os_id: data.id, categoria: 'desloc', nome: 'Deslocamento', quantidade: 1, valor_unitario: 20 },
+        ])
+        if (errItens) console.warn('[NovaOS] item da visita falhou:', errItens)
       }
 
       notify?.('ok', `OS #${data.numero} criada`)
@@ -499,7 +507,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
 
   // Regras de obrigatórios POR TIPO (só Cliente é obrigatório no Atendimento)
   const podeAvancar =
-    tipo === 'atendimento' ? !!form.cliente :
+    (tipo === 'atendimento' || tipo === 'visita') ? !!form.cliente :
     tipo === 'fabricacao'  ? !!form.equipamentoTipo :
     tipo === 'venda'       ? !!(form.cliente && form.maquinaEstoque) : false
 
@@ -599,8 +607,8 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
 
       <div style={{ flex:1, overflowY:'auto', padding:'18px 20px' }}>
 
-        {/* ────── Atendimento ────── */}
-        {tipo === 'atendimento' && (
+        {/* ────── Atendimento / Visita (mesmos campos: cliente + equipamento) ────── */}
+        {(tipo === 'atendimento' || tipo === 'visita') && (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
             {/* CLIENTE */}

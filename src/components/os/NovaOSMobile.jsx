@@ -33,7 +33,7 @@ import { Input, Select, Textarea } from '../ui'
 
 const TIPOS_EQUIPAMENTO = ['Máquina de Lavar', 'Lava e Seca', 'Tanquinho', 'Micro-ondas']
 const MARCAS_EQUIPAMENTO = ['Brastemp', 'Electrolux', 'Consul', 'LG', 'Samsung', 'Outros']
-const TIPOS_ORDEM = ['atendimento', 'venda', 'fabricacao']
+const TIPOS_ORDEM = ['atendimento', 'visita', 'venda', 'fabricacao']
 
 export default function NovaOSMobile({
   T, dark,
@@ -62,7 +62,7 @@ export default function NovaOSMobile({
   const [form, setForm] = useState({
     cliente: '', clienteId: null, fone: '',
     enderecoSelecionado: '', enderecoIndex: 0, enderecosDisponiveis: [],
-    equipamentoTipo: tipoInicial === 'atendimento' ? 'Máquina de Lavar' : '',
+    equipamentoTipo: (tipoInicial === 'atendimento' || tipoInicial === 'visita') ? 'Máquina de Lavar' : '',
     equipamentoMarca: '',
     equipamentoMarcaOutros: '',
     equipamentoModelo: '',
@@ -82,7 +82,7 @@ export default function NovaOSMobile({
 
   // ─── Validação por tipo ──────────────────────────────────────────────────
   const obrigatorios = useMemo(() => {
-    if (tipo === 'atendimento') return [
+    if (tipo === 'atendimento' || tipo === 'visita') return [
       { id: 'cliente', label: 'Cliente', ok: !!form.cliente },
     ]
     if (tipo === 'fabricacao') return [
@@ -160,7 +160,9 @@ export default function NovaOSMobile({
       const marcaFinal = form.equipamentoMarca === 'Outros'
         ? form.equipamentoMarcaOutros
         : form.equipamentoMarca
-      const etapaInicial = form.data ? 'agendamento' : 'aguardando_agendamento'
+      // Visita não tem Coleta: a etapa Agenda (aguardando_agendamento) guarda a
+      // data agendada da visita. Os demais tipos vão pra 'agendamento' quando há data.
+      const etapaInicial = (tipo !== 'visita' && form.data) ? 'agendamento' : 'aguardando_agendamento'
       const dataAgIso = form.data
         ? new Date(`${form.data}T${form.hora || '08:00'}:00-04:00`).toISOString()
         : null
@@ -206,6 +208,13 @@ export default function NovaOSMobile({
         ]
         const { error: errItens } = await supabase.from('os_item').insert(itensPadrao)
         if (errItens) console.warn('[NovaOSMobile] itens padrão falharam:', errItens)
+      } else if (tipo === 'visita') {
+        // Visita: só o Deslocamento entra por padrão. O valor do serviço é
+        // definido na etapa Orçamento, caso a caso (cada visita é diferente).
+        const { error: errItens } = await supabase.from('os_item').insert([
+          { os_id: data.id, categoria: 'desloc', nome: 'Deslocamento', quantidade: 1, valor_unitario: 20 },
+        ])
+        if (errItens) console.warn('[NovaOSMobile] item padrão da visita falhou:', errItens)
       }
 
       notify?.('ok', `OS #${data.numero} criada`)
@@ -283,7 +292,7 @@ export default function NovaOSMobile({
           overscrollBehavior: 'contain',
           touchAction: 'pan-y',
         }}>
-          {tipo === 'atendimento' && (
+          {(tipo === 'atendimento' || tipo === 'visita') && (
             <AtendimentoForm
               T={T} dark={dark}
               form={form} setForm={setForm} update={update}
@@ -397,7 +406,7 @@ function TipoSegmented({ T, dark, tipo, onChange }) {
       flexShrink: 0,
     }}>
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0,
+        display: 'grid', gridTemplateColumns: `repeat(${TIPOS_ORDEM.length}, 1fr)`, gap: 0,
         background: atlSurfaceSunken(dark),
         padding: 2, borderRadius: ATL_RADIUS,
       }}>

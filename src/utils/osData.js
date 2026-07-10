@@ -70,19 +70,36 @@ export const TIPOS_OS = {
       { id:'concluido',   label:'Concluído',    curto:'Concluído',   cor:'green',  adminOnly:true },
     ],
   },
+  // Visita: serviço feito na casa do cliente. Sem Coleta e sem Entrega (a
+  // máquina nunca sai da residência). Reaproveita a etapa 'oficina' (id interno)
+  // pro Conserto feito no local — assim herda o checklist Limpeza/Manutenção.
+  visita: {
+    label: 'Visita', icon: 'ti-home-cog', cor: 'blue',
+    descricao: 'Serviço feito na casa do cliente',
+    etapas: [
+      { id:'ag_agendamento', label:'Agenda',      curto:'Agenda',       cor:'neutro' },
+      { id:'diagnostico',    label:'Diagnóstico', curto:'Diagnóstico',  cor:'yellow', prazo24h:true },
+      { id:'orcamento',      label:'Orçamento',   curto:'Orçamento',    cor:'red',    prazo24h:true },
+      { id:'oficina',        label:'Conserto',    curto:'Conserto',     cor:'blueLight', dual:true },
+      { id:'teste_final',    label:'Teste',       curto:'Teste',        cor:'blue' },
+      { id:'pagamento',      label:'A receber',   curto:'A receber',    cor:'yellow' },
+      { id:'concluido',      label:'Concluído',   curto:'Concluído',    cor:'green',  adminOnly:true },
+    ],
+    lateral: { id:'recusado', label:'Recusado', curto:'Recusado', cor:'red' }
+  },
 }
 
 // Visão "Todos" — etapas unificadas dos 3 tipos via match
 export const ETAPAS_TODOS = [
-  { id:'ag_agendamento', label:'Agenda',                  curto:'Agenda',       cor:'neutro',    match:{ atendimento:'ag_agendamento' } },
+  { id:'ag_agendamento', label:'Agenda',                  curto:'Agenda',       cor:'neutro',    match:{ atendimento:'ag_agendamento', visita:'ag_agendamento' } },
   { id:'agendamento',    label:'Coleta',                  curto:'Coleta',       cor:'neutro',    match:{ atendimento:'agendado', venda:'agendamento' } },
-  { id:'diagnostico',    label:'Diagnóstico',             curto:'Diagnóstico',  cor:'yellow', prazo24h:true, match:{ atendimento:'diagnostico', fabricacao:'diagnostico' } },
-  { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match:{ atendimento:'orcamento' } },
-  { id:'oficina',        label:'Conserto',                curto:'Conserto',     cor:'blueLight', dual:true, match:{ atendimento:'oficina', fabricacao:'oficina' } },
-  { id:'teste_final',    label:'Teste',                   curto:'Teste',        cor:'blue',  match:{ atendimento:'teste_final', fabricacao:'teste_final' } },
+  { id:'diagnostico',    label:'Diagnóstico',             curto:'Diagnóstico',  cor:'yellow', prazo24h:true, match:{ atendimento:'diagnostico', fabricacao:'diagnostico', visita:'diagnostico' } },
+  { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match:{ atendimento:'orcamento', visita:'orcamento' } },
+  { id:'oficina',        label:'Conserto',                curto:'Conserto',     cor:'blueLight', dual:true, match:{ atendimento:'oficina', fabricacao:'oficina', visita:'oficina' } },
+  { id:'teste_final',    label:'Teste',                   curto:'Teste',        cor:'blue',  match:{ atendimento:'teste_final', fabricacao:'teste_final', visita:'teste_final' } },
   { id:'entrega',        label:'Entrega',                 curto:'Entrega',      cor:'blue',  match:{ atendimento:'entrega', venda:'entregue' } },
-  { id:'pagamento',      label:'A receber',               curto:'A receber',    cor:'yellow', match:{ atendimento:'pagamento', venda:'pagamento' } },
-  { id:'concluido',      label:'Concluído',               curto:'Concluído',    cor:'green',  adminOnly:true, match:{ atendimento:'concluido', fabricacao:'concluido', venda:'concluido' } },
+  { id:'pagamento',      label:'A receber',               curto:'A receber',    cor:'yellow', match:{ atendimento:'pagamento', venda:'pagamento', visita:'pagamento' } },
+  { id:'concluido',      label:'Concluído',               curto:'Concluído',    cor:'green',  adminOnly:true, match:{ atendimento:'concluido', fabricacao:'concluido', venda:'concluido', visita:'concluido' } },
   { id:'recusado',       label:'Recusado',                curto:'Recusado',     cor:'red',                   match:{ atendimento:'recusado' } },
 ]
 

@@ -18,7 +18,7 @@ import {
 } from '../../utils/osHelpers'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../../utils/pecasStatus'
 import { semAcento } from '../../utils/fmt'
-import { ETAPAS_TODOS, ZONAS } from '../../utils/osData'
+import { ETAPAS_TODOS, ZONAS, TIPOS_OS } from '../../utils/osData'
 import { corEtapa, bgEtapa } from '../../utils/colors'
 import { P } from '../../theme'
 import { useToast } from '../../components/ui'
@@ -42,7 +42,7 @@ export default function OSMobile({ T, dark, user }) {
   const [busca, setBusca]   = useState('')
   const [filtros, setFiltros] = useState({
     zona: 'todos',
-    tipos: new Set(['atendimento', 'fabricacao', 'venda']),
+    tipos: new Set(Object.keys(TIPOS_OS)),
     limpeza: false,
     manutencao: false,
     agPeca: false,
