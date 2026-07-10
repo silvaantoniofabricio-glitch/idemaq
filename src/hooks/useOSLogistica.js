@@ -17,9 +17,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
 
 // Etapas no schema do banco (não as labels da UI)
+// Todas as etapas do fluxo de trabalho ficam disponíveis no filtro. Concluído
+// e Recusado ficam de fora (estados finais, sem operação de transporte).
 const ETAPAS_LOGISTICA_DB = [
   'aguardando_agendamento',
   'agendamento',
+  'diagnostico',
+  'orcamento',
+  'em_oficina',
   'teste_final',
   'entrega',
 ]
@@ -44,6 +49,9 @@ export function labelEtapa(etapaDb) {
   switch (etapaDb) {
     case 'aguardando_agendamento': return 'Agenda'
     case 'agendamento': return 'Coleta'
+    case 'diagnostico': return 'Diagnóstico'
+    case 'orcamento': return 'Orçamento'
+    case 'em_oficina': return 'Conserto'
     case 'teste_final': return 'Teste'
     case 'entrega': return 'Entrega'
     case 'pagamento': return 'A receber'
@@ -143,6 +151,9 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
 export const FILTROS_ETAPA_LOGISTICA = [
   { id: 'aguardando_agendamento', label: 'Agenda',                 cor: 'amarelo', icon: 'ti-calendar-question' },
   { id: 'agendamento',            label: 'Coleta',                 cor: 'blue',    icon: 'ti-calendar-check' },
+  { id: 'diagnostico',            label: 'Diagnóstico',            cor: 'yellow',  icon: 'ti-stethoscope' },
+  { id: 'orcamento',              label: 'Orçamento',              cor: 'red',     icon: 'ti-file-invoice' },
+  { id: 'em_oficina',             label: 'Conserto',               cor: 'blue',    icon: 'ti-tool' },
   { id: 'teste_final',            label: 'Teste',                  cor: 'yellow',  icon: 'ti-flask' },
   { id: 'entrega',                label: 'Entrega',                cor: 'green',   icon: 'ti-truck-delivery' },
   { id: 'pagamento',              label: 'A receber',              cor: 'orange',  icon: 'ti-cash' },
