@@ -17,7 +17,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useTheme } from '../../../theme'
 import { corEtapa } from '../../../utils/colors'
-import { ETAPAS_TODOS } from '../../../utils/osData'
+import { ETAPAS_TODOS, TIPOS_OS } from '../../../utils/osData'
 import { useChecklistEtapa } from '../../../hooks/useChecklistEtapa'
 import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import { useOSItens } from '../../../hooks/useOSItens'
@@ -329,13 +329,24 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
   const podeVoltarOficina = falhas.length > 0
   const preenchidos = TESTES.filter(t => testes[t.id] != null).length
 
+  // Próxima etapa após o Teste = a que vem no fluxo do TIPO da OS (não fixa em
+  // "Entrega"). Fabricação: Teste → Concluído (sem entrega). Visita: Teste →
+  // A receber. Atendimento: Teste → Entrega.
+  const proximaEtapaCfg = useMemo(() => {
+    const etapas = TIPOS_OS[os?.tipo]?.etapas || []
+    const idx = etapas.findIndex(e => e.id === 'teste_final')
+    return idx >= 0 ? etapas[idx + 1] : null
+  }, [os?.tipo])
+
   async function aprovar() {
     setSalvando(true)
     const { itens, alertas } = serializarChecklist()
     await salvarChk(itens, null, alertas)
     if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     await sincronizarAbertas([])
-    const proxima = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'entrega')
+    const proxima = proximaEtapaCfg
+      ? ETAPAS_TODOS.find(e => e.match?.[os.tipo] === proximaEtapaCfg.id)
+      : null
     setSalvando(false)
     if (proxima) onMoverOS(os.numero, proxima.id)
   }
@@ -436,7 +447,11 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
           {salvando
             ? 'Salvando…'
             : podeAprovar
-              ? 'Aprovar · ir pra Entrega'
+              ? (proximaEtapaCfg?.id === 'concluido'
+                  ? 'Aprovar · concluir serviço'
+                  : proximaEtapaCfg?.id === 'pagamento'
+                    ? 'Aprovar · ir pra A receber'
+                    : 'Aprovar · ir pra Entrega')
               : !todosPreenchidos
                 ? `Avalie os ${TESTES.length} testes para continuar`
                 : `Marque o acabamento (${acabPendentes} pendente${acabPendentes !== 1 ? 's' : ''})`}
