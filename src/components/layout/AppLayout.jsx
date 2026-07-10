@@ -22,6 +22,7 @@ const ROUTES = {
   financeiro:     '/financeiro',
   relatorios:     '/relatorios',
   'meu-relatorio':'/meu-relatorio',
+  'meu-contador': '/meu-contador',
   configuracoes:  '/configuracoes',
   'financeiro-pf': '/financeiro-pf',
 }

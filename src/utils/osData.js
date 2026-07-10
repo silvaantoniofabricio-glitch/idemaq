@@ -13,6 +13,7 @@ export const MENUS = [
   { id: 'relatorios',    label: 'Relatórios',    icon: 'ti-chart-bar',        section: 'operacao' },
   { id: 'meu-relatorio', label: 'Relatório',     icon: 'ti-chart-bar',        section: 'operacao' },
   { id: 'financeiro-pf', label: 'Financeiro PF', icon: 'ti-user-dollar',      section: 'operacao' },
+  { id: 'meu-contador',  label: 'Meu Contador',  icon: 'ti-calculator',       section: 'operacao' },
   { id: 'configuracoes', label: 'Configurações', icon: 'ti-settings',         section: 'operacao' },
 ]
 // Bottom Nav mobile — 4 slots fixos por papel + botão "Mais" (5º slot) que
@@ -21,7 +22,7 @@ export const MENUS = [
 // dono (Clientes, Logística, Relatórios, Configurações). Agora todas ficam
 // acessíveis via "Mais" (21/05/2026 noite).
 export const MENUS_MOBILE_DONO       = ['painel', 'os', 'logistica', 'clientes']
-export const MENUS_MOBILE_DONO_EXTRA = ['estoque', 'vendas', 'financeiro', 'financeiro-pf', 'relatorios', 'configuracoes']
+export const MENUS_MOBILE_DONO_EXTRA = ['estoque', 'vendas', 'financeiro', 'financeiro-pf', 'meu-contador', 'relatorios', 'configuracoes']
 export const MENUS_MOBILE_FUNC       = ['painel', 'os', 'logistica', 'estoque']
 export const MENUS_MOBILE_FUNC_EXTRA = ['meu-relatorio']
 // Compat — antigos consumidores podem ler isso (BottomNav escolhe por papel)

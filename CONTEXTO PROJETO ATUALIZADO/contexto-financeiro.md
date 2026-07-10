@@ -381,3 +381,55 @@ Dados pré-maio/2026 eram imports automáticos de Bling/OFX/InfinitePay/TON, com
 Conta venceu 04/05, paga 01/06 — lançada por **vencimento** (04/05). Quando vier o extrato Cresol junho, NÃO lançar de novo o débito R$ 199,27 de 01/06.
 
 Mesmo princípio vale pra qualquer conta paga em mês diferente do vencimento.
+
+---
+
+## 15. Parcelamentos de cartão PJ — histórico + futuras (03/06/2026)
+
+### O que foi feito
+`sql/71-parcelas-anteriores-futuras.sql` — gerado e aplicado em 03/06/2026.
+
+Para cada item parcelado das faturas de maio/2026 (sql/62-67), foram inseridas:
+- **Parcelas passadas** (pagas): `pago_em = vencimento` → aparecem como saída de caixa nos meses anteriores
+- **Parcelas futuras** (abertas): `pago_em = NULL` → ficam em "A Pagar" no mês correto
+- A parcela de **maio** já estava nos sql/62-67 (prefixo `FAT-`); o sql/71 usa prefixo `PARC-` para distinguir
+
+### Resultado (verificado)
+| Cartão | Pagas | Futuras |
+|---|---|---|
+| Bradesco PJ Elo Mais | R$ 107,40 (1) | R$ 965,20 (9) |
+| Elo Grafite | R$ 1.367,64 (26) | R$ 3.740,80 (49) |
+| Inter | R$ 1.170,08 (6) | R$ 1.604,97 (7) |
+| Mercado Pago | R$ 5.565,35 (124) | R$ 3.196,24 (85) |
+| Visa Bradesco | R$ 430,59 (7) | R$ 239,61 (4) |
+| **Total** | **R$ 8.641,06 (164)** | **R$ 9.746,82 (154)** |
+
+### Regras usadas
+- Vencimento de cada parcela = dia fixo do cartão (Elo Grafite=11, Visa=20, Inter=26, Brad.PJ Elo=10, MP=20)
+- Valor de cada parcela = mesmo valor da parcela de maio (parcelas iguais — padrão Brasil)
+- Parcelas do MP que remontam a 2024 foram inseridas mesmo com período apagado pelo sql/69+70 (reconstrução histórica intencional)
+- Nubank: todos os itens eram à vista — sem parcelas anteriores/futuras
+
+### Idempotência
+SQL usa `WHERE NOT EXISTS` por `descricao`. Pode ser rerodado sem duplicar.
+
+---
+
+## 16. Página "Meu Contador" (10/07/2026)
+
+Nova página admin-only `/meu-contador` (`src/pages/MeuContador.jsx`) — central fiscal/contábil no padrão Atlassian (mesmos primitivos inline de `Configuracoes.jsx`: `Panel`/`Btn`/`Field`).
+
+**Seções:**
+1. **Cartão do contador** — contato editável (nome, escritório, CRC, telefone, email, endereço, obs) + botões Ligar / WhatsApp / E-mail. Empty state quando vazio.
+2. **Faturamento acumulado 12 meses (RBT12)** — dado REAL: soma `receita` de `vw_lancamentos_validos` (fallback `lancamento_financeiro`) dos últimos 12 meses vs limite do regime (MEI R$ 81k, Simples R$ 4,8M). Barra de progresso + alerta ≥ 80%.
+3. **Obrigações fiscais** — geradas por regime (DAS-MEI/DASN pra MEI; DAS/DEFIS pra Simples) + FGTS/INSS se `tem_funcionarios`. Próximo vencimento calculado, "marcar pago" por competência.
+4. **Checklist de documentos** do mês (extratos, NFs, comprovantes, folha, relatório).
+5. **Exportar** — copiar resumo do mês (clipboard) + baixar CSV dos lançamentos do mês.
+6. **Dados fiscais da empresa** — razão social, CNPJ, regime (select), CNAE, inscrições, abertura, tem_funcionarios.
+7. **Links úteis** (Portal do Empreendedor, Simples Nacional, NFS-e Nacional, consulta CNPJ).
+
+**Persistência**: `configuracoes` (chave/valor JSONB) via `useConfiguracoes` — chaves livres: `contador`, `empresa_fiscal`, `fiscal_pago_<YYYY-MM>`, `docs_contador_<YYYY-MM>`. Não precisa de novo SQL — funciona em modo demo (banner amarelo) se `sql/10` ainda não rodou.
+
+**Regime default = MEI** (pista: "Tarifa MEI" nas despesas do sql/60). Tudo editável — card marca "confirme com seu contador".
+
+**Registro (5 lugares)**: App.jsx (import + rota desktop/mobile em `<AdminOnly>`) · AppLayout.ROUTES · osData.MENUS + MENUS_MOBILE_DONO_EXTRA · Sidebar.MENUS_ADMIN_ONLY. Ícone `ti-calculator`, seção `operacao` (Gestão).

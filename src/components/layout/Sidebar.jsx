@@ -12,7 +12,7 @@ import { isAdmin } from '../../utils/osHelpers'
 import NavItem from './NavItem'
 import LogoIdemaq from '../ui/LogoIdemaq'
 
-const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios', 'configuracoes', 'vendas', 'financeiro-pf']
+const MENUS_ADMIN_ONLY = ['financeiro', 'relatorios', 'configuracoes', 'vendas', 'financeiro-pf', 'meu-contador']
 const PIN_KEY = 'idemaq.sidebar.pinned'
 const SLOT_W = 56
 const FULL_W = 210
