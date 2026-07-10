@@ -491,7 +491,7 @@ Página inteira reconstruída em `RelatorioFuncionarios` (`src/pages/Relatorios.
 |---|---|---|
 | 1 · mês comum | 900 | R$ 100 |
 | 2 · mês bom | 1.050 | R$ 150 |
-| 3 · mês excelente | 1.200 | R$ 220 |
+| 3 · mês excelente | 1.200 | R$ 200 |
 
 Não cumulativo — paga o prêmio do **maior** nível atingido, não a soma. `calcularNivelPremio(totalPontos)` retorna `{ nivelAtingido, proximoNivel, pct, faltam }`.
 

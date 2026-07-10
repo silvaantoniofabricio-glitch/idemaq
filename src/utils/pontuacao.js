@@ -58,7 +58,7 @@ export const LABEL_SERVICO = {
 export const METAS = [
   { nivel: 1, label: 'Nível 1 · mês comum',     pontos: 900,  premio: 100 },
   { nivel: 2, label: 'Nível 2 · mês bom',       pontos: 1050, premio: 150 },
-  { nivel: 3, label: 'Nível 3 · mês excelente', pontos: 1200, premio: 220 },
+  { nivel: 3, label: 'Nível 3 · mês excelente', pontos: 1200, premio: 200 },
 ]
 
 // Dado o total de pontos do mês de uma pessoa, calcula o nível atingido
