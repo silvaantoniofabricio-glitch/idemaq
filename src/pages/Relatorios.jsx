@@ -32,7 +32,7 @@ import { useRelatorioIA } from '../hooks/useRelatorioIA'
 import { usePontuacao } from '../hooks/usePontuacao'
 import { useRelatorioQualidade } from '../hooks/useRelatorioQualidade'
 import { useAlertasPontuacao } from '../hooks/useAlertasPontuacao'
-import { LABEL_SERVICO } from '../utils/pontuacao'
+import { LABEL_SERVICO, calcularNivelPremio } from '../utils/pontuacao'
 import { AtlPanel, ATL_FONT } from '../components/osDetalhe/acoes/_AtlassianUI'
 
 // === Catálogo dos relatórios ===
@@ -1131,6 +1131,37 @@ function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel,
               ))}
             </div>
           )}
+
+          {/* Nível de prêmio */}
+          {(() => {
+            const { nivelAtingido, proximoNivel, pct, faltam } = calcularNivelPremio(totalPontos)
+            return (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: nivelAtingido ? verde : T.textMuted,
+                  }}>
+                    {nivelAtingido
+                      ? `🏆 ${nivelAtingido.label} · R$ ${nivelAtingido.premio}`
+                      : 'Sem nível ainda'}
+                  </span>
+                  {proximoNivel && (
+                    <span style={{ fontSize: 10, color: T.textMuted }}>
+                      faltam {faltam} pra {proximoNivel.label.split(' · ')[0]}
+                    </span>
+                  )}
+                </div>
+                <div style={{ width: '100%', height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${pct}%`, height: '100%',
+                    background: nivelAtingido ? verde : azul,
+                    borderRadius: 3, transition: 'width .3s',
+                  }} />
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Grid de stats */}

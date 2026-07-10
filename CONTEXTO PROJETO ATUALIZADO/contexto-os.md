@@ -480,3 +480,21 @@ Página inteira reconstruída em `RelatorioFuncionarios` (`src/pages/Relatorios.
 **Onde aparece**: Relatórios → Funcionários → seção "Alertas de reatribuição" (só mostra se tiver algo no período) — lista OS #, campo, "Fulano → Beltrano", data/hora. Hook: `src/hooks/useAlertasPontuacao.js`.
 
 **Verificação**: `detectarTrocaAutor` testado isolado com 7 cenários (pessoa diferente, mesma pessoa, item nunca teve dono, desmarcar sem novo autor, dado legado sem uid) — pegou e corrigiu um bug real (comparação uid-vs-apelido cruzada dava falso positivo em dado legado). Build limpo. Não verificado visualmente (sem login).
+
+## 22. Metas de prêmio por desempenho (08/07/2026)
+
+**⚠️ Correção importante**: não existe divisão de tarefa por papel na equipe — `usuarios.papel` (`logistica`/`oficina`) é só rótulo de cadastro, **qualquer funcionário faz qualquer etapa** (Coleta, Diagnóstico, Conserto, Teste, Entrega). Eu (Claude) assumi erroneamente uma divisão ("Alessandro só Coleta/Entrega, Guilherme só Diagnóstico/Conserto") baseada numa nota antiga especulativa — Toni corrigiu. Ver memória `feedback_nao_ha_divisao_de_papel_por_tarefa`. **Nunca reintroduzir essa suposição.**
+
+**Metas de prêmio**: por isso a meta é **igual pros dois** — `METAS` em `src/utils/pontuacao.js`:
+
+| Nível | Pontos (cada um) | Prêmio |
+|---|---|---|
+| 1 · mês comum | 900 | R$ 100 |
+| 2 · mês bom | 1.050 | R$ 150 |
+| 3 · mês excelente | 1.200 | R$ 220 |
+
+Não cumulativo — paga o prêmio do **maior** nível atingido, não a soma. `calcularNivelPremio(totalPontos)` retorna `{ nivelAtingido, proximoNivel, pct, faltam }`.
+
+**Onde aparece**: barra de progresso + nível/prêmio em R$ tanto no card "Meus pontos do mês" (`PainelFuncionario.jsx`) quanto no card por pessoa em Relatórios → Funcionários (`PessoaCard` em `Relatorios.jsx`). **Decisão explícita do Toni**: mostrar o valor em R$ pro próprio funcionário — isso é ganho pessoal dele, não "financeiro do negócio" (a regra "nunca mostrar R$" do painel é sobre faturamento/lucro da empresa, não se aplica aqui).
+
+**Calibração**: baseada em maio-julho/2026 (ticket médio R$317,03 pra 64 OS "válidas" — só as que têm rastro real de check no sistema, sem garantia, sem OS importada sem histórico). 1 ponto ≈ R$9,79 de faturamento. Tratar como provisório — recalibrar depois de um mês cheio com autoria real (julho é o primeiro).

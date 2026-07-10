@@ -15,7 +15,7 @@ import EspelhoPonto from '../ponto/EspelhoPonto'
 import { usePainelFuncionario } from '../../hooks/usePainelFuncionario'
 import { usePonto, proximoTipo } from '../../hooks/usePonto'
 import { usePontuacao } from '../../hooks/usePontuacao'
-import { LABEL_SERVICO } from '../../utils/pontuacao'
+import { LABEL_SERVICO, calcularNivelPremio } from '../../utils/pontuacao'
 import { getRole } from '../../utils/osHelpers'
 
 const LABEL_PAPEL = { logistica: 'Logística', oficina: 'Oficina', dono: 'Dono' }
@@ -353,6 +353,8 @@ export default function PainelFuncionario({ T, dark, user }) {
 function CardPontos({ T, dark, azul, amarelo, dados, loading }) {
   const total = dados?.total || 0
   const porServico = dados?.porServico || {}
+  const { nivelAtingido, proximoNivel, pct, faltam } = calcularNivelPremio(total)
+  const verde = corEtapa('green', dark)
   return (
     <div className="idemaq-card" style={{
       background: T.card, borderRadius: 10,
@@ -372,6 +374,37 @@ function CardPontos({ T, dark, azul, amarelo, dados, loading }) {
           {loading ? '—' : total} <span style={{ fontSize: 13, fontWeight: 500, color: T.textMuted }}>pts</span>
         </span>
       </div>
+
+      {!loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{
+              fontSize: 11.5, fontWeight: 700,
+              color: nivelAtingido ? verde : T.textMuted,
+            }}>
+              {nivelAtingido
+                ? `🏆 ${nivelAtingido.label} · R$ ${nivelAtingido.premio}`
+                : 'Ainda sem nível este mês'}
+            </span>
+            {proximoNivel && (
+              <span style={{ fontSize: 10.5, color: T.textMuted }}>
+                faltam {faltam} pra {proximoNivel.label.split(' · ')[0]}
+              </span>
+            )}
+          </div>
+          <div style={{
+            width: '100%', height: 6, borderRadius: 4,
+            background: T.cardAlt, overflow: 'hidden',
+          }}>
+            <div style={{
+              width: `${pct}%`, height: '100%',
+              background: nivelAtingido ? verde : azul,
+              borderRadius: 4, transition: 'width .3s',
+            }} />
+          </div>
+        </div>
+      )}
+
       {!loading && total === 0 && (
         <div style={{ fontSize: 11.5, color: T.textMuted, fontStyle: 'italic' }}>
           Seus pontos aparecem aqui quando você der check numa etapa da OS.

@@ -50,6 +50,36 @@ export const LABEL_SERVICO = {
   entrega: 'Entrega',
 }
 
+// Metas de prêmio por desempenho — definidas com o Toni em 08/07/2026.
+// Meta IGUAL pra todo mundo (não existe divisão de tarefa por papel — ver
+// memória feedback_nao_ha_divisao_de_papel_por_tarefa — qualquer funcionário
+// pode fazer qualquer etapa, então a meta individual é a mesma pros dois).
+// Não cumulativo: paga o prêmio do MAIOR nível atingido, não a soma.
+export const METAS = [
+  { nivel: 1, label: 'Nível 1 · mês comum',     pontos: 900,  premio: 100 },
+  { nivel: 2, label: 'Nível 2 · mês bom',       pontos: 1050, premio: 150 },
+  { nivel: 3, label: 'Nível 3 · mês excelente', pontos: 1200, premio: 220 },
+]
+
+// Dado o total de pontos do mês de uma pessoa, calcula o nível atingido
+// (maior nível cujo `pontos` foi alcançado), o próximo nível (pra mostrar
+// "faltam X pontos"), e o % de progresso na faixa atual.
+export function calcularNivelPremio(totalPontos) {
+  const pontos = totalPontos || 0
+  let nivelAtingido = null
+  for (const m of METAS) {
+    if (pontos >= m.pontos) nivelAtingido = m
+  }
+  const proximoNivel = METAS.find(m => m.pontos > pontos) || null
+  const baseFaixa = nivelAtingido ? nivelAtingido.pontos : 0
+  const topoFaixa = proximoNivel ? proximoNivel.pontos : (nivelAtingido?.pontos || METAS[0].pontos)
+  const pct = proximoNivel
+    ? Math.max(0, Math.min(100, Math.round(((pontos - baseFaixa) / (topoFaixa - baseFaixa)) * 100)))
+    : 100
+  const faltam = proximoNivel ? Math.max(0, proximoNivel.pontos - pontos) : 0
+  return { nivelAtingido, proximoNivel, pct, faltam }
+}
+
 function isCarimbo(v) {
   return !!v && typeof v === 'object' && !!v.apelido
 }
