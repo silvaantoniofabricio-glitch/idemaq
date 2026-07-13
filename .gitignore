@@ -45,3 +45,6 @@ design-mobile/
 /*.jpg
 /*.docx
 /*.csv
+
+# Arquivos com dados de clientes (PII) — nunca versionar (repo público)
+Arquivos Contador/
