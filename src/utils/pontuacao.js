@@ -48,6 +48,7 @@ export const LABEL_SERVICO = {
   teste_final: 'Teste final',
   acabamento: 'Acabamento',
   entrega: 'Entrega',
+  ajuste_gap: 'Ajuste · gap lançamento',
 }
 
 // Metas de prêmio por desempenho — definidas com o Toni em 08/07/2026.

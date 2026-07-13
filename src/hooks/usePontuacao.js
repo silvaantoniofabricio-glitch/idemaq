@@ -17,6 +17,22 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { calcularPontosOS } from '../utils/pontuacao'
 
+// ── Ajuste manual ÚNICO — gap de lançamento (08/07/2026) ──────────────────
+// 14 OS tiveram trabalho real entre 01-05/07/2026, ANTES do sistema de
+// autoria existir (foi ao ar em 06/07) — 233 pontos que teriam sido gerados
+// (calculados sem autoria, mesma lógica do sql/127) nunca puderam ser
+// atribuídos a ninguém porque não tem carimbo. Combinado com o Toni: soma
+// um bônus fixo dividido igual entre os funcionários ativos (não-dono) SÓ
+// quando o período consultado cobre essa janela. Se auto-expira sozinho —
+// depois de agosto/2026 a condição de sobreposição nunca mais é verdadeira,
+// não precisa lembrar de remover. Não mexe nada além do total do mês de
+// julho/2026 pra quem já tinha pontos reais também.
+const BONUS_GAP_JULHO = {
+  janelaIni: '2026-07-01T00:00:00.000Z',
+  janelaFim: '2026-07-06T00:00:00.000Z',
+  pontosTotais: 233,
+}
+
 export function usePontuacao({ iniIso, fimIso } = {}) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -70,8 +86,33 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
         porFunc[chave].entries.push(e)
       }
 
+      // Bônus do gap de lançamento — só quando o período pedido cobre a
+      // janela 01-05/07/2026 (ver BONUS_GAP_JULHO acima).
+      const cobreJanelaGap = (!iniIso || iniIso < BONUS_GAP_JULHO.janelaFim)
+        && (!fimIso || fimIso >= BONUS_GAP_JULHO.janelaIni)
+      let bonusPorPessoa = 0
+      if (cobreJanelaGap) {
+        const { data: funcs } = await supabase
+          .from('usuarios')
+          .select('id, apelido')
+          .eq('ativo', true)
+          .neq('papel', 'dono')
+        if (cancel) return
+        const lista = funcs || []
+        if (lista.length > 0) {
+          bonusPorPessoa = Math.round((BONUS_GAP_JULHO.pontosTotais / lista.length) * 10) / 10
+          for (const f of lista) {
+            if (!porFunc[f.id]) {
+              porFunc[f.id] = { funcionario_id: f.id, apelido: f.apelido, total: 0, porServico: {}, entries: [] }
+            }
+            porFunc[f.id].total += bonusPorPessoa
+            porFunc[f.id].porServico['ajuste_gap'] = (porFunc[f.id].porServico['ajuste_gap'] || 0) + bonusPorPessoa
+          }
+        }
+      }
+
       const equipe = Object.values(porFunc).sort((a, b) => b.total - a.total)
-      const totalPontos = filtradas.reduce((s, e) => s + e.pontos, 0)
+      const totalPontos = equipe.reduce((s, f) => s + f.total, 0)
 
       if (!cancel) { setData({ equipe, totalPontos }); setLoading(false) }
     })()

@@ -506,3 +506,13 @@ Modal novo `src/components/osDetalhe/RelatorioPontuacaoModal.jsx`, aberto pelo m
 **Reaproveita `calcularPontosOS(os)`** (mesma função do placar agregado) — garante que o número bate exatamente com o que conta pro prêmio, sem lógica duplicada. OS de garantia mostra banner explicando por que não pontua (em vez de aparecer "0 pontos" sem contexto).
 
 Atlassian Design (`AtlPanel`/`ATL_FONT` de `_AtlassianUI.jsx`), mesmo padrão visual do resto da OS. Testado com dados simulados batendo o total esperado antes de subir.
+
+## 24. Bônus do gap de lançamento — julho/2026 (08/07/2026)
+
+14 OS tiveram trabalho real entre 01-05/07/2026, **antes** do sistema de autoria existir (foi ao ar 06/07) — 233 pontos que teriam sido gerados (calculados sem autoria, via `sql/126`/`sql/127`) nunca puderam ser atribuídos a ninguém por falta de carimbo.
+
+**Decisão do Toni**: aplicar como bônus fixo, dividido igual entre os funcionários ativos não-dono (233 ÷ 2 = 116,5 cada). Implementado em `usePontuacao.js` — constante `BONUS_GAP_JULHO` (janela + total), soma automaticamente quando o período consultado **sobrepõe** 01-06/07/2026 (testado com 7 cenários: mês julho pega, junho/agosto não pegam, período comparativo não pega, trimestre que inclui julho pega, sem filtro pega).
+
+**Autoexpira sozinho** — a partir de agosto/2026 a condição de sobreposição nunca mais é verdadeira, não precisa lembrar de remover o código. Aparece no placar com o rótulo "Ajuste · gap lançamento" (`LABEL_SERVICO.ajuste_gap`).
+
+**Isso é um ajuste ÚNICO, específico do mês de lançamento — não é um mecanismo genérico de bônus manual.** Se precisar de outro ajuste no futuro, replicar o padrão (constante com janela de data + query de funcionários ativos) ou considerar uma tabela dedicada se virar recorrente.
