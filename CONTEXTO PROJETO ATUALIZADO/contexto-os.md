@@ -498,3 +498,11 @@ Não cumulativo — paga o prêmio do **maior** nível atingido, não a soma. `c
 **Onde aparece**: barra de progresso + nível/prêmio em R$ tanto no card "Meus pontos do mês" (`PainelFuncionario.jsx`) quanto no card por pessoa em Relatórios → Funcionários (`PessoaCard` em `Relatorios.jsx`). **Decisão explícita do Toni**: mostrar o valor em R$ pro próprio funcionário — isso é ganho pessoal dele, não "financeiro do negócio" (a regra "nunca mostrar R$" do painel é sobre faturamento/lucro da empresa, não se aplica aqui).
 
 **Calibração**: baseada em maio-julho/2026 (ticket médio R$317,03 pra 64 OS "válidas" — só as que têm rastro real de check no sistema, sem garantia, sem OS importada sem histórico). 1 ponto ≈ R$9,79 de faturamento. Tratar como provisório — recalibrar depois de um mês cheio com autoria real (julho é o primeiro).
+
+## 23. Relatório de Pontuação por OS (08/07/2026)
+
+Modal novo `src/components/osDetalhe/RelatorioPontuacaoModal.jsx`, aberto pelo menu "⋮ Mais ações" do `Header.jsx` (item "Relatório de Pontuação", ícone `ti-trophy`). Mostra, pra UMA OS específica: total de pontos gerados, quebra por pessoa, e detalhamento por bloco (serviço + autor + data/hora de cada check).
+
+**Reaproveita `calcularPontosOS(os)`** (mesma função do placar agregado) — garante que o número bate exatamente com o que conta pro prêmio, sem lógica duplicada. OS de garantia mostra banner explicando por que não pontua (em vez de aparecer "0 pontos" sem contexto).
+
+Atlassian Design (`AtlPanel`/`ATL_FONT` de `_AtlassianUI.jsx`), mesmo padrão visual do resto da OS. Testado com dados simulados batendo o total esperado antes de subir.

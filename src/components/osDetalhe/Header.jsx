@@ -18,6 +18,7 @@ import { enviarOSParaRoteiro } from '../../utils/roteiroEnvio'
 import MandarRoteiroDialog from '../roteiro/MandarRoteiroDialog'
 import ClienteDetalheModal from '../clientes/ClienteDetalheModal'
 import FormEquipamentoEdit from './FormEquipamentoEdit'
+import RelatorioPontuacaoModal from './RelatorioPontuacaoModal'
 
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
@@ -213,6 +214,7 @@ export default function Header({
   // ── Modais de edição ──────────────────────────────────────────────────────
   const [modalCliente, setModalCliente] = useState(false)
   const [modalEquipamento, setModalEquipamento] = useState(false)
+  const [modalPontuacao, setModalPontuacao] = useState(false)
   function abrirCadastroCliente() {
     if (!os?.cliente_id) { notify('info', 'Esta OS não tem cliente vinculado'); return }
     setModalCliente(true)
@@ -507,6 +509,9 @@ export default function Header({
                 <MenuItem T={T} icon="ti-copy" onClick={copiarNumero}>
                   Copiar nº da OS
                 </MenuItem>
+                <MenuItem T={T} icon="ti-trophy" onClick={() => { setModalPontuacao(true); setMenuAberto(false) }}>
+                  Relatório de Pontuação
+                </MenuItem>
                 {admin && funcionarios.length > 0 && (
                   <MenuItem T={T} icon="ti-checklist" onClick={() => setRoteiroModo(true)}>
                     Mandar pro roteiro
@@ -637,6 +642,13 @@ export default function Header({
           os={os}
           onClose={() => setModalEquipamento(false)}
           onUpdateOS={onUpdateOS}
+        />
+      )}
+      {modalPontuacao && (
+        <RelatorioPontuacaoModal
+          T={T} dark={dark} mobile={mobile}
+          os={os}
+          onClose={() => setModalPontuacao(false)}
         />
       )}
       {roteiroDialog && (
