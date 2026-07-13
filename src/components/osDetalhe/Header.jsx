@@ -509,9 +509,11 @@ export default function Header({
                 <MenuItem T={T} icon="ti-copy" onClick={copiarNumero}>
                   Copiar nº da OS
                 </MenuItem>
-                <MenuItem T={T} icon="ti-trophy" onClick={() => { setModalPontuacao(true); setMenuAberto(false) }}>
-                  Relatório de Pontuação
-                </MenuItem>
+                {admin && (
+                  <MenuItem T={T} icon="ti-trophy" onClick={() => { setModalPontuacao(true); setMenuAberto(false) }}>
+                    Relatório de Pontuação
+                  </MenuItem>
+                )}
                 {admin && funcionarios.length > 0 && (
                   <MenuItem T={T} icon="ti-checklist" onClick={() => setRoteiroModo(true)}>
                     Mandar pro roteiro
