@@ -433,3 +433,19 @@ Nova página admin-only `/meu-contador` (`src/pages/MeuContador.jsx`) — centra
 **Regime default = MEI** (pista: "Tarifa MEI" nas despesas do sql/60). Tudo editável — card marca "confirme com seu contador".
 
 **Registro (5 lugares)**: App.jsx (import + rota desktop/mobile em `<AdminOnly>`) · AppLayout.ROUTES · osData.MENUS + MENUS_MOBILE_DONO_EXTRA · Sidebar.MENUS_ADMIN_ONLY. Ícone `ti-calculator`, seção `operacao` (Gestão).
+
+---
+
+## 17. Arquivo mensal pro contador + split fiscal Mercadoria × Serviço (13/07/2026)
+
+Toni pediu um arquivo mensal (entradas/saídas do mês anterior) pra declarar com o contador, no formato Excel mais comum (3 abas: Resumo/Entradas/Saídas). Gerado sob demanda via script Node (`xlsx` já é dependência do projeto) — **não** é uma feature da UI, é um processo manual que rodo quando pedido.
+
+**Correção de dado real feita nessa sessão**: 41 lançamentos de receita tinham `categoria = 'Servico'` (sem acento) em vez de `'Manutenção'` — bug do lote de importação Trello (sql/49, 31/05/2026 madrugada). Corrigido via **`sql/139`** (aplicado em prod — 0 linhas restantes). Isso também limpava uma categoria fantasma no Painel/Relatórios/DRE, não só no arquivo do contador.
+
+**Split fiscal Mercadoria × Serviço** (pedido do Toni — Simples Nacional tributa peça/mercadoria no Anexo I ~4%, serviço no Anexo III 6%+ISS; separar reduz imposto):
+- Cada receita ligada a uma OS é **rateada** entre Serviço/Peça/Deslocamento proporcional ao valor de cada tipo em `os_item.categoria` (`servico`/`peca`/`desloc`) daquela OS.
+- Receita sem item detalhado (OS antiga, lançamento avulso) cai 100% em Serviço (convenção — era o comportamento real do caso "Paula saldo restante").
+- **`sql/138-view-lancamento-fiscal-split.sql`** (aplicada em prod 13/07/2026) automatiza esse rateio por lançamento: `vw_lancamento_fiscal_split` expõe `valor_peca`/`valor_desloc`/`valor_servico` por linha, com `valor_servico` calculado por **resíduo** (`valor - peca - desloc`) pra garantir soma exata sem sobra de centavo. Testada com junho/2026: bate com o rateio manual confirmado (`sql/137`, diagnóstico ad-hoc que rodou antes da view existir) a 1 centavo de arredondamento.
+- Resultado junho/2026: Mercadoria R$ 4.954,80 · Serviço R$ 12.500,20 (mão de obra R$ 11.510,35 + deslocamento R$ 889,85 + avulso R$ 100).
+
+**Pra gerar o arquivo de um mês**: script temporário (puxa `vw_lancamentos_validos` + `vw_lancamento_fiscal_split`, monta o `.xlsx` via lib `xlsx`, salva em `Arquivos Contador/` — pasta gitignored, tem PII de cliente) e descarta o script depois. Sem UI dedicada ainda — se Toni pedir com frequência, vira o botão sugerido na página Meu Contador (§16).
