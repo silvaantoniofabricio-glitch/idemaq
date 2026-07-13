@@ -32,7 +32,7 @@ import HojeSidekick            from '../components/painel/HojeSidekick'
 import KPICard                 from '../components/painel/KPICard'
 import PipelineOS              from '../components/painel/PipelineOS'
 import AlertasCriticos         from '../components/painel/AlertasCriticos'
-import ProximasParadasTimeline from '../components/painel/ProximasParadasTimeline'
+import ProximosVencimentos     from '../components/painel/ProximosVencimentos'
 
 ChartJS.register(...registerables)
 
@@ -329,7 +329,7 @@ export default function Painel({ T, dark, user }) {
     return list.sort((a, b) => a.prio - b.prio).slice(0, 6)
   }, [osList, estoque, pecas])
 
-  // ─── Próximas paradas (próximos 7 dias com prazo, qualquer etapa ativa) ───
+  // ─── Próximas paradas (próximos 7 dias com prazo) — alimenta o HojeSidekick ─
   const proximas = useMemo(() => {
     const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
     return (osList || [])
@@ -353,6 +353,33 @@ export default function Painel({ T, dark, user }) {
         os: `#${o.numero}`,
       }))
   }, [osList])
+
+  // ─── Próximos vencimentos (contas a pagar em aberto) ──────────────────────
+  // Substituiu "Próximas paradas" (24/06/2026, a pedido do Toni) — ele queria
+  // ver data de vencimento das contas, não paradas de logística (que já tem
+  // tela própria). Fonte: lancamento_financeiro tipo=despesa, pago_em IS NULL.
+  const proximosVencimentos = useMemo(() => {
+    const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
+    return (lancsFin || [])
+      .filter(l => l.tipo === 'despesa' && l.pago_em == null && l.vencimento)
+      .map(l => {
+        const venc = parseISODate(l.vencimento)
+        if (!venc) return null
+        const diff = Math.round((venc - hojeZero) / 86400000)
+        return { l, venc, diff }
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.diff - b.diff)
+      .slice(0, 6)
+      .map(({ l, venc, diff }) => ({
+        descricao: l.descricao || l.categoria || 'Despesa',
+        valor: Number(l.valor) || 0,
+        dia: String(venc.getDate()).padStart(2, '0'),
+        mes: MESES_CURTO[venc.getMonth()],
+        diff,
+        tipo: diff < 0 ? 'vencido' : diff === 0 ? 'hoje' : 'futuro',
+      }))
+  }, [lancsFin])
 
   // ─── Hero ─────────────────────────────────────────────────────────────────
   const inicio30 = new Date(hojeData); inicio30.setDate(inicio30.getDate() - 29)
@@ -551,7 +578,7 @@ export default function Painel({ T, dark, user }) {
             <Bar data={chartAnualData} options={chartOpts()} />
           </div>
         </Card>
-        <ProximasParadasTimeline T={T} dark={dark} paradas={proximas} />
+        <ProximosVencimentos T={T} dark={dark} vencimentos={proximosVencimentos} onVer={() => navigate('/financeiro')} />
       </div>
     </div>
   )
