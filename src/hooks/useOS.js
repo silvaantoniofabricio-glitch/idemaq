@@ -68,6 +68,7 @@ export function useOS(buscando = false) {
           marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado,
           tipo_equipamento,
           pre_diagnostico, observacoes, oculta_no_kanban,
+          endereco,
           cliente:cliente_id(id, nome, telefone, endereco, deleted_at),
           os_item(count),
           os_historico(id, etapa_de, etapa_para, funcionario_id, data)

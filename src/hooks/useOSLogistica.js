@@ -89,7 +89,7 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
         .from('os')
         .select(`
           id, numero, tipo, etapa,
-          prazo, data_agendamento,
+          prazo, data_agendamento, endereco,
           cliente:cliente_id(id, nome, telefone, endereco)
         `)
         .is('deleted_at', null)

@@ -37,6 +37,8 @@ const COLUNAS_SAFE = new Set([
   'pre_diagnostico',
   // observacoes livres da OS (header + detalhe)
   'observacoes',
+  // endereco escolhido pra ESTA OS (sql/133) — um dos ate 3 do cliente.
+  'endereco',
   // Flag pra esconder do Kanban sem sumir de Vendas/Relatorios (sql/76).
   'oculta_no_kanban',
 ])

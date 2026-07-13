@@ -454,6 +454,8 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
         numero_serie: form.equipamentoSerie?.trim() || null,
         defeito_relatado: form.defeito?.trim() || null,
         data_agendamento: dataAgIso,
+        // Endereço escolhido pra esta OS (um dos até 3 do cliente). sql/133.
+        endereco: form.enderecoSelecionado || form.endereco || null,
       }
       // Venda: preenche modelo a partir da máquina selecionada do estoque
       if (tipo === 'venda' && form.maquinaEstoque) {
