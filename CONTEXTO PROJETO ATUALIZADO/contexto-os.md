@@ -503,7 +503,7 @@ Não cumulativo — paga o prêmio do **maior** nível atingido, não a soma. `c
 
 Modal novo `src/components/osDetalhe/RelatorioPontuacaoModal.jsx`, aberto pelo menu "⋮ Mais ações" do `Header.jsx` (item "Relatório de Pontuação", ícone `ti-trophy`). Mostra, pra UMA OS específica: total de pontos gerados, quebra por pessoa, e detalhamento por bloco (serviço + autor + data/hora de cada check).
 
-**Reaproveita `calcularPontosOS(os)`** (mesma função do placar agregado) — garante que o número bate exatamente com o que conta pro prêmio, sem lógica duplicada. OS de garantia mostra banner explicando por que não pontua (em vez de aparecer "0 pontos" sem contexto).
+**Reaproveita `calcularPontosOS(os)`** (mesma função do placar agregado) — garante que o número bate exatamente com o que conta pro prêmio, sem lógica duplicada. OS de garantia mostra banner explicando o fator reduzido (ver §25).
 
 Atlassian Design (`AtlPanel`/`ATL_FONT` de `_AtlassianUI.jsx`), mesmo padrão visual do resto da OS. Testado com dados simulados batendo o total esperado antes de subir.
 
@@ -516,3 +516,13 @@ Atlassian Design (`AtlPanel`/`ATL_FONT` de `_AtlassianUI.jsx`), mesmo padrão vi
 **Autoexpira sozinho** — a partir de agosto/2026 a condição de sobreposição nunca mais é verdadeira, não precisa lembrar de remover o código. Aparece no placar com o rótulo "Ajuste · gap lançamento" (`LABEL_SERVICO.ajuste_gap`).
 
 **Isso é um ajuste ÚNICO, específico do mês de lançamento — não é um mecanismo genérico de bônus manual.** Se precisar de outro ajuste no futuro, replicar o padrão (constante com janela de data + query de funcionários ativos) ou considerar uma tabela dedicada se virar recorrente.
+
+## 25. Garantia pontua pela metade (08/07/2026)
+
+**⚠️ Mudança de regra** — antes (§18) OS de garantia não pontuavam (`if (os.garantia) continue` em `usePontuacao.js`). O Toni pediu revisão: nem todo retorno de garantia é culpa de quem consertou (peça com defeito de fábrica, desgaste natural, mau uso do cliente) — zero pontos ignorava trabalho real; pontos cheios perdia o efeito de "trava de qualidade".
+
+**Decisão**: `FATOR_GARANTIA = 0.5` em `src/utils/pontuacao.js` — `calcularPontosOS(os)` aplica esse fator em TODOS os blocos quando `os.garantia === true` (pontos ficam com `.5`, ex: coleta normal=5 → garantia=2.5). `usePontuacao.js` não pula mais garantia (removido o `continue`) — processa normal, o desconto já vem embutido no cálculo.
+
+**Continua funcionando junto, sem conflito**: `useRelatorioQualidade.js` (contador de "OS em garantia" atribuído a quem fez o serviço **original**) é um mecanismo **independente** — não mudou. São duas coisas: quem conserta a garantia agora ganha metade do ponto; quem fez o serviço original que voltou continua aparecendo no contador de qualidade.
+
+**Verificado**: testado com cenário simulado (OS normal coleta=5/diagnóstico=4 vs mesma OS com garantia=true → coleta=2.5/diagnóstico=2) batendo exatamente antes de subir. Build limpo.

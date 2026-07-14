@@ -5,7 +5,8 @@
 //
 // Reaproveita calcularPontosOS (mesma função que alimenta o placar em
 // Relatórios/Funcionários e o Painel do Funcionário) — garante que o número
-// aqui bate exatamente com o que conta pro prêmio.
+// aqui bate exatamente com o que conta pro prêmio. OS de garantia pontua
+// pela metade (FATOR_GARANTIA) — calcularPontosOS já aplica o desconto.
 
 import React from 'react'
 import { Modal, ModalHeader } from '../ui'
@@ -27,11 +28,12 @@ export default function RelatorioPontuacaoModal({ T, dark, mobile, os, onClose }
   const vermelho = corEtapa('red', dark)
 
   const ehGarantia = !!os?.garantia
-  const entries = ehGarantia ? [] : calcularPontosOS({
+  const entries = calcularPontosOS({
     id: os.id,
     numero: os.numero,
     tipoEquipamento: os.tipoEquipamento,
     pre_diagnostico: os.pre_diagnostico,
+    garantia: ehGarantia,
   })
 
   const totalPontos = entries.reduce((s, e) => s + e.pontos, 0)
@@ -64,36 +66,34 @@ export default function RelatorioPontuacaoModal({ T, dark, mobile, os, onClose }
         fontFamily: ATL_FONT,
       }}>
 
-        {/* Aviso garantia — explica por que não pontua */}
+        {/* Aviso garantia — explica o fator reduzido */}
         {ehGarantia && (
-          <AtlPanel T={T} dark={dark} accent={vermelho}>
+          <AtlPanel T={T} dark={dark} accent={amarelo}>
             <div style={{ padding: '12px 14px', display: 'flex', gap: 10 }}>
-              <i className="ti ti-shield-x" style={{ fontSize: 18, color: vermelho, flexShrink: 0 }} aria-hidden="true" />
+              <i className="ti ti-shield-half" style={{ fontSize: 18, color: amarelo, flexShrink: 0 }} aria-hidden="true" />
               <div style={{ fontSize: 12.5, color: T.textPrimary, lineHeight: 1.5 }}>
-                <strong>OS de garantia — não gera pontos.</strong> Retrabalho decorrente de
-                um problema não pontua pra quem conserta de novo (ver Qualidade em
-                Relatórios → Funcionários pra o desconto de quem fez o serviço original).
+                <strong>OS de garantia — pontos pela metade.</strong> Retrabalho decorrente
+                de um problema vale 50% do normal (ver Qualidade em Relatórios →
+                Funcionários pro desconto de quem fez o serviço original que voltou).
               </div>
             </div>
           </AtlPanel>
         )}
 
         {/* Total */}
-        {!ehGarantia && (
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 600 }}>
-              Total gerado nesta OS
-            </span>
-            <span style={{
-              fontSize: 28, fontWeight: 800, color: amarelo,
-              fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
-            }}>
-              {totalPontos} <span style={{ fontSize: 13, fontWeight: 500, color: T.textMuted }}>pts</span>
-            </span>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: T.textMuted, fontWeight: 600 }}>
+            Total gerado nesta OS
+          </span>
+          <span style={{
+            fontSize: 28, fontWeight: 800, color: amarelo,
+            fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
+          }}>
+            {totalPontos} <span style={{ fontSize: 13, fontWeight: 500, color: T.textMuted }}>pts</span>
+          </span>
+        </div>
 
-        {!ehGarantia && entries.length === 0 && (
+        {entries.length === 0 && (
           <div style={{
             padding: '20px 14px', textAlign: 'center',
             color: T.textMuted, fontSize: 12.5, fontStyle: 'italic',

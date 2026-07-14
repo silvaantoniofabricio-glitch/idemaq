@@ -5,9 +5,12 @@
 // check, não em criado_em/atualizado_em da OS (uma OS aberta em maio pode
 // ter um check pontuado em julho).
 //
-// OS de garantia (os.garantia = true) NÃO geram pontos — é retrabalho
-// decorrente de um problema, não serviço novo. O desconto de quem fez o
-// serviço original é rastreado à parte, em useRelatorioQualidade.js.
+// OS de garantia (os.garantia = true) pontuam pela METADE (FATOR_GARANTIA
+// em utils/pontuacao.js, 08/07/2026) — é retrabalho decorrente de um
+// problema (nem sempre culpa de quem conserta), reconhece o trabalho real
+// sem valer o mesmo que serviço novo. O desconto de quem fez o serviço
+// ORIGINAL (que voltou com defeito) é rastreado à parte, em
+// useRelatorioQualidade.js — são 2 mecanismos independentes.
 //
 // Uso: const { data, loading, error } = usePontuacao({ iniIso, fimIso })
 //   data.equipe: [{ funcionario_id, apelido, total, porServico, entries }]
@@ -52,12 +55,14 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
 
       const todasEntries = []
       for (const os of rows || []) {
-        if (os.garantia) continue // retrabalho de garantia não pontua
+        // OS de garantia pontua pela metade (FATOR_GARANTIA em pontuacao.js)
+        // — calcularPontosOS já aplica o desconto internamente.
         const entries = calcularPontosOS({
           id: os.id,
           numero: os.numero,
           tipoEquipamento: os.tipo_equipamento,
           pre_diagnostico: os.pre_diagnostico,
+          garantia: os.garantia,
         })
         todasEntries.push(...entries)
       }

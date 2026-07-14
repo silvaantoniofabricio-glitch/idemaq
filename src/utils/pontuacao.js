@@ -91,15 +91,22 @@ function ultimoCarimbo(lista) {
     .sort((a, b) => new Date(b.em || 0) - new Date(a.em || 0))[0] || null
 }
 
+// OS de garantia pontuam pela metade — é retrabalho decorrente de um
+// problema (nem sempre culpa de quem conserta: pode ser peça com defeito de
+// fábrica, desgaste natural, mau uso do cliente), então reconhece o trabalho
+// real sem valer o mesmo que um serviço novo. Combinado com o Toni 08/07/2026.
+export const FATOR_GARANTIA = 0.5
+
 /**
  * Calcula os pontos de UMA OS, devolvendo uma entrada por bloco de serviço
  * completo e carimbado. Cada entrada: { servico, label, pontos, funcionario_id,
- * apelido, em, os_id, os_numero }.
+ * apelido, em, os_id, os_numero }. Pontos vêm pela metade se `os.garantia`.
  */
 export function calcularPontosOS(os) {
   const tab = os.tipoEquipamento === 'lava_seca' ? PONTOS_LAVA_SECA : PONTOS
   const pd = os.pre_diagnostico || {}
   const entries = []
+  const fator = os.garantia ? FATOR_GARANTIA : 1
 
   function push(servico, carimbo) {
     if (!isCarimbo(carimbo)) return
@@ -108,7 +115,7 @@ export function calcularPontosOS(os) {
       os_numero: os.numero,
       servico,
       label: LABEL_SERVICO[servico],
-      pontos: tab[servico],
+      pontos: tab[servico] * fator,
       funcionario_id: carimbo.uid || null,
       apelido: carimbo.apelido,
       em: carimbo.em || null,
