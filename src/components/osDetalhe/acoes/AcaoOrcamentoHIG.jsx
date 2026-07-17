@@ -1539,8 +1539,11 @@ function NovaItemRow({ tipo, T, dark, onAdd }) {
 }
 
 // ─── Diagnóstico em panel Atlassian ───────────────────────────────────────
+// Mostra o defeito RELATADO PELO CLIENTE (os.defeito) — não confundir com
+// os.observacoes, que é a anotação interna livre (editável em toda etapa por
+// qualquer técnico, ex: "cliente vai buscar amanhã"). Já apareceu trocado.
 function AtlDiagnosticoCard({ T, dark, os }) {
-  const relato = (os?.observacoes || '').trim()
+  const relato = (os?.defeito || '').trim()
   if (!relato) return null
   return (
     <AtlPanel T={T} dark={dark} title="Diagnóstico" accent="#FFCC00">
