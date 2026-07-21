@@ -140,10 +140,13 @@ export function calcularPontosOS(os) {
   }
 
   // ── Conserto ───────────────────────────────────────────────────────────
+  // Desmontagem/Montagem/Limpeza são checks de valor único salvos como
+  // { feito: carimbo } (chaveId='feito' em AcaoOficinaHIG.toggleEm) — o
+  // carimbo mora DENTRO da chave 'feito', não no objeto em si.
   const exec = pd.oficina?.execucao || {}
-  push('desmontagem', exec.desmontagem)
-  push('montagem', exec.montagem)
-  if (pd.oficina?.tem_limpeza) push('limpeza', exec.limpeza_serv)
+  push('desmontagem', exec.desmontagem?.feito)
+  push('montagem', exec.montagem?.feito)
+  if (pd.oficina?.tem_limpeza) push('limpeza', exec.limpeza_serv?.feito)
   // Manutenção: cada chave de manut_serv com carimbo válido = 1 peça/serviço
   for (const val of Object.values(exec.manut_serv || {})) {
     push('manutencao', val)

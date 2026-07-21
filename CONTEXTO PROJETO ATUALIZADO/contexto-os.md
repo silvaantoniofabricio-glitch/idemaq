@@ -526,3 +526,17 @@ Atlassian Design (`AtlPanel`/`ATL_FONT` de `_AtlassianUI.jsx`), mesmo padrão vi
 **Continua funcionando junto, sem conflito**: `useRelatorioQualidade.js` (contador de "OS em garantia" atribuído a quem fez o serviço **original**) é um mecanismo **independente** — não mudou. São duas coisas: quem conserta a garantia agora ganha metade do ponto; quem fez o serviço original que voltou continua aparecendo no contador de qualidade.
 
 **Verificado**: testado com cenário simulado (OS normal coleta=5/diagnóstico=4 vs mesma OS com garantia=true → coleta=2.5/diagnóstico=2) batendo exatamente antes de subir. Build limpo.
+
+## 26. ⚠️ Bug crítico corrigido — Desmontagem/Montagem/Limpeza nunca pontuavam (08/07/2026)
+
+**O bug**: `AcaoOficinaHIG.toggleEm` salva os checks de valor único (Desmontagem, Montagem, Limpeza) como `{ feito: carimbo }` — chaveId sempre `'feito'` pra esses 3 (ver `onToggle={() => onToggleDesm('feito')}` etc). Mas `calcularPontosOS` em `pontuacao.js` lia `exec.desmontagem`/`exec.montagem`/`exec.limpeza_serv` **direto**, esperando o carimbo ali — sem entrar na chave `'feito'`. `isCarimbo({feito:...})` retorna `false` (não tem `.apelido` no nível certo) → `push()` silenciosamente não fazia nada.
+
+**Impacto real**: desde 06/07/2026 (quando a pontuação foi ao ar) até 08/07/2026, **Desmontagem, Montagem e Limpeza nunca geraram ponto pra ninguém** — em nenhuma OS, mesmo com o check certinho e o carimbo certo. Diagnóstico, Teste, Coleta, Entrega e Manutenção (por peça) **não tinham esse bug** — só esses 3 checks de "clique único" da Oficina.
+
+**Como foi achado**: Toni notou que a OS #1723 tinha limpeza feita mas não aparecia pontuação de ninguém — pediu diagnóstico em vez de aceitar "deve ter esquecido o check". Consulta direta em `pre_diagnostico` (`sql/128`) mostrou o carimbo intacto dentro de `.feito`, confirmando bug de leitura, não de gravação.
+
+**Correção**: `push('desmontagem', exec.desmontagem?.feito)` (e igual pra montagem/limpeza_serv) em `calcularPontosOS`. Testado com os dados REAIS da OS #1723 (26 pontos: 4+4+18, todos Guilherme) + casos vazio/dado-antigo continuam 0. Build limpo.
+
+**Efeito pós-deploy**: como o cálculo é sempre ao vivo (não fica guardado em lugar nenhum), o placar de TODO MUNDO sobe automaticamente assim que essa correção for pro ar — não precisa reprocessar nada. Os totais de julho que o Toni viu na tela até agora estavam **subestimados**.
+
+⚠️ **Lição pra próximas sessões**: os testes que eu fiz anteriormente pra `calcularPontosOS` (ver §18) usaram fixtures **inventadas à mão**, sem checar contra o dado REAL salvo no banco pra Desmontagem/Montagem/Limpeza — por isso não pegaram esse bug. Testar lógica de leitura de dado sempre com pelo menos 1 exemplo de dado real (consulta SQL), não só com fixture que eu mesmo montei baseado em como *achei* que o dado seria salvo.
