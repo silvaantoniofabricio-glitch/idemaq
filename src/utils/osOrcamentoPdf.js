@@ -88,10 +88,18 @@ export function gerarPdfOrcamento({ os, porTipo, descontoRS, total }) {
   return abrirEImprimir(html)
 }
 
-// Abre a aba nova com o HTML e dispara o print — compartilhado pelos dois
-// documentos (orçamento e recibo).
-function abrirEImprimir(html) {
-  const win = window.open('', '_blank')
+// Abre a aba em branco JÁ (síncrono, dentro do clique) — o navegador só
+// libera window.open sem bloquear popup se for direto de um gesto do
+// usuário. Chamar isso ANTES de qualquer await (ex: busca no banco) e só
+// preencher o conteúdo depois, via abrirEImprimir(win, html).
+export function abrirAbaEmBranco() {
+  return window.open('', '_blank')
+}
+
+// Escreve o HTML na aba já aberta e dispara o print — compartilhado pelos
+// dois documentos (orçamento e recibo).
+function abrirEImprimir(html, winExistente) {
+  const win = winExistente !== undefined ? winExistente : window.open('', '_blank')
   if (!win) return { ok: false, motivo: 'O navegador bloqueou a nova aba — permita pop-ups pra este site.' }
   win.document.write(html)
   win.document.close()
@@ -110,16 +118,24 @@ const LABEL_FORMA = {
 
 /**
  * Recibo do que já foi pago na OS. Mostra os itens (referência do que foi
- * cobrado) + o valor efetivamente recebido, forma de pagamento e status.
+ * cobrado) + o valor efetivamente recebido, forma(s) de pagamento e status.
  *
  * @param {object} os - inclui valor_pago, pago ('nao'|'parcial'|'total'), forma_pagamento
  * @param {object} porTipo
  * @param {number} descontoRS
  * @param {number} total
+ * @param {Array} [baixas] - lançamentos reais de receita da OS (id, valor,
+ *   forma_pagamento, pago_em) — pagamento misto vira 1 lançamento por forma,
+ *   então isso é a fonte certa (os.forma_pagamento só guarda uma).
+ * @param {Window} [win] - aba já aberta via abrirAbaEmBranco() ANTES de
+ *   qualquer await (ex: buscar as baixas) — evita bloqueio de pop-up.
  */
-export function gerarPdfRecibo({ os, porTipo, descontoRS, total }) {
+export function gerarPdfRecibo({ os, porTipo, descontoRS, total, baixas = [], win }) {
   const valorPago = Number(os?.valor_pago) || 0
-  if (valorPago <= 0) return { ok: false, motivo: 'Nenhum pagamento registrado nesta OS ainda.' }
+  if (valorPago <= 0) {
+    win?.close()
+    return { ok: false, motivo: 'Nenhum pagamento registrado nesta OS ainda.' }
+  }
 
   const grupos = ['servico', 'peca', 'desloc']
     .map(tipo => ({ tipo, itens: porTipo?.[tipo] || [] }))
@@ -143,9 +159,18 @@ export function gerarPdfRecibo({ os, porTipo, descontoRS, total }) {
     }).join('')}
   `).join('')
 
-  const formaLabel = LABEL_FORMA[os?.forma_pagamento] || os?.forma_pagamento || '—'
   const statusLabel = os?.pago === 'total' ? 'Pago integralmente' : os?.pago === 'parcial' ? 'Pago parcialmente' : 'Recebido'
   const saldo = Math.max(0, total - valorPago)
+
+  // Cada baixa é uma linha (pagamento misto = Dinheiro + Débito + PIX etc,
+  // um lançamento por forma). Sem baixas (ex: dado antigo), cai no campo
+  // único os.forma_pagamento como fallback.
+  const linhasPagamento = baixas.length > 0
+    ? baixas.map(b => {
+        const label = LABEL_FORMA[b.forma_pagamento] || b.forma_pagamento || '—'
+        return `<div class="linha"><span>${escapeHtml(label)}</span><span>${fmtBRL(b.valor)}</span></div>`
+      }).join('')
+    : `<div class="linha"><span>Forma de pagamento</span><span>${escapeHtml(LABEL_FORMA[os?.forma_pagamento] || os?.forma_pagamento || '—')}</span></div>`
 
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
@@ -189,11 +214,11 @@ export function gerarPdfRecibo({ os, porTipo, descontoRS, total }) {
   <div class="pagamento">
     <div class="status">${statusLabel}</div>
     <div class="linha"><span>Valor recebido</span><span>${fmtBRL(valorPago)}</span></div>
-    <div class="linha"><span>Forma de pagamento</span><span>${escapeHtml(formaLabel)}</span></div>
+    ${linhasPagamento}
     ${saldo > 0 ? `<div class="linha"><span>Saldo restante</span><span>${fmtBRL(saldo)}</span></div>` : ''}
   </div>
   <div class="rodape">IdeMaq Assistência Técnica — Naviraí/MS</div>
 </body></html>`
 
-  return abrirEImprimir(html)
+  return abrirEImprimir(html, win)
 }

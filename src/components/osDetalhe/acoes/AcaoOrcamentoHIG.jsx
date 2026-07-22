@@ -29,7 +29,7 @@ import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { montarMensagemOrcamento, abrirWhatsAppComTexto } from '../../../utils/osMensagens'
-import { gerarPdfOrcamento, gerarPdfRecibo } from '../../../utils/osOrcamentoPdf'
+import { gerarPdfOrcamento, gerarPdfRecibo, abrirAbaEmBranco } from '../../../utils/osOrcamentoPdf'
 import { useToast } from '../../ui'
 
 // ─── Tipos de item ────────────────────────────────────────────────────────
@@ -2621,9 +2621,23 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
             },
             {
               label: 'Recibo', icon: 'receipt',
-              onClick: () => {
+              onClick: async () => {
                 if (docSheet === 'pdf') {
-                  const r = gerarPdfRecibo({ os, porTipo, descontoRS, total })
+                  // Abre a aba JÁ (síncrono, dentro do clique) — senão o
+                  // navegador bloqueia o popup por causa do await abaixo.
+                  const win = abrirAbaEmBranco()
+                  // Pagamento misto vira 1 lançamento por forma (Dinheiro +
+                  // Débito etc) — busca as baixas reais em vez de confiar só
+                  // em os.forma_pagamento (que guarda uma única forma).
+                  const { data: baixas } = await supabase
+                    .from('lancamento_financeiro')
+                    .select('valor, forma_pagamento, pago_em')
+                    .eq('os_id', os.id)
+                    .eq('tipo', 'receita')
+                    .is('deleted_at', null)
+                    .not('pago_em', 'is', null)
+                    .order('pago_em', { ascending: true })
+                  const r = gerarPdfRecibo({ os, porTipo, descontoRS, total, baixas: baixas || [], win })
                   if (!r.ok) notify?.('erro', r.motivo)
                 } else {
                   onUpdateOS?.(os.numero, { action: 'enviar_recibo_whatsapp' })
