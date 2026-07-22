@@ -23,6 +23,7 @@ import { useGeocodeEnderecos } from '../hooks/useGeocodeEnderecos'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
+import { AtlChip } from '../components/osDetalhe/acoes/_AtlassianUI'
 
 const HOJE = new Date().toISOString().slice(0, 10)
 const AMANHA = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) })()
@@ -146,7 +147,6 @@ export default function LogisticaMobile({ T, dark }) {
   const notify = useToast()
 
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_LOGISTICA)
-  const [filtroAgenda, setFiltroAgenda] = useState('hoje')
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
   const [criandoRotasFalhou, setCriandoRotasFalhou] = useState(false)
@@ -161,9 +161,17 @@ export default function LogisticaMobile({ T, dark }) {
   const { abrirOSPorId, modalProps: osDetalheProps } = useOSDetalheModal({ notify })
 
   const osFiltradas = useMemo(() => {
-    const porEtapa = osList.filter(o => etapasAtivas.has(o.etapa_db))
-    return filtrarPorAgenda(porEtapa, filtroAgenda)
-  }, [osList, etapasAtivas, filtroAgenda])
+    return osList.filter(o => etapasAtivas.has(o.etapa_db))
+  }, [osList, etapasAtivas])
+
+  // Contagem por etapa (do osList completo, não filtrado) — mostrada no chip
+  const countEtapa = useMemo(() => {
+    const m = {}
+    for (const f of FILTROS_ETAPA_LOGISTICA) {
+      m[f.id] = osList.filter(o => o.etapa_db === f.id).length
+    }
+    return m
+  }, [osList])
 
   const enderecos = useMemo(
     () => osFiltradas.map(o => o.endereco).filter(Boolean),
@@ -344,19 +352,17 @@ export default function LogisticaMobile({ T, dark }) {
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
 
-        {/* 1. Filtros — segmented multi-select */}
+        {/* 1. Filtros — chips Atlassian, múltipla escolha */}
         <FiltroEtapas
           T={T} dark={dark}
           ativas={etapasAtivas}
+          contagem={countEtapa}
           onToggle={(id) => setEtapasAtivas(prev => {
             const next = new Set(prev)
             if (next.has(id)) next.delete(id); else next.add(id)
             return next
           })}
         />
-
-        {/* 1b. Filtro de agenda */}
-        <FiltroAgenda T={T} dark={dark} ativo={filtroAgenda} onChange={setFiltroAgenda} />
 
         {/* 2. Mapa */}
         <div style={{
@@ -502,87 +508,20 @@ function AtlPanel({ T, dark, title, count, footer, children }) {
   )
 }
 
-// Segmented multi-select dos filtros — estilo iOS dentro do padrao
-// Atlassian (radius 3, padding compacto). Suporta multi-select porque
-// o filtro permite combinar etapas.
-export function FiltroEtapas({ T, dark, ativas, onToggle }) {
-  const bgContainer = dark ? 'rgba(120,120,128,0.24)' : 'rgba(118,118,128,0.12)'
+// Chips de filtro — padrão Atlassian (AtlChip), múltipla escolha. Cada chip
+// mostra a contagem de OS naquela etapa (do osList completo, não filtrado).
+export function FiltroEtapas({ T, dark, ativas, contagem, onToggle }) {
   return (
-    <div style={{
-      display: 'flex',
-      background: bgContainer,
-      borderRadius: 3,
-      padding: 2, gap: 0,
-    }}>
-      {FILTROS_ETAPA_LOGISTICA.map(f => {
-        const ativo = ativas.has(f.id)
-        return (
-          <button key={f.id}
-            type="button"
-            onClick={() => onToggle(f.id)}
-            style={{
-              flex: 1, minWidth: 0, minHeight: 30,
-              padding: '5px 4px',
-              borderRadius: 3, border: 'none',
-              background: ativo ? T.card : 'transparent',
-              color: T.textPrimary,
-              fontSize: 12, fontWeight: ativo ? 600 : 500,
-              cursor: 'pointer', fontFamily: ATL_FONT,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              letterSpacing: '-0.005em',
-              WebkitTapHighlightColor: 'transparent',
-              boxShadow: ativo
-                ? (dark
-                    ? '0 1px 2px rgba(0,0,0,.4)'
-                    : '0 1px 2px rgba(9,30,66,0.18)')
-                : 'none',
-              transition: 'background .12s, box-shadow .12s',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-            {f.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-const OPCOES_AGENDA = [
-  { id: 'hoje',   label: 'Hoje / Atrasadas',  icon: 'ti-calendar-event' },
-  { id: 'amanha', label: 'Amanhã',            icon: 'ti-calendar-plus' },
-  { id: 'semana', label: 'Semana',            icon: 'ti-calendar-week' },
-]
-
-export function FiltroAgenda({ T, dark, ativo, onChange }) {
-  const azul = corEtapa('blue', dark)
-  return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      {OPCOES_AGENDA.map(op => {
-        const sel = ativo === op.id
-        return (
-          <button key={op.id} type="button"
-            onClick={() => onChange(op.id)}
-            style={{
-              flex: 1, minWidth: 0,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              padding: '6px 4px',
-              borderRadius: ATL_RADIUS,
-              border: `1px solid ${sel ? azul : T.border}`,
-              background: sel ? azul + '22' : T.card,
-              color: sel ? azul : T.textSecondary,
-              fontSize: 11.5, fontWeight: sel ? 700 : 500,
-              cursor: 'pointer', fontFamily: ATL_FONT,
-              letterSpacing: '-0.005em',
-              WebkitTapHighlightColor: 'transparent',
-              transition: 'all .12s',
-              boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.08)',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-            <i className={`ti ${op.icon}`} style={{ fontSize: 13, flexShrink: 0 }} aria-hidden="true" />
-            {op.label}
-          </button>
-        )
-      })}
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      {FILTROS_ETAPA_LOGISTICA.map(f => (
+        <AtlChip
+          key={f.id} T={T} dark={dark}
+          icon={f.icon.replace(/^ti-/, '')} label={f.label}
+          count={contagem?.[f.id] || 0}
+          selected={ativas.has(f.id)}
+          onClick={() => onToggle(f.id)}
+        />
+      ))}
     </div>
   )
 }
