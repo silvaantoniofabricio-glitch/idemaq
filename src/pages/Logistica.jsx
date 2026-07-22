@@ -12,9 +12,9 @@ import LogisticaMobile, {
   NOMES_SLOT, LETRA_POR_SLOT,
   ETAPAS_DEFAULT_LOGISTICA, tipoUiPorEtapa,
   CardFlutuanteOS, RotaAccordion, DiagnosticoMapa,
-  filtrarPorAgenda,
 } from './LogisticaMobile'
 import { useToast, ModuleHeader } from '../components/ui'
+import { AtlChip } from '../components/osDetalhe/acoes/_AtlassianUI'
 import { useRotas } from '../hooks/useRotas'
 import { useOSLogistica, FILTROS_ETAPA_LOGISTICA } from '../hooks/useOSLogistica'
 import { useGeocodeEnderecos } from '../hooks/useGeocodeEnderecos'
@@ -78,7 +78,6 @@ function LogisticaDesktop({ T, dark }) {
 
   // ─── Estado ──────────────────────────────────────────────────────────────
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_LOGISTICA)
-  const [filtroAgenda, setFiltroAgenda] = useState('hoje')
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
   const [novaRotaAberta, setNovaRotaAberta] = useState(false)
@@ -93,9 +92,8 @@ function LogisticaDesktop({ T, dark }) {
   const { osList } = useOSLogistica({ incluirPagamento })
 
   const osFiltradas = useMemo(() => {
-    const porEtapa = osList.filter(o => etapasAtivas.has(o.etapa_db))
-    return filtrarPorAgenda(porEtapa, filtroAgenda)
-  }, [osList, etapasAtivas, filtroAgenda])
+    return osList.filter(o => etapasAtivas.has(o.etapa_db))
+  }, [osList, etapasAtivas])
 
   const enderecos = useMemo(
     () => osFiltradas.map(o => o.endereco).filter(Boolean),
@@ -330,58 +328,15 @@ function LogisticaDesktop({ T, dark }) {
         secondaryActions={[{ label: 'Abrir mapa', icon: 'ti-external-link', onClick: abrirRotaCompletaNoMaps }]}
         primaryAction={{ label: 'Nova rota', icon: 'ti-plus', onClick: () => setNovaRotaAberta(true) }}
         filterSlot={<>
-          {FILTROS_ETAPA_LOGISTICA.map(f => {
-            const ativo = etapasAtivas.has(f.id)
-            const n = countEtapa[f.id] || 0
-            return (
-              <button key={f.id} onClick={() => toggleEtapa(f.id)}
-                style={{
-                  padding: '2px 9px', borderRadius: 4,
-                  border: `1px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? azulBg : 'transparent',
-                  color: ativo ? azul : T.textMuted,
-                  fontSize: 12, fontWeight: ativo ? 600 : 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  whiteSpace: 'nowrap',
-                }}>
-                <i className={`ti ${f.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-                {f.label}
-                {n > 0 && (
-                  <span style={{
-                    padding: '0 5px', borderRadius: 8,
-                    background: ativo ? `${azul}25` : (dark ? '#1e1e24' : T.cardAlt || '#f0f0f5'),
-                    color: ativo ? azul : T.textMuted,
-                    fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-                  }}>{n}</span>
-                )}
-              </button>
-            )
-          })}
-          <HdrDivider T={T} dark={dark} />
-          {[
-            { id: 'hoje',   label: 'Hoje / Atrasadas', icon: 'ti-calendar-event' },
-            { id: 'amanha', label: 'Amanhã',           icon: 'ti-calendar-plus' },
-            { id: 'semana', label: 'Semana',           icon: 'ti-calendar-week' },
-          ].map(op => {
-            const sel = filtroAgenda === op.id
-            return (
-              <button key={op.id} onClick={() => setFiltroAgenda(op.id)}
-                style={{
-                  padding: '2px 9px', borderRadius: 4,
-                  border: `1px solid ${sel ? azul : T.border}`,
-                  background: sel ? azulBg : 'transparent',
-                  color: sel ? azul : T.textMuted,
-                  fontSize: 12, fontWeight: sel ? 600 : 500,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  whiteSpace: 'nowrap',
-                }}>
-                <i className={`ti ${op.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-                {op.label}
-              </button>
-            )
-          })}
+          {FILTROS_ETAPA_LOGISTICA.map(f => (
+            <AtlChip
+              key={f.id} T={T} dark={dark}
+              icon={f.icon.replace(/^ti-/, '')} label={f.label}
+              count={countEtapa[f.id] || 0}
+              selected={etapasAtivas.has(f.id)}
+              onClick={() => toggleEtapa(f.id)}
+            />
+          ))}
         </>}
       />
 
@@ -565,15 +520,6 @@ function StatBadge({ v, label, color, dot }) {
       <span style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
       <span style={{ color, opacity: 0.75 }}>{label}</span>
     </span>
-  )
-}
-
-function HdrDivider({ dark, T }) {
-  return (
-    <div style={{
-      width: 1, height: 18, flexShrink: 0,
-      background: dark ? 'rgba(255,255,255,0.12)' : T.border,
-    }} />
   )
 }
 
