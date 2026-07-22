@@ -29,7 +29,7 @@ import { persistirLancamentosDoPagamento } from '../../../utils/osToFinanceiro'
 import FormRecebimento, { formaIdToLabel } from '../FormRecebimento'
 import { CATEGORIA_POR_ID } from '../../../utils/categoriasPeca'
 import { montarMensagemOrcamento, abrirWhatsAppComTexto } from '../../../utils/osMensagens'
-import { gerarPdfOrcamento } from '../../../utils/osOrcamentoPdf'
+import { gerarPdfOrcamento, gerarPdfRecibo } from '../../../utils/osOrcamentoPdf'
 import { useToast } from '../../ui'
 
 // ─── Tipos de item ────────────────────────────────────────────────────────
@@ -2621,7 +2621,15 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
             },
             {
               label: 'Recibo', icon: 'receipt',
-              onClick: () => { onUpdateOS?.(os.numero, { action: docSheet === 'pdf' ? 'gerar_pdf_recibo' : 'enviar_recibo_whatsapp' }); setDocSheet(null) },
+              onClick: () => {
+                if (docSheet === 'pdf') {
+                  const r = gerarPdfRecibo({ os, porTipo, descontoRS, total })
+                  if (!r.ok) notify?.('erro', r.motivo)
+                } else {
+                  onUpdateOS?.(os.numero, { action: 'enviar_recibo_whatsapp' })
+                }
+                setDocSheet(null)
+              },
             },
           ]}
         />
