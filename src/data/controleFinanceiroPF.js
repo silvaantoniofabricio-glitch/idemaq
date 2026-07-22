@@ -22,6 +22,12 @@ export const CATEGORIA_MAE = {
   'Lazer': 'Lazer & Assinaturas',
   'Software/Lazer': 'Lazer & Assinaturas',
   'Cultura/Lazer': 'Lazer & Assinaturas',
+  'Assinatura': 'Lazer & Assinaturas',
+  'Software': 'Negócios (PJ)',
+  'Telefonia': 'Negócios (PJ)',
+  'Materiais': 'Negócios (PJ)',
+  'Pecas': 'Negócios (PJ)',
+  'Impostos': 'Tarifas & Encargos',
   'Cartao': 'Tarifas & Encargos',
   'Tarifa banco': 'Tarifas & Encargos',
   'Tarifa cartao': 'Tarifas & Encargos',
@@ -434,13 +440,47 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Co-participacao plano de saude',              valor: 140.00,   categoria: 'Saude/Plano' },
 ]
 
+// Despesas PF julho/2026 — TONI
+// Fonte: REVISAO FECHAMENTO 2026/JULHO/FATURAS/Nubank_2026-07-02.pdf (periodo 26/mai a 25/jun)
+// Itens marcados com pj:true tambem foram lancados no Supabase (sql/141)
+export const DESPESAS_PF_TONI_JULHO_2026 = [
+  // --- Nubank PF (cartao ****5876 / ****4378) — venc. 02/07/2026 ---
+  { data: '27/05/2026', origem: 'Nubank PF', descricao: 'Estorno Taxa emissao NuTag',                   valor: -10.00, categoria: 'Estorno' },
+  { data: '02/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Parada das Acai)',                     valor:  25.00, categoria: 'Alimentacao' },
+  { data: '02/06/2026', origem: 'Nubank PF', descricao: 'Nubank+',                                       valor:  29.00, categoria: 'Assinatura' },
+  { data: '03/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome Meiriane',                              valor:  17.00, categoria: 'Alimentacao' },
+  { data: '04/06/2026', origem: 'Nubank PF', descricao: 'Xing Ling Presentes',                           valor:  47.00, categoria: 'Compras pessoais' },
+  { data: '04/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome Meiriane',                              valor:  13.00, categoria: 'Alimentacao' },
+  { data: '07/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome',                                       valor:  24.90, categoria: 'Alimentacao' },
+  { data: '07/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome',                                       valor:  40.00, categoria: 'Alimentacao' },
+  { data: '08/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome',                                       valor:  40.00, categoria: 'Alimentacao' },
+  { data: '09/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Parada das Acai)',                     valor:  25.00, categoria: 'Alimentacao' },
+  { data: '10/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Tempero Di)',                          valor:  19.90, categoria: 'Alimentacao' },
+  { data: '10/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Tempero Di)',                          valor:  19.90, categoria: 'Alimentacao' },
+  { data: '11/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome',                                       valor:  27.86, categoria: 'Alimentacao' },
+  { data: '11/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Parada das Acai)',                     valor:  25.00, categoria: 'Alimentacao' },
+  { data: '12/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Tempero Di)',                          valor:  19.90, categoria: 'Alimentacao' },
+  { data: '13/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome',                                       valor:  40.00, categoria: 'Alimentacao' },
+  { data: '13/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Tempero Di)',                          valor:  19.90, categoria: 'Alimentacao' },
+  { data: '15/06/2026', origem: 'Nubank PF', descricao: 'Anthropic Claude Sub (USD 21.52 x 5.28)',       valor: 113.75, categoria: 'Software',   pj: true },
+  { data: '15/06/2026', origem: 'Nubank PF', descricao: 'IOF Anthropic Claude Sub',                      valor:   3.98, categoria: 'Impostos',   pj: true },
+  { data: '15/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome',                                       valor:  28.00, categoria: 'Alimentacao' },
+  { data: '16/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Parada das Acai)',                     valor:  25.00, categoria: 'Alimentacao' },
+  { data: '16/06/2026', origem: 'Nubank PF', descricao: 'Casa dos Parafusos - Parcela 1/2',              valor:  50.00, categoria: 'Materiais',   pj: true },
+  { data: '17/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Tempero Di)',                          valor:  19.90, categoria: 'Alimentacao' },
+  { data: '18/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Tempero Di)',                          valor:  19.90, categoria: 'Alimentacao' },
+  { data: '19/06/2026', origem: 'Nubank PF', descricao: 'Plano NuCel',                                   valor:  10.00, categoria: 'Telefonia',   pj: true },
+  { data: '20/06/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Parada das Acai)',                     valor:  25.00, categoria: 'Alimentacao' },
+]
+
 // Marca a pessoa em cada item (pra agregacao no total)
 const marcarPessoa = (lista, pessoa) => lista.map(d => ({ ...d, pessoa }))
 
-const TONI_MAIO  = marcarPessoa(DESPESAS_PF_TONI_MAIO_2026,   'toni')
-const RAFA_MAIO  = marcarPessoa(DESPESAS_PF_RAFA_MAIO_2026,   'rafa')
-const TONI_JUNHO = marcarPessoa(DESPESAS_PF_TONI_JUNHO_2026,  'toni')
-const RAFA_JUNHO = marcarPessoa(DESPESAS_PF_RAFA_JUNHO_2026,  'rafa')
+const TONI_MAIO   = marcarPessoa(DESPESAS_PF_TONI_MAIO_2026,    'toni')
+const RAFA_MAIO   = marcarPessoa(DESPESAS_PF_RAFA_MAIO_2026,    'rafa')
+const TONI_JUNHO  = marcarPessoa(DESPESAS_PF_TONI_JUNHO_2026,   'toni')
+const RAFA_JUNHO  = marcarPessoa(DESPESAS_PF_RAFA_JUNHO_2026,   'rafa')
+const TONI_JULHO  = marcarPessoa(DESPESAS_PF_TONI_JULHO_2026,   'toni')
 
 // Indice: mes -> pessoa -> lista
 // 'total' = uniao Toni + Rafa (NAO descontamos transferencias Rafa->Toni aqui,
@@ -457,12 +497,18 @@ export const DESPESAS_PF_POR_MES = {
     rafa:  RAFA_JUNHO,
     total: [...TONI_JUNHO, ...RAFA_JUNHO],
   },
+  '2026-07': {
+    toni:  TONI_JULHO,
+    rafa:  [],
+    total: [...TONI_JULHO],
+  },
 }
 
 // Categorias consideradas "fluxo interno" (não são gasto real, apenas transferencia entre contas do proprio Toni ou pagamentos de fatura).
 // Ao calcular o "gasto real efetivo", excluir essas categorias pra evitar dupla contagem (a fatura ja foi quebrada item a item, contar de novo o boleto duplicaria).
 export const CATEGORIAS_FLUXO_INTERNO = new Set([
   'Transferencia',
-  'Cartao', // pagamento de boleto de fatura - os itens da fatura ja estao separados
-  'Dizimo', // visivel na lista, mas nao entra no gasto real efetivo (10% bruto, conta a parte)
+  'Cartao',   // pagamento de boleto de fatura - os itens da fatura ja estao separados
+  'Dizimo',   // visivel na lista, mas nao entra no gasto real efetivo (10% bruto, conta a parte)
+  'Estorno',  // creditos/estornos reduzem o bruto mas nao sao gasto real
 ])

@@ -4,6 +4,7 @@
 // futuramente sera tabela propria (sistema isolado).
 
 import React, { useMemo, useState, useRef, useEffect } from 'react'
+import { useIsMobile } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
@@ -263,6 +264,7 @@ function SecHeader({ T, icon, cor, mb = 14, children }) {
 }
 
 export default function ControleFinanceiroPF({ T, dark }) {
+  const isMobile = useIsMobile()
   const azul     = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
   const amarelo  = corEtapa('yellow', dark)
@@ -293,46 +295,137 @@ export default function ControleFinanceiroPF({ T, dark }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      <ModuleHeader
-        T={T} dark={dark}
-        icon="ti-home-dollar"
-        title="Financeiro PF"
-        stats={[
-          { v: fmtBRL(analise.totalReal), label: 'gasto real', color: amarelo, highlight: true },
-          { v: analise.totalItens, label: 'lançamentos', color: azul },
-        ]}
-        tabs={SECOES.map(s => ({ id: s.id, label: s.label }))}
-        activeTab={verSecao}
-        onTabChange={setVerSecao}
-        filterSlot={<>
-          <CaixaPeriodoPF T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} />
-          {PESSOAS.map(p => {
-            const ativo = pessoaAtiva === p.id
-            return (
-              <button key={p.id} onClick={() => setPessoaAtiva(p.id)}
-                style={{
-                  padding: '0 8px', height: 22, borderRadius: 4,
-                  border: `1px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? azulBg : 'transparent',
-                  color: ativo ? azul : T.textMuted,
-                  fontSize: 11, fontWeight: ativo ? 600 : 400,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}>
-                {p.label}
-              </button>
-            )
-          })}
-          <ExportDropdown T={T} dark={dark} despesas={despesas} analise={analise} mesLabel={mesLabel} pessoaLabel={pessoaLabel} />
-        </>}
-      />
+      {isMobile ? (
+        <HeaderMobilePF
+          T={T} dark={dark}
+          analise={analise}
+          periodo={periodo} setPeriodo={setPeriodo}
+          pessoaAtiva={pessoaAtiva} setPessoaAtiva={setPessoaAtiva}
+          verSecao={verSecao} setVerSecao={setVerSecao}
+          despesas={despesas} mesLabel={mesLabel} pessoaLabel={pessoaLabel}
+        />
+      ) : (
+        <ModuleHeader
+          T={T} dark={dark}
+          icon="ti-home-dollar"
+          title="Financeiro PF"
+          stats={[
+            { v: fmtBRL(analise.totalReal), label: 'gasto real', color: amarelo, highlight: true },
+            { v: analise.totalItens, label: 'lançamentos', color: azul },
+          ]}
+          tabs={SECOES.map(s => ({ id: s.id, label: s.label }))}
+          activeTab={verSecao}
+          onTabChange={setVerSecao}
+          filterSlot={<>
+            <CaixaPeriodoPF T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} />
+            {PESSOAS.map(p => {
+              const ativo = pessoaAtiva === p.id
+              return (
+                <button key={p.id} onClick={() => setPessoaAtiva(p.id)}
+                  style={{
+                    padding: '0 8px', height: 22, borderRadius: 4,
+                    border: `1px solid ${ativo ? azul : T.border}`,
+                    background: ativo ? azulBg : 'transparent',
+                    color: ativo ? azul : T.textMuted,
+                    fontSize: 11, fontWeight: ativo ? 600 : 400,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  {p.label}
+                </button>
+              )
+            })}
+            <ExportDropdown T={T} dark={dark} despesas={despesas} analise={analise} mesLabel={mesLabel} pessoaLabel={pessoaLabel} />
+          </>}
+        />
+      )}
 
       {/* ══ CONTENT ══════════════════════════════════════════════════════════ */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-        <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {verSecao === 'dashboard' && <Dashboard T={T} dark={dark} analise={analise} />}
-          {verSecao === 'tabela'    && <PlanilhaCompleta T={T} dark={dark} despesas={despesas} />}
+        <div style={{ padding: isMobile ? '14px 14px 28px' : '16px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {verSecao === 'dashboard' && <Dashboard T={T} dark={dark} analise={analise} isMobile={isMobile} />}
+          {verSecao === 'tabela'    && <PlanilhaCompleta T={T} dark={dark} despesas={despesas} isMobile={isMobile} />}
           {verSecao === 'conselhos' && <ConselhosFinanceiros T={T} dark={dark} analise={analise} />}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// =====================================================================
+// Header mobile — icone+titulo, depois periodo/pessoa/tabs em linhas
+// que rolam na horizontal (evita estourar a largura da tela).
+// =====================================================================
+function HeaderMobilePF({ T, dark, analise, periodo, setPeriodo, pessoaAtiva, setPessoaAtiva, verSecao, setVerSecao, despesas, mesLabel, pessoaLabel }) {
+  const azul = corEtapa('blue', dark)
+  const azulBg = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
+  const amarelo = corEtapa('yellow', dark)
+
+  return (
+    <div style={{ borderBottom: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
+      <div style={{ padding: '12px 14px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 6,
+          background: dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <i className="ti ti-home-dollar" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: T.textPrimary, letterSpacing: '-0.01em' }}>
+            Financeiro PF
+          </div>
+          <div style={{ fontSize: 11.5, color: amarelo, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+            {fmtBRL(analise.totalReal)} gasto real · {analise.totalItens} lançamentos
+          </div>
+        </div>
+        <ExportDropdown T={T} dark={dark} despesas={despesas} analise={analise} mesLabel={mesLabel} pessoaLabel={pessoaLabel} />
+      </div>
+
+      {/* Período + pessoa — rolagem horizontal, alvo de toque 36px+ */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '0 14px 10px', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+      }}>
+        <div style={{ flexShrink: 0 }}>
+          <CaixaPeriodoPF T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo} />
+        </div>
+        {PESSOAS.map(p => {
+          const ativo = pessoaAtiva === p.id
+          return (
+            <button key={p.id} onClick={() => setPessoaAtiva(p.id)}
+              style={{
+                padding: '0 12px', height: 30, borderRadius: 6, flexShrink: 0,
+                border: `1px solid ${ativo ? azul : T.border}`,
+                background: ativo ? azulBg : 'transparent',
+                color: ativo ? azul : T.textMuted,
+                fontSize: 12.5, fontWeight: ativo ? 600 : 500,
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              {p.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Tabs — Dashboard / Planilha / Análise */}
+      <div style={{ display: 'flex', padding: '0 14px' }}>
+        {SECOES.map(s => {
+          const ativo = s.id === verSecao
+          return (
+            <button key={s.id} onClick={() => setVerSecao(s.id)}
+              style={{
+                flex: 1, padding: '10px 0', border: 'none', background: 'transparent',
+                borderBottom: `2px solid ${ativo ? azul : 'transparent'}`,
+                color: ativo ? T.textPrimary : T.textMuted,
+                fontSize: 13, fontWeight: ativo ? 700 : 500,
+                cursor: 'pointer', fontFamily: 'inherit',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              {s.label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -538,7 +631,7 @@ function semanaDoMes(ddmmyyyy) {
 // =====================================================================
 // Dashboard
 // =====================================================================
-function Dashboard({ T, dark, analise }) {
+function Dashboard({ T, dark, analise, isMobile }) {
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
   const amarelo = corEtapa('yellow', dark)
@@ -549,7 +642,7 @@ function Dashboard({ T, dark, analise }) {
       {/* KPIs */}
       <div style={{
         display: 'grid', gap: 12,
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
       }}>
         <KPI T={T} dark={dark} label="Gasto real efetivo" valor={fmtBRL(analise.totalReal)} cor={amarelo}
           icon="ti-shopping-cart"
@@ -593,7 +686,7 @@ function Dashboard({ T, dark, analise }) {
         <SecHeader T={T} icon="ti-list-numbers" cor={azul}>
           Top 15 maiores gastos do mês
         </SecHeader>
-        <ListaMaiores T={T} dark={dark} itens={analise.maiores} />
+        <ListaMaiores T={T} dark={dark} itens={analise.maiores} isMobile={isMobile} />
       </Card>
     </div>
   )
@@ -602,7 +695,7 @@ function Dashboard({ T, dark, analise }) {
 // =====================================================================
 // Planilha completa
 // =====================================================================
-function PlanilhaCompleta({ T, dark, despesas }) {
+function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
   const [busca, setBusca] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
   const [ordemValor, setOrdemValor] = useState(null) // null | 'desc' | 'asc'
@@ -635,6 +728,7 @@ function PlanilhaCompleta({ T, dark, despesas }) {
   }
 
   const totalFiltrado = filtradas.reduce((s, d) => s + d.valor, 0)
+  const inputHeight = isMobile ? 44 : undefined
 
   return (
     <Card T={T} dark={dark}>
@@ -644,7 +738,8 @@ function PlanilhaCompleta({ T, dark, despesas }) {
           value={busca}
           onChange={e => setBusca(e.target.value)}
           style={{
-            flex: 1, minWidth: 200,
+            flex: '1 1 100%', minWidth: isMobile ? '100%' : 200,
+            boxSizing: 'border-box', height: inputHeight,
             background: T.cardAlt, border: `1px solid ${T.border}`,
             borderRadius: 8, padding: '8px 12px',
             color: T.textPrimary, fontSize: 13,
@@ -654,6 +749,8 @@ function PlanilhaCompleta({ T, dark, despesas }) {
           value={categoriaFiltro}
           onChange={e => setCategoriaFiltro(e.target.value)}
           style={{
+            flex: isMobile ? '1 1 auto' : undefined,
+            boxSizing: 'border-box', height: inputHeight,
             background: T.cardAlt, border: `1px solid ${T.border}`,
             borderRadius: 8, padding: '8px 12px',
             color: T.textPrimary, fontSize: 13,
@@ -663,64 +760,112 @@ function PlanilhaCompleta({ T, dark, despesas }) {
           {categorias.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <div style={{
+          flex: isMobile ? '1 1 auto' : undefined,
+          boxSizing: 'border-box', height: inputHeight,
+          display: 'flex', alignItems: 'center',
           padding: '8px 14px', background: bgEtapa('blue', dark),
           border: `1px solid ${corEtapa('blue', dark)}55`, borderRadius: 8,
           fontSize: 13, color: corHero(dark), fontWeight: 600,
-          fontVariantNumeric: 'tabular-nums',
+          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
         }}>
           {filtradas.length} itens · {fmtBRL(totalFiltrado, { fr: true })}
         </div>
       </div>
 
-      <div style={{
-        display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 130px 110px',
-        gap: 8, padding: '8px 10px',
-        background: T.cardAlt, borderRadius: 6,
-        fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '0.04em',
-      }}>
-        <div>Data</div>
-        <div>Origem</div>
-        <div>Descrição</div>
-        <div>Categoria</div>
-        <div
-          onClick={toggleOrdem}
-          style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4,
-            color: ordemValor ? corEtapa('blue', dark) : T.textMuted,
+      {isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{
+            display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+            padding: '4px 2px 8px', gap: 4,
           }}>
-          Valor
-          <i className={`ti ${ordemValor === 'asc' ? 'ti-sort-ascending' : ordemValor === 'desc' ? 'ti-sort-descending' : 'ti-arrows-sort'}`}
-            style={{ fontSize: 12, opacity: ordemValor ? 1 : 0.5 }} aria-hidden="true" />
-        </div>
-      </div>
-
-      <div style={{ maxHeight: 600, overflowY: 'auto' }}>
-        {filtradas.map((d, i) => (
-          <div key={i} style={{
-            display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 130px 110px',
-            gap: 8, padding: '10px',
-            borderBottom: `1px solid ${T.border}`,
-            fontSize: 12, color: T.textSecondary,
-          }}>
-            <div style={{ fontVariantNumeric: 'tabular-nums' }}>{d.data}</div>
-            <div style={{ color: T.textMuted }}>{d.origem}</div>
-            <div style={{ color: corHero(dark), fontWeight: 500 }}>{d.descricao}</div>
-            <div>
-              <Badge variant="amarelo" dark={dark} sm>
-                {d.categoria}
-              </Badge>
-            </div>
-            <div style={{
-              textAlign: 'right', fontWeight: 600,
-              color: corHero(dark),
-              fontVariantNumeric: 'tabular-nums',
+            <span
+              onClick={toggleOrdem}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', userSelect: 'none',
+                fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em',
+                color: ordemValor ? corEtapa('blue', dark) : T.textMuted,
+              }}>
+              Ordenar por valor
+              <i className={`ti ${ordemValor === 'asc' ? 'ti-sort-ascending' : ordemValor === 'desc' ? 'ti-sort-descending' : 'ti-arrows-sort'}`}
+                style={{ fontSize: 13, opacity: ordemValor ? 1 : 0.5 }} aria-hidden="true" />
+            </span>
+          </div>
+          {filtradas.map((d, i) => (
+            <div key={i} style={{
+              padding: '12px 4px',
+              borderBottom: `1px solid ${T.border}`,
+              display: 'flex', flexDirection: 'column', gap: 4,
             }}>
-              {fmtBRL(d.valor, { fr: true })}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                <div style={{ color: corHero(dark), fontWeight: 600, fontSize: 13.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {d.descricao}
+                </div>
+                <div style={{ fontWeight: 700, color: corHero(dark), fontVariantNumeric: 'tabular-nums', fontSize: 13.5, flexShrink: 0 }}>
+                  {fmtBRL(d.valor, { fr: true })}
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Badge variant="amarelo" dark={dark} sm>{d.categoria}</Badge>
+                {d.pj && <Badge variant="azul" dark={dark} sm>PJ</Badge>}
+                <span style={{ fontSize: 12, color: T.textMuted }}>{d.origem}</span>
+                <span style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{d.data}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 130px 110px',
+            gap: 8, padding: '8px 10px',
+            background: T.cardAlt, borderRadius: 6,
+            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+            textTransform: 'uppercase', letterSpacing: '0.04em',
+          }}>
+            <div>Data</div>
+            <div>Origem</div>
+            <div>Descrição</div>
+            <div>Categoria</div>
+            <div
+              onClick={toggleOrdem}
+              style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4,
+                color: ordemValor ? corEtapa('blue', dark) : T.textMuted,
+              }}>
+              Valor
+              <i className={`ti ${ordemValor === 'asc' ? 'ti-sort-ascending' : ordemValor === 'desc' ? 'ti-sort-descending' : 'ti-arrows-sort'}`}
+                style={{ fontSize: 12, opacity: ordemValor ? 1 : 0.5 }} aria-hidden="true" />
             </div>
           </div>
-        ))}
-      </div>
+
+          <div style={{ maxHeight: 600, overflowY: 'auto' }}>
+            {filtradas.map((d, i) => (
+              <div key={i} style={{
+                display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 130px 110px',
+                gap: 8, padding: '10px',
+                borderBottom: `1px solid ${T.border}`,
+                fontSize: 12, color: T.textSecondary,
+              }}>
+                <div style={{ fontVariantNumeric: 'tabular-nums' }}>{d.data}</div>
+                <div style={{ color: T.textMuted }}>{d.origem}</div>
+                <div style={{ color: corHero(dark), fontWeight: 500 }}>{d.descricao}</div>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <Badge variant="amarelo" dark={dark} sm>
+                    {d.categoria}
+                  </Badge>
+                  {d.pj && <Badge variant="azul" dark={dark} sm>PJ</Badge>}
+                </div>
+                <div style={{
+                  textAlign: 'right', fontWeight: 600,
+                  color: corHero(dark),
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {fmtBRL(d.valor, { fr: true })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </Card>
   )
 }
@@ -962,7 +1107,43 @@ function Barras({ T, dark, itens, total, cor }) {
   )
 }
 
-function ListaMaiores({ T, dark, itens }) {
+function ListaMaiores({ T, dark, itens, isMobile }) {
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {itens.map((d, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '11px 4px',
+            borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
+          }}>
+            <div style={{
+              width: 22, fontSize: 12, fontWeight: 700, color: T.textMuted,
+              textAlign: 'center', flexShrink: 0,
+            }}>#{i + 1}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 600, color: corHero(dark),
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {d.descricao}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                <Badge variant="amarelo" dark={dark} sm>{d.categoria}</Badge>
+                <span style={{ fontSize: 11, color: T.textMuted }}>{d.origem} · {d.data}</span>
+              </div>
+            </div>
+            <div style={{
+              fontSize: 13, fontWeight: 700, color: corEtapa('yellow', dark),
+              textAlign: 'right', fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+            }}>
+              {fmtBRL(d.valor, { fr: true })}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {itens.map((d, i) => (
