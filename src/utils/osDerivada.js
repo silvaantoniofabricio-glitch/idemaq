@@ -14,7 +14,7 @@
 
 import { supabase } from '../supabase'
 
-const CAMPOS_ORIGEM = 'id, cliente_id, marca_equipamento, modelo_equipamento, defeito_relatado, garantia_dias'
+const CAMPOS_ORIGEM = 'id, cliente_id, marca_equipamento, modelo_equipamento, numero_serie, defeito_relatado, garantia_dias'
 
 /**
  * Duplica uma OS existente: copia cliente + tipo + equipamento + defeito +
@@ -65,6 +65,7 @@ export async function criarOSDerivada(osOrigemId, overrides = {}) {
     cliente_id: origem.cliente_id,
     marca_equipamento: origem.marca_equipamento,
     modelo_equipamento: origem.modelo_equipamento,
+    numero_serie: origem.numero_serie,
     defeito_relatado: origem.defeito_relatado,
     os_origem_id: origem.id,
     ...overrides,
