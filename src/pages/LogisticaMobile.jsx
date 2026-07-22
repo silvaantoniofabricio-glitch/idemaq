@@ -510,9 +510,16 @@ function AtlPanel({ T, dark, title, count, footer, children }) {
 
 // Chips de filtro — padrão Atlassian (AtlChip), múltipla escolha. Cada chip
 // mostra a contagem de OS naquela etapa (do osList completo, não filtrado).
+// Uma barra só, rolagem horizontal — nada de quebrar linha (fica limpo,
+// não empurra o mapa pra baixo).
 export function FiltroEtapas({ T, dark, ativas, contagem, onToggle }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+    <div className="idemaq-no-scrollbar" style={{
+      display: 'flex', gap: 8,
+      overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+      scrollbarWidth: 'none', msOverflowStyle: 'none',
+      paddingBottom: 2, // espaço pra sombra do chip não cortar
+    }}>
       {FILTROS_ETAPA_LOGISTICA.map(f => (
         <AtlChip
           key={f.id} T={T} dark={dark}

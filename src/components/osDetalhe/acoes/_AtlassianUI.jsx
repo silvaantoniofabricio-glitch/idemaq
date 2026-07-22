@@ -266,7 +266,7 @@ export function AtlListRowCheck({ T, dark, icon, label, checked, onClick, first,
 // selecionada. Pra grupos de facetas (zona/tipo/status) em vez de lista
 // vertical de checkbox — mais moderno e não vira parede azul quando "tudo"
 // está selecionado (o padrão comum é ficar tudo desmarcado/neutro).
-export function AtlChip({ T, dark, icon, label, selected, onClick }) {
+export function AtlChip({ T, dark, icon, label, selected, onClick, count }) {
   const [hover, setHover] = useState(false)
   const azul = corEtapa('blue', dark)
   return (
@@ -276,8 +276,8 @@ export function AtlChip({ T, dark, icon, label, selected, onClick }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '7px 12px 7px 10px',
+        display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+        padding: '7px 10px',
         borderRadius: 99,
         border: `1px solid ${selected ? azul : T.border}`,
         background: selected
@@ -296,6 +296,14 @@ export function AtlChip({ T, dark, icon, label, selected, onClick }) {
            aria-hidden="true" />
       )}
       {label}
+      {count != null && count > 0 && (
+        <span style={{
+          padding: '0 5px', borderRadius: 8, minWidth: 16, textAlign: 'center',
+          background: selected ? 'rgba(255,255,255,0.28)' : (dark ? 'rgba(255,255,255,0.08)' : '#DFE1E6'),
+          color: selected ? '#fff' : T.textMuted,
+          fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+        }}>{count}</span>
+      )}
     </button>
   )
 }
