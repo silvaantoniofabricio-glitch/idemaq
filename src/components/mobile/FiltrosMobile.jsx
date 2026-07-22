@@ -4,21 +4,21 @@
 // Estrutura:
 //   - Barra visível: SÓ busca + botão "···" (Mais) — nada de abas nem "+"
 //     ficando fixo na tela, pra header ficar mínimo.
-//   - Bottom sheet 'Mais', montado com as primitivas canônicas de
-//     _AtlassianUI.jsx (AtlPanel/AtlListRowCheck/AtlButton — mesmas usadas
-//     nas telas de Ação do OSDetalhe), nessa ordem:
+//   - Bottom sheet 'Mais', com facetas em CHIPS (não lista de checkbox) —
+//     mais moderno e compacto, e não vira parede azul quando "tudo" está
+//     selecionado (o padrão comum aqui é ficar neutro/sem chip preenchido):
 //     * Nova OS — AtlButton primary, destaque no topo
-//     * Zona (Todos/Externo/Interno/Financeiro) — AtlPanel + radio
-//     * Tipo de OS (Atendimento/Fabricação/Venda/Visita) — AtlPanel + checkbox
-//     * Serviço (Limpeza/Manutenção) — AtlPanel + checkbox
-//     * Status (Ag. peça/Recusadas) — AtlPanel + checkbox
+//     * Zona (Todos/Externo/Interno/Financeiro) — chips, seleção única
+//     * Tipo de OS (Atendimento/Fabricação/Venda/Visita) — chips, múltipla
+//     * Serviço (Limpeza/Manutenção) — chips, múltipla
+//     * Status (Ag. peça/Recusadas) — chips, múltipla
 //     * Fechar — AtlButton default
 
 import React, { useState, useEffect } from 'react'
 import { ZONAS, TIPOS_OS } from '../../utils/osData'
 import { corEtapa } from '../../utils/colors'
 import {
-  AtlPanel, AtlButton, AtlListRowCheck, ATL_FONT, ATL_RADIUS,
+  AtlButton, AtlChip, ATL_FONT, ATL_RADIUS,
 } from '../osDetalhe/acoes/_AtlassianUI'
 
 const ZONAS_TODAS = [
@@ -201,63 +201,79 @@ function MaisSheet({ T, dark, onNova, filtros, setZona, toggleTipo, toggleServic
             Nova OS
           </AtlButton>
 
-          {/* Zona — seleção única */}
-          <AtlPanel T={T} dark={dark} title="Zona">
-            {ZONAS_TODAS.map((z, i) => (
-              <AtlListRowCheck
-                key={z.id} T={T} dark={dark} radio first={i === 0}
+          {/* Zona — chips, seleção única */}
+          <FiltroSecao T={T} dark={dark} titulo="Zona">
+            {ZONAS_TODAS.map(z => (
+              <AtlChip
+                key={z.id} T={T} dark={dark}
                 icon={z.icon} label={z.label}
-                checked={filtros.zona === z.id}
+                selected={filtros.zona === z.id}
                 onClick={() => setZona(z.id)}
               />
             ))}
-          </AtlPanel>
+          </FiltroSecao>
 
-          {/* Tipo de OS — múltipla */}
-          <AtlPanel T={T} dark={dark} title="Tipo de OS">
-            {Object.entries(TIPOS_OS).map(([id, cfg], i) => (
-              <AtlListRowCheck
-                key={id} T={T} dark={dark} first={i === 0}
+          {/* Tipo de OS — chips, múltipla */}
+          <FiltroSecao T={T} dark={dark} titulo="Tipo de OS">
+            {Object.entries(TIPOS_OS).map(([id, cfg]) => (
+              <AtlChip
+                key={id} T={T} dark={dark}
                 icon={cfg.icon.replace(/^ti-/, '')} label={cfg.label}
-                checked={filtros.tipos.has(id)}
+                selected={filtros.tipos.has(id)}
                 onClick={() => toggleTipo(id)}
               />
             ))}
-          </AtlPanel>
+          </FiltroSecao>
 
-          {/* Serviço — múltipla */}
-          <AtlPanel T={T} dark={dark} title="Serviço">
-            <AtlListRowCheck T={T} dark={dark} first
+          {/* Serviço — chips, múltipla */}
+          <FiltroSecao T={T} dark={dark} titulo="Serviço">
+            <AtlChip T={T} dark={dark}
               icon="bubble" label="Limpeza"
-              checked={!!filtros.limpeza}
+              selected={!!filtros.limpeza}
               onClick={() => toggleServico('limpeza')}
             />
-            <AtlListRowCheck T={T} dark={dark}
+            <AtlChip T={T} dark={dark}
               icon="tool" label="Manutenção"
-              checked={!!filtros.manutencao}
+              selected={!!filtros.manutencao}
               onClick={() => toggleServico('manutencao')}
             />
-          </AtlPanel>
+          </FiltroSecao>
 
-          {/* Status extra — múltipla */}
-          <AtlPanel T={T} dark={dark} title="Status">
-            <AtlListRowCheck T={T} dark={dark} first
+          {/* Status extra — chips, múltipla */}
+          <FiltroSecao T={T} dark={dark} titulo="Status">
+            <AtlChip T={T} dark={dark}
               icon="package-off" label="Aguardando peça"
-              checked={!!filtros.agPeca}
+              selected={!!filtros.agPeca}
               onClick={() => toggleServico('agPeca')}
             />
-            <AtlListRowCheck T={T} dark={dark}
+            <AtlChip T={T} dark={dark}
               icon="circle-x" label="Recusadas"
-              checked={!!filtros.recusadas}
+              selected={!!filtros.recusadas}
               onClick={() => toggleServico('recusadas')}
             />
-          </AtlPanel>
+          </FiltroSecao>
 
           {/* Fechar */}
           <AtlButton T={T} dark={dark} variant="default" fullWidth onClick={fechar}>
             Fechar
           </AtlButton>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Seção de facetas: rótulo pequeno + chips que quebram linha ───────────
+function FiltroSecao({ T, titulo, children }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '0.07em',
+        marginBottom: 8,
+      }}>{titulo}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {children}
       </div>
     </div>
   )

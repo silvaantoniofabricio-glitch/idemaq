@@ -262,6 +262,44 @@ export function AtlListRowCheck({ T, dark, icon, label, checked, onClick, first,
   )
 }
 
+// Chip de filtro — pill compacta com ícone + label, preenchida quando
+// selecionada. Pra grupos de facetas (zona/tipo/status) em vez de lista
+// vertical de checkbox — mais moderno e não vira parede azul quando "tudo"
+// está selecionado (o padrão comum é ficar tudo desmarcado/neutro).
+export function AtlChip({ T, dark, icon, label, selected, onClick }) {
+  const [hover, setHover] = useState(false)
+  const azul = corEtapa('blue', dark)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '7px 12px 7px 10px',
+        borderRadius: 99,
+        border: `1px solid ${selected ? azul : T.border}`,
+        background: selected
+          ? azul
+          : (hover ? atlHover(dark) : (dark ? 'rgba(255,255,255,0.025)' : '#FAFBFC')),
+        color: selected ? '#fff' : T.textPrimary,
+        fontSize: 13, fontWeight: selected ? 600 : 500,
+        fontFamily: ATL_FONT, cursor: 'pointer',
+        letterSpacing: '-0.005em', whiteSpace: 'nowrap',
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'background .12s, border-color .12s',
+      }}>
+      {icon && (
+        <i className={`ti ti-${icon}`}
+           style={{ fontSize: 14, color: selected ? '#fff' : T.textMuted }}
+           aria-hidden="true" />
+      )}
+      {label}
+    </button>
+  )
+}
+
 // Day chip — usado em pickers de agenda/entrega (50x58 com DOW + dia grande)
 export function AtlDayChip({ T, dark, dia, dow, selected, onClick }) {
   const azul = corEtapa('blue', dark)
