@@ -23,7 +23,6 @@ import { useGeocodeEnderecos } from '../hooks/useGeocodeEnderecos'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
 import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
-import { AtlChip } from '../components/osDetalhe/acoes/_AtlassianUI'
 
 const HOJE = new Date().toISOString().slice(0, 10)
 const AMANHA = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10) })()
@@ -508,27 +507,54 @@ function AtlPanel({ T, dark, title, count, footer, children }) {
   )
 }
 
-// Chips de filtro — padrão Atlassian (AtlChip), múltipla escolha. Cada chip
-// mostra a contagem de OS naquela etapa (do osList completo, não filtrado).
-// Uma barra só, rolagem horizontal — nada de quebrar linha (fica limpo,
-// não empurra o mapa pra baixo).
+// Filtro de etapa — mesmo estilo das abas do ModuleHeader (padrão usado em
+// todas as telas desktop: OS, Financeiro, Relatórios etc.): sublinhado azul
+// na ativa, sem fundo arredondado, contador em bolinha discreta. Uma barra
+// só com rolagem horizontal (não empurra o mapa pra baixo).
 export function FiltroEtapas({ T, dark, ativas, contagem, onToggle }) {
+  const azul = corEtapa('blue', dark)
   return (
     <div className="idemaq-no-scrollbar" style={{
-      display: 'flex', gap: 8,
+      display: 'flex', alignItems: 'stretch', gap: 14,
       overflowX: 'auto', WebkitOverflowScrolling: 'touch',
       scrollbarWidth: 'none', msOverflowStyle: 'none',
-      paddingBottom: 2, // espaço pra sombra do chip não cortar
+      borderBottom: `1px solid ${T.border}`,
     }}>
-      {FILTROS_ETAPA_LOGISTICA.map(f => (
-        <AtlChip
-          key={f.id} T={T} dark={dark}
-          icon={f.icon.replace(/^ti-/, '')} label={f.label}
-          count={contagem?.[f.id] || 0}
-          selected={ativas.has(f.id)}
-          onClick={() => onToggle(f.id)}
-        />
-      ))}
+      {FILTROS_ETAPA_LOGISTICA.map(f => {
+        const n = contagem?.[f.id] || 0
+        const ativo = ativas.has(f.id)
+        return (
+          <button key={f.id} type="button"
+            onClick={() => onToggle(f.id)}
+            style={{
+              flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '8px 2px',
+              border: 'none',
+              borderBottom: `2px solid ${ativo ? azul : 'transparent'}`,
+              background: 'transparent',
+              color: ativo ? T.textPrimary : T.textMuted,
+              fontSize: 13, fontWeight: ativo ? 600 : 500,
+              cursor: 'pointer', fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
+              WebkitTapHighlightColor: 'transparent',
+              transition: 'color .12s, border-color .12s',
+              marginBottom: -1,
+            }}>
+            <i className={`ti ${f.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
+            {f.label}
+            {n > 0 && (
+              <span style={{
+                fontSize: 10.5, fontWeight: 700,
+                background: ativo ? `${azul}25` : (dark ? 'rgba(255,255,255,0.07)' : '#f0f0f5'),
+                color: ativo ? azul : T.textMuted,
+                padding: '1px 6px', borderRadius: 8,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{n}</span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
