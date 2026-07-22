@@ -210,6 +210,58 @@ export function AtlListRow({ T, dark, icon, iconCor, label, subtitle, onClick, d
   )
 }
 
+// List row com indicador de seleção (checkbox ou radio) — usado em filtros/
+// preferências onde a linha inteira é o toggle (não navega pra outro lugar,
+// ao contrário do AtlListRow que tem chevron).
+export function AtlListRowCheck({ T, dark, icon, label, checked, onClick, first, radio }) {
+  const [hover, setHover] = useState(false)
+  const azul = corEtapa('blue', dark)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: '100%',
+        padding: '10px 14px',
+        borderTop: first ? 'none' : `1px solid ${T.border}`,
+        background: checked
+          ? (dark ? 'rgba(91,155,213,0.10)' : 'rgba(91,155,213,0.06)')
+          : (hover ? atlHover(dark) : 'transparent'),
+        border: 'none', cursor: 'pointer',
+        fontFamily: ATL_FONT,
+        display: 'flex', alignItems: 'center', gap: 10,
+        textAlign: 'left',
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'background .12s',
+      }}>
+      <i className={`ti ti-${icon}`}
+         style={{ fontSize: 15, width: 18, flexShrink: 0, color: checked ? azul : T.textMuted }}
+         aria-hidden="true" />
+      <span style={{
+        flex: 1, minWidth: 0,
+        fontSize: 13, fontWeight: checked ? 600 : 500,
+        color: checked ? T.textPrimary : T.textPrimary,
+        letterSpacing: '-0.005em',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{label}</span>
+      <div style={{
+        width: 18, height: 18, flexShrink: 0,
+        borderRadius: radio ? '50%' : 4,
+        border: `1.5px solid ${checked ? azul : T.border}`,
+        background: checked && !radio ? azul : 'transparent',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all .12s',
+      }}>
+        {checked && (radio
+          ? <div style={{ width: 9, height: 9, borderRadius: '50%', background: azul }} />
+          : <i className="ti ti-check" style={{ fontSize: 12, color: '#fff' }} aria-hidden="true" />)}
+      </div>
+    </button>
+  )
+}
+
 // Day chip — usado em pickers de agenda/entrega (50x58 com DOW + dia grande)
 export function AtlDayChip({ T, dark, dia, dow, selected, onClick }) {
   const azul = corEtapa('blue', dark)

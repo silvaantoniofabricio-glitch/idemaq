@@ -4,24 +4,26 @@
 // Estrutura:
 //   - Barra visível: SÓ busca + botão "···" (Mais) — nada de abas nem "+"
 //     ficando fixo na tela, pra header ficar mínimo.
-//   - Bottom sheet 'Mais' com, nessa ordem:
-//     * Zona (Todos/Externo/Interno/Financeiro) — escolha única, estilo rádio
-//     * Nova OS — botão de destaque azul Atlassian
-//     * Tipo de OS (Atendimento/Fabricação/Venda/Visita) — múltipla, checkbox
-//     * Serviço (Limpeza/Manutenção) — múltipla, checkbox
-//     * Status (Ag. peça/Recusadas) — múltipla, checkbox
-//     * Fechar
+//   - Bottom sheet 'Mais', montado com as primitivas canônicas de
+//     _AtlassianUI.jsx (AtlPanel/AtlListRowCheck/AtlButton — mesmas usadas
+//     nas telas de Ação do OSDetalhe), nessa ordem:
+//     * Nova OS — AtlButton primary, destaque no topo
+//     * Zona (Todos/Externo/Interno/Financeiro) — AtlPanel + radio
+//     * Tipo de OS (Atendimento/Fabricação/Venda/Visita) — AtlPanel + checkbox
+//     * Serviço (Limpeza/Manutenção) — AtlPanel + checkbox
+//     * Status (Ag. peça/Recusadas) — AtlPanel + checkbox
+//     * Fechar — AtlButton default
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ZONAS, TIPOS_OS } from '../../utils/osData'
 import { corEtapa } from '../../utils/colors'
-
-const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
-const ATL_RADIUS = 4
+import {
+  AtlPanel, AtlButton, AtlListRowCheck, ATL_FONT, ATL_RADIUS,
+} from '../osDetalhe/acoes/_AtlassianUI'
 
 const ZONAS_TODAS = [
-  { id: 'todos', label: 'Todos', icon: 'ti-grid-dots' },
-  ...ZONAS,
+  { id: 'todos', label: 'Todos', icon: 'grid-dots' },
+  ...ZONAS.map(z => ({ ...z, icon: z.icon.replace(/^ti-/, '') })),
 ]
 
 export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, setBusca, onNova }) {
@@ -137,66 +139,8 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
   )
 }
 
-// ─── Seção genérica de lista (usada por Zona/Tipo/Serviço/Status) ─────────
-function SecaoLista({ T, dark, titulo, itens, multipla }) {
-  const azul = corEtapa('blue', dark)
-  return (
-    <div style={{ padding: '0 8px 4px' }}>
-      <div style={{
-        fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-        textTransform: 'uppercase', letterSpacing: '0.07em',
-        padding: '0 8px 8px',
-      }}>{titulo}</div>
-      {itens.map(it => (
-        <button key={it.id} onClick={it.onClick}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '10px', borderRadius: ATL_RADIUS, width: '100%',
-            background: it.ativo
-              ? (dark ? 'rgba(91,155,213,0.12)' : 'rgba(91,155,213,0.08)')
-              : 'transparent',
-            border: 'none', cursor: 'pointer',
-            color: it.ativo ? azul : T.textPrimary,
-            fontSize: 13.5, fontWeight: it.ativo ? 600 : 500,
-            fontFamily: ATL_FONT, textAlign: 'left',
-            boxSizing: 'border-box',
-            letterSpacing: '-0.005em',
-            WebkitTapHighlightColor: 'transparent',
-            transition: 'background .12s',
-          }}>
-          <i className={`ti ${it.icon}`}
-             style={{ fontSize: 16, width: 18, flexShrink: 0 }}
-             aria-hidden="true" />
-          <span style={{ flex: 1 }}>{it.label}</span>
-          {multipla ? (
-            <div style={{
-              width: 18, height: 18, borderRadius: 3,
-              border: `1.5px solid ${it.ativo ? azul : T.border}`,
-              background: it.ativo ? azul : 'transparent',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, transition: 'all .12s',
-            }}>
-              {it.ativo && <i className="ti ti-check" style={{ fontSize: 11, color: '#fff' }} aria-hidden="true" />}
-            </div>
-          ) : (
-            <div style={{
-              width: 18, height: 18, borderRadius: '50%',
-              border: `1.5px solid ${it.ativo ? azul : T.border}`,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, transition: 'all .12s',
-            }}>
-              {it.ativo && <div style={{ width: 9, height: 9, borderRadius: '50%', background: azul }} />}
-            </div>
-          )}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// ─── Bottom sheet Mais ────────────────────────────────────────────────────
+// ─── Bottom sheet Mais — montado com as primitivas Atlassian canônicas ────
 function MaisSheet({ T, dark, onNova, filtros, setZona, toggleTipo, toggleServico, onClose }) {
-  const azul = corEtapa('blue', dark)
   const [montado, setMontado] = useState(false)
 
   useEffect(() => {
@@ -234,7 +178,7 @@ function MaisSheet({ T, dark, onNova, filtros, setZona, toggleTipo, toggleServic
         style={{
           width: '100%',
           maxHeight: '85vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          background: T.card,
+          background: T.bg,
           borderRadius: '8px 8px 0 0',
           boxShadow: '0 -8px 32px rgba(9,30,66,0.35)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
@@ -250,78 +194,69 @@ function MaisSheet({ T, dark, onNova, filtros, setZona, toggleTipo, toggleServic
           }} />
         </div>
 
-        {/* Nova OS — destaque logo no topo */}
-        <div style={{ padding: '8px 14px 4px' }}>
-          <button
-            onClick={onNova}
-            style={{
-              width: '100%', height: 40, borderRadius: ATL_RADIUS,
-              border: 'none', cursor: 'pointer',
-              background: azul, color: '#fff',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              fontSize: 13.5, fontWeight: 600, fontFamily: ATL_FONT,
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+        <div style={{ padding: '8px 14px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Nova OS — destaque no topo */}
+          <AtlButton T={T} dark={dark} variant="primary" icon="plus" fullWidth onClick={onNova}>
             Nova OS
-          </button>
-        </div>
+          </AtlButton>
 
-        {/* Divisor */}
-        <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
+          {/* Zona — seleção única */}
+          <AtlPanel T={T} dark={dark} title="Zona">
+            {ZONAS_TODAS.map((z, i) => (
+              <AtlListRowCheck
+                key={z.id} T={T} dark={dark} radio first={i === 0}
+                icon={z.icon} label={z.label}
+                checked={filtros.zona === z.id}
+                onClick={() => setZona(z.id)}
+              />
+            ))}
+          </AtlPanel>
 
-        {/* Zona */}
-        <SecaoLista T={T} dark={dark} titulo="Zona" itens={
-          ZONAS_TODAS.map(z => ({
-            id: z.id, label: z.label, icon: z.icon,
-            ativo: filtros.zona === z.id,
-            onClick: () => setZona(z.id),
-          }))
-        } />
+          {/* Tipo de OS — múltipla */}
+          <AtlPanel T={T} dark={dark} title="Tipo de OS">
+            {Object.entries(TIPOS_OS).map(([id, cfg], i) => (
+              <AtlListRowCheck
+                key={id} T={T} dark={dark} first={i === 0}
+                icon={cfg.icon.replace(/^ti-/, '')} label={cfg.label}
+                checked={filtros.tipos.has(id)}
+                onClick={() => toggleTipo(id)}
+              />
+            ))}
+          </AtlPanel>
 
-        {/* Divisor */}
-        <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
+          {/* Serviço — múltipla */}
+          <AtlPanel T={T} dark={dark} title="Serviço">
+            <AtlListRowCheck T={T} dark={dark} first
+              icon="bubble" label="Limpeza"
+              checked={!!filtros.limpeza}
+              onClick={() => toggleServico('limpeza')}
+            />
+            <AtlListRowCheck T={T} dark={dark}
+              icon="tool" label="Manutenção"
+              checked={!!filtros.manutencao}
+              onClick={() => toggleServico('manutencao')}
+            />
+          </AtlPanel>
 
-        {/* Tipos de OS */}
-        <SecaoLista T={T} dark={dark} titulo="Tipo de OS" multipla itens={
-          Object.entries(TIPOS_OS).map(([id, cfg]) => ({
-            id, label: cfg.label, icon: cfg.icon,
-            ativo: filtros.tipos.has(id),
-            onClick: () => toggleTipo(id),
-          }))
-        } />
+          {/* Status extra — múltipla */}
+          <AtlPanel T={T} dark={dark} title="Status">
+            <AtlListRowCheck T={T} dark={dark} first
+              icon="package-off" label="Aguardando peça"
+              checked={!!filtros.agPeca}
+              onClick={() => toggleServico('agPeca')}
+            />
+            <AtlListRowCheck T={T} dark={dark}
+              icon="circle-x" label="Recusadas"
+              checked={!!filtros.recusadas}
+              onClick={() => toggleServico('recusadas')}
+            />
+          </AtlPanel>
 
-        {/* Divisor */}
-        <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
-
-        {/* Serviço */}
-        <SecaoLista T={T} dark={dark} titulo="Serviço" multipla itens={[
-          { id: 'limpeza', label: 'Limpeza', icon: 'ti-bubble', ativo: !!filtros.limpeza, onClick: () => toggleServico('limpeza') },
-          { id: 'manutencao', label: 'Manutenção', icon: 'ti-tool', ativo: !!filtros.manutencao, onClick: () => toggleServico('manutencao') },
-        ]} />
-
-        {/* Divisor */}
-        <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
-
-        {/* Status extra */}
-        <SecaoLista T={T} dark={dark} titulo="Status" multipla itens={[
-          { id: 'agPeca', label: 'Aguardando peça', icon: 'ti-package-off', ativo: !!filtros.agPeca, onClick: () => toggleServico('agPeca') },
-          { id: 'recusadas', label: 'Recusadas', icon: 'ti-circle-x', ativo: !!filtros.recusadas, onClick: () => toggleServico('recusadas') },
-        ]} />
-
-        {/* Botao Fechar */}
-        <div style={{ padding: '12px 14px 0' }}>
-          <button onClick={fechar} style={{
-            width: '100%', height: 36,
-            borderRadius: ATL_RADIUS,
-            border: `1px solid ${T.border}`,
-            background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
-            color: T.textPrimary,
-            fontSize: 13.5, fontWeight: 500,
-            cursor: 'pointer', fontFamily: ATL_FONT,
-            letterSpacing: '-0.005em',
-            WebkitTapHighlightColor: 'transparent',
-          }}>Fechar</button>
+          {/* Fechar */}
+          <AtlButton T={T} dark={dark} variant="default" fullWidth onClick={fechar}>
+            Fechar
+          </AtlButton>
         </div>
       </div>
     </div>
