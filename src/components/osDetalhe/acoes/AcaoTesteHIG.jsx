@@ -30,8 +30,8 @@ import {
 const TESTES_POR_EQUIP = {
   lavadora: [
     { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
-    { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
     { id: 'agitacao',      label: 'Agitação',         icon: 'refresh' },
+    { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
     { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
   ],
   microondas: [
