@@ -14,7 +14,7 @@ import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
 import { normalizePatchOS } from '../../utils/osPatch'
 import {
-  podeMoverOS, calcStatusPrazo, dentroMesCorrente, isAdmin, ordenarColuna,
+  podeMoverOS, dentroMesCorrente, isAdmin, ordenarColuna,
 } from '../../utils/osHelpers'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../../utils/pecasStatus'
 import { semAcento } from '../../utils/fmt'
@@ -36,7 +36,6 @@ export default function OSMobile({ T, dark, user }) {
   const admin = isAdmin(user)
 
   const azul     = corEtapa('blue', dark)
-  const vermelho  = dark ? P.red    : P.redDark
   const amarelo   = dark ? P.yellow : P.yellowDark
 
   const [busca, setBusca]   = useState('')
@@ -186,11 +185,6 @@ export default function OSMobile({ T, dark, user }) {
     try { localStorage.setItem(ETAPA_STORAGE_KEY, etapaAba) } catch {}
   }, [etapaAba])
 
-  // ─── Stats ───────────────────────────────────────────────────────────────
-  const totalKanban = useMemo(() => colunas.reduce((s, c) => s + c.count, 0), [colunas])
-  const totVencidas  = useMemo(() => osFiltradas.filter(o => calcStatusPrazo(o.prazo, o.etapa) === 'vencido').length, [osFiltradas])
-  const totalAgPeca  = useMemo(() => osFiltradas.filter(o => !!o.aguardando_peca).length, [osFiltradas])
-
   // ─── Update + Mover ───────────────────────────────────────────────────────
   async function updateOS(numero, patch) {
     const os = osList.find(o => o.numero === numero)
@@ -290,7 +284,7 @@ export default function OSMobile({ T, dark, user }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', background: T.bg }}>
 
-      {/* ── Header: filtros de zona + stats ── */}
+      {/* ── Header: só busca + Mais ── */}
       <div style={{ padding: '8px 12px 6px', background: T.bg, borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
         <FiltrosMobile
           T={T} dark={dark}
@@ -298,19 +292,6 @@ export default function OSMobile({ T, dark, user }) {
           busca={busca} setBusca={setBusca}
           onNova={() => setModalNova(true)}
         />
-        {/* Stats strip — mesmo padrão do desktop */}
-        {!loading && (
-          <div style={{ display: 'flex', gap: 10, marginTop: 5, alignItems: 'center' }}>
-            <MiniStat v={totalKanban} label="ativas" color={T.textMuted} />
-            {totVencidas > 0 && <MiniStat v={totVencidas} label="vencidas" color={vermelho} dot />}
-            {totalAgPeca > 0 && <MiniStat v={totalAgPeca} label="ag. peça" color={amarelo} dot />}
-            {busca.trim().length > 0 && (
-              <span style={{ padding: '1px 6px', borderRadius: 3, background: azul + '22', color: azul, fontSize: 10, fontWeight: 700 }}>
-                Busca ativa
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Kanban horizontal scroll-snap ── */}
@@ -457,16 +438,6 @@ export default function OSMobile({ T, dark, user }) {
 }
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
-
-function MiniStat({ v, label, color, dot }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, fontSize: 11 }}>
-      {dot && <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, display: 'inline-block', alignSelf: 'center', flexShrink: 0 }} />}
-      <span style={{ fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
-      <span style={{ color, opacity: 0.65 }}>{label}</span>
-    </span>
-  )
-}
 
 function SkeletonList({ T, dark }) {
   return (
