@@ -1,14 +1,16 @@
 // src/components/mobile/FiltrosMobile.jsx
-// Barra de filtros do OSMobile — Atlassian Design (reescrito 28/05/2026).
+// Barra de filtros do OSMobile — Atlassian Design (redesenho 22/07/2026).
 //
 // Estrutura:
-//   - Segmented control de zonas (Todos / Externo / Interno / Financeiro
-//     / Mais) com badge contador no Mais quando ha filtros ativos
-//   - Bottom sheet 'Mais' com:
-//     * busca + botao Nova OS azul Atlassian
-//     * lista de tipos de OS (Atendimento/Fabricacao/Venda) com toggle
-//       checkbox cor primaria
-//     * botao Fechar default secondary
+//   - Barra visível: SÓ busca + botão "···" (Mais) — nada de abas nem "+"
+//     ficando fixo na tela, pra header ficar mínimo.
+//   - Bottom sheet 'Mais' com, nessa ordem:
+//     * Zona (Todos/Externo/Interno/Financeiro) — escolha única, estilo rádio
+//     * Nova OS — botão de destaque azul Atlassian
+//     * Tipo de OS (Atendimento/Fabricação/Venda/Visita) — múltipla, checkbox
+//     * Serviço (Limpeza/Manutenção) — múltipla, checkbox
+//     * Status (Ag. peça/Recusadas) — múltipla, checkbox
+//     * Fechar
 
 import React, { useState, useEffect, useRef } from 'react'
 import { ZONAS, TIPOS_OS } from '../../utils/osData'
@@ -16,6 +18,11 @@ import { corEtapa } from '../../utils/colors'
 
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const ATL_RADIUS = 4
+
+const ZONAS_TODAS = [
+  { id: 'todos', label: 'Todos', icon: 'ti-grid-dots' },
+  ...ZONAS,
+]
 
 export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, setBusca, onNova }) {
   const azul = corEtapa('blue', dark)
@@ -40,93 +47,74 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
     setFiltros(f => ({ ...f, [key]: !f[key] }))
   }
 
-  const zonas = [
-    { id: 'todos', label: 'Todos', icon: 'ti-grid-dots' },
-    ...ZONAS,
-  ]
-
   const totalTipos     = Object.keys(TIPOS_OS).length
   const tiposAtivos    = filtros.tipos.size
   const tiposFiltrando = tiposAtivos < totalTipos
-  const temBusca       = busca && busca.trim().length > 0
+  const zonaFiltrando  = filtros.zona !== 'todos'
   const servicoFiltrando = !!filtros.limpeza || !!filtros.manutencao
   const extraFiltrando = !!filtros.agPeca || !!filtros.recusadas
-  const maisAtivo      = maisOpen || tiposFiltrando || temBusca || servicoFiltrando || extraFiltrando
-  const contadorMais   = (tiposFiltrando ? 1 : 0) + (temBusca ? 1 : 0) + (filtros.limpeza ? 1 : 0) + (filtros.manutencao ? 1 : 0) + (filtros.agPeca ? 1 : 0) + (filtros.recusadas ? 1 : 0)
-
-  // Segmented control Atlassian
-  const segBg = dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7'
+  const maisAtivo      = maisOpen || tiposFiltrando || zonaFiltrando || servicoFiltrando || extraFiltrando
+  const contadorMais   = (tiposFiltrando ? 1 : 0) + (zonaFiltrando ? 1 : 0) + (filtros.limpeza ? 1 : 0) + (filtros.manutencao ? 1 : 0) + (filtros.agPeca ? 1 : 0) + (filtros.recusadas ? 1 : 0)
 
   return (
     <>
-      <div style={{
-        display: 'flex',
-        background: segBg,
-        borderRadius: 3, padding: 2, gap: 0,
-        fontFamily: ATL_FONT,
-      }}>
-        {zonas.map(z => {
-          const ativo = filtros.zona === z.id
-          return (
-            <button key={z.id} onClick={() => setZona(z.id)}
-              style={{
-                flex: 1, minWidth: 0, minHeight: 30,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                padding: '5px 4px',
-                borderRadius: 3, border: 'none',
-                background: ativo ? (dark ? '#22272B' : '#FFFFFF') : 'transparent',
-                color: ativo ? T.textPrimary : T.textMuted,
-                fontSize: 11.5, fontWeight: ativo ? 600 : 500,
-                fontFamily: ATL_FONT, cursor: 'pointer',
-                boxShadow: ativo
-                  ? (dark
-                      ? '0 1px 2px rgba(0,0,0,.4)'
-                      : '0 1px 2px rgba(9,30,66,0.18)')
-                  : 'none',
-                letterSpacing: '-0.005em',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden', textOverflow: 'ellipsis',
-                WebkitTapHighlightColor: 'transparent',
-                transition: 'background .12s, box-shadow .12s',
-              }}>
-              <i className={`ti ${z.icon}`}
-                 style={{ fontSize: 12, flexShrink: 0 }}
-                 aria-hidden="true" />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {z.label}
-              </span>
-            </button>
-          )
-        })}
+      {/* Barra visível — só busca + Mais */}
+      <div style={{ display: 'flex', gap: 8, fontFamily: ATL_FONT }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <i className="ti ti-search" style={{
+            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+            fontSize: 14, color: T.textMuted, pointerEvents: 'none',
+          }} aria-hidden="true" />
+          <input
+            type="search"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar OS, cliente, marca…"
+            style={{
+              width: '100%', height: 36,
+              padding: '0 12px 0 32px',
+              borderRadius: ATL_RADIUS,
+              border: `1px solid ${T.border}`,
+              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+              color: T.textPrimary,
+              fontSize: 13.5, outline: 'none',
+              boxSizing: 'border-box',
+              fontFamily: ATL_FONT,
+              letterSpacing: '-0.005em',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = azul
+              e.currentTarget.style.boxShadow = `0 0 0 2px ${azul}33`
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = T.border
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          />
+        </div>
 
-        {/* Botao Mais */}
+        {/* Botão Mais — único controle além da busca */}
         <button
           onClick={() => setMaisOpen(true)}
+          aria-label="Mais opções e filtros"
           style={{
-            flex: '0 0 auto', minHeight: 30,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-            padding: '5px 8px',
-            borderRadius: 3, border: 'none',
-            background: maisAtivo ? (dark ? '#22272B' : '#FFFFFF') : 'transparent',
-            color: maisAtivo ? T.textPrimary : T.textMuted,
-            fontSize: 11.5, fontWeight: maisAtivo ? 600 : 500,
-            fontFamily: ATL_FONT, cursor: 'pointer',
+            flex: '0 0 36px', height: 36,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: ATL_RADIUS,
+            border: `1px solid ${maisAtivo ? azul : T.border}`,
+            background: maisAtivo ? (dark ? 'rgba(91,155,213,0.14)' : 'rgba(91,155,213,0.08)') : (dark ? 'rgba(255,255,255,0.04)' : '#fff'),
+            color: maisAtivo ? azul : T.textPrimary,
+            cursor: 'pointer', fontFamily: ATL_FONT,
             position: 'relative',
-            boxShadow: maisAtivo
-              ? (dark ? '0 1px 2px rgba(0,0,0,.4)' : '0 1px 2px rgba(9,30,66,0.18)')
-              : 'none',
-            letterSpacing: '-0.005em',
             WebkitTapHighlightColor: 'transparent',
-            transition: 'background .12s, box-shadow .12s',
           }}>
-          <i className="ti ti-dots" style={{ fontSize: 12 }} aria-hidden="true" />
-          <span>Mais</span>
+          <i className="ti ti-dots" style={{ fontSize: 18 }} aria-hidden="true" />
           {contadorMais > 0 && (
             <span style={{
-              position: 'absolute', top: -3, right: -3,
-              minWidth: 13, height: 13, borderRadius: 99,
+              position: 'absolute', top: -4, right: -4,
+              minWidth: 15, height: 15, borderRadius: 99,
               background: azul, color: '#fff',
-              fontSize: 9, fontWeight: 700,
+              fontSize: 9.5, fontWeight: 700,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               padding: '0 3px', boxSizing: 'border-box',
               border: `2px solid ${T.bg}`,
@@ -134,31 +122,14 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
             }}>{contadorMais}</span>
           )}
         </button>
-
-        {/* Botão + Nova OS */}
-        <button
-          onClick={onNova}
-          aria-label="Nova OS"
-          style={{
-            flex: '0 0 30px', minHeight: 30,
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: 3, border: 'none',
-            background: azul, color: '#fff',
-            cursor: 'pointer', fontFamily: ATL_FONT,
-            WebkitTapHighlightColor: 'transparent',
-            marginLeft: 2,
-          }}>
-          <i className="ti ti-plus" style={{ fontSize: 14 }} aria-hidden="true" />
-        </button>
       </div>
 
       {/* Bottom sheet Mais */}
       {maisOpen && (
         <MaisSheet
           T={T} dark={dark}
-          busca={busca} setBusca={setBusca}
           onNova={() => { setMaisOpen(false); onNova?.() }}
-          filtros={filtros} toggleTipo={toggleTipo} toggleServico={toggleServico}
+          filtros={filtros} setZona={setZona} toggleTipo={toggleTipo} toggleServico={toggleServico}
           onClose={() => setMaisOpen(false)}
         />
       )}
@@ -166,11 +137,67 @@ export default function FiltrosMobile({ T, dark, filtros, setFiltros, busca, set
   )
 }
 
+// ─── Seção genérica de lista (usada por Zona/Tipo/Serviço/Status) ─────────
+function SecaoLista({ T, dark, titulo, itens, multipla }) {
+  const azul = corEtapa('blue', dark)
+  return (
+    <div style={{ padding: '0 8px 4px' }}>
+      <div style={{
+        fontSize: 10.5, fontWeight: 700, color: T.textMuted,
+        textTransform: 'uppercase', letterSpacing: '0.07em',
+        padding: '0 8px 8px',
+      }}>{titulo}</div>
+      {itens.map(it => (
+        <button key={it.id} onClick={it.onClick}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '10px', borderRadius: ATL_RADIUS, width: '100%',
+            background: it.ativo
+              ? (dark ? 'rgba(91,155,213,0.12)' : 'rgba(91,155,213,0.08)')
+              : 'transparent',
+            border: 'none', cursor: 'pointer',
+            color: it.ativo ? azul : T.textPrimary,
+            fontSize: 13.5, fontWeight: it.ativo ? 600 : 500,
+            fontFamily: ATL_FONT, textAlign: 'left',
+            boxSizing: 'border-box',
+            letterSpacing: '-0.005em',
+            WebkitTapHighlightColor: 'transparent',
+            transition: 'background .12s',
+          }}>
+          <i className={`ti ${it.icon}`}
+             style={{ fontSize: 16, width: 18, flexShrink: 0 }}
+             aria-hidden="true" />
+          <span style={{ flex: 1 }}>{it.label}</span>
+          {multipla ? (
+            <div style={{
+              width: 18, height: 18, borderRadius: 3,
+              border: `1.5px solid ${it.ativo ? azul : T.border}`,
+              background: it.ativo ? azul : 'transparent',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, transition: 'all .12s',
+            }}>
+              {it.ativo && <i className="ti ti-check" style={{ fontSize: 11, color: '#fff' }} aria-hidden="true" />}
+            </div>
+          ) : (
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%',
+              border: `1.5px solid ${it.ativo ? azul : T.border}`,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, transition: 'all .12s',
+            }}>
+              {it.ativo && <div style={{ width: 9, height: 9, borderRadius: '50%', background: azul }} />}
+            </div>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ─── Bottom sheet Mais ────────────────────────────────────────────────────
-function MaisSheet({ T, dark, busca, setBusca, onNova, filtros, toggleTipo, toggleServico, onClose }) {
+function MaisSheet({ T, dark, onNova, filtros, setZona, toggleTipo, toggleServico, onClose }) {
   const azul = corEtapa('blue', dark)
   const [montado, setMontado] = useState(false)
-  const inputRef = useRef(null)
 
   useEffect(() => {
     requestAnimationFrame(() => setMontado(true))
@@ -184,10 +211,6 @@ function MaisSheet({ T, dark, busca, setBusca, onNova, filtros, toggleTipo, togg
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (montado) setTimeout(() => inputRef.current?.focus(), 80)
-  }, [montado])
 
   function fechar() {
     setMontado(false)
@@ -210,6 +233,7 @@ function MaisSheet({ T, dark, busca, setBusca, onNova, filtros, toggleTipo, togg
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
+          maxHeight: '85vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
           background: T.card,
           borderRadius: '8px 8px 0 0',
           boxShadow: '0 -8px 32px rgba(9,30,66,0.35)',
@@ -226,220 +250,70 @@ function MaisSheet({ T, dark, busca, setBusca, onNova, filtros, toggleTipo, togg
           }} />
         </div>
 
-        {/* Busca + Nova OS */}
-        <div style={{ padding: '8px 14px 14px', display: 'flex', gap: 8 }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-            <i className="ti ti-search" style={{
-              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 14, color: T.textMuted, pointerEvents: 'none',
-            }} aria-hidden="true" />
-            <input
-              ref={inputRef}
-              type="search"
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar OS, cliente, marca…"
-              style={{
-                width: '100%', height: 36,
-                padding: '0 12px 0 32px',
-                borderRadius: 3,
-                border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-                color: T.textPrimary,
-                fontSize: 13.5, outline: 'none',
-                boxSizing: 'border-box',
-                fontFamily: ATL_FONT,
-                letterSpacing: '-0.005em',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = azul
-                e.currentTarget.style.boxShadow = `0 0 0 2px ${azul}33`
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = T.border
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            />
-          </div>
+        {/* Nova OS — destaque logo no topo */}
+        <div style={{ padding: '8px 14px 4px' }}>
           <button
             onClick={onNova}
-            aria-label="Nova OS"
             style={{
-              width: 36, height: 36, borderRadius: 3,
+              width: '100%', height: 40, borderRadius: ATL_RADIUS,
               border: 'none', cursor: 'pointer',
               background: azul, color: '#fff',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, fontFamily: ATL_FONT,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontSize: 13.5, fontWeight: 600, fontFamily: ATL_FONT,
               WebkitTapHighlightColor: 'transparent',
             }}>
-            <i className="ti ti-plus" style={{ fontSize: 18 }} aria-hidden="true" />
+            <i className="ti ti-plus" style={{ fontSize: 16 }} aria-hidden="true" />
+            Nova OS
           </button>
         </div>
 
         {/* Divisor */}
-        <div style={{ height: 1, background: T.border, margin: '0 14px 10px' }} />
+        <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
+
+        {/* Zona */}
+        <SecaoLista T={T} dark={dark} titulo="Zona" itens={
+          ZONAS_TODAS.map(z => ({
+            id: z.id, label: z.label, icon: z.icon,
+            ativo: filtros.zona === z.id,
+            onClick: () => setZona(z.id),
+          }))
+        } />
+
+        {/* Divisor */}
+        <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
 
         {/* Tipos de OS */}
-        <div style={{ padding: '0 8px 4px' }}>
-          <div style={{
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-            textTransform: 'uppercase', letterSpacing: '0.07em',
-            padding: '0 8px 8px',
-          }}>Tipo de OS</div>
-          {Object.entries(TIPOS_OS).map(([id, cfg]) => {
-            const ativo = filtros.tipos.has(id)
-            return (
-              <button key={id} onClick={() => toggleTipo(id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px', borderRadius: 3, width: '100%',
-                  background: ativo
-                    ? (dark ? 'rgba(91,155,213,0.12)' : 'rgba(91,155,213,0.08)')
-                    : 'transparent',
-                  border: 'none', cursor: 'pointer',
-                  color: ativo ? azul : T.textPrimary,
-                  fontSize: 13.5, fontWeight: ativo ? 600 : 500,
-                  fontFamily: ATL_FONT, textAlign: 'left',
-                  boxSizing: 'border-box',
-                  letterSpacing: '-0.005em',
-                  WebkitTapHighlightColor: 'transparent',
-                  transition: 'background .12s',
-                }}>
-                <i className={`ti ${cfg.icon}`}
-                   style={{ fontSize: 16, width: 18, flexShrink: 0 }}
-                   aria-hidden="true" />
-                <span style={{ flex: 1 }}>{cfg.label}</span>
-                <div style={{
-                  width: 18, height: 18, borderRadius: 3,
-                  border: `1.5px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? azul : 'transparent',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'all .12s',
-                }}>
-                  {ativo && (
-                    <i className="ti ti-check"
-                       style={{ fontSize: 11, color: '#fff' }}
-                       aria-hidden="true" />
-                  )}
-                </div>
-              </button>
-            )
-          })}
-        </div>
+        <SecaoLista T={T} dark={dark} titulo="Tipo de OS" multipla itens={
+          Object.entries(TIPOS_OS).map(([id, cfg]) => ({
+            id, label: cfg.label, icon: cfg.icon,
+            ativo: filtros.tipos.has(id),
+            onClick: () => toggleTipo(id),
+          }))
+        } />
 
         {/* Divisor */}
         <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
 
-        {/* Serviço (Limpeza / Manutenção) */}
-        <div style={{ padding: '0 8px 4px' }}>
-          <div style={{
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-            textTransform: 'uppercase', letterSpacing: '0.07em',
-            padding: '0 8px 8px',
-          }}>Serviço</div>
-          {[
-            { key: 'limpeza',    label: 'Limpeza',    icon: 'ti-bubble' },
-            { key: 'manutencao', label: 'Manutenção', icon: 'ti-tool' },
-          ].map(s => {
-            const ativo = !!filtros[s.key]
-            return (
-              <button key={s.key} onClick={() => toggleServico(s.key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px', borderRadius: 3, width: '100%',
-                  background: ativo
-                    ? (dark ? 'rgba(91,155,213,0.12)' : 'rgba(91,155,213,0.08)')
-                    : 'transparent',
-                  border: 'none', cursor: 'pointer',
-                  color: ativo ? azul : T.textPrimary,
-                  fontSize: 13.5, fontWeight: ativo ? 600 : 500,
-                  fontFamily: ATL_FONT, textAlign: 'left',
-                  boxSizing: 'border-box',
-                  letterSpacing: '-0.005em',
-                  WebkitTapHighlightColor: 'transparent',
-                  transition: 'background .12s',
-                }}>
-                <i className={`ti ${s.icon}`}
-                   style={{ fontSize: 16, width: 18, flexShrink: 0 }}
-                   aria-hidden="true" />
-                <span style={{ flex: 1 }}>{s.label}</span>
-                <div style={{
-                  width: 18, height: 18, borderRadius: 3,
-                  border: `1.5px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? azul : 'transparent',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'all .12s',
-                }}>
-                  {ativo && (
-                    <i className="ti ti-check"
-                       style={{ fontSize: 11, color: '#fff' }}
-                       aria-hidden="true" />
-                  )}
-                </div>
-              </button>
-            )
-          })}
-        </div>
+        {/* Serviço */}
+        <SecaoLista T={T} dark={dark} titulo="Serviço" multipla itens={[
+          { id: 'limpeza', label: 'Limpeza', icon: 'ti-bubble', ativo: !!filtros.limpeza, onClick: () => toggleServico('limpeza') },
+          { id: 'manutencao', label: 'Manutenção', icon: 'ti-tool', ativo: !!filtros.manutencao, onClick: () => toggleServico('manutencao') },
+        ]} />
 
         {/* Divisor */}
         <div style={{ height: 1, background: T.border, margin: '10px 14px' }} />
 
-        {/* Status extra: Ag. peça / Recusadas */}
-        <div style={{ padding: '0 8px 4px' }}>
-          <div style={{
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-            textTransform: 'uppercase', letterSpacing: '0.07em',
-            padding: '0 8px 8px',
-          }}>Status</div>
-          {[
-            { key: 'agPeca',    label: 'Aguardando peça', icon: 'ti-package-off' },
-            { key: 'recusadas', label: 'Recusadas',        icon: 'ti-circle-x' },
-          ].map(s => {
-            const ativo = !!filtros[s.key]
-            return (
-              <button key={s.key} onClick={() => toggleServico(s.key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px', borderRadius: 3, width: '100%',
-                  background: ativo
-                    ? (dark ? 'rgba(91,155,213,0.12)' : 'rgba(91,155,213,0.08)')
-                    : 'transparent',
-                  border: 'none', cursor: 'pointer',
-                  color: ativo ? azul : T.textPrimary,
-                  fontSize: 13.5, fontWeight: ativo ? 600 : 500,
-                  fontFamily: ATL_FONT, textAlign: 'left',
-                  boxSizing: 'border-box',
-                  letterSpacing: '-0.005em',
-                  WebkitTapHighlightColor: 'transparent',
-                  transition: 'background .12s',
-                }}>
-                <i className={`ti ${s.icon}`}
-                   style={{ fontSize: 16, width: 18, flexShrink: 0 }}
-                   aria-hidden="true" />
-                <span style={{ flex: 1 }}>{s.label}</span>
-                <div style={{
-                  width: 18, height: 18, borderRadius: 3,
-                  border: `1.5px solid ${ativo ? azul : T.border}`,
-                  background: ativo ? azul : 'transparent',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, transition: 'all .12s',
-                }}>
-                  {ativo && (
-                    <i className="ti ti-check"
-                       style={{ fontSize: 11, color: '#fff' }}
-                       aria-hidden="true" />
-                  )}
-                </div>
-              </button>
-            )
-          })}
-        </div>
+        {/* Status extra */}
+        <SecaoLista T={T} dark={dark} titulo="Status" multipla itens={[
+          { id: 'agPeca', label: 'Aguardando peça', icon: 'ti-package-off', ativo: !!filtros.agPeca, onClick: () => toggleServico('agPeca') },
+          { id: 'recusadas', label: 'Recusadas', icon: 'ti-circle-x', ativo: !!filtros.recusadas, onClick: () => toggleServico('recusadas') },
+        ]} />
 
         {/* Botao Fechar */}
         <div style={{ padding: '12px 14px 0' }}>
           <button onClick={fechar} style={{
             width: '100%', height: 36,
-            borderRadius: 3,
+            borderRadius: ATL_RADIUS,
             border: `1px solid ${T.border}`,
             background: dark ? 'rgba(255,255,255,0.05)' : '#F4F5F7',
             color: T.textPrimary,
