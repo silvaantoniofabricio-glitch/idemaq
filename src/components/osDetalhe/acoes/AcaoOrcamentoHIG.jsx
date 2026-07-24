@@ -813,14 +813,20 @@ function BaixasRecebidasPanel({ T, dark, os, total, onUpdateOS, refreshKey = 0 }
         .update({ deleted_at: new Date().toISOString(), excluido_por: u?.user?.id || null })
         .eq('id', b.id)
       if (error) throw error
-      // Reverte na OS: desconta o valor da baixa e recalcula o status de pago.
-      const totalAP = Math.max(0, Number(total) || 0)
-      const novoValorPago = Math.max(0, (Number(os.valor_pago) || 0) - (Number(b.valor) || 0))
-      let novoPago = 'nao'
-      if (totalAP > 0 && novoValorPago >= totalAP - 0.01) novoPago = 'total'
-      else if (novoValorPago > 0) novoPago = 'parcial'
-      onUpdateOS?.(os.numero, { valor_pago: novoValorPago, pago: novoPago })
-      notify?.('ok', `Baixa de ${fmtBRL(b.valor, { fr: true })} excluída — OS reaberta`)
+      // Só desconta do valor_pago se a baixa excluída ESTAVA PAGA de verdade
+      // (pago_em preenchido). Uma parcela "a prazo" nunca paga nunca somou
+      // no valor_pago — excluí-la não deve mexer em nada da OS, só sumir
+      // da lista (bug corrigido 24/07/2026: zerava pagamento real ao
+      // limpar a parcela "a prazo" redundante depois do pagamento chegar).
+      if (b.pago_em) {
+        const totalAP = Math.max(0, Number(total) || 0)
+        const novoValorPago = Math.max(0, (Number(os.valor_pago) || 0) - (Number(b.valor) || 0))
+        let novoPago = 'nao'
+        if (totalAP > 0 && novoValorPago >= totalAP - 0.01) novoPago = 'total'
+        else if (novoValorPago > 0) novoPago = 'parcial'
+        onUpdateOS?.(os.numero, { valor_pago: novoValorPago, pago: novoPago })
+      }
+      notify?.('ok', `Baixa de ${fmtBRL(b.valor, { fr: true })} excluída${b.pago_em ? ' — OS reaberta' : ''}`)
       setBaixas(prev => prev.filter(x => x.id !== b.id))
     } catch (e) {
       console.error('[baixa] excluir falhou:', e)
