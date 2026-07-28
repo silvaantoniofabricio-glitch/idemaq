@@ -8,6 +8,7 @@ import { fmtBRL, semAcento } from '../utils/fmt'
 import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
 import { Badge, useToast, ModuleHeader } from '../components/ui'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
+import { supabase } from '../supabase'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import NovaOSAntigaModal from '../components/vendas/NovaOSAntigaModal'
 
@@ -63,6 +64,10 @@ const OPTS_PAGTO = [
   { id: 'total',   label: 'Pago'     },
   { id: 'parcial', label: 'Parcial'  },
   { id: 'nao',     label: 'Não pago' },
+]
+const OPTS_SERVICO = [
+  { id: 'limpeza',    label: 'Limpeza'    },
+  { id: 'manutencao', label: 'Manutenção' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -379,6 +384,7 @@ export default function Vendas({ T, dark, user }) {
   const [tiposSel, setTiposSel]           = useState(new Set())
   const [statusSel, setStatusSel]         = useState(new Set())
   const [pagtoSel, setPagtoSel]           = useState(new Set())
+  const [servicoSel, setServicoSel]       = useState(new Set())
   const [busca, setBusca]                 = useState('')
   const [novaOSAntigaAberta, setNovaOSAntigaAberta] = useState(false)
 
@@ -393,6 +399,31 @@ export default function Vendas({ T, dark, user }) {
 
   const { abrirOSPorId, modalProps: osDetalheProps, osList, osLoading: loading, osRefetch } =
     useOSDetalheModal({ notify, buscando: true })
+
+  // Detecta quais OS têm item de Limpeza e/ou Manutenção no orçamento —
+  // mesma query e critério (nome do item) usados no Kanban.
+  const [temLimpeza, setTemLimpeza]       = useState(() => new Set())
+  const [temManutencao, setTemManutencao] = useState(() => new Set())
+  useEffect(() => {
+    let cancel = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('os_item')
+        .select('os_id, nome')
+        .eq('categoria', 'servico')
+        .is('deleted_at', null)
+      if (cancel || error || !data) return
+      const limp = new Set(), manu = new Set()
+      for (const it of data) {
+        const n = (it.nome || '').toLowerCase()
+        if (n.includes('limpez')) limp.add(it.os_id)
+        if (n.includes('manuten')) manu.add(it.os_id)
+      }
+      setTemLimpeza(limp)
+      setTemManutencao(manu)
+    })()
+    return () => { cancel = true }
+  }, [osList.length])
 
   const [ordemCol, setOrdemCol] = useState('numero')
   const [ordemDir, setOrdemDir] = useState('desc')
@@ -426,6 +457,13 @@ export default function Vendas({ T, dark, user }) {
 
     if (pagtoSel.size > 0) r = r.filter(os => pagtoSel.has(os.pago || 'nao'))
 
+    if (servicoSel.size > 0) {
+      r = r.filter(os =>
+        (servicoSel.has('limpeza') && temLimpeza.has(os.id)) ||
+        (servicoSel.has('manutencao') && temManutencao.has(os.id))
+      )
+    }
+
     const termo = semAcento((busca || '').trim())
     if (termo) {
       r = r.filter(os =>
@@ -446,7 +484,7 @@ export default function Vendas({ T, dark, user }) {
       if (va > vb) return ordemDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [osList, range, tiposSel, statusSel, pagtoSel, busca, ordemCol, ordemDir])
+  }, [osList, range, tiposSel, statusSel, pagtoSel, servicoSel, temLimpeza, temManutencao, busca, ordemCol, ordemDir])
 
   // ─── KPIs ────────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
@@ -464,7 +502,7 @@ export default function Vendas({ T, dark, user }) {
     else { setOrdemCol(col); setOrdemDir(col === 'numero' || col === 'abertura' ? 'desc' : 'asc') }
   }
 
-  const temFiltroAtivo = tiposSel.size > 0 || statusSel.size > 0 || pagtoSel.size > 0 || busca.trim()
+  const temFiltroAtivo = tiposSel.size > 0 || statusSel.size > 0 || pagtoSel.size > 0 || servicoSel.size > 0 || busca.trim()
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -509,6 +547,7 @@ export default function Vendas({ T, dark, user }) {
           <FilterDropdown T={T} dark={dark} azul={azul} label="Tipo" options={OPTS_TIPO} selected={tiposSel} onChange={setTiposSel} />
           <FilterDropdown T={T} dark={dark} azul={azul} label="Status" options={OPTS_STATUS} selected={statusSel} onChange={setStatusSel} />
           <FilterDropdown T={T} dark={dark} azul={azul} label="Pagto" options={OPTS_PAGTO} selected={pagtoSel} onChange={setPagtoSel} />
+          <FilterDropdown T={T} dark={dark} azul={azul} label="Serviço" options={OPTS_SERVICO} selected={servicoSel} onChange={setServicoSel} />
           <HdrDivider T={T} dark={dark} />
           <div style={{ position: 'relative', minWidth: 160 }}>
             <i className="ti ti-search" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: T.textDim, pointerEvents: 'none' }} aria-hidden="true" />
@@ -532,7 +571,7 @@ export default function Vendas({ T, dark, user }) {
             )}
           </div>
           {temFiltroAtivo && (
-            <button onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setBusca('') }}
+            <button onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setServicoSel(new Set()); setBusca('') }}
               style={{ height: 22, padding: '0 8px', borderRadius: 4, border: 'none', background: 'transparent', color: T.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               onMouseEnter={e => e.currentTarget.style.color = T.textPrimary}
               onMouseLeave={e => e.currentTarget.style.color = T.textMuted}>
@@ -565,7 +604,7 @@ export default function Vendas({ T, dark, user }) {
             </div>
             {temFiltroAtivo && (
               <button
-                onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setBusca('') }}
+                onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setServicoSel(new Set()); setBusca('') }}
                 style={{ padding: '6px 14px', borderRadius: 4, border: `1px solid ${T.border}`, background: 'transparent', color: T.textPrimary, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Limpar filtros
               </button>
