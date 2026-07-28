@@ -21,11 +21,19 @@ const PERIODOS = [
   { id: 'todos',       label: 'Todos',            all: true },
 ]
 
+const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
 function rangeDoPeriodo(periodo) {
   const hoje = new Date()
   const toIso = d => d.toISOString().slice(0, 10)
   if (periodo.id === 'todos') return { ini: null, fim: null }
-  if (periodo.id === 'custom') return { ini: periodo.de || null, fim: periodo.ate || null }
+  if (periodo.id === 'custom' || periodo.id === 'sel_period') return { ini: periodo.de || null, fim: periodo.ate || null }
+  if (periodo.id === 'sel_mes' && periodo.ano != null && periodo.mes != null) {
+    return {
+      ini: toIso(new Date(periodo.ano, periodo.mes, 1)),
+      fim: toIso(new Date(periodo.ano, periodo.mes + 1, 0)),
+    }
+  }
   const cfg = PERIODOS.find(p => p.id === periodo.id) || PERIODOS[2]
   if (cfg.dias) {
     const ini = new Date(hoje); ini.setDate(ini.getDate() - cfg.dias)
@@ -38,9 +46,12 @@ function rangeDoPeriodo(periodo) {
 }
 
 function labelPeriodo(periodo) {
-  if (periodo.id === 'custom') {
-    const fmt = iso => iso ? iso.split('-').reverse().join('/') : '?'
+  if (periodo.id === 'custom' || periodo.id === 'sel_period') {
+    const fmt = iso => iso ? iso.split('-').reverse().join('/') : '...'
     return `${fmt(periodo.de)} → ${fmt(periodo.ate)}`
+  }
+  if (periodo.id === 'sel_mes' && periodo.ano != null && periodo.mes != null) {
+    return `${MESES_NOME[periodo.mes]} ${periodo.ano}`
   }
   return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[2]).label
 }
@@ -252,6 +263,114 @@ function FilterDropdown({ T, dark, azul, label, options, selected, onChange }) {
   )
 }
 
+// Dropdown de período — mesmo padrão do Financeiro (opções rápidas + "Selecionar
+// mês" com navegador de mês + "Selecionar período" com De/Até), pra ficar
+// visualmente idêntico entre as duas páginas.
+function DropdownPeriodoVendas({ T, dark, periodo, setPeriodo, onClose }) {
+  const azul = corEtapa('blue', dark)
+  const cor = (d, c) => dark ? d : c
+  const hoje = new Date()
+  const [selMesAno, setSelMesAno] = useState(
+    periodo.id === 'sel_mes' && periodo.ano != null
+      ? { ano: periodo.ano, mes: periodo.mes }
+      : { ano: hoje.getFullYear(), mes: hoje.getMonth() }
+  )
+
+  const itemStyle = (ativo) => ({
+    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+    padding: '8px 10px', borderRadius: 6, border: 'none',
+    background: ativo ? cor('#0d2035', '#e6f1fb') : 'transparent',
+    color: ativo ? azul : T.textSecondary,
+    fontSize: 12.5, fontWeight: ativo ? 700 : 500,
+    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+  })
+
+  return (
+    <div style={{
+      position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200,
+      minWidth: 220,
+      background: T.card, border: `1px solid ${T.border}`,
+      borderRadius: 10, boxShadow: dark ? '0 10px 30px rgba(0,0,0,0.4)' : '0 10px 30px rgba(0,0,0,0.18)',
+      padding: 8,
+    }}>
+      {/* Opções rápidas (7 dias / 30 dias / Mês atual / Mês passado / Este ano / Todos) */}
+      {PERIODOS.map(p => {
+        const ativo = periodo.id === p.id
+        return (
+          <button key={p.id} style={itemStyle(ativo)}
+            onClick={() => { setPeriodo({ id: p.id }); onClose() }}>
+            {ativo ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+            {p.label}
+          </button>
+        )
+      })}
+
+      <div style={{ height: 1, background: T.border, margin: '4px 0' }} />
+
+      {/* Selecionar mês — expande inline */}
+      <button style={itemStyle(periodo.id === 'sel_mes')}
+        onClick={() => setPeriodo(p => p.id === 'sel_mes' ? p : { id: 'sel_mes', ano: selMesAno.ano, mes: selMesAno.mes })}>
+        {periodo.id === 'sel_mes' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Selecionar mês
+        <i className={`ti ti-chevron-${periodo.id === 'sel_mes' ? 'up' : 'down'}`} style={{ fontSize: 12, marginLeft: 'auto', color: T.textMuted }} aria-hidden="true" />
+      </button>
+
+      {periodo.id === 'sel_mes' && (
+        <div style={{ padding: '6px 10px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 0 ? { ano: selMesAno.ano - 1, mes: 11 } : { ano: selMesAno.ano, mes: selMesAno.mes - 1 }
+            setSelMesAno(novo); setPeriodo({ id: 'sel_mes', ...novo })
+          }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, padding: 2 }}>
+            <i className="ti ti-chevron-left" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          <span style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 600, color: T.textPrimary }}>
+            {MESES_NOME[selMesAno.mes]} {selMesAno.ano}
+          </span>
+          <button onClick={() => {
+            const novo = selMesAno.mes === 11 ? { ano: selMesAno.ano + 1, mes: 0 } : { ano: selMesAno.ano, mes: selMesAno.mes + 1 }
+            setSelMesAno(novo); setPeriodo({ id: 'sel_mes', ...novo })
+          }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textMuted, padding: 2 }}>
+            <i className="ti ti-chevron-right" style={{ fontSize: 14 }} aria-hidden="true" />
+          </button>
+          <button onClick={onClose}
+            style={{ background: azul, border: 'none', cursor: 'pointer', color: '#fff', padding: '3px 10px', borderRadius: 5, fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+            OK
+          </button>
+        </div>
+      )}
+
+      {/* Selecionar período — expande inline */}
+      <button style={itemStyle(periodo.id === 'sel_period')}
+        onClick={() => setPeriodo(p => p.id === 'sel_period' ? p : { id: 'sel_period', de: '', ate: '' })}>
+        {periodo.id === 'sel_period' ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
+        Selecionar período
+        <i className={`ti ti-chevron-${periodo.id === 'sel_period' ? 'up' : 'down'}`} style={{ fontSize: 12, marginLeft: 'auto', color: T.textMuted }} aria-hidden="true" />
+      </button>
+
+      {periodo.id === 'sel_period' && (
+        <div style={{ padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: T.textMuted, minWidth: 24 }}>De</span>
+            <input type="date" value={periodo.de || ''} onChange={e => setPeriodo({ id: 'sel_period', de: e.target.value, ate: periodo.ate })}
+              style={inputDateStyle(T, dark)} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: T.textMuted, minWidth: 24 }}>Até</span>
+            <input type="date" value={periodo.ate || ''} onChange={e => setPeriodo({ id: 'sel_period', de: periodo.de, ate: e.target.value })}
+              style={inputDateStyle(T, dark)} />
+          </div>
+          {periodo.de && periodo.ate && (
+            <button onClick={onClose}
+              style={{ alignSelf: 'flex-end', background: azul, border: 'none', cursor: 'pointer', color: '#fff', padding: '3px 12px', borderRadius: 5, fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>
+              OK
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function Vendas({ T, dark, user }) {
   const notify  = useToast()
@@ -378,46 +497,20 @@ export default function Vendas({ T, dark, user }) {
             <button
               onClick={() => setPeriodoAberto(o => !o)}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '0 8px', height: 22, borderRadius: 4,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '8px 12px', borderRadius: 8,
                 border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : T.card,
-                color: T.textSecondary,
-                fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                background: T.cardAlt, color: T.textPrimary,
+                fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                minWidth: 180,
               }}>
-              <i className="ti ti-calendar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-              {labelPeriodo(periodo)}
-              <i className={`ti ti-chevron-${periodoAberto ? 'up' : 'down'}`} style={{ fontSize: 10, opacity: 0.6 }} aria-hidden="true" />
+              <i className="ti ti-calendar" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+              <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
+              <i className={`ti ti-chevron-${periodoAberto ? 'up' : 'down'}`} style={{ fontSize: 14, color: T.textMuted }} aria-hidden="true" />
             </button>
             {periodoAberto && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200, minWidth: 200,
-                background: T.card, border: `1px solid ${T.border}`, borderRadius: 4,
-                boxShadow: dark ? '0 4px 16px rgba(0,0,0,0.5)' : '0 4px 16px rgba(9,30,66,0.14)', padding: 6,
-              }}>
-                {PERIODOS.map(p => {
-                  const ativo = periodo.id === p.id
-                  return (
-                    <button key={p.id} onClick={() => { setPeriodo({ id: p.id }); setPeriodoAberto(false) }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                        padding: '7px 10px', borderRadius: 3, border: 'none',
-                        background: ativo ? (dark ? '#0d2035' : '#e6f1fb') : 'transparent',
-                        color: ativo ? azul : T.textSecondary,
-                        fontSize: 12.5, fontWeight: ativo ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit',
-                      }}>
-                      {ativo ? <i className="ti ti-check" style={{ fontSize: 13 }} aria-hidden="true" /> : <span style={{ width: 13 }} />}
-                      {p.label}
-                    </button>
-                  )
-                })}
-                <div style={{ height: 1, background: T.border, margin: '4px' }} />
-                <div style={{ padding: '3px 8px', fontSize: 10, color: T.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>Personalizado</div>
-                <div style={{ display: 'flex', gap: 5, padding: '4px 6px 6px' }}>
-                  <input type="date" value={periodo.de || ''} onChange={e => setPeriodo({ id: 'custom', de: e.target.value, ate: periodo.ate })} style={inputDateStyle(T, dark)} />
-                  <input type="date" value={periodo.ate || ''} onChange={e => setPeriodo({ id: 'custom', de: periodo.de, ate: e.target.value })} style={inputDateStyle(T, dark)} />
-                </div>
-              </div>
+              <DropdownPeriodoVendas T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo}
+                onClose={() => setPeriodoAberto(false)} />
             )}
           </div>
           <HdrDivider T={T} dark={dark} />
