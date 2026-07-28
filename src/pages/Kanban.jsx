@@ -148,14 +148,17 @@ export default function Kanban({ T, dark, user }) {
   }
 
   // Busca os serviços (1 query) e monta os conjuntos de OS com limpeza/manutenção.
-  // Refaz quando a quantidade de OS muda (criou/excluiu OS).
+  // Refaz quando a quantidade de OS muda (criou/excluiu OS). `categoria`
+  // aceita NULL também: OS importadas do Bling/Trello têm os_item sem essa
+  // coluna preenchida — exigir só 'servico' deixava de fora item antigo
+  // tipo "Limpeza de Lavadora" mesmo o nome batendo certinho.
   useEffect(() => {
     let cancel = false
     ;(async () => {
       const { data, error } = await supabase
         .from('os_item')
         .select('os_id, nome')
-        .eq('categoria', 'servico')
+        .or('categoria.is.null,categoria.eq.servico')
         .is('deleted_at', null)
       if (cancel || error || !data) return
       const limp = new Set(), manu = new Set()

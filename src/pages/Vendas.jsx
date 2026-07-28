@@ -401,7 +401,11 @@ export default function Vendas({ T, dark, user }) {
     useOSDetalheModal({ notify, buscando: true })
 
   // Detecta quais OS têm item de Limpeza e/ou Manutenção no orçamento —
-  // mesma query e critério (nome do item) usados no Kanban.
+  // mesma query e critério (nome do item) usados no Kanban. `categoria`
+  // aceita NULL também: OS importadas do Bling/Trello têm os_item sem essa
+  // coluna preenchida (o script de import não gravava categoria), então
+  // exigir só 'servico' deixava de fora item antigo tipo "Limpeza de
+  // Lavadora" mesmo o nome batendo certinho.
   const [temLimpeza, setTemLimpeza]       = useState(() => new Set())
   const [temManutencao, setTemManutencao] = useState(() => new Set())
   useEffect(() => {
@@ -410,7 +414,7 @@ export default function Vendas({ T, dark, user }) {
       const { data, error } = await supabase
         .from('os_item')
         .select('os_id, nome')
-        .eq('categoria', 'servico')
+        .or('categoria.is.null,categoria.eq.servico')
         .is('deleted_at', null)
       if (cancel || error || !data) return
       const limp = new Set(), manu = new Set()
