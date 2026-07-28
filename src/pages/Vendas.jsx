@@ -12,13 +12,11 @@ import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import NovaOSAntigaModal from '../components/vendas/NovaOSAntigaModal'
 
 // ─── Período ─────────────────────────────────────────────────────────────────
+// Mesmas 2 opções rápidas do Financeiro (Selecionar mês/período são
+// tratadas à parte, como itens que expandem inline no dropdown).
 const PERIODOS = [
-  { id: '7d',          label: 'Últimos 7 dias',  dias: 7 },
-  { id: '30d',         label: 'Últimos 30 dias', dias: 30 },
-  { id: 'mes',         label: 'Mês atual',        mes: true },
-  { id: 'mes_passado', label: 'Mês passado',      mesPassado: true },
-  { id: 'ano',         label: 'Este ano',         ano: true },
-  { id: 'todos',       label: 'Todos',            all: true },
+  { id: 'mes',         label: 'Mês atual',   mes: true },
+  { id: 'mes_passado', label: 'Mês passado', mesPassado: true },
 ]
 
 const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -26,7 +24,6 @@ const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out',
 function rangeDoPeriodo(periodo) {
   const hoje = new Date()
   const toIso = d => d.toISOString().slice(0, 10)
-  if (periodo.id === 'todos') return { ini: null, fim: null }
   if (periodo.id === 'custom' || periodo.id === 'sel_period') return { ini: periodo.de || null, fim: periodo.ate || null }
   if (periodo.id === 'sel_mes' && periodo.ano != null && periodo.mes != null) {
     return {
@@ -34,14 +31,9 @@ function rangeDoPeriodo(periodo) {
       fim: toIso(new Date(periodo.ano, periodo.mes + 1, 0)),
     }
   }
-  const cfg = PERIODOS.find(p => p.id === periodo.id) || PERIODOS[2]
-  if (cfg.dias) {
-    const ini = new Date(hoje); ini.setDate(ini.getDate() - cfg.dias)
-    return { ini: toIso(ini), fim: toIso(hoje) }
-  }
+  const cfg = PERIODOS.find(p => p.id === periodo.id) || PERIODOS[0]
   if (cfg.mes) return { ini: toIso(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), fim: toIso(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)) }
   if (cfg.mesPassado) return { ini: toIso(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)), fim: toIso(new Date(hoje.getFullYear(), hoje.getMonth(), 0)) }
-  if (cfg.ano) return { ini: toIso(new Date(hoje.getFullYear(), 0, 1)), fim: toIso(new Date(hoje.getFullYear(), 11, 31)) }
   return { ini: null, fim: null }
 }
 
@@ -53,7 +45,7 @@ function labelPeriodo(periodo) {
   if (periodo.id === 'sel_mes' && periodo.ano != null && periodo.mes != null) {
     return `${MESES_NOME[periodo.mes]} ${periodo.ano}`
   }
-  return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[2]).label
+  return (PERIODOS.find(p => p.id === periodo.id) || PERIODOS[0]).label
 }
 
 // ─── Opções de filtro ─────────────────────────────────────────────────────────
