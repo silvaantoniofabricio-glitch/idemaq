@@ -589,3 +589,13 @@ esse mesmo bug silencioso — não dá erro, só corta o resultado. Antes de
 copiar esse padrão de query pra lugar novo, ou ao investigar um filtro
 que "só funciona parcialmente", checar `count(*)` da tabela e comparar
 com 1000.
+
+## 29. Venda ganha etapa Orçamento — sem trava de 1 máquina fixa (29/07/2026)
+
+Pedido do Toni: criar uma OS de Venda não devia obrigar escolher 1 máquina específica do estoque de antemão — a venda pode ter qualquer item, e o correto era abrir a tela de Orçamento normal (que já busca máquinas do estoque junto com peças ao digitar) pra montar os itens depois de criar a OS.
+
+**Achado no meio do caminho**: o modal antigo (`MaquinaEstoqueBlock` em `NovaOSMobile.jsx`) nem persistia nada de verdade — só preenchia `modelo_equipamento` como texto solto; não criava `os_item`, não salvava preço (`valor_total` nunca era setado pra Venda). Ou seja, o fluxo antigo de Venda já estava quebrado antes desse pedido.
+
+**Mudança**: `osData.js` → `venda.etapas` virou `Orçamento → Entrega → A receber → Concluído` (era `Agenda → Entrega → A receber → Concluído`). `ETAPAS_TODOS` atualizado (match `orcamento` ganhou `venda:'orcamento'`; `agendamento` perdeu `venda:'agendamento'`, que não existe mais nesse fluxo). `NovaOSMobile.jsx`: Venda agora nasce direto em `etapa='orcamento'` (pulando Coleta — item já tá pronto/no estoque), form de criação simplificado pra só Cliente comprador + endereço opcional (igual Atendimento). `MaquinaEstoqueBlock` removido (dead code).
+
+**Não mexido**: `_legacy/desktopKanbanModals.jsx` (versão desktop do modal de Nova OS) ainda tem a mesma trava antiga — não foi tocado por ser `_legacy/` (regra do projeto, precisa aprovação explícita). Se o Toni notar o mesmo problema no desktop, replicar a mesma mudança lá.
