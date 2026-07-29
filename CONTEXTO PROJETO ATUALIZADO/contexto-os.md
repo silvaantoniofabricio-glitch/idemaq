@@ -562,3 +562,30 @@ limpeza" em vários arquivos (`AcaoOficinaHIG.jsx`, `AcaoTesteHIG.jsx`,
 `Kanban.jsx`, `OSMobile.jsx`, `Vendas.jsx`) usava regex `/limpeza/i` sem
 o `higieniz` — corrigido em todos pra aceitar os dois nomes daqui pra
 frente.
+
+## 28. ⚠️ Causa real do bug do filtro de Higienização — corte de 1000 linhas do PostgREST (29/07/2026)
+
+A correção do §27 (regex aceitando "limpez"/"higieniz") **não era a causa
+raiz** — o Toni testou de novo e o filtro continuava só pegando OS
+importadas. Diagnóstico com dado real (`sql/148`) mostrou que o item
+nativo existe certinho no banco (nome "Limpeza", categoria 'servico',
+sem soft-delete) — o problema era a query nunca trazer essa linha pro
+front.
+
+**Causa**: a tabela `os_item` tem **mais de 1687 itens só com categoria
+NULL** (import em massa do Bling/Trello). O Supabase/PostgREST **corta
+a resposta em 1000 linhas por padrão** quando a query não tem `.range()`
+ou `.limit()` explícito. Os itens importados em massa lotavam esse
+limite sozinhos e os itens nativos de serviço (adicionados um a um ao
+longo do tempo) nunca apareciam na resposta.
+
+**Correção**: `.range(0, 9999)` adicionado nas 3 queries idênticas de
+detecção de serviço (`Vendas.jsx`, `Kanban.jsx`, `OSMobile.jsx`).
+
+⚠️ **Lição pra próximas sessões**: qualquer `.select()` no Supabase sem
+`.range()`/`.limit()` explícito que busque "todas as linhas" de uma
+tabela que só cresce (`os_item`, `os_historico`, etc) é candidato a
+esse mesmo bug silencioso — não dá erro, só corta o resultado. Antes de
+copiar esse padrão de query pra lugar novo, ou ao investigar um filtro
+que "só funciona parcialmente", checar `count(*)` da tabela e comparar
+com 1000.
