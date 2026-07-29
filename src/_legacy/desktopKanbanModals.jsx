@@ -22,7 +22,7 @@ import NovoClienteModal from '../components/clientes/NovoClienteModal'
 import { P } from '../theme'
 import {
   TIPOS_OS, ETAPAS_TODOS, ZONAS, FUNCIONARIOS,
-  CLIENTES_MOCK, ESTOQUE_MAQUINAS_MOCK,
+  CLIENTES_MOCK,
   funcPorId,
 } from '../utils/osData'
 import {
@@ -65,7 +65,6 @@ function statusCamposFaltando(tipo, form) {
   }
   if (tipo === 'venda') {
     if (!form.cliente) return 'selecione um cliente'
-    if (!form.maquinaEstoque) return 'selecione uma máquina do estoque'
     return 'pronto para criar'
   }
   return ''
@@ -434,7 +433,11 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
       const marcaFinal = form.equipamentoMarca === 'Outros' ? form.equipamentoMarcaOutros : form.equipamentoMarca
       // Visita não tem Coleta: fica na Agenda (aguardando_agendamento) com a data
       // agendada. Os demais tipos vão pra 'agendamento' quando há data marcada.
-      const etapaInicial = (tipo !== 'visita' && form.data) ? 'agendamento' : 'aguardando_agendamento'
+      // Venda entra direto em Orçamento — não tem Coleta (item já tá pronto/no
+      // estoque, só falta decidir o que compõe a venda e o preço).
+      const etapaInicial = tipo === 'venda'
+        ? 'orcamento'
+        : (tipo !== 'visita' && form.data) ? 'agendamento' : 'aguardando_agendamento'
       // Combina data + hora em ISO, assumindo timezone local de Cuiabá (UTC-4).
       // Hora vazia → default 08:00 (turno da manhã, padrão da equipe).
       const dataAgIso = form.data
@@ -456,11 +459,6 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
         data_agendamento: dataAgIso,
         // Endereço escolhido pra esta OS (um dos até 3 do cliente). sql/133.
         endereco: form.enderecoSelecionado || form.endereco || null,
-      }
-      // Venda: preenche modelo a partir da máquina selecionada do estoque
-      if (tipo === 'venda' && form.maquinaEstoque) {
-        const maq = (maquinasEstoque || []).find(m => m.id === form.maquinaEstoque)
-        if (maq) payload.modelo_equipamento = maq.descricao
       }
       if (tipo === 'fabricacao' && form.valor) {
         const v = parseFloat(String(form.valor).replace(',', '.'))
@@ -511,7 +509,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
   const podeAvancar =
     (tipo === 'atendimento' || tipo === 'visita') ? !!form.cliente :
     tipo === 'fabricacao'  ? !!form.equipamentoTipo :
-    tipo === 'venda'       ? !!(form.cliente && form.maquinaEstoque) : false
+    tipo === 'venda'       ? !!form.cliente : false
 
   return (
     <ModalBase T={T} dark={dark} onClose={onClose} mobile={mobile} maxWidth={720}>
@@ -834,7 +832,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ background:bgEtapa('green', dark), border:`1px solid ${corEtapa('green', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
               <i className="ti ti-info-circle" style={{ fontSize:14, color:corEtapa('green', dark), marginRight:6, verticalAlign:'middle' }} aria-hidden="true" />
-              <strong style={{color:T.textPrimary}}>Venda:</strong> máquina pronta do estoque. O comprador vira cliente cadastrado automaticamente.
+              <strong style={{color:T.textPrimary}}>Venda:</strong> o comprador vira cliente cadastrado automaticamente. Os itens da venda (máquina do estoque ou outros) e o preço são definidos na etapa Orçamento, logo depois de criar a OS.
             </div>
 
             <FormSecao titulo="Cliente comprador" icon="ti-user" T={T}>
@@ -889,28 +887,9 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
               )}
             </FormSecao>
 
-            <FormSecao titulo="Máquina do estoque" icon="ti-package" T={T}>
-              <label style={labelStyle}>SELECIONE A MÁQUINA</label>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {(maquinasEstoque || ESTOQUE_MAQUINAS_MOCK).map(m => {
-                  const sel = form.maquinaEstoque === m.id
-                  return (
-                    <button key={m.id} onClick={()=>setForm(f=>({ ...f, maquinaEstoque:m.id, equipamento:m.descricao, valor:m.valor }))}
-                      style={{ padding:'10px 12px', borderRadius:7, border:`1px solid ${sel?corEtapa('green',dark):T.border}`, background:sel?bgEtapa('green',dark):T.bg, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', textAlign:'left' }}>
-                      <div>
-                        <div style={{ fontSize:12.5, fontWeight:600, color:T.textPrimary }}>{m.descricao}</div>
-                        <div style={{ fontSize:10.5, color:T.textMuted, marginTop:2 }}>#{m.id}</div>
-                      </div>
-                      <div style={{ fontSize:14, fontWeight:700, color:sel?corEtapa('green',dark):T.textSecondary, fontVariantNumeric:'tabular-nums' }}>R$ {m.valor.toLocaleString('pt-BR')}</div>
-                    </button>
-                  )
-                })}
-              </div>
-            </FormSecao>
-
-            <FormSecao titulo="Endereço e agendamento da entrega" icon="ti-truck-delivery" T={T}>
-              {enderecosCliente.length > 0 && (
-                <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+            {enderecosCliente.length > 0 && (
+              <FormSecao titulo="Endereço de entrega" icon="ti-truck-delivery" T={T}>
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                   {enderecosCliente.map((end, idx) => {
                     const sel = form.enderecoIndex === idx
                     return (
@@ -930,18 +909,8 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
                     )
                   })}
                 </div>
-              )}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                <div>
-                  <label style={labelStyle}>DATA</label>
-                  <input type="date" value={form.data} onChange={e=>update('data', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
-                </div>
-                <div>
-                  <label style={labelStyle}>HORA</label>
-                  <input type="time" value={form.hora} onChange={e=>update('hora', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
-                </div>
-              </div>
-            </FormSecao>
+              </FormSecao>
+            )}
           </div>
         )}
       </div>
