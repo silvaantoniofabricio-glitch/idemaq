@@ -69,6 +69,14 @@ const OPTS_SERVICO = [
   { id: 'limpeza',    label: 'Limpeza'    },
   { id: 'manutencao', label: 'Manutenção' },
 ]
+// Mesmo conjunto usado em FormEquipamentoEdit.jsx.
+const OPTS_EQUIPAMENTO = [
+  { id: 'lavadora',    label: 'Lavadora'    },
+  { id: 'lava_seca',   label: 'Lava e seca' },
+  { id: 'lava_loucas', label: 'Lava-louças' },
+  { id: 'microondas',  label: 'Microondas'  },
+  { id: 'outros',      label: 'Outros'      },
+]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function labelPagto(os) {
@@ -385,6 +393,7 @@ export default function Vendas({ T, dark, user }) {
   const [statusSel, setStatusSel]         = useState(new Set())
   const [pagtoSel, setPagtoSel]           = useState(new Set())
   const [servicoSel, setServicoSel]       = useState(new Set())
+  const [equipSel, setEquipSel]           = useState(new Set())
   const [busca, setBusca]                 = useState('')
   const [novaOSAntigaAberta, setNovaOSAntigaAberta] = useState(false)
 
@@ -468,6 +477,8 @@ export default function Vendas({ T, dark, user }) {
       )
     }
 
+    if (equipSel.size > 0) r = r.filter(os => equipSel.has(os.tipoEquipamento || 'lavadora'))
+
     const termo = semAcento((busca || '').trim())
     if (termo) {
       r = r.filter(os =>
@@ -488,7 +499,7 @@ export default function Vendas({ T, dark, user }) {
       if (va > vb) return ordemDir === 'asc' ? 1 : -1
       return 0
     })
-  }, [osList, range, tiposSel, statusSel, pagtoSel, servicoSel, temLimpeza, temManutencao, busca, ordemCol, ordemDir])
+  }, [osList, range, tiposSel, statusSel, pagtoSel, servicoSel, temLimpeza, temManutencao, equipSel, busca, ordemCol, ordemDir])
 
   // ─── KPIs ────────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
@@ -506,7 +517,7 @@ export default function Vendas({ T, dark, user }) {
     else { setOrdemCol(col); setOrdemDir(col === 'numero' || col === 'abertura' ? 'desc' : 'asc') }
   }
 
-  const temFiltroAtivo = tiposSel.size > 0 || statusSel.size > 0 || pagtoSel.size > 0 || servicoSel.size > 0 || busca.trim()
+  const temFiltroAtivo = tiposSel.size > 0 || statusSel.size > 0 || pagtoSel.size > 0 || servicoSel.size > 0 || equipSel.size > 0 || busca.trim()
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -552,6 +563,7 @@ export default function Vendas({ T, dark, user }) {
           <FilterDropdown T={T} dark={dark} azul={azul} label="Status" options={OPTS_STATUS} selected={statusSel} onChange={setStatusSel} />
           <FilterDropdown T={T} dark={dark} azul={azul} label="Pagto" options={OPTS_PAGTO} selected={pagtoSel} onChange={setPagtoSel} />
           <FilterDropdown T={T} dark={dark} azul={azul} label="Serviço" options={OPTS_SERVICO} selected={servicoSel} onChange={setServicoSel} />
+          <FilterDropdown T={T} dark={dark} azul={azul} label="Equipamento" options={OPTS_EQUIPAMENTO} selected={equipSel} onChange={setEquipSel} />
           <HdrDivider T={T} dark={dark} />
           <div style={{ position: 'relative', minWidth: 160 }}>
             <i className="ti ti-search" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: T.textDim, pointerEvents: 'none' }} aria-hidden="true" />
@@ -575,7 +587,7 @@ export default function Vendas({ T, dark, user }) {
             )}
           </div>
           {temFiltroAtivo && (
-            <button onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setServicoSel(new Set()); setBusca('') }}
+            <button onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setServicoSel(new Set()); setEquipSel(new Set()); setBusca('') }}
               style={{ height: 22, padding: '0 8px', borderRadius: 4, border: 'none', background: 'transparent', color: T.textMuted, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               onMouseEnter={e => e.currentTarget.style.color = T.textPrimary}
               onMouseLeave={e => e.currentTarget.style.color = T.textMuted}>
@@ -608,7 +620,7 @@ export default function Vendas({ T, dark, user }) {
             </div>
             {temFiltroAtivo && (
               <button
-                onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setServicoSel(new Set()); setBusca('') }}
+                onClick={() => { setTiposSel(new Set()); setStatusSel(new Set()); setPagtoSel(new Set()); setServicoSel(new Set()); setEquipSel(new Set()); setBusca('') }}
                 style={{ padding: '6px 14px', borderRadius: 4, border: `1px solid ${T.border}`, background: 'transparent', color: T.textPrimary, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>
                 Limpar filtros
               </button>
