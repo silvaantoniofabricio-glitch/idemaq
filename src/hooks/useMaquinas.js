@@ -111,3 +111,78 @@ export function useMaquinas() {
 
   return { maquinas, loading, error, refetch: fetchMaquinas, criar, atualizar, excluir }
 }
+
+// =============================================================================
+// criarMaquinaAoConcluirFabricacao — entrada automática no estoque de Máquinas
+// =============================================================================
+// Disparada (fire-and-forget) pelo useOS.updateOS quando uma OS tipo
+// 'fabricacao' entra em 'concluido'. Espelha o padrão de idempotência de
+// baixarItensDaOS (usePecas.js) — claim atômico via coluna dedicada antes de
+// mexer em qualquer tabela, então 2 chamadas concorrentes só criam 1 vez.
+//
+// Preço de venda fica 0 — Fabricação não passa por Orçamento/Pagamento, não
+// tem esse valor ainda; Toni preenche na hora de vender (tipo 'venda') ou
+// editando a máquina depois. Custo de serviço também fica 0 (Fabricação não
+// cobra mão de obra — CLAUDE.md/contexto-estoque).
+//
+// Pré-requisito de schema: sql/149-os-maquina-criada.sql aplicado. Se não
+// tiver, detecta 42703/PGRST204 e retorna motivo sem quebrar nada.
+export async function criarMaquinaAoConcluirFabricacao(osId) {
+  if (!osId) return { ok: false, motivo: 'osId vazio' }
+
+  // 1) Claim atômico de idempotência.
+  const { data: claimed, error: errClaim } = await supabase
+    .from('os')
+    .update({ maquina_criada: true })
+    .eq('id', osId)
+    .eq('maquina_criada', false)
+    .select('id, numero, tipo, marca_equipamento, modelo_equipamento, valor_total')
+    .maybeSingle()
+
+  if (errClaim) {
+    if (errClaim.code === '42703' || errClaim.code === 'PGRST204') {
+      console.warn('[maquinaAuto] coluna os.maquina_criada não existe — rode sql/149-os-maquina-criada.sql no Supabase')
+      return { ok: false, motivo: 'schema-pendente:sql/149' }
+    }
+    console.error('[maquinaAuto] falha reivindicando maquina_criada:', errClaim)
+    return { ok: false, motivo: errClaim.message }
+  }
+
+  if (!claimed) return { ok: true, ja_criada: true } // outro side já criou, ou OS não existe
+
+  if (claimed.tipo !== 'fabricacao') return { ok: true, ignorada: true } // não é Fabricação, nada a fazer
+
+  // 2) Soma o custo das peças efetivamente usadas nessa OS.
+  const { data: itens, error: errIt } = await supabase
+    .from('os_item')
+    .select('categoria, quantidade, valor_unitario')
+    .eq('os_id', osId)
+    .is('deleted_at', null)
+
+  if (errIt) console.warn('[maquinaAuto] falha lendo os_item pra custo:', errIt.message)
+
+  const custoItens = (itens || [])
+    .filter(it => it.categoria === 'peca')
+    .reduce((soma, it) => soma + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0), 0)
+
+  // 3) Cria a máquina — pronta pra vender, preço de venda em branco (Toni define depois).
+  const payload = {
+    modelo:        claimed.modelo_equipamento || null,
+    marca:         claimed.marca_equipamento  || null,
+    estado:        'disponivel',
+    custo_compra:  Number(claimed.valor_total) || 0,
+    custo_itens:   custoItens,
+    custo_servico: 0,
+    preco_venda:   0,
+    observacoes:   `Gerada automaticamente pela OS #${claimed.numero} (Fabricação).`,
+  }
+
+  const { error: errIns } = await supabase.from('maquina').insert(payload)
+  if (errIns) {
+    console.error(`[maquinaAuto] OS #${claimed.numero}: falha criando máquina:`, errIns)
+    return { ok: false, motivo: errIns.message, osNumero: claimed.numero }
+  }
+
+  console.log(`[maquinaAuto] OS #${claimed.numero}: máquina criada no estoque (custo peças R$ ${custoItens.toFixed(2)})`)
+  return { ok: true, osNumero: claimed.numero, custoItens }
+}

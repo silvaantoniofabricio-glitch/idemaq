@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../supabase'
 import { normalizePatchOS } from '../utils/osPatch'
 import { baixarItensDaOS } from './usePecas'
+import { criarMaquinaAoConcluirFabricacao } from './useMaquinas'
 
 // Traduz etapa do banco (DB) para o valor usado na UI
 export function dbEtapaToUI(tipo, dbEtapa) {
@@ -208,7 +209,10 @@ export function useOS(buscando = false) {
       const { error: errUp } = await supabase.from('os').update(dbPatch).eq('id', os.id)
       if (errUp) throw errUp
       if (skipped.length) console.warn('[updateOS] persistido', Object.keys(dbPatch), '— pendente schema:', skipped)
-      if (concluindoAgora) baixarEstoqueAoConcluir(os.id, os.numero)
+      if (concluindoAgora) {
+        baixarEstoqueAoConcluir(os.id, os.numero)
+        if (os.tipo === 'fabricacao') criarMaquinaAoConcluir(os.id, os.numero)
+      }
       return { ok: true, error: null, skipped }
     } catch (e) {
       setOsList(prev)
@@ -252,5 +256,30 @@ async function baixarEstoqueAoConcluir(osId, osNumero) {
     }
   } catch (e) {
     console.error(`[baixaAuto] OS #${osNumero} exceção:`, e)
+  }
+}
+
+// =============================================================================
+// criarMaquinaAoConcluir — delega pro criarMaquinaAoConcluirFabricacao
+// =============================================================================
+// Disparada (fire-and-forget) pelo updateOS quando uma OS tipo 'fabricacao'
+// entra em 'concluido' — a máquina fabricada entra automaticamente no
+// estoque de Máquinas (estado 'disponivel'). Best-effort: logs no console,
+// não interrompe o UPDATE da OS. Idempotente via os.maquina_criada
+// (sql/149-os-maquina-criada.sql).
+async function criarMaquinaAoConcluir(osId, osNumero) {
+  try {
+    const res = await criarMaquinaAoConcluirFabricacao(osId)
+    if (!res?.ok) {
+      console.warn(`[maquinaAuto] OS #${osNumero}: ${res?.motivo || 'falhou'}`)
+      return
+    }
+    if (res.ja_criada) {
+      console.log(`[maquinaAuto] OS #${osNumero}: máquina já tinha sido criada antes`)
+    } else if (!res.ignorada) {
+      console.log(`[maquinaAuto] OS #${osNumero}: máquina criada no estoque`)
+    }
+  } catch (e) {
+    console.error(`[maquinaAuto] OS #${osNumero} exceção:`, e)
   }
 }
