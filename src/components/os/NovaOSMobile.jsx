@@ -24,7 +24,6 @@ import { supabase } from '../../supabase'
 import { criarClientePersist } from '../../hooks/useClientes'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
-import { useMaquinas } from '../../hooks/useMaquinas'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { semAcento } from '../../utils/fmt'
 import NovoClienteModal from '../clientes/NovoClienteModal'
@@ -47,14 +46,6 @@ export default function NovaOSMobile({
   const vermelho = corEtapa('red', dark)
   const cor = (d, c) => dark ? d : c
 
-  const { maquinas } = useMaquinas()
-  const maquinasDisponiveis = useMemo(
-    () => maquinas.filter(m => m.estado === 'disponivel').map(m => ({
-      id: m.id, descricao: m.modelo, valor: m.precoVenda,
-    })),
-    [maquinas]
-  )
-
   // ─── Estado principal ────────────────────────────────────────────────────
   const [tipo, setTipo] = useState(tipoInicial)
   const [salvando, setSalvando] = useState(false)
@@ -69,7 +60,7 @@ export default function NovaOSMobile({
     equipamentoSerie: '',
     defeito: '',
     data: '', hora: '',
-    maquinaEstoque: '', valor: '',
+    valor: '',
     observacoes: '',
     endereco: '',
   })
@@ -90,10 +81,9 @@ export default function NovaOSMobile({
     ]
     if (tipo === 'venda') return [
       { id: 'cliente', label: 'Cliente', ok: !!form.cliente },
-      { id: 'maquina', label: 'Máquina do estoque', ok: !!form.maquinaEstoque },
     ]
     return []
-  }, [tipo, form.cliente, form.equipamentoTipo, form.maquinaEstoque])
+  }, [tipo, form.cliente, form.equipamentoTipo])
 
   const totalObg = obrigatorios.length
   const okObg = obrigatorios.filter(o => o.ok).length
@@ -162,7 +152,11 @@ export default function NovaOSMobile({
         : form.equipamentoMarca
       // Visita não tem Coleta: a etapa Agenda (aguardando_agendamento) guarda a
       // data agendada da visita. Os demais tipos vão pra 'agendamento' quando há data.
-      const etapaInicial = (tipo !== 'visita' && form.data) ? 'agendamento' : 'aguardando_agendamento'
+      // Venda entra direto em Orçamento — não tem Coleta (item já tá pronto/no
+      // estoque, só falta decidir o que compõe a venda e o preço).
+      const etapaInicial = tipo === 'venda'
+        ? 'orcamento'
+        : (tipo !== 'visita' && form.data) ? 'agendamento' : 'aguardando_agendamento'
       const dataAgIso = form.data
         ? new Date(`${form.data}T${form.hora || '08:00'}:00-04:00`).toISOString()
         : null
@@ -177,11 +171,6 @@ export default function NovaOSMobile({
         defeito_relatado: form.defeito?.trim() || null,
         data_agendamento: dataAgIso,
         endereco: form.enderecoSelecionado || null,
-      }
-      // Venda: preenche modelo a partir da máquina selecionada do estoque
-      if (tipo === 'venda' && form.maquinaEstoque) {
-        const maq = maquinasDisponiveis.find(m => m.id === form.maquinaEstoque)
-        if (maq) payload.modelo_equipamento = maq.descricao
       }
       if (tipo === 'fabricacao' && form.valor) {
         const v = parseFloat(String(form.valor).replace(',', '.'))
@@ -485,13 +474,15 @@ function AtendimentoForm({ T, dark, form, setForm, update, notify }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // FORM: Venda
 // ═══════════════════════════════════════════════════════════════════════════
-function VendaForm({ T, dark, form, setForm, update, notify }) {
+function VendaForm({ T, dark, form, setForm, notify }) {
   const verde = corEtapa('green', dark)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <AtlPanel T={T} dark={dark} title="Venda do estoque" accent={verde}>
+      <AtlPanel T={T} dark={dark} title="Venda" accent={verde}>
         <div style={{ padding: '10px 14px', fontSize: 12.5, color: T.textMuted, lineHeight: 1.5 }}>
-          Máquina pronta. O comprador vira cliente cadastrado automaticamente.
+          O comprador vira cliente cadastrado automaticamente. Os itens da venda
+          (máquina do estoque ou outros) e o preço são definidos na etapa Orçamento,
+          logo depois de criar a OS.
         </div>
       </AtlPanel>
 
@@ -500,15 +491,6 @@ function VendaForm({ T, dark, form, setForm, update, notify }) {
         form={form} setForm={setForm}
         notify={notify}
         rotulo="Cliente comprador"
-      />
-
-      <MaquinaEstoqueBlock
-        T={T} dark={dark}
-        maquinas={maquinasDisponiveis}
-        selecionada={form.maquinaEstoque}
-        onSelect={(m) => setForm(f => ({
-          ...f, maquinaEstoque: m.id, equipamento: m.descricao, valor: m.valor,
-        }))}
       />
 
       {form.cliente && form.enderecosDisponiveis.length > 0 && (
@@ -522,8 +504,6 @@ function VendaForm({ T, dark, form, setForm, update, notify }) {
           }))}
         />
       )}
-
-      <AgendamentoBlock T={T} dark={dark} form={form} update={update} rotulo="Entrega" />
     </div>
   )
 }
@@ -1055,64 +1035,6 @@ function ObservacoesBlock({ T, dark, value, onChange }) {
           placeholder="Qualquer info extra pra equipe…"
           minHeight={64}
         />
-      </div>
-    </AtlPanel>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// BLOCO: Máquina do estoque (Venda)
-// ═══════════════════════════════════════════════════════════════════════════
-function MaquinaEstoqueBlock({ T, dark, selecionada, onSelect, maquinas = [] }) {
-  const verde = corEtapa('green', dark)
-  return (
-    <AtlPanel T={T} dark={dark} title="Máquina do estoque">
-      <div>
-        {maquinas.length === 0 && (
-          <div style={{ padding: '14px 0', textAlign: 'center', fontSize: 12, color: T.textMuted }}>
-            Nenhuma máquina disponível no estoque.
-          </div>
-        )}
-        {maquinas.map((m, idx) => {
-          const sel = selecionada === m.id
-          return (
-            <button key={m.id} onClick={() => onSelect(m)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 14px', minHeight: 56,
-                borderTop: idx === 0 ? 'none' : `1px solid ${T.border}`,
-                background: sel ? `${verde}10` : 'transparent',
-                cursor: 'pointer', textAlign: 'left', fontFamily: ATL_FONT,
-                width: '100%', border: 'none',
-                WebkitTapHighlightColor: 'transparent',
-                borderLeft: sel ? `3px solid ${verde}` : '3px solid transparent',
-              }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: ATL_RADIUS,
-                background: sel ? verde : `${verde}1f`,
-                color: sel ? '#fff' : verde,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <i className="ti ti-device-washing-machine" style={{ fontSize: 16 }} aria-hidden="true" />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 13.5, fontWeight: 600, color: T.textPrimary,
-                  letterSpacing: '-0.005em',
-                }}>{m.descricao}</div>
-                <div style={{ fontSize: 11.5, color: T.textMuted, marginTop: 1 }}>#{m.id}</div>
-              </div>
-              <div style={{
-                fontSize: 14, fontWeight: 700,
-                color: sel ? verde : T.textSecondary,
-                fontVariantNumeric: 'tabular-nums', flexShrink: 0,
-              }}>
-                R$ {m.valor.toLocaleString('pt-BR')}
-              </div>
-            </button>
-          )
-        })}
       </div>
     </AtlPanel>
   )

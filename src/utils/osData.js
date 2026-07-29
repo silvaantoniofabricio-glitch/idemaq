@@ -63,9 +63,9 @@ export const TIPOS_OS = {
   },
   venda: {
     label: 'Venda', icon: 'ti-shopping-cart', cor: 'green',
-    descricao: 'Máquina pronta do estoque',
+    descricao: 'Venda de item(ns) do estoque',
     etapas: [
-      { id:'agendamento', label:'Agenda',       curto:'Agenda',      cor:'neutro' },
+      { id:'orcamento',   label:'Orçamento',    curto:'Orçamento',   cor:'red' },
       { id:'entregue',    label:'Entrega',      curto:'Entrega',     cor:'blue' },
       { id:'pagamento',   label:'A receber',    curto:'A receber',   cor:'yellow' },
       { id:'concluido',   label:'Concluído',    curto:'Concluído',   cor:'green',  adminOnly:true },
@@ -93,9 +93,9 @@ export const TIPOS_OS = {
 // Visão "Todos" — etapas unificadas dos 3 tipos via match
 export const ETAPAS_TODOS = [
   { id:'ag_agendamento', label:'Agenda',                  curto:'Agenda',       cor:'neutro',    match:{ atendimento:'ag_agendamento', visita:'ag_agendamento' } },
-  { id:'agendamento',    label:'Coleta',                  curto:'Coleta',       cor:'neutro',    match:{ atendimento:'agendado', venda:'agendamento' } },
+  { id:'agendamento',    label:'Coleta',                  curto:'Coleta',       cor:'neutro',    match:{ atendimento:'agendado' } },
   { id:'diagnostico',    label:'Diagnóstico',             curto:'Diagnóstico',  cor:'yellow', prazo24h:true, match:{ atendimento:'diagnostico', fabricacao:'diagnostico', visita:'diagnostico' } },
-  { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match:{ atendimento:'orcamento', visita:'orcamento' } },
+  { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match:{ atendimento:'orcamento', visita:'orcamento', venda:'orcamento' } },
   { id:'oficina',        label:'Conserto',                curto:'Conserto',     cor:'blueLight', dual:true, match:{ atendimento:'oficina', fabricacao:'oficina', visita:'oficina' } },
   { id:'teste_final',    label:'Teste',                   curto:'Teste',        cor:'blue',  match:{ atendimento:'teste_final', fabricacao:'teste_final', visita:'teste_final' } },
   { id:'entrega',        label:'Entrega',                 curto:'Entrega',      cor:'blue',  match:{ atendimento:'entrega', venda:'entregue' } },
