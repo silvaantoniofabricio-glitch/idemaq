@@ -66,8 +66,8 @@ const OPTS_PAGTO = [
   { id: 'nao',     label: 'Não pago' },
 ]
 const OPTS_SERVICO = [
-  { id: 'limpeza',    label: 'Limpeza'    },
-  { id: 'manutencao', label: 'Manutenção' },
+  { id: 'limpeza',    label: 'Higienização' },
+  { id: 'manutencao', label: 'Manutenção'   },
 ]
 // Mesmo conjunto usado em FormEquipamentoEdit.jsx.
 const OPTS_EQUIPAMENTO = [
@@ -409,12 +409,16 @@ export default function Vendas({ T, dark, user }) {
   const { abrirOSPorId, modalProps: osDetalheProps, osList, osLoading: loading, osRefetch } =
     useOSDetalheModal({ notify, buscando: true })
 
-  // Detecta quais OS têm item de Limpeza e/ou Manutenção no orçamento —
-  // mesma query e critério (nome do item) usados no Kanban. `categoria`
-  // aceita NULL também: OS importadas do Bling/Trello têm os_item sem essa
-  // coluna preenchida (o script de import não gravava categoria), então
-  // exigir só 'servico' deixava de fora item antigo tipo "Limpeza de
-  // Lavadora" mesmo o nome batendo certinho.
+  // Detecta quais OS têm item de Higienização e/ou Manutenção no orçamento.
+  // `categoria` aceita NULL também: OS importadas do Bling/Trello têm
+  // os_item sem essa coluna preenchida (o script de import não gravava
+  // categoria).
+  // Higienização = qualquer item cujo nome contenha "limpez" (nome antigo,
+  // usado tanto nas OS nativas quanto nas importadas: "Limpeza",
+  // "Limpeza de Lavadora", "Limpeza de Lava e Seca") ou "higieniz" (nome
+  // novo). Manutenção = OS que tem algum item de serviço mas NÃO tem
+  // Higienização — não depende da palavra "manutenção" aparecer no nome,
+  // porque item de peça/reparo avulso também conta como manutenção.
   const [temLimpeza, setTemLimpeza]       = useState(() => new Set())
   const [temManutencao, setTemManutencao] = useState(() => new Set())
   useEffect(() => {
@@ -426,12 +430,13 @@ export default function Vendas({ T, dark, user }) {
         .or('categoria.is.null,categoria.eq.servico')
         .is('deleted_at', null)
       if (cancel || error || !data) return
-      const limp = new Set(), manu = new Set()
+      const limp = new Set(), comItem = new Set()
       for (const it of data) {
         const n = (it.nome || '').toLowerCase()
-        if (n.includes('limpez')) limp.add(it.os_id)
-        if (n.includes('manuten')) manu.add(it.os_id)
+        comItem.add(it.os_id)
+        if (n.includes('limpez') || n.includes('higieniz')) limp.add(it.os_id)
       }
+      const manu = new Set([...comItem].filter(id => !limp.has(id)))
       setTemLimpeza(limp)
       setTemManutencao(manu)
     })()

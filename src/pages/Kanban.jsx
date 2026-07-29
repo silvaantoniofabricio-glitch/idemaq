@@ -147,11 +147,14 @@ export default function Kanban({ T, dark, user }) {
     })
   }
 
-  // Busca os serviços (1 query) e monta os conjuntos de OS com limpeza/manutenção.
+  // Busca os serviços (1 query) e monta os conjuntos de OS com higienização/manutenção.
   // Refaz quando a quantidade de OS muda (criou/excluiu OS). `categoria`
   // aceita NULL também: OS importadas do Bling/Trello têm os_item sem essa
   // coluna preenchida — exigir só 'servico' deixava de fora item antigo
   // tipo "Limpeza de Lavadora" mesmo o nome batendo certinho.
+  // Higienização = nome contém "limpez" (nome antigo, nativo ou importado)
+  // ou "higieniz" (nome novo). Manutenção = tem item de serviço mas NÃO tem
+  // Higienização — não depende de a palavra "manutenção" aparecer no nome.
   useEffect(() => {
     let cancel = false
     ;(async () => {
@@ -161,12 +164,13 @@ export default function Kanban({ T, dark, user }) {
         .or('categoria.is.null,categoria.eq.servico')
         .is('deleted_at', null)
       if (cancel || error || !data) return
-      const limp = new Set(), manu = new Set()
+      const limp = new Set(), comItem = new Set()
       for (const it of data) {
         const n = (it.nome || '').toLowerCase()
-        if (n.includes('limpez')) limp.add(it.os_id)
-        if (n.includes('manuten')) manu.add(it.os_id)
+        comItem.add(it.os_id)
+        if (n.includes('limpez') || n.includes('higieniz')) limp.add(it.os_id)
       }
+      const manu = new Set([...comItem].filter(id => !limp.has(id)))
       setTemLimpeza(limp)
       setTemManutencao(manu)
     })()
@@ -548,8 +552,8 @@ export default function Kanban({ T, dark, user }) {
               title={verAgPeca ? 'Ocultar filtro peça' : 'Só OS aguardando peça'}
               onClick={() => setVerAgPeca(v => !v)} T={T} dark={dark} azul={azul} azulBg={azulBg} />
             <ToggleChip ativo={verLimpeza} icon="ti-bubble"
-              label={`Limpeza${totalLimpeza > 0 ? ` (${totalLimpeza})` : ''}`}
-              title={verLimpeza ? 'Ocultar filtro limpeza' : 'Só OS com limpeza'}
+              label={`Higienização${totalLimpeza > 0 ? ` (${totalLimpeza})` : ''}`}
+              title={verLimpeza ? 'Ocultar filtro higienização' : 'Só OS com higienização'}
               onClick={() => setVerLimpeza(v => !v)} T={T} dark={dark} azul={azul} azulBg={azulBg} />
             <ToggleChip ativo={verManutencao} icon="ti-tool"
               label={`Manutenção${totalManutencao > 0 ? ` (${totalManutencao})` : ''}`}
