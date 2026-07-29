@@ -360,7 +360,7 @@ export default function NovoLancamentoModal({
             placeholder={
               modo === 'recorrente' ? 'Ex: Salário Alessandro'
               : modo === 'parcelado' ? 'Ex: Compra de peças ML — março'
-              : tipo === 'receita' ? 'Ex: João Silva — Limpeza'
+              : tipo === 'receita' ? 'Ex: João Silva — Higienização'
               : 'Ex: Compra de peças ML'
             }
             style={inputStyle(T)}

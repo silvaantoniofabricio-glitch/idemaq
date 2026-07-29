@@ -222,7 +222,7 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
         {/* Linha 6: dual status oficina (Limp. / Manut.) */}
         {(mostraLimp || mostraManut) && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
-            {mostraLimp  && <SubStatus label="Limp."  status={statusServicoSub(of, 'limpeza')} T={T} dark={dark} />}
+            {mostraLimp  && <SubStatus label="Higien." status={statusServicoSub(of, 'limpeza')} T={T} dark={dark} />}
             {mostraManut && <SubStatus label="Manut." status={os.manutPecaStatus || statusServicoSub(of, 'manutencao')} T={T} dark={dark} />}
           </div>
         )}

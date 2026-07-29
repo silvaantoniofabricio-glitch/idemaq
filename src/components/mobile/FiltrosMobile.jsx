@@ -228,7 +228,7 @@ function MaisSheet({ T, dark, onNova, filtros, setZona, toggleTipo, toggleServic
           {/* Serviço — chips, múltipla */}
           <FiltroSecao T={T} dark={dark} titulo="Serviço">
             <AtlChip T={T} dark={dark}
-              icon="bubble" label="Limpeza"
+              icon="bubble" label="Higienização"
               selected={!!filtros.limpeza}
               onClick={() => toggleServico('limpeza')}
             />

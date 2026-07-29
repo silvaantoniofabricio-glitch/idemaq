@@ -119,7 +119,7 @@ const isoMaisDias = (d) => {
 // Listas pra dropdowns de filtro. Categorias agora são text livre no banco;
 // estas constantes são apenas SUGESTÕES pros selects (mesmas exportadas pelo
 // hook em `CATEGORIAS_SUGESTAO`). Contas vem do hook dinamicamente.
-const CATEGORIAS_RECEITA = ['Limpeza', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros']
+const CATEGORIAS_RECEITA = ['Higienização', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros']
 const CATEGORIAS_DESPESA = ['Funcionários', 'Peças', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento']
 const FORMAS = ['PIX', 'Dinheiro', 'Cartão 1x', 'Cartão 2x', 'Cartão 3x', 'Boleto', 'Link InfinitePay']
 
@@ -988,7 +988,11 @@ function ListaLancamentos({
         String(i.osNum || '').includes(q)
       )
     }
-    if (categoria) arr = arr.filter(i => i.categoria === categoria)
+    // "Higienização" no filtro também pega lançamentos antigos salvos como
+    // "Limpeza" (categoria só foi renomeada na interface, dado antigo ficou como estava).
+    if (categoria) arr = arr.filter(i =>
+      categoria === 'Higienização' ? (i.categoria === 'Higienização' || i.categoria === 'Limpeza') : i.categoria === categoria
+    )
     if (conta)     arr = arr.filter(i => i.conta === conta)
     return arr
   }, [itens, periodo, statusFilt, busca, categoria, conta])

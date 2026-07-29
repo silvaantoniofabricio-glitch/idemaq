@@ -40,7 +40,7 @@ const TIPOS = [
 ]
 
 const SUGESTOES = {
-  servico: [{ nome: 'Limpeza', valor: 165 }, { nome: 'Manutenção', valor: 165 }],
+  servico: [{ nome: 'Higienização', valor: 165 }, { nome: 'Manutenção', valor: 165 }],
   desloc:  [{ nome: 'Deslocamento', valor: 20 }],
   peca:    [],
 }
@@ -48,7 +48,7 @@ const SUGESTOES = {
 // Chips de adicao rapida (1 clique) por tipo. Substituem o auto-preenchimento
 // que duplicava itens. Toni clica e ajusta o valor depois se precisar.
 const QUICK_CHIPS = {
-  servico: [{ nome: 'Manutenção', valor: 165 }, { nome: 'Limpeza', valor: 165 }],
+  servico: [{ nome: 'Manutenção', valor: 165 }, { nome: 'Higienização', valor: 165 }],
   desloc:  [{ nome: 'Deslocamento', valor: 20 }],
   peca:    [],
 }

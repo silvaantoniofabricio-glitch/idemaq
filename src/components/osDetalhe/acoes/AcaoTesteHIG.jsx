@@ -66,7 +66,7 @@ const ACABAMENTO_POR_EQUIP = {
     { id: 'enceramento', label: 'Enceramento', icon: 'droplet-half-2' },
   ],
   microondas: [
-    { id: 'limpeza_interna', label: 'Limpeza interna', icon: 'sparkles' },
+    { id: 'limpeza_interna', label: 'Higienização interna', icon: 'sparkles' },
     { id: 'painel',          label: 'Painel',           icon: 'layout-grid' },
   ],
   lava_loucas: [
@@ -75,7 +75,7 @@ const ACABAMENTO_POR_EQUIP = {
     { id: 'polimento', label: 'Polimento',         icon: 'sparkles' },
   ],
   outros: [
-    { id: 'limpeza', label: 'Limpeza', icon: 'sparkles' },
+    { id: 'limpeza', label: 'Higienização', icon: 'sparkles' },
     { id: 'visual',  label: 'Visual',  icon: 'eye' },
   ],
 }
@@ -196,7 +196,7 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
 
   const { itens: itensOrcamento } = useOSItens(os.id)
   const temLimpeza = useMemo(
-    () => itensOrcamento.some(i => /limpeza/i.test(i.nome || '')),
+    () => itensOrcamento.some(i => /limpeza|higieniz/i.test(i.nome || '')),
     [itensOrcamento]
   )
 

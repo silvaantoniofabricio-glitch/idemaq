@@ -40,7 +40,7 @@ const MAP = {
   diagnostico: AcaoDiagnosticoHIG,    // Diagnóstico (testes + componentes)
   recebido: AcaoDiagnosticoHIG,       // alias de segurança (etapa DB aposentada)
   orcamento: AcaoOrcamentoHIG,        // Orçamento (itens + total + aprovação)
-  oficina: AcaoOficinaHIG,            // Conserto  (Limpeza + Manutenção)
+  oficina: AcaoOficinaHIG,            // Conserto  (Higienização + Manutenção)
   teste_final: AcaoTesteHIG,          // Teste final (4 testes + acabamento)
   entrega: AcaoEntregaHIG,            // Entrega   (agendar + confirmar entrega)
   pagamento: AcaoPagamentoHIG,        // A receber (resumo + FormRecebimento)

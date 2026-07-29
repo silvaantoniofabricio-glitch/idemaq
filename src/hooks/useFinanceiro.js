@@ -100,7 +100,7 @@ function filtrarMockClientSide(lancs, filtros) {
 // Categorias sugeridas (texto livre — não há mais FK pra categoria_financeira).
 // Exportadas pra UI usar como autocomplete/select.
 export const CATEGORIAS_SUGESTAO = {
-  receita: ['Limpeza', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros'],
+  receita: ['Higienização', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros'],
   despesa: ['Funcionários', 'Peças', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento', 'Outros'],
 }
 

@@ -143,13 +143,13 @@ function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal,
   const limpDone = !!limpVal.feito
   let montBloqueio = null
   if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
-  else if (!limpDone) montBloqueio = 'Conclua a limpeza primeiro'
+  else if (!limpDone) montBloqueio = 'Conclua a higienização primeiro'
   else if (!outroServDone) montBloqueio = 'Aguardando manutenção'
 
   return (
     <AtlPanel
       T={T} dark={dark}
-      title="Limpeza"
+      title="Higienização"
       action={<StatusPill T={T} dark={dark} status={status} />}>
       <CheckRow first T={T} dark={dark}
         label="Desmontagem"
@@ -159,7 +159,7 @@ function SecaoLimpeza({ T, dark, status, desmVal, limpVal, montVal,
         shared
       />
       <CheckRow T={T} dark={dark}
-        label="Limpeza feita"
+        label="Higienização feita"
         checked={limpDone}
         onToggle={() => onToggleLimp('feito')}
         author={autorDe(limpVal.feito)}
@@ -189,7 +189,7 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
   let montBloqueio = null
   if (!desmDone) montBloqueio = 'Conclua a desmontagem primeiro'
   else if (!servDone) montBloqueio = manutChecks.length > 0 ? 'Instale todas as peças' : 'Marque a manutenção como feita'
-  else if (!outroServDone) montBloqueio = 'Aguardando limpeza'
+  else if (!outroServDone) montBloqueio = 'Aguardando higienização'
 
   return (
     <AtlPanel
@@ -371,7 +371,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   }, [os?.id, os?.pre_diagnostico?.compra_pecas, itens])
 
   const temLimpeza = useMemo(
-    () => (itens || []).some(it => /limpeza/i.test(it.nome || '')),
+    () => (itens || []).some(it => /limpeza|higieniz/i.test(it.nome || '')),
     [itens]
   )
   // Componentes do diagnóstico — SÓ informativo (resumo). Não é o checklist.
@@ -504,7 +504,7 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
   // desmarcando) é diferente de quem tinha o carimbo antes — rastro pro
   // relatório de Qualidade, ver useAutorCheck.detectarTrocaAutor.
   const LABEL_SECAO = {
-    desmontagem: 'Desmontagem', montagem: 'Montagem', limpeza_serv: 'Limpeza',
+    desmontagem: 'Desmontagem', montagem: 'Montagem', limpeza_serv: 'Higienização',
   }
   const toggleEm = (secao) => (chaveId) => {
     const atual = exec[secao] || {}

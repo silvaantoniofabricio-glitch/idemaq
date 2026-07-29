@@ -195,14 +195,14 @@ export default function NovaOSMobile({
         .single()
       if (err) throw err
 
-      // Itens padrão pra OS de atendimento: 2 serviços (Limpeza/Manutenção,
+      // Itens padrão pra OS de atendimento: 2 serviços (Higienização/Manutenção,
       // R$ 165 cada) + Deslocamento (R$ 20). User pode remover/editar depois
       // na etapa Orçamento. Best-effort: se falhar não bloqueia a criação.
       if (tipo === 'atendimento') {
-        // Schema real: coluna `categoria` (não `tipo`). Limpeza/Manutenção
+        // Schema real: coluna `categoria` (não `tipo`). Higienização/Manutenção
         // viram serviço (R$ 165 cada), Deslocamento R$ 20.
         const itensPadrao = [
-          { os_id: data.id, categoria: 'servico', nome: 'Limpeza',      quantidade: 1, valor_unitario: 165 },
+          { os_id: data.id, categoria: 'servico', nome: 'Higienização', quantidade: 1, valor_unitario: 165 },
           { os_id: data.id, categoria: 'servico', nome: 'Manutenção',   quantidade: 1, valor_unitario: 165 },
           { os_id: data.id, categoria: 'desloc',  nome: 'Deslocamento', quantidade: 1, valor_unitario: 20 },
         ]

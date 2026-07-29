@@ -42,7 +42,7 @@ export const LABEL_SERVICO = {
   coleta: 'Coleta',
   diagnostico: 'Diagnóstico',
   desmontagem: 'Desmontagem',
-  limpeza: 'Limpeza',
+  limpeza: 'Higienização',
   manutencao: 'Manutenção',
   montagem: 'Montagem',
   teste_final: 'Teste final',

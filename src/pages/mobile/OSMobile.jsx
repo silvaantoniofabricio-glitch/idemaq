@@ -48,8 +48,12 @@ export default function OSMobile({ T, dark, user }) {
     recusadas: false,
   })
 
-  // Conjuntos de os_id com serviço de limpeza / manutenção (1 query separada —
-  // useOS só traz a contagem de itens e é "não mexer").
+  // Conjuntos de os_id com serviço de higienização / manutenção (1 query
+  // separada — useOS só traz a contagem de itens e é "não mexer").
+  // `categoria` aceita NULL também (OS importadas do Bling/Trello não
+  // gravam essa coluna). Higienização = nome com "limpez" (nativo antigo
+  // ou importado) ou "higieniz" (nome novo); Manutenção = tem item de
+  // serviço mas NÃO é Higienização.
   const [temLimpeza, setTemLimpeza]     = useState(() => new Set())
   const [temManutencao, setTemManutencao] = useState(() => new Set())
   useEffect(() => {
@@ -58,15 +62,16 @@ export default function OSMobile({ T, dark, user }) {
       const { data, error } = await supabase
         .from('os_item')
         .select('os_id, nome')
-        .eq('categoria', 'servico')
+        .or('categoria.is.null,categoria.eq.servico')
         .is('deleted_at', null)
       if (cancel || error || !data) return
-      const limp = new Set(), manu = new Set()
+      const limp = new Set(), comItem = new Set()
       for (const it of data) {
         const n = (it.nome || '').toLowerCase()
-        if (n.includes('limpez')) limp.add(it.os_id)
-        if (n.includes('manuten')) manu.add(it.os_id)
+        comItem.add(it.os_id)
+        if (n.includes('limpez') || n.includes('higieniz')) limp.add(it.os_id)
       }
+      const manu = new Set([...comItem].filter(id => !limp.has(id)))
       setTemLimpeza(limp)
       setTemManutencao(manu)
     })()

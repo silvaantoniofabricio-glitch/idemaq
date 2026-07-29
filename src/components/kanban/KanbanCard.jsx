@@ -310,7 +310,7 @@ export default function KanbanCard({
           if (!mostraLimp && !mostraManut) return null
           return (
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 5 }}>
-              {mostraLimp  && <SubStatus label="Limp."  status={statusServicoSub(of, 'limpeza')} T={T} dark={dark} />}
+              {mostraLimp  && <SubStatus label="Higien." status={statusServicoSub(of, 'limpeza')} T={T} dark={dark} />}
               {mostraManut && <SubStatus label="Manut." status={os.manutPecaStatus || statusServicoSub(of, 'manutencao')} T={T} dark={dark} />}
             </div>
           )
