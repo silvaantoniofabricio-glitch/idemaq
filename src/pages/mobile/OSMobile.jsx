@@ -10,6 +10,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { supabase } from '../../supabase'
+import { fetchTodosOSItemServico } from '../../utils/fetchOSItensServico'
 import { useOS, uiEtapaToDb } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
 import { normalizePatchOS } from '../../utils/osPatch'
@@ -59,15 +60,10 @@ export default function OSMobile({ T, dark, user }) {
   useEffect(() => {
     let cancel = false
     ;(async () => {
-      const { data, error } = await supabase
-        .from('os_item')
-        .select('os_id, nome')
-        .or('categoria.is.null,categoria.eq.servico')
-        .is('deleted_at', null)
-        .range(0, 9999) // sem isso o PostgREST corta em 1000 linhas por padrão —
-                         // com >1687 itens importados (categoria NULL) sozinhos,
-                         // itens nativos de serviço ficavam de fora da resposta
-      if (cancel || error || !data) return
+      // Pagina de verdade — o projeto Supabase tem teto de linhas por
+      // request (Max Rows) que o servidor aplica mesmo com .range() maior.
+      const data = await fetchTodosOSItemServico()
+      if (cancel || !data) return
       const limp = new Set(), comItem = new Set()
       for (const it of data) {
         const n = (it.nome || '').toLowerCase()

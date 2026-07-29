@@ -8,7 +8,7 @@ import { fmtBRL, semAcento } from '../utils/fmt'
 import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
 import { Badge, useToast, ModuleHeader } from '../components/ui'
 import { useOSDetalheModal } from '../hooks/useOSDetalheModal'
-import { supabase } from '../supabase'
+import { fetchTodosOSItemServico } from '../utils/fetchOSItensServico'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 import NovaOSAntigaModal from '../components/vendas/NovaOSAntigaModal'
 
@@ -424,15 +424,13 @@ export default function Vendas({ T, dark, user }) {
   useEffect(() => {
     let cancel = false
     ;(async () => {
-      const { data, error } = await supabase
-        .from('os_item')
-        .select('os_id, nome')
-        .or('categoria.is.null,categoria.eq.servico')
-        .is('deleted_at', null)
-        .range(0, 9999) // sem isso o PostgREST corta em 1000 linhas por padrão —
-                         // com >1687 itens importados (categoria NULL) sozinhos,
-                         // itens nativos de serviço ficavam de fora da resposta
-      if (cancel || error || !data) return
+      // O projeto Supabase tem um teto de linhas por request (Max Rows,
+      // geralmente 1000) que o servidor aplica mesmo com .range() maior —
+      // por isso pagina de verdade em blocos até a página vir incompleta,
+      // senão os itens importados em massa (>1687 com categoria NULL)
+      // lotam a 1ª página sozinhos e os itens nativos nunca chegam.
+      const data = await fetchTodosOSItemServico()
+      if (cancel || !data) return
       const limp = new Set(), comItem = new Set()
       for (const it of data) {
         const n = (it.nome || '').toLowerCase()
