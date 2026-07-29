@@ -276,3 +276,17 @@ Caso de uso: contagem mensal acha divergência, peça quebrada no manuseio, devo
   - Best-effort: se `sql/11` não rodou, detecta 42P01/PGRST205 e ignora — UPDATE em peca continua valendo
 - **Histórico no PecaDetalheModal**: hook local `useHistoricoPeca(pecaId)` faz `select id, tipo, delta, qtd_antes, qtd_depois, motivo, observacao, os_id, criado_em from peca_movimentacao where peca_id=$ and deleted_at is null order by criado_em desc limit 20`. Substitui o mock antigo. Render: ícone por tipo + label (com motivo entre parênteses pra ajuste manual) + data + saldo (`qtd_depois`) + observação + delta. Estados: skeleton 3 linhas (loading), empty state suave (`Sem movimentações registradas`), empty state com link pro SQL 11 (schemaPendente=42P01), erro inline (outros erros).
 - **Futuro**: `entrada_compra` (entrada por nota fiscal/compra) ainda não grava nada — depende do módulo de NF que vai aterrissar peças no estoque. `devolucao` é o caminho oposto ao `baixa_os` (cliente devolve peça).
+
+---
+
+## Máquina entra sozinha no estoque ao concluir Fabricação (29/07/2026)
+
+Pedido do Toni: OS tipo `fabricacao` (aba "Máquinas" do estoque, não peças) deve gerar automaticamente 1 registro em `maquina` quando chega em Concluído — antes só existia criação manual via `NovaMaquinaModal`. O comentário já existia no código desde antes ("Os itens usados saem do estoque ao concluir, e a máquina entra como produto pronto" — `NovaOSMobile.jsx`/`_legacy/desktopKanbanModals.jsx`), mas só a baixa de peças (`baixarItensDaOS`) tinha sido implementada; a entrada da máquina nunca foi.
+
+**Implementado espelhando o padrão de `baixarItensDaOS`** (mesma idempotência via UPDATE atômico):
+- `sql/149-os-maquina-criada.sql` — nova coluna `os.maquina_criada boolean default false`.
+- `useMaquinas.js` → `criarMaquinaAoConcluirFabricacao(osId)`: claim atômico, se `os.tipo !== 'fabricacao'` ignora, senão insere em `maquina` com `modelo`/`marca` do equipamento, `estado='disponivel'`, `custo_compra = os.valor_total`, `custo_itens` = soma de `os_item` categoria `'peca'`, `custo_servico=0`, `preco_venda=0` (Fabricação não passa por Orçamento/Pagamento — Toni preenche na hora de vender ou editando a máquina).
+- `useOS.js` → `updateOS` dispara fire-and-forget (`criarMaquinaAoConcluir`) junto com a baixa de estoque, quando `concluindoAgora && os.tipo === 'fabricacao'`.
+- `sql/150-backfill-maquinas-fabricacao-concluida.sql` — backfill pras Fabricações que já estavam concluídas antes dessa automação existir (a automação só dispara na TRANSIÇÃO pra concluído, não retroativamente).
+
+**Pendências que ficaram pro Toni preencher manualmente depois**: `capacidade` (não existe campo pra isso na OS hoje) e `preco_venda` (só existe na hora de vender) — editáveis via `MaquinaDetalheModal` normal.
