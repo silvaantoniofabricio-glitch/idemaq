@@ -152,18 +152,43 @@ export async function criarMaquinaAoConcluirFabricacao(osId) {
 
   if (claimed.tipo !== 'fabricacao') return { ok: true, ignorada: true } // não é Fabricação, nada a fazer
 
-  // 2) Soma o custo das peças efetivamente usadas nessa OS.
+  // 2) Soma o CUSTO (não o preço de venda) das peças efetivamente usadas.
+  // os_item.valor_unitario é o preço de venda cobrado no orçamento (ver
+  // AcaoOrcamentoHIG.escolherPeca: valor = p.precoVenda) — pra custo real
+  // da máquina precisa do custo da peça no catálogo (peca.custo_medio,
+  // com fallback custo_atual — mesma convenção de sql/140).
   const { data: itens, error: errIt } = await supabase
     .from('os_item')
-    .select('categoria, quantidade, valor_unitario')
+    .select('categoria, quantidade, valor_unitario, peca_id')
     .eq('os_id', osId)
     .is('deleted_at', null)
 
   if (errIt) console.warn('[maquinaAuto] falha lendo os_item pra custo:', errIt.message)
 
-  const custoItens = (itens || [])
-    .filter(it => it.categoria === 'peca')
-    .reduce((soma, it) => soma + (Number(it.quantidade) || 0) * (Number(it.valor_unitario) || 0), 0)
+  const itensPeca = (itens || []).filter(it => it.categoria === 'peca')
+  const pecaIds = [...new Set(itensPeca.map(it => it.peca_id).filter(Boolean))]
+
+  let custoPorPecaId = {}
+  if (pecaIds.length) {
+    const { data: pecas, error: errPecas } = await supabase
+      .from('peca')
+      .select('id, custo_medio, custo_atual')
+      .in('id', pecaIds)
+    if (errPecas) console.warn('[maquinaAuto] falha lendo custo do catálogo de peças:', errPecas.message)
+    custoPorPecaId = Object.fromEntries(
+      (pecas || []).map(p => [p.id, Number(p.custo_medio) || Number(p.custo_atual) || 0])
+    )
+  }
+
+  const custoItens = itensPeca.reduce((soma, it) => {
+    // Item com peca_id: custo real do catálogo. Item avulso (texto livre,
+    // sem peca_id): não tem custo conhecido — usa o valor_unitario como
+    // aproximação (melhor que contar 0).
+    const custoUnit = it.peca_id != null
+      ? (custoPorPecaId[it.peca_id] ?? 0)
+      : (Number(it.valor_unitario) || 0)
+    return soma + (Number(it.quantidade) || 0) * custoUnit
+  }, 0)
 
   // 3) Cria a máquina — pronta pra vender, preço de venda em branco (Toni define depois).
   const payload = {
