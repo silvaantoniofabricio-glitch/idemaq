@@ -64,6 +64,9 @@ export default function OSMobile({ T, dark, user }) {
         .select('os_id, nome')
         .or('categoria.is.null,categoria.eq.servico')
         .is('deleted_at', null)
+        .range(0, 9999) // sem isso o PostgREST corta em 1000 linhas por padrão —
+                         // com >1687 itens importados (categoria NULL) sozinhos,
+                         // itens nativos de serviço ficavam de fora da resposta
       if (cancel || error || !data) return
       const limp = new Set(), comItem = new Set()
       for (const it of data) {
