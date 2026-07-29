@@ -540,3 +540,25 @@ Atlassian Design (`AtlPanel`/`ATL_FONT` de `_AtlassianUI.jsx`), mesmo padrão vi
 **Efeito pós-deploy**: como o cálculo é sempre ao vivo (não fica guardado em lugar nenhum), o placar de TODO MUNDO sobe automaticamente assim que essa correção for pro ar — não precisa reprocessar nada. Os totais de julho que o Toni viu na tela até agora estavam **subestimados**.
 
 ⚠️ **Lição pra próximas sessões**: os testes que eu fiz anteriormente pra `calcularPontosOS` (ver §18) usaram fixtures **inventadas à mão**, sem checar contra o dado REAL salvo no banco pra Desmontagem/Montagem/Limpeza — por isso não pegaram esse bug. Testar lógica de leitura de dado sempre com pelo menos 1 exemplo de dado real (consulta SQL), não só com fixture que eu mesmo montei baseado em como *achei* que o dado seria salvo.
+
+## 27. Serviço "Limpeza" renomeado pra "Higienização" (29/07/2026)
+
+Pedido do Toni: trocar o nome do serviço "Limpeza" por "Higienização" em
+toda a interface — chips do Kanban/OSMobile, seção do Conserto
+(`AcaoOficinaHIG.jsx`: título, check "Higienização feita", mensagens de
+bloqueio), acabamento no Teste final (`AcaoTesteHIG.jsx`), chip rápido
+de item no Orçamento (`AcaoOrcamentoHIG.jsx` — `SUGESTOES`/`QUICK_CHIPS`),
+`LABEL_SERVICO.limpeza` em `pontuacao.js`, item padrão criado por
+`NovaOSMobile.jsx`.
+
+**Chaves internas não mudaram** (`limpeza`, `limpeza_serv`, `temLimpeza`
+etc continuam com esse nome no código/banco) — só o texto exibido virou
+"Higienização". **Dado antigo não foi migrado**: itens salvos como
+"Limpeza" continuam assim; toda detecção (`/limpez|higieniz/i`) reconhece
+os dois nomes igual, então nada quebrou pra OS antiga.
+
+Aproveitado pra corrigir um bug junto: a detecção de "tem serviço de
+limpeza" em vários arquivos (`AcaoOficinaHIG.jsx`, `AcaoTesteHIG.jsx`,
+`Kanban.jsx`, `OSMobile.jsx`, `Vendas.jsx`) usava regex `/limpeza/i` sem
+o `higieniz` — corrigido em todos pra aceitar os dois nomes daqui pra
+frente.

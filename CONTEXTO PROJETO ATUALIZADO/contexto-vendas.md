@@ -194,3 +194,27 @@ Sem CSV real, faço mapeamento "no escuro" e provavelmente vai errar.
 1. **OS antigas têm `data_conclusao` ou só `criado_em`?** Bling provavelmente tem só data da emissão. Suficiente — `criado_em` cobre.
 2. **Vendas-> Lançamento financeiro retroativo:** criar opcional? Ou Toni cria à parte manualmente? MVP: à parte. Pode ter checkbox "Criar lançamento de receita pago automático" no modal "Nova OS antiga" — futuro.
 3. **Histórico de itens (`os_item`):** OS antiga importada tem itens? Provavelmente Bling só tem total. Importar sem itens, deixando `valor_total` direto. Quando Toni quiser detalhar uma OS específica, edita no OSDetalhe.
+
+---
+
+## 10. Serviço "Limpeza" renomeado pra "Higienização" (29/07/2026)
+
+Filtro de Serviço em `/vendas` tinha bug: só reconhecia itens importados
+("Limpeza de Lavadora", categoria NULL), não os nativos ("Limpeza",
+categoria 'servico') — regex batia mas o problema real era outro campo de
+comparação. Corrigido junto com o pedido do Toni de renomear o serviço
+pra **"Higienização"** em toda a interface (chips, checklist, nome
+padrão do item de orçamento).
+
+- Detecção agora casa `/limpez|higieniz/i` no nome do item — pega nativo
+  antigo ("Limpeza"), novo ("Higienização") e importado ("Limpeza de
+  Lavadora"/"Lava e Seca") todos juntos.
+- **Manutenção mudou de definição**: não depende mais da palavra
+  "manutenção" aparecer no nome do item — agora é "tem item de serviço
+  mas NÃO é Higienização" (mesma regra já usada nos cards de oficina em
+  `secoesOficinaVisiveis`, `osHelpers.js`). Pedido explícito do Toni.
+- **Decisão**: só a interface mudou. Itens antigos no banco continuam
+  salvos como "Limpeza" — não foi feita migração de dado (Toni escolheu
+  essa opção). O filtro trata os dois nomes como equivalentes.
+- Mesma correção replicada em `Kanban.jsx` e `OSMobile.jsx` (mesma query
+  de detecção existia duplicada nos três lugares).

@@ -449,3 +449,11 @@ Toni pediu um arquivo mensal (entradas/saídas do mês anterior) pra declarar co
 - Resultado junho/2026: Mercadoria R$ 4.954,80 · Serviço R$ 12.500,20 (mão de obra R$ 11.510,35 + deslocamento R$ 889,85 + avulso R$ 100).
 
 **Pra gerar o arquivo de um mês**: script temporário (puxa `vw_lancamentos_validos` + `vw_lancamento_fiscal_split`, monta o `.xlsx` via lib `xlsx`, salva em `Arquivos Contador/` — pasta gitignored, tem PII de cliente) e descarta o script depois. Sem UI dedicada ainda — se Toni pedir com frequência, vira o botão sugerido na página Meu Contador (§16).
+
+---
+
+## 18. Categoria de receita "Limpeza" renomeada pra "Higienização" (29/07/2026)
+
+Parte da troca geral de nome do serviço (pedido do Toni, ver `contexto-os.md` §27). `CATEGORIAS_RECEITA` (Financeiro.jsx) e `CATEGORIAS_SUGESTAO.receita` (useFinanceiro.js) agora mostram "Higienização" em vez de "Limpeza".
+
+**Cuidado que tomei aqui por ser dado financeiro**: lançamento antigo continua salvo no banco com `categoria = 'Limpeza'` (decisão do Toni foi só mudar a interface, não migrar dado). Diferente do filtro de serviço da OS (que já usa regex tolerante), o filtro de categoria do Financeiro é comparação exata (`i.categoria === categoria`) — se eu só trocasse o rótulo, selecionar "Higienização" escondia todo o histórico de receita salvo como "Limpeza". Corrigido pra tratar as duas strings como equivalentes só quando "Higienização" está selecionado (linha ~991 de `Financeiro.jsx`). Lançamento NOVO criado por `NovoLancamentoModal` já nasce com `categoria = 'Higienização'`.
