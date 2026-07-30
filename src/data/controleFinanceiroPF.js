@@ -535,7 +535,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'IFD BR (16/06) a',                               valor:  24.99, categoria: 'Assinatura' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Mano Auto Posto (17/06)',                        valor: 100.00, categoria: 'Combustivel' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Casa dos Parafusos 1/6 (17/06)',                 valor:  48.20, categoria: 'Materiais',       pj: true },
-  { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Casa dos Parafusos avulso (17/06)',              valor:  45.85, categoria: 'Materiais' },
+  { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Casa dos Parafusos avulso (17/06)',              valor:  45.85, categoria: 'Materiais',       pj: true },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'IFD BR (18/06) b',                               valor:  24.99, categoria: 'Assinatura' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus (18/06)',                          valor:  43.68, categoria: 'Supermercado' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Google YouTube (18/06)',                         valor:  26.90, categoria: 'Assinatura' },
