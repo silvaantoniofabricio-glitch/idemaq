@@ -460,8 +460,10 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
 // Despesas PF julho/2026 — TONI
 // Fonte: REVISAO FECHAMENTO 2026/JULHO/FATURAS/Nubank_2026-07-02.pdf (periodo 26/mai a 25/jun)
 //        REVISAO FECHAMENTO 2026/JULHO/FATURAS/Bradesco * 2.pdf (NEO VISA PLATINUM 4641, venc 20/07)
-// Elo Grafite (fatura da mesma pasta) NAO entra aqui — ja lancada em JUNHO
+// Elo Grafite fatura anterior (paga 11-13/06) NAO entra aqui — ja lancada em JUNHO
 // (venc. 11/06/2026, confirmado por Toni, ver commit 4f88f98 e sql/85/87/88).
+// Elo Grafite NOVA fatura (Bradesco_31072026_142327.xls, paga 13/07, despesas
+// 01/07-29/07 + parcelas continuando) ENTRA aqui — itens PF abaixo. PJ em sql/145.
 // Nubank Emp (venc 23/07) e 100% PJ — lancado em sql/142.
 // PJ excluidos deste array: Anthropic R$113,75 + IOF R$3,98 + Casa Parafusos 1/2 R$50,00 (sql/143).
 export const DESPESAS_PF_TONI_JULHO_2026 = [
@@ -491,6 +493,70 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   // --- Bradesco NEO VISA PLATINUM (cartao ****6669) — venc. 20/07/2026 ---
   { data: '20/07/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada (08/07)', valor:  33.00, categoria: 'Tarifa cartao' },
+  // --- Elo Grafite 3558/5900 — fatura paga 13/07/2026 (despesas 01/07-29/07 + parcelas) ---
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Anuidade Diferenciada Elo Grafite 29/07 7/12', valor: 56.00,  categoria: 'Tarifa cartao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 28/07',                       valor: 61.00,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Auto Posto Imaculada C 27/07',                  valor: 100.00, categoria: 'Combustivel' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 26/07 1/3',                      valor: 49.90,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 26/07',                          valor: 40.26,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Amazon Music 26/07',                            valor: 13.90,  categoria: 'Lazer' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Portal Auto Posto 26/07',                       valor: 50.00,  categoria: 'Combustivel' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 26/07',                           valor: 36.50,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 26/07',                         valor: 8.90,   categoria: 'Pedagio' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'IFD NR Alimentos 26/07',                        valor: 36.29,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Cordil 25/07',                                  valor: 13.00,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Mazinho Hot e Burguer 21/07',                   valor: 57.00,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'JIM COM Thiago dos Santos 20/07 (nao confirmado)', valor: 90.00, categoria: 'Servicos' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Master Pizza 18/07',                            valor: 58.50,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'DL Google YouTube 18/07',                       valor: 26.90,  categoria: 'Lazer' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Cordil 18/07',                                  valor: 16.50,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Auto Posto Antonini 17/07 1/3',                 valor: 81.18,  categoria: 'Combustivel' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Top Churros 17/07',                             valor: 24.00,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 17/07',                           valor: 37.32,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 16/07',                           valor: 11.98,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Casarao Oriental 13/07',                        valor: 113.00, categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Mano Auto Posto 11/07',                         valor: 195.64, categoria: 'Combustivel' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Ana Tavares Nails 11/07',                       valor: 95.00,  categoria: 'Cuidados pessoais' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Dogburger e Cafe 11/07',                        valor: 102.96, categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Amor de Tia Confeitaria 10/07',                 valor: 118.00, categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Top Churros 09/07',                             valor: 24.00,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 05/07',                          valor: 56.58,  categoria: 'Supermercado' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 05/07',                     valor: 119.90, categoria: 'Saude/Academia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Piui Lanches 04/07',                            valor: 52.50,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'J C Construcoes (cabeleireiro) 03/07',          valor: 36.00,  categoria: 'Cuidados pessoais' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'IOF Diario Rotativo/Atraso 01/07',              valor: 0.55,   categoria: 'Tarifa cartao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'IOF Adic Rotativo/Atraso 01/07',                valor: 25.91,  categoria: 'Tarifa cartao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Soneda Perfumaria 01/07 1/2',                   valor: 65.74,  categoria: 'Compras pessoais' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Wepink 01/07',                                  valor: 46.90,  categoria: 'Compras pessoais' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Milkymoo 01/07',                                valor: 22.00,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'PbAdministradora 01/07 (nao confirmado)',       valor: 11.00,  categoria: 'Diverso' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'IFD NR Alimentos 01/07',                        valor: 23.42,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Wilson de O Pereira 30/06 1/2 (nao confirmado)',valor: 65.00,  categoria: 'Servicos' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'PbAdministradora 30/06 (nao confirmado)',       valor: 11.00,  categoria: 'Diverso' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Farmacia ShopMed 30/06',                        valor: 5.90,   categoria: 'Farmacia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'IFD BR 30/06',                                  valor: 19.67,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Farmacia Preco Popular 29/06',                  valor: 24.76,  categoria: 'Farmacia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Top Churros 29/06',                             valor: 24.00,  categoria: 'Alimentacao' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'IFD BR 29/06',                                  valor: 24.99,  categoria: 'Alimentacao' },
+  // Parcelas continuando (PF)
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Drogasil 22/06 2/3',                            valor: 57.59,  categoria: 'Farmacia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Casa Decorada 21/06 2/2',                       valor: 85.00,  categoria: 'Casa' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Kenia Parreira Barbagl 20/06 2/2',              valor: 69.99,  categoria: 'Cuidados pessoais' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Farmacia Hiper Popular 20/06 2/2',              valor: 70.72,  categoria: 'Farmacia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Kenia Parreira Barbagl 14/06 2/3',              valor: 79.06,  categoria: 'Cuidados pessoais' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Beni Netto Aguiar Salao 13/06 2/3',             valor: 300.00, categoria: 'Cuidados pessoais' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Drogasil 3697 25/05 3/3',                       valor: 66.99,  categoria: 'Farmacia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Nick 23/05 3/3',                                valor: 66.66,  categoria: 'Vestuario' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Fiorelli 23/05 3/6',                            valor: 68.33,  categoria: 'Vestuario' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Lojas Florai 16/05 3/4',                        valor: 44.95,  categoria: 'Casa' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Lojas Renner 02/05 3/3',                        valor: 199.86, categoria: 'Vestuario' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'JIM COM Wellynton 22/04 4/12 (Focus)',          valor: 190.25, categoria: 'Veiculo PF' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'ANI Store 04/04 4/6',                           valor: 49.99,  categoria: 'Vestuario' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'MP Marineshop 18/03 5/10',                      valor: 93.27,  categoria: 'Compras pessoais' },
+  // Cartao adicional 5900
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/07 (cartao 5900)',       valor: 139.90, categoria: 'Saude/Academia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/06 (cartao 5900)',       valor: 139.90, categoria: 'Saude/Academia' },
+  { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'FED SNT Sara Nossa Terra 12/05 3/3 (cartao 5900, evento)', valor: 126.66, categoria: 'Lazer' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
