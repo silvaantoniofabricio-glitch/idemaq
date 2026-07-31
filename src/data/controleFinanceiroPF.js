@@ -254,6 +254,10 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '11/06/2026', origem: 'Elo Grafite', descricao: 'Drogasil 28/03 3/3',                           valor: 66.97,  categoria: 'Farmacia' },
   { data: '11/06/2026', origem: 'Elo Grafite', descricao: 'MP Marineshop 18/03 4/10',                     valor: 93.27,  categoria: 'Compras pessoais' },
   { data: '11/06/2026', origem: 'Elo Grafite', descricao: 'ML Mercadoli 14/12 7/7',                       valor: 59.34,  categoria: 'Compras pessoais' },
+  // Encargos por atraso (fatura venc. 11/07/2026)
+  { data: '11/06/2026', origem: 'Elo Grafite', descricao: 'Encargos de Atraso Elo Grafite 12/06',        valor: 33.78,  categoria: 'Multa/Juros cartao' },
+  { data: '11/06/2026', origem: 'Elo Grafite', descricao: 'Multa Contratual Elo Grafite 29/06',          valor: 136.38, categoria: 'Multa/Juros cartao' },
+  { data: '11/06/2026', origem: 'Elo Grafite', descricao: 'Encargos de Mora Elo Grafite 29/06',          valor: 2.24,   categoria: 'Multa/Juros cartao' },
   // --- Inter 9106 — venc. 25/06/2026 ---
   // Parcelas anteriores (PF)
   { data: '25/06/2026', origem: 'Inter', descricao: 'Canva 03/10 9/12',                          valor: 24.16,  categoria: 'Software/Lazer' },
