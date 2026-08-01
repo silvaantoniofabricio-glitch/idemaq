@@ -364,6 +364,12 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML 2Produtos 25/02 4/12',     valor: 12.43,  categoria: 'Compras pessoais' },
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML Barbearia 02/03 4/4',      valor: 13.68,  categoria: 'Cuidados pessoais' },
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML MercadoLivre 09/03 4/10',  valor: 44.81,  categoria: 'Compras pessoais' },
+  // --- Cresol Mastercard — fatura periodo 01/05-31/05 (fotos "CRESOL FOTOS DA FATURA") ---
+  // Cartao PJ do Cresol, quase todo PJ. PJ em sql/152.
+  { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 25/05',          valor: 200.00, categoria: 'Combustivel' },
+  { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 15/05',          valor: 200.00, categoria: 'Combustivel' },
+  { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 04/05',          valor: 200.00, categoria: 'Combustivel' },
+  { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 2/6',   valor: 121.75, categoria: 'Servicos' },
   // Igreja
   { data: '07/06/2026', origem: 'Cresol', descricao: 'Dizimo jun/2026',   valor: 200.00, categoria: 'Dizimo' },
   { data: '07/06/2026', origem: 'Cresol', descricao: 'Oferta jun/2026',   valor: 120.00, categoria: 'Doacao/Igreja' },
