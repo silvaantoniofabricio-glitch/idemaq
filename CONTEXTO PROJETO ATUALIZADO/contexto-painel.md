@@ -141,3 +141,11 @@ KPIs do Painel são caros (agregações). Estratégias:
 - **Estoque**: peças em ponto de pedido. Ver `contexto-estoque.md`
 - **Clientes**: alertas de reativação. Ver `contexto-clientes.md`
 - **Painel Funcionários**: roteamento por papel. Ver `contexto-painel-func.md`
+
+## 9. Alerta de entrega agendada (29/07/2026)
+
+Toni notou que agendar uma entrega (`AcaoEntregaHIG` → `pre_diagnostico.entrega.data`) não gerava nenhum lembrete em lugar nenhum — o campo "Prazo" (`os.prazo`) já para de ser cobrado justamente na etapa Entrega (`ETAPAS_SEM_PRAZO` em `osHelpers.js`), então não tinha como saber "essa entrega é hoje" olhando o Painel.
+
+Adicionado em `criticos` (Painel.jsx e PainelMobile.jsx, mesma lógica duplicada nos dois): pra OS ainda não entregue (`etapa === 'entrega'` ou `'entregue'`) com `pre_diagnostico.entrega.data` marcada pra hoje → alerta nível "atenção"; pra amanhã → nível "info". Aparece junto dos alertas de prazo/estoque já existentes.
+
+**Não mexido ainda**: Logística não ordena/filtra as paradas de Entrega pela data agendada — só lista a OS que está na etapa. Se Toni pedir isso depois, é a próxima melhoria natural do mesmo pedido.
