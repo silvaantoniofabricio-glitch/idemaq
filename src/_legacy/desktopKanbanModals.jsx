@@ -60,6 +60,7 @@ function statusCamposFaltando(tipo, form) {
     return 'pronto para criar'
   }
   if (tipo === 'fabricacao') {
+    if (!form.cliente) return 'selecione um cliente'
     if (!form.equipamentoTipo) return 'selecione o tipo da máquina'
     return 'pronto para criar'
   }
@@ -508,7 +509,7 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
   // Regras de obrigatórios POR TIPO (só Cliente é obrigatório no Atendimento)
   const podeAvancar =
     (tipo === 'atendimento' || tipo === 'visita') ? !!form.cliente :
-    tipo === 'fabricacao'  ? !!form.equipamentoTipo :
+    tipo === 'fabricacao'  ? !!(form.cliente && form.equipamentoTipo) :
     tipo === 'venda'       ? !!form.cliente : false
 
   return (
@@ -805,15 +806,111 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
           </div>
         )}
 
-        {/* ────── Fabricação (mantém estrutura antiga, só ajustado o tipo dropdown) ────── */}
+        {/* ────── Fabricação: compra direta de máquina do cliente (fluxo completo) ────── */}
         {tipo === 'fabricacao' && (
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <div style={{ background:bgEtapa('yellow', dark), border:`1px solid ${corEtapa('yellow', dark)}44`, borderRadius:8, padding:'10px 12px', fontSize:12, color:T.textSecondary, lineHeight:1.5 }}>
               <i className="ti ti-info-circle" style={{ fontSize:14, color:corEtapa('yellow', dark), marginRight:6, verticalAlign:'middle' }} aria-hidden="true" />
-              <strong style={{color:T.textPrimary}}>Fabricação:</strong> máquina nova para o estoque. Os itens usados saem do estoque automaticamente ao concluir e a máquina entra como produto pronto, com o custo total calculado.
+              <strong style={{color:T.textPrimary}}>Fabricação:</strong> pro cliente que liga querendo vender a máquina. Ela passa pelo fluxo completo (Coleta → Diagnóstico → Orçamento → Conserto → Teste) e vira produto pronto no estoque ao concluir.
             </div>
 
-            <FormSecao titulo="Máquina a fabricar" icon="ti-building-factory-2" T={T}>
+            {/* CLIENTE VENDEDOR */}
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <i className="ti ti-user" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
+                <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Cliente vendedor</span>
+                <span style={{ fontSize:10, color:cor(P.red, P.redDark), fontWeight:700 }}>OBRIGATÓRIO</span>
+              </div>
+
+              {!form.cliente ? (
+                <div style={{ position:'relative' }}>
+                  <input value={buscaCli} onChange={e=>setBuscaCli(e.target.value)} placeholder="Buscar cliente por nome ou telefone…" style={inputStyle} autoFocus />
+                  {loadingClientes && (
+                    <i className="ti ti-loader-2" aria-hidden="true"
+                      style={{ position:'absolute', right:10, top:18, fontSize:14, color:T.textMuted, animation:'idemaq-spin 0.8s linear infinite' }} />
+                  )}
+                  {mostrarDropdown && (
+                    <div style={{ position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:T.card, border:`1px solid ${T.border}`, borderRadius:8, maxHeight:240, overflowY:'auto', zIndex:10, boxShadow:dark?'0 8px 24px rgba(0,0,0,.4)':'0 4px 16px rgba(0,0,0,.1)' }}>
+                      {loadingClientes && clientesFiltrados.length === 0 && (
+                        <div style={{ padding:'10px 12px', fontSize:12, color:T.textMuted, display:'flex', alignItems:'center', gap:7 }}>
+                          <i className="ti ti-loader-2" style={{ fontSize:13, animation:'idemaq-spin 0.8s linear infinite' }} aria-hidden="true" />
+                          Buscando…
+                        </div>
+                      )}
+                      {!loadingClientes && clientesFiltrados.length === 0 && (
+                        <div style={{ padding:'10px 12px', fontSize:12, color:T.textMuted, display:'flex', alignItems:'center', gap:7 }}>
+                          <i className="ti ti-mood-empty" style={{ fontSize:14 }} aria-hidden="true" />
+                          Nenhum cliente encontrado pra "{buscaCli.trim()}"
+                        </div>
+                      )}
+                      {clientesFiltrados.map(c => (
+                        <div key={c.id} onClick={()=>escolherCliente(c)}
+                          style={{ padding:'9px 12px', cursor:'pointer', borderBottom:`1px solid ${T.border}`, fontSize:12.5 }}
+                          onMouseEnter={e=>e.currentTarget.style.background=T.cardAlt}
+                          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <div style={{ color:T.textPrimary, fontWeight:600 }}>{c.nome}</div>
+                          <div style={{ color:T.textMuted, fontSize:11, marginTop:2 }}>
+                            {c.fone || '— sem telefone —'} · {(c.enderecos?.length || 0)} endereço(s)
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ marginTop:10, fontSize:11.5, color:T.textMuted }}>
+                    Não achou? <button onClick={()=>setModalNovoCli(true)}
+                      style={{ background:'transparent', border:'none', color:cor(P.blue, P.blueDark), cursor:'pointer', fontSize:11.5, fontWeight:600, padding:0, textDecoration:'underline' }}>+ Cadastrar novo cliente</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ background:cor('#0d2035','#e6f1fb'), border:`1px solid ${cor(P.blue, P.blueDark)}`, borderRadius:9, padding:'10px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <div style={{ fontSize:13.5, fontWeight:600, color:T.textPrimary }}>{form.cliente}</div>
+                      <div style={{ fontSize:11.5, color:T.textSecondary, marginTop:2 }}>
+                        <i className="ti ti-phone" style={{ fontSize:11, verticalAlign:-1 }} aria-hidden="true" /> {form.fone || '—'}
+                      </div>
+                    </div>
+                    <button onClick={trocarCliente}
+                      style={{ background:'transparent', color:cor(P.blue, P.blueDark), border:`1px solid ${T.border}`, padding:'5px 9px', borderRadius:6, fontSize:11, display:'flex', alignItems:'center', gap:4, cursor:'pointer', flexShrink:0 }}>
+                      <i className="ti ti-pencil" style={{ fontSize:12 }} aria-hidden="true" /> Trocar
+                    </button>
+                  </div>
+
+                  {enderecosCliente.length > 0 && (
+                    <div style={{ marginTop:14 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                        <i className="ti ti-map-pin" style={{ fontSize:14, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
+                        <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Endereço da coleta</span>
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                        {enderecosCliente.map((end, idx) => {
+                          const sel = form.enderecoIndex === idx
+                          return (
+                            <button key={idx} onClick={()=>setForm(f=>({ ...f, enderecoIndex:idx, enderecoSelecionado:end, endereco:end }))}
+                              style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px',
+                                background: sel ? cor('#0d2035','#e6f1fb') : 'transparent',
+                                border:`${sel?1.5:1}px solid ${sel ? cor(P.blue, P.blueDark) : T.border}`,
+                                borderRadius:9, cursor:'pointer', textAlign:'left', fontFamily:'inherit' }}>
+                              <div style={{ width:16, height:16, borderRadius:'50%', border:`2px solid ${sel ? cor(P.blue, P.blueDark) : T.textDim}`, background: sel ? cor(P.blue, P.blueDark) : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:2 }}>
+                                {sel && <div style={{ width:6, height:6, borderRadius:'50%', background:'#fff' }} />}
+                              </div>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ fontSize:12, fontWeight:600, color:T.textPrimary, marginBottom:2 }}>Endereço {idx+1}</div>
+                                <div style={{ fontSize:12, color:T.textSecondary, lineHeight:1.4 }}>{end}</div>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div style={{ height:1, background:T.border, margin:'2px 0' }} />
+
+            <FormSecao titulo="Máquina a comprar" icon="ti-building-factory-2" T={T}>
               <label style={labelStyle}>TIPO</label>
               <select value={form.equipamentoTipo} onChange={e=>update('equipamentoTipo', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}}>
                 <option value="">Selecione…</option>
@@ -821,9 +918,28 @@ function NovaOSModal({ T, dark, onClose, tipoInicial, mobile, notify, onCriada, 
               </select>
               <label style={{...labelStyle, marginTop:10}}>DESCRIÇÃO / ESTADO INICIAL</label>
               <textarea value={form.defeito} onChange={e=>update('defeito', e.target.value)} style={{...inputStyle, minHeight:64, resize:'vertical'}} placeholder="Ex: Estrutura ok, trocar rolamento, polia e colocar capa nova" />
-              <label style={{...labelStyle, marginTop:10}}>CUSTO INICIAL DA MÁQUINA BASE (R$)</label>
+              <label style={{...labelStyle, marginTop:10}}>VALOR PAGO NA MÁQUINA (R$)</label>
               <input type="number" value={form.valor} onChange={e=>update('valor', e.target.value)} style={inputStyle} placeholder="150,00" />
             </FormSecao>
+
+            <div style={{ height:1, background:T.border, margin:'2px 0' }} />
+
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <i className="ti ti-calendar-event" style={{ fontSize:15, color:cor(P.blue, P.blueDark) }} aria-hidden="true" />
+                <span style={{ fontSize:11, color:T.textMuted, fontWeight:600, letterSpacing:'.4px', textTransform:'uppercase' }}>Agendamento da coleta</span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <label style={labelStyle}>DATA</label>
+                  <input type="date" value={form.data} onChange={e=>update('data', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
+                </div>
+                <div>
+                  <label style={labelStyle}>HORA</label>
+                  <input type="time" value={form.hora} onChange={e=>update('hora', e.target.value)} style={{...inputStyle, colorScheme: dark?'dark':'light'}} />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
