@@ -20,9 +20,9 @@ import { hojeISO } from './fmt'
 const FORMA_TO_CONTA_NOME = {
   pix:      'Mercado Pago',
   dinheiro: 'Cresol',
-  debito:   'InfinitePay',
-  credito:  'InfinitePay',
-  link:     'InfinitePay',
+  debito:   'Ton Black',
+  credito:  'Ton Black',
+  link:     'InfinitePay', // só link de pagamento usa InfinitePay — maquininha física é Ton
   aprazo:   null, // a prazo não tem conta definida no recebimento
 }
 

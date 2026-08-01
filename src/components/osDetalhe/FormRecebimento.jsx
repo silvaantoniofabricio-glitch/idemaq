@@ -8,7 +8,8 @@
 //   - Atalhos rápidos: "Gerar PIX" e "Gerar link"
 //   - Dialog inline pra valor < saldo: parcial ou quitar com desconto
 //
-// Taxas via tabela InfinitePay Maxi 1 (Instruções do Projeto §Maquininha).
+// Taxas via tabela Ton Black (maquininha física — Instruções do Projeto §Maquininha).
+// InfinitePay só é usada pra Link de pagamento; débito/crédito no cartão são sempre Ton.
 
 import React, { useState, useEffect } from 'react'
 import { P } from '../../theme'
@@ -16,9 +17,9 @@ import { corEtapa } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
 import { useToast } from '../ui'
 
-// Taxas reais da maquininha InfinitePay por BANDEIRA (1x a 21x no crédito).
+// Taxas reais da maquininha Ton Black por BANDEIRA (1x a 21x no crédito).
 // Mastercard e Visa usam a mesma tabela; Elo é mais cara. Conferido em
-// "Minhas taxas e prazos" do app InfinitePay (10/06/2026).
+// "Minhas taxas e prazos" do app Ton (10/06/2026).
 const TAXAS_BANDEIRA = {
   master: {
     debito: 1.36,
@@ -66,8 +67,8 @@ function taxaSub(subId, bandeira, parcelas) {
 }
 
 const SUB_CARTAO = [
-  { id: 'debito',  label: 'Débito',           icon: 'ti-credit-card' },
-  { id: 'credito', label: 'Crédito',          parcelado: true, icon: 'ti-credit-card', desc: '1x a 21x' },
+  { id: 'debito',  label: 'Débito (Ton)',     icon: 'ti-credit-card' },
+  { id: 'credito', label: 'Crédito (Ton)',    parcelado: true, icon: 'ti-credit-card', desc: '1x a 21x' },
   { id: 'link',    label: 'Link InfinitePay', parcelado: true, icon: 'ti-link',        desc: '1x a 21x' },
 ]
 
