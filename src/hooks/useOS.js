@@ -15,8 +15,9 @@ import { criarMaquinaAoConcluirFabricacao } from './useMaquinas'
 export function dbEtapaToUI(tipo, dbEtapa) {
   if (!dbEtapa) return dbEtapa
   if (dbEtapa === 'aguardando_agendamento') return 'ag_agendamento'
-  // 'agendamento' no DB = 'agendado' na UI para atendimento, 'agendamento' para venda
-  if (dbEtapa === 'agendamento' && tipo === 'atendimento') return 'agendado'
+  // 'agendamento' no DB = 'agendado' na UI para atendimento/fabricação (ambos
+  // têm etapa Coleta com esse id), sem tradução pros outros tipos.
+  if (dbEtapa === 'agendamento' && (tipo === 'atendimento' || tipo === 'fabricacao')) return 'agendado'
   // Etapa 'recebido' aposentada (06/07/2026) — Avaliação+Diagnóstico unificadas.
   // Linhas antigas (os.etapa e os_historico) aparecem como Diagnóstico na UI.
   if (dbEtapa === 'recebido') return 'diagnostico'
