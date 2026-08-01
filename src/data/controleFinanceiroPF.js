@@ -611,6 +611,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/07/2026', origem: 'MP Cartao', descricao: '2Produtos 25/02 5/12',                  valor: 12.43,  categoria: 'Compras pessoais' },
   { data: '20/07/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 26/01 6/8',                valor: 27.37,  categoria: 'Compras pessoais' },
   { data: '20/07/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 09/03 5/10',               valor: 44.81,  categoria: 'Compras pessoais' },
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'Tenis New Balance 480 08/07 1/8',        valor: 43.49,  categoria: 'Vestuario' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)

@@ -58,7 +58,8 @@ FROM (VALUES
   (38.54, 'Pecas', 'ML Braslam 03/07 (b)'),
   (118.30,'Pecas', 'ML GelMaq 06/07'),
   (339.90,'Pecas', 'ML MercadoLivre 06/07'),
-  (43.51, 'Pecas', 'ML Consultor 08/07 1/8'),
+  -- ML Consultor 08/07 1/8 R$43,51 REMOVIDO — tenis pessoal, nao pecas.
+  -- Ver sql/149 (corrigido pra PF, R$43,49 real do comprovante).
   (22.91, 'Pecas', 'ML MercadoLi 09/07 1/8'),
   (195.60,'Pecas', 'ML MercadoLi 10/07'),
   (179.49,'Pecas', 'ML TrevilarPeca 13/07'),
