@@ -56,17 +56,29 @@ export function useClientes() {
 
   const fetchClientes = useCallback(async () => {
     setLoading(true); setError(null)
-    const { data, error: err } = await supabase
-      .from('cliente')
-      .select('*')
-      .is('deleted_at', null)
-      .order('nome', { ascending: true })
-    if (err) {
-      setError(err)
-      setLoading(false)
-      return
+    // Pagina de verdade: o projeto Supabase tem um teto de linhas por
+    // request (Max Rows, geralmente 1000) que corta a resposta mesmo sem
+    // avisar — sem isso, passado de 1000 clientes o cadastro mais recente
+    // (ordenado por nome) simplesmente sumia da lista, e o contador da
+    // página Clientes ficava travado mostrando "1000" em vez do total real.
+    const PAGINA = 1000
+    let todos = []
+    for (let offset = 0; ; offset += PAGINA) {
+      const { data, error: err } = await supabase
+        .from('cliente')
+        .select('*')
+        .is('deleted_at', null)
+        .order('nome', { ascending: true })
+        .range(offset, offset + PAGINA - 1)
+      if (err) {
+        setError(err)
+        setLoading(false)
+        return
+      }
+      todos = todos.concat(data || [])
+      if (!data || data.length < PAGINA) break
     }
-    setClientes(data || [])
+    setClientes(todos)
     setLoading(false)
   }, [])
 
