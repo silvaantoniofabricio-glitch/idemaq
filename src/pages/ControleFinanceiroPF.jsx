@@ -20,7 +20,7 @@ import { useFinanceiro } from '../hooks/useFinanceiro'
 const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 // Origens que sao cartoes de credito — itens listados individualmente, nao sao Pix/Dinheiro
-const ORIGENS_CARTAO = new Set(['Elo Grafite', 'Inter', 'MP Cartao', 'Bradesco PJ ELO', 'Visa Bradesco'])
+const ORIGENS_CARTAO = new Set(['Elo Grafite', 'Inter', 'MP Cartao', 'Bradesco PJ ELO', 'Visa Bradesco', 'Cresol Mastercard'])
 
 function periodoToFiltro(periodo) {
   const hoje = new Date()
