@@ -261,6 +261,14 @@ export default function Painel({ T, dark, user }) {
         ? Math.round((Date.now() - new Date(ultMov).getTime()) / 86400000)
         : null
 
+      // Entrega agendada (AcaoEntregaHIG → pre_diagnostico.entrega.data) — não
+      // tem alerta próprio ainda, diferente do "Prazo" (que já para de contar
+      // justamente na etapa Entrega). Só olha OS que ainda não foram entregues.
+      const entregaData = os.pre_diagnostico?.entrega?.data || null
+      const diasEntrega = (entregaData && (os.etapa === 'entrega' || os.etapa === 'entregue'))
+        ? Math.round((new Date(entregaData).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+        : null
+
       const base = {
         osNumero: os.numero,
         msg: `OS #${os.numero} · ${os.cliente || os.equipamento || 'Fabricação'}`,
@@ -289,6 +297,11 @@ export default function Painel({ T, dark, user }) {
           sub: 'Vence hoje', prio: 10 })
         continue
       }
+      if (diasEntrega === 0) {
+        list.push({ ...base, nivel: 'atencao', icon: 'ti-truck-delivery',
+          sub: 'Entrega agendada pra hoje', prio: 10 })
+        continue
+      }
       if (os.aguardando_peca && diasParado != null && diasParado >= 3) {
         list.push({ ...base, nivel: 'atencao', icon: 'ti-package-off',
           sub: `Aguardando peça há ${diasParado} dia${diasParado !== 1 ? 's' : ''}`, prio: 11 })
@@ -299,6 +312,11 @@ export default function Painel({ T, dark, user }) {
       if (dias === 1) {
         list.push({ ...base, nivel: 'info', icon: 'ti-clock',
           sub: 'Vence amanhã', prio: 20 })
+        continue
+      }
+      if (diasEntrega === 1) {
+        list.push({ ...base, nivel: 'info', icon: 'ti-truck-delivery',
+          sub: 'Entrega agendada pra amanhã', prio: 20 })
       }
     }
 
@@ -389,30 +407,56 @@ export default function Painel({ T, dark, user }) {
   // Meta vem de `configuracoes` (Módulo 09). Fallback no default do hook.
   const metaMensal = Number(getConfig('meta_mensal', 20000)) || 20000
 
-  // Dias úteis restantes no mês (incluindo hoje), descontando FDS + feriados
-  // bancários. Mesmas funções usadas pelo D+1 da taxa de maquininha — coerência.
-  const diasUteisRestantes = (() => {
+  // Dias úteis restantes no mês (incluindo hoje) e total do mês, descontando
+  // FDS + feriados bancários. Mesmas funções usadas pelo D+1 da maquininha.
+  const { diasUteisRestantes, diasUteisTotalMes } = (() => {
     const ano = hojeData.getFullYear()
     const mes = hojeData.getMonth()
     const ultimoDia = new Date(ano, mes + 1, 0).getDate()
-    let uteis = 0
-    for (let d = hojeData.getDate(); d <= ultimoDia; d++) {
+    let restantes = 0, total = 0
+    for (let d = 1; d <= ultimoDia; d++) {
       const data = new Date(ano, mes, d)
-      if (data.getDay() !== 0 && !ehFeriadoBancario(data)) uteis++
+      if (data.getDay() !== 0 && !ehFeriadoBancario(data)) {
+        total++
+        if (d >= hojeData.getDate()) restantes++
+      }
     }
-    return uteis
+    return { diasUteisRestantes: restantes, diasUteisTotalMes: total }
   })()
   const faltaMeta = Math.max(metaMensal - finAgg.faturamentoMes, 0)
-  const metaDiariaRestante = diasUteisRestantes > 0
+
+  // Meta diária FIXA pro mês inteiro (meta ÷ dias úteis do mês, calculada
+  // uma vez e nunca recalculada) — evita a montanha-russa de recalcular o
+  // alvo do dia conforme o dinheiro entra ou de um dia bom/ruim pra outro.
+  // O progresso real de "estou à frente ou atrás" fica na barra do mês.
+  const metaDiariaFixaMes = diasUteisTotalMes > 0
+    ? Math.round(metaMensal / diasUteisTotalMes)
+    : 0
+  const faltaHoje = Math.max(metaDiariaFixaMes - finAgg.recebidoHoje, 0)
+  const hojeBatida = metaDiariaFixaMes > 0 && finAgg.recebidoHoje >= metaDiariaFixaMes
+  const excedenteHoje = hojeBatida ? finAgg.recebidoHoje - metaDiariaFixaMes : 0
+
+  // Ritmo de recuperação — aviso secundário, só aparece quando faltam
+  // poucos dias úteis (reta final do mês) E o ritmo real necessário já
+  // passou visivelmente do ritmo fixo (ficou pra trás da meta).
+  const ritmoRecuperacao = diasUteisRestantes > 0
     ? Math.round(faltaMeta / diasUteisRestantes)
     : 0
+  const mostrarRitmoRecuperacao = diasUteisRestantes > 0 && diasUteisRestantes <= 10
+    && ritmoRecuperacao > metaDiariaFixaMes * 1.05
 
   const hero = {
     mesLabel: `${MESES_LONGO[hojeData.getMonth()]} ${hojeData.getFullYear()}`,
     atual: finAgg.faturamentoMes,
     meta: metaMensal,
     diasUteisRestantes,
-    metaDiariaRestante,
+    metaDiariaRestante: metaDiariaFixaMes,
+    ritmoRecuperacao,
+    mostrarRitmoRecuperacao,
+    recebidoHoje: finAgg.recebidoHoje,
+    faltaHoje,
+    hojeBatida,
+    excedenteHoje,
     metaBatida: finAgg.faturamentoMes >= metaMensal && metaMensal > 0,
     deltaPct: dados.deltaPct,
     deltaLabel: `vs ${dados.labelMesAnt}`,

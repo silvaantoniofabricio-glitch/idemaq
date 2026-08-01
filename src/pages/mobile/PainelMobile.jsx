@@ -164,6 +164,13 @@ export default function PainelMobile({ T, dark, user }) {
       const diasParado = ultMov
         ? Math.round((Date.now() - new Date(ultMov).getTime()) / 86400000)
         : null
+      // Entrega agendada (AcaoEntregaHIG → pre_diagnostico.entrega.data) — o
+      // "Prazo" já para de contar na etapa Entrega, então precisa de alerta
+      // próprio pra não esquecer da entrega marcada.
+      const entregaData = os.pre_diagnostico?.entrega?.data || null
+      const diasEntrega = (entregaData && (os.etapa === 'entrega' || os.etapa === 'entregue'))
+        ? Math.round((new Date(entregaData).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+        : null
       const base = {
         osNumero: os.numero,
         msg: `OS #${os.numero} · ${os.cliente || os.equipamento || 'Fabricação'}`,
@@ -185,12 +192,19 @@ export default function PainelMobile({ T, dark, user }) {
         list.push({ ...base, nivel: 'atencao', icon: 'alarm',
           sub: 'Vence hoje', prio: 10 }); continue
       }
+      if (diasEntrega === 0) {
+        list.push({ ...base, nivel: 'atencao', icon: 'truck-delivery',
+          sub: 'Entrega agendada pra hoje', prio: 10 }); continue
+      }
       if (os.aguardando_peca && diasParado != null && diasParado >= 3) {
         list.push({ ...base, nivel: 'atencao', icon: 'package-off',
           sub: `Aguardando peça há ${diasParado} dia${diasParado !== 1 ? 's' : ''}`, prio: 11 }); continue
       }
       if (dias === 1) {
-        list.push({ ...base, nivel: 'info', icon: 'clock', sub: 'Vence amanhã', prio: 20 })
+        list.push({ ...base, nivel: 'info', icon: 'clock', sub: 'Vence amanhã', prio: 20 }); continue
+      }
+      if (diasEntrega === 1) {
+        list.push({ ...base, nivel: 'info', icon: 'truck-delivery', sub: 'Entrega agendada pra amanhã', prio: 20 })
       }
     }
     if (estoque.esgotadas > 0) {
