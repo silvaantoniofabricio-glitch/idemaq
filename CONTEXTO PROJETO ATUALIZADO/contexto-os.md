@@ -611,3 +611,11 @@ Toni esclareceu que Fabricação tem 2 origens bem diferentes:
 `NovaOSMobile.jsx` e `_legacy/desktopKanbanModals.jsx` (aprovado pelo Toni mexer em `_legacy/` de novo): formulário de Fabricação ganhou Cliente vendedor + Endereço de coleta + Agendamento da coleta (igual Atendimento). Cliente virou obrigatório pra criar Fabricação pelo modal — antes só pedia Tipo de máquina.
 
 **Bug notado de passagem, não corrigido (fora do escopo)**: `form.equipamentoTipo` ("Tipo de máquina") nunca foi persistido em `os.tipo_equipamento` (coluna real, `sql/71`) em NENHUM tipo de OS (atendimento/visita/fabricação) — só fica na UI local do formulário e se perde ao criar. Os valores do dropdown (`'Máquina de Lavar'` etc) também usam vocabulário diferente do `tipo_equipamento` salvo em outros lugares (`FormEquipamentoEdit` usa ids tipo `'lavadora'`). Precisaria de um mapeamento label→id antes de persistir. Vale abrir como tarefa separada se o Toni notar que o tipo de equipamento nunca aparece salvo.
+
+## 31. ⚠️ Bug corrigido — Fabricação sumia do Kanban ao mover pra Coleta (29/07/2026)
+
+Efeito colateral do §30 (Fabricação ganhou etapa Coleta): `dbEtapaToUI` em `useOS.js` só convertia a etapa do banco `'agendamento'` pra `'agendado'` (id usado nos arrays de etapas) quando `tipo === 'atendimento'`. Fabricação passou a ter etapa `id:'agendado'` também, mas a tradução não incluía o tipo — a OS ficava com etapa computada `'agendamento'`, que não bate com nenhum item de `fabricacao.etapas`, e o card sumia do Kanban (sem coluna pra desenhar).
+
+**Sintoma reportado pelo Toni**: criou OS de Fabricação (situação 2, cliente vendendo máquina), moveu de Agenda pra Coleta, card sumiu.
+
+**Correção**: `if (dbEtapa === 'agendamento' && (tipo === 'atendimento' || tipo === 'fabricacao')) return 'agendado'`. Não precisou de fix de dado — o valor gravado no banco (`'agendamento'`) sempre esteve certo, só a tradução pra tela é que tava errada. OS que já tinham sumido voltam a aparecer sozinhas assim que o deploy for aplicado, sem precisar recriar.
