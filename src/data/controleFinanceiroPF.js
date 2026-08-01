@@ -306,6 +306,7 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '25/06/2026', origem: 'Inter', descricao: 'IOF Inter',                                 valor: 15.31,  categoria: 'IOF' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Juros de mora Inter',                       valor: 1.30,   categoria: 'Tarifa cartao' },
   // --- Inter 3338 — venc. 25/06/2026 ---
+  { data: '25/06/2026', origem: 'Inter', descricao: 'Magalu-Carrefour 23/02 4/7',                valor: 343.62, categoria: 'Compras pessoais' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'BF Box dos Oculos 20/03 3/4',               valor: 118.15, categoria: 'Saude/Otica' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Shopcar 24/04 2/2 (Focus)',                 valor: 40.00,  categoria: 'Veiculo PF' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Auto Pecas Navirai 29/04 2/6 (Focus)',      valor: 279.66, categoria: 'Veiculo PF' },
@@ -466,6 +467,8 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
 // 01/07-29/07 + parcelas continuando) ENTRA aqui — itens PF abaixo. PJ em sql/145.
 // Nubank Emp (venc 23/07) e 100% PJ — lancado em sql/142.
 // PJ excluidos deste array: Anthropic R$113,75 + IOF R$3,98 + Casa Parafusos 1/2 R$50,00 (sql/143).
+// Inter (fatura-inter-2026-07.pdf, venc 25/07, cartao 9106+3338) ENTRA aqui —
+// PJ excluido: Limpeel Casa Carro 25/04 3/3 R$56,20 (sql/147).
 export const DESPESAS_PF_TONI_JULHO_2026 = [
   // --- Nubank PF (cartao ****5876 / ****4378) — venc. 02/07/2026 ---
   { data: '27/05/2026', origem: 'Nubank PF',  descricao: 'Estorno Taxa emissao NuTag',      valor: -10.00, categoria: 'Estorno' },
@@ -557,6 +560,49 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/07 (cartao 5900)',       valor: 139.90, categoria: 'Saude/Academia' },
   { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/06 (cartao 5900)',       valor: 139.90, categoria: 'Saude/Academia' },
   { data: '13/07/2026', origem: 'Elo Grafite', descricao: 'FED SNT Sara Nossa Terra 12/05 3/3 (cartao 5900, evento)', valor: 126.66, categoria: 'Lazer' },
+  // --- Inter 9106/3338 — venc. 25/07/2026 ---
+  { data: '25/07/2026', origem: 'Inter', descricao: 'EBN Canva 03/10 10/12',                     valor: 24.16,  categoria: 'Software/Lazer' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Marsaro 28/02 5/6',                         valor: 63.31,  categoria: 'Vestuario' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Pamela Comercio Cal 28/02 5/6',             valor: 91.66,  categoria: 'Vestuario' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Drogasil 05/05 3/3',                        valor: 102.67, categoria: 'Farmacia' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'ANI Store 09/05 3/3',                       valor: 53.32,  categoria: 'Vestuario' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Farmacia Hiper Popular 09/05 3/3',          valor: 63.22,  categoria: 'Farmacia' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'JIM.COM Cop Centro D 30/05 2/5 (dentista)', valor: 200.00, categoria: 'Saude/Dentista' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'FED SNT Sara Brasil BS 05/06 2/2 (evento)', valor: 75.55,  categoria: 'Lazer' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Natura Pay Shop 05/06 2/3',                 valor: 43.92,  categoria: 'Compras pessoais' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Chapolin 24/06',                            valor: 27.95,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Motiva Pantanal 24/06',                     valor: 8.90,   categoria: 'Pedagio' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Mercado Kraus 25/06',                       valor: 33.96,  categoria: 'Supermercado' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Dogburger e Cafe 27/06',                    valor: 81.44,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Magalu-Magazine Lu 28/06 1/5',               valor: 46.31,  categoria: 'Compras pessoais' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Mercado Kraus 29/06',                       valor: 40.84,  categoria: 'Supermercado' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Stefanello Jr Auto Posto 29/06',            valor: 50.00,  categoria: 'Combustivel' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Mercado Kraus 02/07',                       valor: 91.51,  categoria: 'Supermercado' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Mano Auto Posto 04/07',                     valor: 100.00, categoria: 'Combustivel' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Farmacia Hiper Popular 04/07 1/2',          valor: 71.66,  categoria: 'Farmacia' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'J C Construcoes (cabeleireiro) 04/07',      valor: 36.00,  categoria: 'Cuidados pessoais' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Amigao Navirai 04/07',                      valor: 91.18,  categoria: 'Supermercado' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Magalu-Carrefour 23/02 5/7',                valor: 343.62, categoria: 'Compras pessoais' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'BF Box dos Oculos 20/03 4/4',               valor: 118.15, categoria: 'Saude/Otica' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Auto Pecas Navirai 29/04 3/6 (Focus)',      valor: 279.66, categoria: 'Veiculo PF' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'JIM.COM 5997 ROS 30/04 3/6 (vistoria Civic)', valor: 93.01, categoria: 'Veiculo PF' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Pronto Paulo Cesar AD 04/05 3/10 (Focus)',  valor: 89.00,  categoria: 'Veiculo PF' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Retifica Navirai 04/05 3/10 (Focus)',       valor: 129.50, categoria: 'Veiculo PF' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 22/06',                  valor: 19.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 23/06',                  valor: 19.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 25/06',                  valor: 19.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Parada das Acai 26/06',             valor: 25.00,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Parada das Acai 30/06',             valor: 25.00,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 01/07',                  valor: 21.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 02/07',                  valor: 19.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Dogburger 02/07',                   valor: 42.86,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Restaurante 03/07',                 valor: 16.00,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Universal 03/07',                   valor: 47.97,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 06/07',                  valor: 19.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome R B Repres 07/07',                  valor: 34.80,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 08/07',                  valor: 19.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 09/07',                  valor: 19.90,  categoria: 'Alimentacao' },
+  { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome 13/07',                             valor: 24.90,  categoria: 'Alimentacao' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
