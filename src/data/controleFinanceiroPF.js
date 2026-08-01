@@ -603,6 +603,14 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 08/07',                  valor: 19.90,  categoria: 'Alimentacao' },
   { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 09/07',                  valor: 19.90,  categoria: 'Alimentacao' },
   { data: '25/07/2026', origem: 'Inter', descricao: 'Aiqfome 13/07',                             valor: 24.90,  categoria: 'Alimentacao' },
+  // --- MP Cartao (Visa 5566) — venc. 20/07/2026 ---
+  // Cartao quase 100% PJ (pecas assistencia tecnica) — so os itens PF abaixo. Resto em sql/148.
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'EBazarComBrl 01/09 11/18',              valor: 50.07,  categoria: 'Compras pessoais' },
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'Gaya 08/09 11/12',                      valor: 35.83,  categoria: 'Compras pessoais' },
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'JoyBasico 25/02 5/12',                  valor: 10.97,  categoria: 'Compras pessoais' },
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: '2Produtos 25/02 5/12',                  valor: 12.43,  categoria: 'Compras pessoais' },
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 26/01 6/8',                valor: 27.37,  categoria: 'Compras pessoais' },
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 09/03 5/10',               valor: 44.81,  categoria: 'Compras pessoais' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
