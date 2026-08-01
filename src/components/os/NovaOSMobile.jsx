@@ -77,6 +77,7 @@ export default function NovaOSMobile({
       { id: 'cliente', label: 'Cliente', ok: !!form.cliente },
     ]
     if (tipo === 'fabricacao') return [
+      { id: 'cliente', label: 'Cliente vendedor', ok: !!form.cliente },
       { id: 'tipo', label: 'Tipo de máquina', ok: !!form.equipamentoTipo },
     ]
     if (tipo === 'venda') return [
@@ -511,17 +512,38 @@ function VendaForm({ T, dark, form, setForm, notify }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // FORM: Fabricação
 // ═══════════════════════════════════════════════════════════════════════════
-function FabricacaoForm({ T, dark, form, update }) {
+function FabricacaoForm({ T, dark, form, setForm, update, notify }) {
   const amarelo = corEtapa('yellow', dark)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <AtlPanel T={T} dark={dark} title="Fabricação pro estoque" accent={amarelo}>
+      <AtlPanel T={T} dark={dark} title="Compra de máquina pro estoque" accent={amarelo}>
         <div style={{ padding: '10px 14px', fontSize: 12.5, color: T.textMuted, lineHeight: 1.5 }}>
-          Os itens usados saem do estoque ao concluir, e a máquina entra como produto pronto.
+          Pro cliente que liga querendo vender a máquina. Ela passa pelo fluxo
+          completo (Coleta → Diagnóstico → Orçamento → Conserto → Teste) e vira
+          produto pronto no estoque ao concluir.
         </div>
       </AtlPanel>
 
-      <AtlPanel T={T} dark={dark} title="Máquina a fabricar">
+      <ClienteBlock
+        T={T} dark={dark}
+        form={form} setForm={setForm}
+        notify={notify}
+        rotulo="Cliente vendedor"
+      />
+
+      {form.cliente && form.enderecosDisponiveis.length > 0 && (
+        <EnderecoBlock
+          T={T} dark={dark}
+          rotulo="Endereço de coleta"
+          enderecos={form.enderecosDisponiveis}
+          enderecoIndex={form.enderecoIndex}
+          onSelect={(idx, end) => setForm(f => ({
+            ...f, enderecoIndex: idx, enderecoSelecionado: end, endereco: end,
+          }))}
+        />
+      )}
+
+      <AtlPanel T={T} dark={dark} title="Máquina a comprar">
         <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Select T={T} dark={dark}
             label="Tipo de máquina *"
@@ -541,7 +563,7 @@ function FabricacaoForm({ T, dark, form, update }) {
           />
 
           <Input T={T} dark={dark}
-            label="Custo inicial da máquina base R$ (opcional)"
+            label="Valor pago na máquina R$ (opcional)"
             size="lg"
             type="number"
             inputMode="decimal"
@@ -551,6 +573,8 @@ function FabricacaoForm({ T, dark, form, update }) {
           />
         </div>
       </AtlPanel>
+
+      <AgendamentoBlock T={T} dark={dark} form={form} update={update} rotulo="Coleta" />
     </div>
   )
 }

@@ -51,14 +51,28 @@ export const TIPOS_OS = {
     ],
     lateral: { id:'recusado', label:'Recusado', curto:'Recusado', cor:'red' }
   },
+  // Fabricação tem 2 origens:
+  //  1. Conversão de OS recusada em que o Toni negocia comprar a máquina do
+  //     cliente (AcaoRecusada.jsx) — máquina já foi diagnosticada/orçada
+  //     como atendimento, então a OS derivada nasce direto em 'oficina'
+  //     (cliente_id: null), pulando Agenda/Coleta/Diagnóstico/Orçamento.
+  //  2. Cliente liga já com intenção de vender a máquina — Toni negocia um
+  //     valor, precisa ir buscar, e ela passa pelo fluxo completo (esse é
+  //     o caminho normal do botão "Nova OS" pra Fabricação).
+  // O fluxo cobre as 2: quem nasce em 'oficina' pula as etapas de trás sem
+  // problema (podeMoverOS só valida a posição relativa, não exige visitar
+  // etapa anterior).
   fabricacao: {
     label: 'Fabricação', icon: 'ti-building-factory-2', cor: 'yellow',
-    descricao: 'Máquina nova para o estoque',
+    descricao: 'Compra de máquina pro estoque',
     etapas: [
-      { id:'diagnostico',  label:'Diagnóstico',     curto:'Diagnóstico',  cor:'yellow', prazo24h:true },
-      { id:'oficina',      label:'Conserto',        curto:'Conserto',     cor:'blueLight', dual:true },
-      { id:'teste_final',  label:'Teste',           curto:'Teste',        cor:'blue' },
-      { id:'concluido',    label:'Concluído',       curto:'Concluído',    cor:'green', adminOnly:true },
+      { id:'ag_agendamento', label:'Agenda',        curto:'Agenda',       cor:'neutro' },
+      { id:'agendado',       label:'Coleta',        curto:'Coleta',       cor:'neutro' },
+      { id:'diagnostico',    label:'Diagnóstico',   curto:'Diagnóstico',  cor:'yellow', prazo24h:true },
+      { id:'orcamento',      label:'Orçamento',     curto:'Orçamento',    cor:'red',    prazo24h:true },
+      { id:'oficina',        label:'Conserto',      curto:'Conserto',     cor:'blueLight', dual:true },
+      { id:'teste_final',    label:'Teste',         curto:'Teste',        cor:'blue' },
+      { id:'concluido',      label:'Concluído',     curto:'Concluído',    cor:'green', adminOnly:true },
     ],
   },
   venda: {
@@ -92,10 +106,10 @@ export const TIPOS_OS = {
 
 // Visão "Todos" — etapas unificadas dos 3 tipos via match
 export const ETAPAS_TODOS = [
-  { id:'ag_agendamento', label:'Agenda',                  curto:'Agenda',       cor:'neutro',    match:{ atendimento:'ag_agendamento', visita:'ag_agendamento' } },
-  { id:'agendamento',    label:'Coleta',                  curto:'Coleta',       cor:'neutro',    match:{ atendimento:'agendado' } },
+  { id:'ag_agendamento', label:'Agenda',                  curto:'Agenda',       cor:'neutro',    match:{ atendimento:'ag_agendamento', fabricacao:'ag_agendamento', visita:'ag_agendamento' } },
+  { id:'agendamento',    label:'Coleta',                  curto:'Coleta',       cor:'neutro',    match:{ atendimento:'agendado', fabricacao:'agendado' } },
   { id:'diagnostico',    label:'Diagnóstico',             curto:'Diagnóstico',  cor:'yellow', prazo24h:true, match:{ atendimento:'diagnostico', fabricacao:'diagnostico', visita:'diagnostico' } },
-  { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match:{ atendimento:'orcamento', visita:'orcamento', venda:'orcamento' } },
+  { id:'orcamento',      label:'Orçamento',               curto:'Orçamento',    cor:'red',    prazo24h:true, match:{ atendimento:'orcamento', fabricacao:'orcamento', visita:'orcamento', venda:'orcamento' } },
   { id:'oficina',        label:'Conserto',                curto:'Conserto',     cor:'blueLight', dual:true, match:{ atendimento:'oficina', fabricacao:'oficina', visita:'oficina' } },
   { id:'teste_final',    label:'Teste',                   curto:'Teste',        cor:'blue',  match:{ atendimento:'teste_final', fabricacao:'teste_final', visita:'teste_final' } },
   { id:'entrega',        label:'Entrega',                 curto:'Entrega',      cor:'blue',  match:{ atendimento:'entrega', venda:'entregue' } },
