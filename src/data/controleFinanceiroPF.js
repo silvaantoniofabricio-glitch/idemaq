@@ -484,7 +484,6 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '08/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome',                          valor:  40.00, categoria: 'Alimentacao' },
   { data: '09/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   { data: '10/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
-  { data: '10/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
   { data: '11/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome',                          valor:  27.86, categoria: 'Alimentacao' },
   { data: '11/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   { data: '12/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
