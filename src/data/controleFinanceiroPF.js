@@ -638,6 +638,29 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '12/07/2026', origem: 'Nubank PF',      descricao: 'Dizimo jul/2026 (PIX)',        valor: 320.00, categoria: 'Dizimo' },
 ]
 
+// Despesas PF julho/2026 — RAFA (esposa)
+// Fonte: planilha manual (Banco do Brasil, Nubank, Caixa) enviada por Toni.
+// "Pagamento Carro BV" (05/07, R$1.182,12) NAO entra aqui — carro e da empresa,
+// entra como emprestimo PJ (ver sql correspondente).
+export const DESPESAS_PF_RAFA_JULHO_2026 = [
+  { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Telefone Vivo 05/07',       valor: 39.94,   categoria: 'Diverso' },
+  { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Pix para Pra. Sarah 05/07', valor: 48.00,   categoria: 'PIX terceiros' },
+  { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Pos 05/07',       valor: 85.78,   categoria: 'Educacao' },
+  { data: '10/07/2026', origem: 'Banco do Brasil', descricao: 'Fies 10/07',                valor: 106.41,  categoria: 'Educacao' },
+  { data: '05/07/2026', origem: 'Nubank',          descricao: 'Dizimo jul/2026',            valor: 600.00,  categoria: 'Dizimo' },
+  { data: '07/07/2026', origem: 'Nubank',          descricao: 'C&A 07/07',                 valor: 123.20,  categoria: 'Vestuario' },
+  { data: '07/07/2026', origem: 'Nubank',          descricao: 'Kraus 07/07',                valor: 52.16,   categoria: 'Supermercado' },
+  { data: '18/07/2026', origem: 'Nubank',          descricao: 'Brunella 18/07',             valor: 11.88,   categoria: 'Compras pessoais' },
+  { data: '18/07/2026', origem: 'Nubank',          descricao: 'Guarapa 18/07',              valor: 10.00,   categoria: 'Alimentacao' },
+  { data: '22/07/2026', origem: 'Nubank',          descricao: 'Pix enviado Andreina 22/07', valor: 17.00,   categoria: 'PIX terceiros' },
+  { data: '26/07/2026', origem: 'Nubank',          descricao: 'Comercial Maringa 26/07',    valor: 50.88,   categoria: 'Supermercado' },
+  { data: '27/07/2026', origem: 'Nubank',          descricao: 'Bolo Aniversario Pai 27/07', valor: 60.00,   categoria: 'Alimentacao' },
+  { data: '07/07/2026', origem: 'Caixa',           descricao: 'Casa (parcela) 07/07',       valor: 691.22,  categoria: 'Financiamento' },
+  { data: '31/07/2026', origem: 'Caixa',           descricao: 'Drogasil 31/07',             valor: 20.00,   categoria: 'Farmacia' },
+  { data: '31/07/2026', origem: 'Caixa',           descricao: 'Churros 31/07',              valor: 9.99,    categoria: 'Alimentacao' },
+  { data: '31/07/2026', origem: 'Caixa',           descricao: 'Espetinho 31/07',            valor: 24.00,   categoria: 'Alimentacao' },
+]
+
 // Marca a pessoa em cada item (pra agregacao no total)
 const marcarPessoa = (lista, pessoa) => lista.map(d => ({ ...d, pessoa }))
 
@@ -646,6 +669,7 @@ const RAFA_MAIO   = marcarPessoa(DESPESAS_PF_RAFA_MAIO_2026,    'rafa')
 const TONI_JUNHO  = marcarPessoa(DESPESAS_PF_TONI_JUNHO_2026,   'toni')
 const RAFA_JUNHO  = marcarPessoa(DESPESAS_PF_RAFA_JUNHO_2026,   'rafa')
 const TONI_JULHO  = marcarPessoa(DESPESAS_PF_TONI_JULHO_2026,   'toni')
+const RAFA_JULHO  = marcarPessoa(DESPESAS_PF_RAFA_JULHO_2026,   'rafa')
 
 // Indice: mes -> pessoa -> lista
 // 'total' = uniao Toni + Rafa (NAO descontamos transferencias Rafa->Toni aqui,
@@ -664,8 +688,8 @@ export const DESPESAS_PF_POR_MES = {
   },
   '2026-07': {
     toni:  TONI_JULHO,
-    rafa:  [],
-    total: [...TONI_JULHO],
+    rafa:  RAFA_JULHO,
+    total: [...TONI_JULHO, ...RAFA_JULHO],
   },
 }
 
