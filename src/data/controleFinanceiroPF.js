@@ -635,6 +635,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'Encargos 10/07',               valor: 19.50, categoria: 'Tarifa banco' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (a)',  valor: 21.90, categoria: 'Alimentacao' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (b)',  valor: 16.90, categoria: 'Alimentacao' },
+  { data: '12/07/2026', origem: 'Nubank PF',      descricao: 'Dizimo jul/2026 (PIX)',        valor: 320.00, categoria: 'Dizimo' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
