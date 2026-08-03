@@ -629,6 +629,12 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 4/6',   valor: 121.75, categoria: 'Servicos' },
   // --- Financiamento (Civic, Rafa) — extrato Cresol ---
   { data: '16/07/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 16/07', valor: 1526.48, categoria: 'Financiamento' },
+  // --- Itens avulsos reportados por Toni (sem documento fonte, data 10/07 usada como referencia) ---
+  { data: '10/07/2026', origem: 'Nubank PF',      descricao: 'Churrasco 10/07',              valor: 52.00, categoria: 'Alimentacao' },
+  { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'IOF 10/07',                    valor: 16.52, categoria: 'IOF' },
+  { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'Encargos 10/07',               valor: 19.50, categoria: 'Tarifa banco' },
+  { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (a)',  valor: 21.90, categoria: 'Alimentacao' },
+  { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (b)',  valor: 16.90, categoria: 'Alimentacao' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
