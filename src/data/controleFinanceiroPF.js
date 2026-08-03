@@ -306,7 +306,6 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '25/06/2026', origem: 'Inter', descricao: 'IOF Inter',                                 valor: 15.31,  categoria: 'IOF' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Juros de mora Inter',                       valor: 1.30,   categoria: 'Tarifa cartao' },
   // --- Inter 3338 — venc. 25/06/2026 ---
-  { data: '25/06/2026', origem: 'Inter', descricao: 'Magalu-Carrefour 23/02 4/7',                valor: 343.62, categoria: 'Compras pessoais' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'BF Box dos Oculos 20/03 3/4',               valor: 118.15, categoria: 'Saude/Otica' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Shopcar 24/04 2/2 (Focus)',                 valor: 40.00,  categoria: 'Veiculo PF' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Auto Pecas Navirai 29/04 2/6 (Focus)',      valor: 279.66, categoria: 'Veiculo PF' },
@@ -585,7 +584,6 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '25/07/2026', origem: 'Inter', descricao: 'Farmacia Hiper Popular 04/07 1/2',          valor: 71.66,  categoria: 'Farmacia' },
   { data: '25/07/2026', origem: 'Inter', descricao: 'J C Construcoes (cabeleireiro) 04/07',      valor: 36.00,  categoria: 'Cuidados pessoais' },
   { data: '25/07/2026', origem: 'Inter', descricao: 'Amigao Navirai 04/07',                      valor: 91.18,  categoria: 'Supermercado' },
-  { data: '25/07/2026', origem: 'Inter', descricao: 'Magalu-Carrefour 23/02 5/7',                valor: 343.62, categoria: 'Compras pessoais' },
   { data: '25/07/2026', origem: 'Inter', descricao: 'BF Box dos Oculos 20/03 4/4',               valor: 118.15, categoria: 'Saude/Otica' },
   { data: '25/07/2026', origem: 'Inter', descricao: 'Auto Pecas Navirai 29/04 3/6 (Focus)',      valor: 279.66, categoria: 'Veiculo PF' },
   { data: '25/07/2026', origem: 'Inter', descricao: 'JIM.COM 5997 ROS 30/04 3/6 (vistoria Civic)', valor: 93.01, categoria: 'Veiculo PF' },
