@@ -365,10 +365,7 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML Barbearia 02/03 4/4',      valor: 13.68,  categoria: 'Cuidados pessoais' },
   { data: '22/06/2026', origem: 'MP Cartao', descricao: 'ML MercadoLivre 09/03 4/10',  valor: 44.81,  categoria: 'Compras pessoais' },
   // --- Cresol Mastercard — fatura periodo 01/05-31/05 (fotos "CRESOL FOTOS DA FATURA") ---
-  // Cartao PJ do Cresol, quase todo PJ. PJ em sql/152.
-  { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 25/05',          valor: 200.00, categoria: 'Combustivel' },
-  { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 15/05',          valor: 200.00, categoria: 'Combustivel' },
-  { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 04/05',          valor: 200.00, categoria: 'Combustivel' },
+  // Cartao PJ do Cresol, quase todo PJ. PJ em sql/152 + sql/161 (Mano Auto Posto).
   { data: '20/06/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 2/6',   valor: 121.75, categoria: 'Servicos' },
   // Igreja
   { data: '07/06/2026', origem: 'Cresol', descricao: 'Dizimo jun/2026',   valor: 200.00, categoria: 'Dizimo' },
@@ -619,10 +616,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/07/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 09/03 5/10',               valor: 44.81,  categoria: 'Compras pessoais' },
   { data: '20/07/2026', origem: 'MP Cartao', descricao: 'Tenis New Balance 480 08/07 1/8',        valor: 43.49,  categoria: 'Vestuario' },
   // --- Cresol Mastercard — fatura periodo 01/06-30/06 ---
-  // Cartao PJ do Cresol, quase todo PJ (pecas/materiais). PJ em sql/151.
-  { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 22/06',          valor: 200.00, categoria: 'Combustivel' },
-  { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 12/06',          valor: 200.00, categoria: 'Combustivel' },
-  { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Mano Auto Posto 03/06',          valor: 200.00, categoria: 'Combustivel' },
+  // Cartao PJ do Cresol, quase todo PJ (pecas/materiais). PJ em sql/151 + sql/161 (Mano Auto Posto).
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Supermercado Chama 18/06 (a)',   valor: 12.99,  categoria: 'Supermercado' },
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Supermercado Chama 18/06 (b)',   valor: 11.51,  categoria: 'Supermercado' },
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Supermercado Chama 11/06',       valor: 24.01,  categoria: 'Supermercado' },
