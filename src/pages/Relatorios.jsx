@@ -8,6 +8,7 @@
 // Visível só pro dono — rota `/relatorios` envolvida em <AdminOnly> no App.jsx.
 
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { useIsMobile } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import { CATEGORIA_POR_ID } from '../utils/categoriasPeca'
@@ -116,6 +117,7 @@ function StatBadge({ v, label, color }) {
 
 // === Página ===
 export default function Relatorios({ T, dark }) {
+  const isMobile = useIsMobile()
   const notify = useToast()
   const [relAtivo, setRelAtivo] = useState('finmensal')
   const [periodo, setPeriodo] = useState({ id: 'mes' })
@@ -145,56 +147,148 @@ export default function Relatorios({ T, dark }) {
       minHeight: 0, overflow: 'hidden', background: T.bg,
     }}>
 
-      <ModuleHeader
-        T={T} dark={dark}
-        icon="ti-chart-arcs"
-        title="Relatórios"
-        stats={[
-          { v: 8, label: 'relatórios', color: azul },
-          { v: 2, label: 'com IA', color: azulClaro },
-        ]}
-        tabs={RELATORIOS.map(r => ({ id: r.id, label: r.tab, icon: r.icon, ia: r.ia }))}
-        activeTab={relAtivo}
-        onTabChange={setRelAtivo}
-        secondaryActions={[{ label: 'Exportar', icon: 'ti-file-export', onClick: () => placeholder('Export PDF/Excel em breve') }]}
-        filterSlot={
-          <div ref={periodoRef} style={{ position: 'relative' }}>
-            <button onClick={() => setPeriodoAberto(o => !o)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '0 8px', height: 22, borderRadius: 4,
-                border: `1px solid ${T.border}`,
-                background: dark ? 'rgba(255,255,255,0.04)' : T.card,
-                color: T.textSecondary,
-                fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-                minWidth: 130,
-              }}>
-              <i className="ti ti-calendar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
-              <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
-              <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 10, color: T.textMuted }} aria-hidden="true" />
-            </button>
-            {periodoAberto && (
-              <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo}
-                onClose={() => setPeriodoAberto(false)} />
-            )}
-          </div>
-        }
-      />
+      {isMobile ? (
+        <HeaderMobileRelatorios
+          T={T} dark={dark}
+          relAtivo={relAtivo} setRelAtivo={setRelAtivo}
+          periodo={periodo} setPeriodo={setPeriodo}
+        />
+      ) : (
+        <ModuleHeader
+          T={T} dark={dark}
+          icon="ti-chart-arcs"
+          title="Relatórios"
+          stats={[
+            { v: 8, label: 'relatórios', color: azul },
+            { v: 2, label: 'com IA', color: azulClaro },
+          ]}
+          tabs={RELATORIOS.map(r => ({ id: r.id, label: r.tab, icon: r.icon, ia: r.ia }))}
+          activeTab={relAtivo}
+          onTabChange={setRelAtivo}
+          secondaryActions={[{ label: 'Exportar', icon: 'ti-file-export', onClick: () => placeholder('Export PDF/Excel em breve') }]}
+          filterSlot={
+            <div ref={periodoRef} style={{ position: 'relative' }}>
+              <button onClick={() => setPeriodoAberto(o => !o)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '0 8px', height: 22, borderRadius: 4,
+                  border: `1px solid ${T.border}`,
+                  background: dark ? 'rgba(255,255,255,0.04)' : T.card,
+                  color: T.textSecondary,
+                  fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                  minWidth: 130,
+                }}>
+                <i className="ti ti-calendar" style={{ fontSize: 12, color: azul }} aria-hidden="true" />
+                <span style={{ flex: 1, textAlign: 'left' }}>{labelPeriodo(periodo)}</span>
+                <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 10, color: T.textMuted }} aria-hidden="true" />
+              </button>
+              {periodoAberto && (
+                <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo}
+                  onClose={() => setPeriodoAberto(false)} />
+              )}
+            </div>
+          }
+        />
+      )}
 
       {/* ══════════════════════════════════════════════════
           CONTENT
       ══════════════════════════════════════════════════ */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-        <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ padding: isMobile ? '14px 14px 28px' : '16px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {relAtivo === 'finmensal'    && <RelatorioFinanceiroMensal T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'geral'        && <RelatorioGeral        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'operacional'  && <RelatorioOperacional  T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
-          {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
+          {relAtivo === 'estoque'      && <RelatorioEstoque      T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} isMobile={isMobile} />}
           {relAtivo === 'vendas'       && <RelatorioVendas       T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'financeiro'   && <RelatorioFinanceiro   T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'funcionarios' && <RelatorioFuncionarios T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
           {relAtivo === 'ponto'        && <RelatorioPonto        T={T} dark={dark} iniIso={iniIso} fimIso={fimIso} />}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Header mobile — icone+titulo, depois abas em rolagem horizontal e
+// período embaixo (evita estourar a largura da tela com 8 abas + filtros).
+function HeaderMobileRelatorios({ T, dark, relAtivo, setRelAtivo, periodo, setPeriodo }) {
+  const azul = corEtapa('blue', dark)
+  const azulBg = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
+  const [periodoAberto, setPeriodoAberto] = useState(false)
+  const periodoRef = useRef(null)
+
+  useEffect(() => {
+    function handler(e) {
+      if (periodoRef.current && !periodoRef.current.contains(e.target)) setPeriodoAberto(false)
+    }
+    if (periodoAberto) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [periodoAberto])
+
+  return (
+    <div style={{ borderBottom: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
+      <div style={{ padding: '12px 14px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 6,
+          background: azulBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <i className="ti ti-chart-arcs" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: T.textPrimary, letterSpacing: '-0.01em' }}>
+            Relatórios
+          </div>
+          <div style={{ fontSize: 11.5, color: T.textMuted }}>8 relatórios · 2 com IA</div>
+        </div>
+        <div ref={periodoRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button onClick={() => setPeriodoAberto(o => !o)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '0 10px', height: 32, borderRadius: 6,
+              border: `1px solid ${T.border}`,
+              background: dark ? 'rgba(255,255,255,0.04)' : T.card,
+              color: T.textSecondary,
+              fontSize: 11.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            <i className="ti ti-calendar" style={{ fontSize: 13, color: azul }} aria-hidden="true" />
+            {labelPeriodo(periodo)}
+            <i className={`ti ${periodoAberto ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: 11, color: T.textMuted }} aria-hidden="true" />
+          </button>
+          {periodoAberto && (
+            <DropdownPeriodo T={T} dark={dark} periodo={periodo} setPeriodo={setPeriodo}
+              onClose={() => setPeriodoAberto(false)} />
+          )}
+        </div>
+      </div>
+
+      {/* Abas — rolagem horizontal pras 8 opções */}
+      <div style={{
+        display: 'flex', gap: 4,
+        padding: '0 14px 8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+      }}>
+        {RELATORIOS.map(r => {
+          const ativo = r.id === relAtivo
+          return (
+            <button key={r.id} onClick={() => setRelAtivo(r.id)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                padding: '0 12px', height: 34, borderRadius: 6,
+                border: `1px solid ${ativo ? azul : T.border}`,
+                background: ativo ? azulBg : 'transparent',
+                color: ativo ? azul : T.textMuted,
+                fontSize: 12.5, fontWeight: ativo ? 600 : 500,
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              {r.ia && <i className="ti ti-sparkles" style={{ fontSize: 11 }} aria-hidden="true" />}
+              <i className={`ti ${r.icon}`} style={{ fontSize: 13 }} aria-hidden="true" />
+              {r.tab}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -481,7 +575,7 @@ function RelatorioOperacional({ T, dark, iniIso, fimIso }) {
 // =============================================================================
 // ESTOQUE — dados reais
 // =============================================================================
-function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
+function RelatorioEstoque({ T, dark, iniIso, fimIso, isMobile }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
@@ -525,49 +619,82 @@ function RelatorioEstoque({ T, dark, iniIso, fimIso }) {
               Sugestão de reposição
             </SecHeader>
           </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1.6fr 70px 70px 90px 110px',
-            gap: 10, padding: '8px 16px',
-            borderTop: `1px solid ${T.border}`,
-            background: T.cardAlt,
-            fontSize: 10.5, color: T.textMuted, fontWeight: 600,
-            textTransform: 'uppercase', letterSpacing: '0.04em',
-          }}>
-            <div>Item</div>
-            <div style={{ textAlign: 'right' }}>Atual</div>
-            <div style={{ textAlign: 'right' }}>Mínimo</div>
-            <div style={{ textAlign: 'right' }}>Comprar</div>
-            <div style={{ textAlign: 'right' }}>Custo est.</div>
-          </div>
-          {data.sugestaoReposicao.map((r, idx) => (
-            <div key={idx} style={{
-              display: 'grid',
-              gridTemplateColumns: '1.6fr 70px 70px 90px 110px',
-              gap: 10, alignItems: 'center',
-              padding: '10px 16px',
-              borderTop: `1px solid ${T.border}`,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: corHero(dark), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {r.nome}
-                </span>
-                {r.zerado && <Badge variant="vermelho" dark={dark} sm>Zerado</Badge>}
+          {isMobile ? (
+            data.sugestaoReposicao.map((r, idx) => (
+              <div key={idx} style={{
+                padding: '10px 16px',
+                borderTop: `1px solid ${T.border}`,
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: corHero(dark), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    {r.nome}
+                  </span>
+                  {r.zerado && <Badge variant="vermelho" dark={dark} sm>Zerado</Badge>}
+                </div>
+                <div style={{ display: 'flex', gap: 14, fontSize: 11.5, flexWrap: 'wrap' }}>
+                  <span style={{ color: T.textMuted }}>
+                    Atual <b style={{ color: r.zerado ? vermelho : amarelo, fontVariantNumeric: 'tabular-nums' }}>{r.atual}</b>
+                  </span>
+                  <span style={{ color: T.textMuted }}>
+                    Mínimo <b style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{r.minima}</b>
+                  </span>
+                  <span style={{ color: T.textMuted }}>
+                    Comprar <b style={{ color: azul, fontVariantNumeric: 'tabular-nums' }}>+{r.sugestaoQtd}</b>
+                  </span>
+                  <span style={{ color: T.textMuted, marginLeft: 'auto' }}>
+                    <b style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(r.custoEstimado)}</b>
+                  </span>
+                </div>
               </div>
-              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: r.zerado ? vermelho : amarelo, fontWeight: 700 }}>
-                {r.atual}
+            ))
+          ) : (
+            <>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1.6fr 70px 70px 90px 110px',
+                gap: 10, padding: '8px 16px',
+                borderTop: `1px solid ${T.border}`,
+                background: T.cardAlt,
+                fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.04em',
+              }}>
+                <div>Item</div>
+                <div style={{ textAlign: 'right' }}>Atual</div>
+                <div style={{ textAlign: 'right' }}>Mínimo</div>
+                <div style={{ textAlign: 'right' }}>Comprar</div>
+                <div style={{ textAlign: 'right' }}>Custo est.</div>
               </div>
-              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: T.textMuted }}>
-                {r.minima}
-              </div>
-              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: azul, fontWeight: 700 }}>
-                +{r.sugestaoQtd}
-              </div>
-              <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: T.textSecondary }}>
-                {fmtBRL(r.custoEstimado)}
-              </div>
-            </div>
-          ))}
+              {data.sugestaoReposicao.map((r, idx) => (
+                <div key={idx} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.6fr 70px 70px 90px 110px',
+                  gap: 10, alignItems: 'center',
+                  padding: '10px 16px',
+                  borderTop: `1px solid ${T.border}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: corHero(dark), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.nome}
+                    </span>
+                    {r.zerado && <Badge variant="vermelho" dark={dark} sm>Zerado</Badge>}
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: r.zerado ? vermelho : amarelo, fontWeight: 700 }}>
+                    {r.atual}
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: T.textMuted }}>
+                    {r.minima}
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: azul, fontWeight: 700 }}>
+                    +{r.sugestaoQtd}
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 12.5, fontVariantNumeric: 'tabular-nums', color: T.textSecondary }}>
+                    {fmtBRL(r.custoEstimado)}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </Card>
       )}
 
@@ -932,6 +1059,11 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
         <AtlKpi T={T} dark={dark} icon="ti-shield-check" cor={totalGarantias > 0 ? vermelho : verde} label="OS em garantia" valor={totalGarantias} />
       </div>
 
+      {/* Pontos por etapa — agregado da equipe toda, não por pessoa */}
+      {pontosData?.porServico?.length > 0 && (
+        <PontosPorEtapa T={T} dark={dark} porServico={pontosData.porServico} totalPontos={totalPontos} />
+      )}
+
       {/* Cards por pessoa */}
       {semDados ? (
         <AtlPanel T={T} dark={dark}>
@@ -971,6 +1103,62 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
           ? 'Sem atuação no período — a análise IA habilita quando houver movimentações em os_historico.'
           : 'A IA vai destacar pontos fortes, gargalos por pessoa e sugestões de treinamento — baseado nos números acima.'} />
     </div>
+  )
+}
+
+// ─── Pontos por etapa — agregado da equipe toda no período: quanto cada
+// TIPO de serviço rendeu no total e quantos blocos concluídos geraram isso
+// (08/07/2026, a pedido do Toni). Complementa os cards por pessoa, que só
+// mostram a divisão individual. ────────────────────────────────────────────
+function PontosPorEtapa({ T, dark, porServico, totalPontos }) {
+  const azul = corEtapa('blue', dark)
+  const amarelo = corEtapa('yellow', dark)
+  const maxPontos = Math.max(...porServico.map(s => s.pontos), 1)
+  return (
+    <AtlPanel T={T} dark={dark}
+      title="Pontos por etapa"
+      count={porServico.length}
+      footer={`${totalPontos} pts no total, em ${porServico.reduce((s, x) => s + x.n, 0)} etapas concluídas.`}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1.3fr 90px 90px 1fr',
+        gap: 10, padding: '8px 14px',
+        borderBottom: `1px solid ${T.border}`,
+        background: T.cardAlt,
+        fontSize: 10, color: T.textMuted, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '.04em',
+      }}>
+        <div>Etapa</div>
+        <div style={{ textAlign: 'right' }}>Concluídas</div>
+        <div style={{ textAlign: 'right' }}>Pontos</div>
+        <div />
+      </div>
+      {porServico.map((s, i) => (
+        <div key={s.servico} style={{
+          display: 'grid',
+          gridTemplateColumns: '1.3fr 90px 90px 1fr',
+          gap: 10, alignItems: 'center',
+          padding: '9px 14px',
+          borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
+        }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: T.textPrimary }}>{s.label}</span>
+          <span style={{
+            textAlign: 'right', fontSize: 12.5, color: T.textSecondary,
+            fontVariantNumeric: 'tabular-nums',
+          }}>{s.n}</span>
+          <span style={{
+            textAlign: 'right', fontSize: 13, fontWeight: 700, color: amarelo,
+            fontVariantNumeric: 'tabular-nums',
+          }}>{s.pontos}</span>
+          <div style={{ height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
+            <div style={{
+              width: `${Math.max(2, Math.round((s.pontos / maxPontos) * 100))}%`,
+              height: '100%', background: azul, borderRadius: 3,
+            }} />
+          </div>
+        </div>
+      ))}
+    </AtlPanel>
   )
 }
 

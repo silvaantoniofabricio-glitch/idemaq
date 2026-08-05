@@ -619,3 +619,9 @@ Efeito colateral do §30 (Fabricação ganhou etapa Coleta): `dbEtapaToUI` em `u
 **Sintoma reportado pelo Toni**: criou OS de Fabricação (situação 2, cliente vendendo máquina), moveu de Agenda pra Coleta, card sumiu.
 
 **Correção**: `if (dbEtapa === 'agendamento' && (tipo === 'atendimento' || tipo === 'fabricacao')) return 'agendado'`. Não precisou de fix de dado — o valor gravado no banco (`'agendamento'`) sempre esteve certo, só a tradução pra tela é que tava errada. OS que já tinham sumido voltam a aparecer sozinhas assim que o deploy for aplicado, sem precisar recriar.
+
+## 27. "Pontos por etapa" agregado — Relatórios/Funcionários (08/07/2026)
+
+`usePontuacao.js` ganhou `data.porServico` — array `[{ servico, label, pontos, n }]` agregando a EQUIPE TODA (não por pessoa) por tipo de serviço, ordenado por pontos desc. `n` = quantidade de blocos concluídos daquele tipo (cada peça de manutenção conta 1, etc). Inclui o "Ajuste · gap lançamento" também.
+
+Nova seção `PontosPorEtapa` em `Relatorios.jsx`, entre os KPIs e os cards por pessoa — tabela com barra proporcional (Etapa · Concluídas · Pontos), rodapé com total. Testado a lógica de agregação isolada antes de subir.

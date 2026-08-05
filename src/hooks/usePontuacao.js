@@ -15,10 +15,14 @@
 // Uso: const { data, loading, error } = usePontuacao({ iniIso, fimIso })
 //   data.equipe: [{ funcionario_id, apelido, total, porServico, entries }]
 //   data.totalPontos: soma geral do período
+//   data.porServico: [{ servico, label, pontos, n }] — agregado da equipe
+//     toda (não por pessoa), pra ver quanto cada TIPO de etapa rendeu no
+//     total e quantas conclusões geraram isso. `n` = quantidade de blocos
+//     concluídos daquele serviço (cada peça de manutenção conta 1, etc).
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { calcularPontosOS } from '../utils/pontuacao'
+import { calcularPontosOS, LABEL_SERVICO } from '../utils/pontuacao'
 
 // ── Ajuste manual ÚNICO — gap de lançamento (08/07/2026) ──────────────────
 // 14 OS tiveram trabalho real entre 01-05/07/2026, ANTES do sistema de
@@ -75,6 +79,7 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
       })
 
       const porFunc = {}
+      const porServicoAgg = {} // { [servico]: { pontos, n } } — equipe toda
       for (const e of filtradas) {
         const chave = e.funcionario_id || e.apelido
         if (!porFunc[chave]) {
@@ -89,6 +94,10 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
         porFunc[chave].total += e.pontos
         porFunc[chave].porServico[e.servico] = (porFunc[chave].porServico[e.servico] || 0) + e.pontos
         porFunc[chave].entries.push(e)
+
+        if (!porServicoAgg[e.servico]) porServicoAgg[e.servico] = { pontos: 0, n: 0 }
+        porServicoAgg[e.servico].pontos += e.pontos
+        porServicoAgg[e.servico].n += 1
       }
 
       // Bônus do gap de lançamento — só quando o período pedido cobre a
@@ -113,13 +122,20 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
             porFunc[f.id].total += bonusPorPessoa
             porFunc[f.id].porServico['ajuste_gap'] = (porFunc[f.id].porServico['ajuste_gap'] || 0) + bonusPorPessoa
           }
+          if (!porServicoAgg['ajuste_gap']) porServicoAgg['ajuste_gap'] = { pontos: 0, n: 0 }
+          porServicoAgg['ajuste_gap'].pontos += bonusPorPessoa * lista.length
+          porServicoAgg['ajuste_gap'].n += lista.length
         }
       }
+
+      const porServico = Object.entries(porServicoAgg)
+        .map(([servico, v]) => ({ servico, label: LABEL_SERVICO[servico] || servico, pontos: v.pontos, n: v.n }))
+        .sort((a, b) => b.pontos - a.pontos)
 
       const equipe = Object.values(porFunc).sort((a, b) => b.total - a.total)
       const totalPontos = equipe.reduce((s, f) => s + f.total, 0)
 
-      if (!cancel) { setData({ equipe, totalPontos }); setLoading(false) }
+      if (!cancel) { setData({ equipe, totalPontos, porServico }); setLoading(false) }
     })()
     return () => { cancel = true }
   }, [iniIso, fimIso])
