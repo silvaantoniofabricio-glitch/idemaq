@@ -1059,11 +1059,6 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
         <AtlKpi T={T} dark={dark} icon="ti-shield-check" cor={totalGarantias > 0 ? vermelho : verde} label="OS em garantia" valor={totalGarantias} />
       </div>
 
-      {/* Pontos por etapa — agregado da equipe toda, não por pessoa */}
-      {pontosData?.porServico?.length > 0 && (
-        <PontosPorEtapa T={T} dark={dark} porServico={pontosData.porServico} totalPontos={totalPontos} />
-      )}
-
       {/* Cards por pessoa */}
       {semDados ? (
         <AtlPanel T={T} dark={dark}>
@@ -1092,6 +1087,11 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
         </div>
       )}
 
+      {/* Pontos por etapa — agregado da equipe toda, não por pessoa */}
+      {pontosData?.porServico?.length > 0 && (
+        <PontosPorEtapa T={T} dark={dark} porServico={pontosData.porServico} totalPontos={totalPontos} />
+      )}
+
       {!loadingAlertas && alertasData?.alertas?.length > 0 && (
         <AlertasReatribuicao T={T} dark={dark} alertas={alertasData.alertas} />
       )}
@@ -1113,7 +1113,7 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
 // quanto de cada etapa veio de retrabalho de garantia vs máquina de venda
 // vs fabricação, em vez de só o total misturado. Complementa os cards por
 // pessoa, que só mostram a divisão individual. ─────────────────────────────
-const COLS_ETAPA = '1.3fr 84px 70px 70px 70px 80px'
+const COLS_ETAPA = '1.3fr 84px 70px 55px 70px 70px 80px'
 const CATEGORIAS_COL = [
   { id: 'garantia', label: 'Garantia' },
   { id: 'venda', label: 'Venda' },
@@ -1140,6 +1140,7 @@ function PontosPorEtapa({ T, dark, porServico, totalPontos }) {
         <div>Etapa</div>
         <div style={{ textAlign: 'right' }}>Concluídas</div>
         <div style={{ textAlign: 'right' }}>Geral</div>
+        <div style={{ textAlign: 'right' }}>%</div>
         {CATEGORIAS_COL.map(c => (
           <div key={c.id} style={{ textAlign: 'right' }}>{c.label}</div>
         ))}
@@ -1161,6 +1162,10 @@ function PontosPorEtapa({ T, dark, porServico, totalPontos }) {
             textAlign: 'right', fontSize: 13, fontWeight: 700, color: amarelo,
             fontVariantNumeric: 'tabular-nums',
           }}>{s.pontos}</span>
+          <span style={{
+            textAlign: 'right', fontSize: 11.5, color: T.textMuted,
+            fontVariantNumeric: 'tabular-nums',
+          }}>{totalPontos > 0 ? Math.round((s.pontos / totalPontos) * 100) : 0}%</span>
           {CATEGORIAS_COL.map(c => {
             const v = s.porCategoria?.[c.id]
             return (
@@ -1349,6 +1354,10 @@ function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel,
                       fontVariantNumeric: 'tabular-nums',
                       width: 40, textAlign: 'right', flexShrink: 0,
                     }}>{l.pontos}</span>
+                    <span style={{
+                      fontSize: 10, color: T.textDim, fontVariantNumeric: 'tabular-nums',
+                      width: 30, textAlign: 'right', flexShrink: 0,
+                    }}>{totalPontos > 0 ? Math.round((l.pontos / totalPontos) * 100) : 0}%</span>
                   </div>
                 ))}
               </div>
@@ -1402,8 +1411,11 @@ function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel,
         {/* Distribuição de etapas — onde essa pessoa mais atua */}
         {f.distribuicaoEtapas?.length > 0 && (
           <div>
-            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.03em' }}>
+            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '.03em' }}>
               Onde atua mais
+            </div>
+            <div style={{ fontSize: 10, color: T.textDim, marginBottom: 6 }}>
+              Movimentações no Kanban — não é o mesmo total de "Pontos no período" abaixo
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {f.distribuicaoEtapas.map(d => (

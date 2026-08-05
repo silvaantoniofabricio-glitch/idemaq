@@ -639,3 +639,11 @@ Complementa §27/28 — o Toni pediu pra ver, além do total geral de cada etapa
 **`calcularPontosOS`** agora inclui `tipo` e `garantia` em cada entrada retornada. **`usePontuacao.js`** busca `os.tipo` (antes só buscava `tipo_equipamento`) e categoriza cada entrada via `categoriaDe(e)` — garantia tem prioridade (uma OS de garantia é sempre `tipo='atendimento'` por baixo, mas semanticamente é outra categoria). `data.porServico[i].porCategoria = { atendimento, garantia, venda, fabricacao }`, cada um `{ pontos, n }`.
 
 **UI**: tabela "Pontos por etapa" ganhou 3 colunas (Garantia/Venda/Fabricação) ao lado de Geral — célula vazia mostra "—" em vez de 0 (etapa que não se aplica àquele tipo, ex: Venda nunca tem Diagnóstico). Rodapé avisa que as colunas são fatias do Geral, não somam à parte. Testado a categorização isolada (mistura de atendimento/garantia/fabricação/venda numa mesma etapa) batendo os totais esperados antes de subir.
+
+## 30. Ordem do card de pessoa acima do agregado + coluna % (09/07/2026)
+
+Reordenado `Relatorios.jsx`: o bloco `PontosPorEtapa` (agregado da equipe, §27/29) estava ANTES dos cards por pessoa; o Toni pediu o inverso — cards de cada pessoa primeiro, agregado da equipe embaixo.
+
+Coluna "%" acrescentada nas 3 listas de pontos por etapa: `PontosPorEtapa` (agregado — % do total da equipe), `PessoaCard` em `Relatorios.jsx` e `CardPontos` em `PainelFuncionario.jsx` (cada um usando o próprio total da pessoa como denominador, não o da equipe).
+
+**Confusão resolvida**: o card de pessoa em `Relatorios.jsx` tem 2 listas parecidas mas de fontes diferentes — "Onde atua mais" (`distribuicaoEtapas`, de `useRelatorios.js`) conta **movimentações no Kanban** (todo `os_historico` daquela pessoa, `etapa_de`), enquanto "Pontos no período" conta **blocos de checklist assinados** (`usePontuacao.js`, só o que gera pontos pro prêmio). Os rótulos de etapa coincidem (Diagnóstico, Coleta, Entrega...) mas os números nunca vão bater — são métricas independentes. Adicionado subtítulo em "Onde atua mais" avisando isso, pra não parecer bug de novo.

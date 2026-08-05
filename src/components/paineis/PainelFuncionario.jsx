@@ -438,6 +438,10 @@ function CardPontos({ T, dark, azul, amarelo, dados, loading }) {
                   fontVariantNumeric: 'tabular-nums',
                   width: 40, textAlign: 'right', flexShrink: 0,
                 }}>{l.pontos}</span>
+                <span style={{
+                  fontSize: 10, color: T.textDim, fontVariantNumeric: 'tabular-nums',
+                  width: 30, textAlign: 'right', flexShrink: 0,
+                }}>{total > 0 ? Math.round((l.pontos / total) * 100) : 0}%</span>
               </div>
             ))}
           </div>
