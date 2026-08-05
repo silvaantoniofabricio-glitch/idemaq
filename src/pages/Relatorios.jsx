@@ -1307,18 +1307,39 @@ function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel,
               <DeltaTag dark={dark} diff={totalPontosAnt != null ? totalPontos - totalPontosAnt : null} />
             </div>
           </div>
-          {pontos && Object.keys(pontos.porServico || {}).length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-              {Object.entries(pontos.porServico).map(([s, pts]) => (
-                <span key={s} style={{
-                  fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99,
-                  background: azul + '1a', color: azul, border: `1px solid ${azul}33`,
-                }}>
-                  {LABEL_SERVICO[s] || s} · {pts}
-                </span>
-              ))}
-            </div>
-          )}
+          {pontos && Object.keys(pontos.porServico || {}).length > 0 && (() => {
+            const linhas = Object.entries(pontos.porServico)
+              .map(([servico, v]) => ({ servico, label: LABEL_SERVICO[servico] || servico, pontos: v.pontos, n: v.n }))
+              .sort((a, b) => b.pontos - a.pontos)
+            const maxPontos = Math.max(...linhas.map(l => l.pontos), 1)
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
+                {linhas.map(l => (
+                  <div key={l.servico} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontSize: 11, color: T.textSecondary, width: 100, flexShrink: 0,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>{l.label}</span>
+                    <div style={{ flex: 1, height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${Math.max(2, Math.round((l.pontos / maxPontos) * 100))}%`,
+                        height: '100%', background: azul, borderRadius: 3,
+                      }} />
+                    </div>
+                    <span style={{
+                      fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
+                      width: 22, textAlign: 'right', flexShrink: 0,
+                    }}>{l.n}</span>
+                    <span style={{
+                      fontSize: 11.5, fontWeight: 700, color: amarelo,
+                      fontVariantNumeric: 'tabular-nums',
+                      width: 40, textAlign: 'right', flexShrink: 0,
+                    }}>{l.pontos}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
 
           {/* Nível de prêmio */}
           {(() => {

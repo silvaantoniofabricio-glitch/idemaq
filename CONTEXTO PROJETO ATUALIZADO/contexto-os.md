@@ -625,3 +625,9 @@ Efeito colateral do §30 (Fabricação ganhou etapa Coleta): `dbEtapaToUI` em `u
 `usePontuacao.js` ganhou `data.porServico` — array `[{ servico, label, pontos, n }]` agregando a EQUIPE TODA (não por pessoa) por tipo de serviço, ordenado por pontos desc. `n` = quantidade de blocos concluídos daquele tipo (cada peça de manutenção conta 1, etc). Inclui o "Ajuste · gap lançamento" também.
 
 Nova seção `PontosPorEtapa` em `Relatorios.jsx`, entre os KPIs e os cards por pessoa — tabela com barra proporcional (Etapa · Concluídas · Pontos), rodapé com total. Testado a lógica de agregação isolada antes de subir.
+
+## 28. "Pontos por etapa" dentro de cada card de pessoa (08/07/2026)
+
+Complementa §27 — o Toni pediu pra lista com barra (Etapa · Concluídas · Pontos) aparecer **dentro de cada card de pessoa** também, não só no agregado da equipe. Mudança de formato: `porFunc[chave].porServico[servico]` deixou de ser um número (`pontos`) e virou objeto `{ pontos, n }` — igual ao `data.porServico` agregado (§27), pra reaproveitar a mesma lógica de renderização nos dois lugares.
+
+**Consumidores atualizados** (badges pill → lista com barra): `PessoaCard` em `Relatorios.jsx` e `CardPontos` em `PainelFuncionario.jsx` — os dois quebrariam silenciosamente sem essa atualização (mostrariam `[object Object]` no lugar do número). Testado a agregação por pessoa isolada antes de subir.

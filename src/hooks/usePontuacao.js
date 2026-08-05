@@ -92,7 +92,9 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
           }
         }
         porFunc[chave].total += e.pontos
-        porFunc[chave].porServico[e.servico] = (porFunc[chave].porServico[e.servico] || 0) + e.pontos
+        if (!porFunc[chave].porServico[e.servico]) porFunc[chave].porServico[e.servico] = { pontos: 0, n: 0 }
+        porFunc[chave].porServico[e.servico].pontos += e.pontos
+        porFunc[chave].porServico[e.servico].n += 1
         porFunc[chave].entries.push(e)
 
         if (!porServicoAgg[e.servico]) porServicoAgg[e.servico] = { pontos: 0, n: 0 }
@@ -120,7 +122,9 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
               porFunc[f.id] = { funcionario_id: f.id, apelido: f.apelido, total: 0, porServico: {}, entries: [] }
             }
             porFunc[f.id].total += bonusPorPessoa
-            porFunc[f.id].porServico['ajuste_gap'] = (porFunc[f.id].porServico['ajuste_gap'] || 0) + bonusPorPessoa
+            if (!porFunc[f.id].porServico['ajuste_gap']) porFunc[f.id].porServico['ajuste_gap'] = { pontos: 0, n: 0 }
+            porFunc[f.id].porServico['ajuste_gap'].pontos += bonusPorPessoa
+            porFunc[f.id].porServico['ajuste_gap'].n += 1
           }
           if (!porServicoAgg['ajuste_gap']) porServicoAgg['ajuste_gap'] = { pontos: 0, n: 0 }
           porServicoAgg['ajuste_gap'].pontos += bonusPorPessoa * lista.length

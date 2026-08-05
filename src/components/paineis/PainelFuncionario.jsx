@@ -410,19 +410,39 @@ function CardPontos({ T, dark, azul, amarelo, dados, loading }) {
           Seus pontos aparecem aqui quando você der check numa etapa da OS.
         </div>
       )}
-      {!loading && total > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-          {Object.entries(porServico).map(([servico, pts]) => (
-            <span key={servico} style={{
-              fontSize: 10.5, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
-              background: azul + '1a', color: azul,
-              border: `1px solid ${azul}33`,
-            }}>
-              {LABEL_SERVICO[servico] || servico} · {pts}
-            </span>
-          ))}
-        </div>
-      )}
+      {!loading && total > 0 && (() => {
+        const linhas = Object.entries(porServico)
+          .map(([servico, v]) => ({ servico, label: LABEL_SERVICO[servico] || servico, pontos: v.pontos, n: v.n }))
+          .sort((a, b) => b.pontos - a.pontos)
+        const maxPontos = Math.max(...linhas.map(l => l.pontos), 1)
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {linhas.map(l => (
+              <div key={l.servico} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{
+                  fontSize: 11, color: T.textSecondary, width: 100, flexShrink: 0,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{l.label}</span>
+                <div style={{ flex: 1, height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.max(2, Math.round((l.pontos / maxPontos) * 100))}%`,
+                    height: '100%', background: azul, borderRadius: 3,
+                  }} />
+                </div>
+                <span style={{
+                  fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
+                  width: 22, textAlign: 'right', flexShrink: 0,
+                }}>{l.n}</span>
+                <span style={{
+                  fontSize: 11.5, fontWeight: 700, color: amarelo,
+                  fontVariantNumeric: 'tabular-nums',
+                  width: 40, textAlign: 'right', flexShrink: 0,
+                }}>{l.pontos}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }
