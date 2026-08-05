@@ -1108,21 +1108,30 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
 
 // ─── Pontos por etapa — agregado da equipe toda no período: quanto cada
 // TIPO de serviço rendeu no total e quantos blocos concluídos geraram isso
-// (08/07/2026, a pedido do Toni). Complementa os cards por pessoa, que só
-// mostram a divisão individual. ────────────────────────────────────────────
+// (08/07/2026, a pedido do Toni). Colunas extras (08/07/2026, 2ª rodada):
+// quebra o "Geral" por origem da OS — Garantia/Venda/Fabricação — pra ver
+// quanto de cada etapa veio de retrabalho de garantia vs máquina de venda
+// vs fabricação, em vez de só o total misturado. Complementa os cards por
+// pessoa, que só mostram a divisão individual. ─────────────────────────────
+const COLS_ETAPA = '1.3fr 84px 70px 70px 70px 80px'
+const CATEGORIAS_COL = [
+  { id: 'garantia', label: 'Garantia' },
+  { id: 'venda', label: 'Venda' },
+  { id: 'fabricacao', label: 'Fabricação' },
+]
+
 function PontosPorEtapa({ T, dark, porServico, totalPontos }) {
-  const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
-  const maxPontos = Math.max(...porServico.map(s => s.pontos), 1)
+  const vermelho = corEtapa('red', dark)
   return (
     <AtlPanel T={T} dark={dark}
       title="Pontos por etapa"
       count={porServico.length}
-      footer={`${totalPontos} pts no total, em ${porServico.reduce((s, x) => s + x.n, 0)} etapas concluídas.`}>
+      footer={`${totalPontos} pts no total, em ${porServico.reduce((s, x) => s + x.n, 0)} etapas concluídas. Garantia/Venda/Fabricação são fatias do Geral, não somam à parte.`}>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1.3fr 90px 90px 1fr',
-        gap: 10, padding: '8px 14px',
+        gridTemplateColumns: COLS_ETAPA,
+        gap: 8, padding: '8px 14px',
         borderBottom: `1px solid ${T.border}`,
         background: T.cardAlt,
         fontSize: 10, color: T.textMuted, fontWeight: 700,
@@ -1130,14 +1139,16 @@ function PontosPorEtapa({ T, dark, porServico, totalPontos }) {
       }}>
         <div>Etapa</div>
         <div style={{ textAlign: 'right' }}>Concluídas</div>
-        <div style={{ textAlign: 'right' }}>Pontos</div>
-        <div />
+        <div style={{ textAlign: 'right' }}>Geral</div>
+        {CATEGORIAS_COL.map(c => (
+          <div key={c.id} style={{ textAlign: 'right' }}>{c.label}</div>
+        ))}
       </div>
       {porServico.map((s, i) => (
         <div key={s.servico} style={{
           display: 'grid',
-          gridTemplateColumns: '1.3fr 90px 90px 1fr',
-          gap: 10, alignItems: 'center',
+          gridTemplateColumns: COLS_ETAPA,
+          gap: 8, alignItems: 'center',
           padding: '9px 14px',
           borderTop: i === 0 ? 'none' : `1px solid ${T.border}`,
         }}>
@@ -1150,12 +1161,15 @@ function PontosPorEtapa({ T, dark, porServico, totalPontos }) {
             textAlign: 'right', fontSize: 13, fontWeight: 700, color: amarelo,
             fontVariantNumeric: 'tabular-nums',
           }}>{s.pontos}</span>
-          <div style={{ height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
-            <div style={{
-              width: `${Math.max(2, Math.round((s.pontos / maxPontos) * 100))}%`,
-              height: '100%', background: azul, borderRadius: 3,
-            }} />
-          </div>
+          {CATEGORIAS_COL.map(c => {
+            const v = s.porCategoria?.[c.id]
+            return (
+              <span key={c.id} style={{
+                textAlign: 'right', fontSize: 12, fontVariantNumeric: 'tabular-nums',
+                color: v ? (c.id === 'garantia' ? vermelho : T.textSecondary) : T.textDim,
+              }}>{v ? v.pontos : '—'}</span>
+            )
+          })}
         </div>
       ))}
     </AtlPanel>

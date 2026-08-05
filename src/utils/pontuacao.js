@@ -100,7 +100,9 @@ export const FATOR_GARANTIA = 0.5
 /**
  * Calcula os pontos de UMA OS, devolvendo uma entrada por bloco de serviço
  * completo e carimbado. Cada entrada: { servico, label, pontos, funcionario_id,
- * apelido, em, os_id, os_numero }. Pontos vêm pela metade se `os.garantia`.
+ * apelido, em, os_id, os_numero, tipo, garantia }. Pontos vêm pela metade se
+ * `os.garantia`. `tipo` e `garantia` vão em cada entrada pra permitir quebrar
+ * o placar por origem (atendimento normal/garantia/venda/fabricação).
  */
 export function calcularPontosOS(os) {
   const tab = os.tipoEquipamento === 'lava_seca' ? PONTOS_LAVA_SECA : PONTOS
@@ -119,6 +121,8 @@ export function calcularPontosOS(os) {
       funcionario_id: carimbo.uid || null,
       apelido: carimbo.apelido,
       em: carimbo.em || null,
+      tipo: os.tipo || null,
+      garantia: !!os.garantia,
     })
   }
 

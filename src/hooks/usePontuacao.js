@@ -15,10 +15,12 @@
 // Uso: const { data, loading, error } = usePontuacao({ iniIso, fimIso })
 //   data.equipe: [{ funcionario_id, apelido, total, porServico, entries }]
 //   data.totalPontos: soma geral do período
-//   data.porServico: [{ servico, label, pontos, n }] — agregado da equipe
-//     toda (não por pessoa), pra ver quanto cada TIPO de etapa rendeu no
-//     total e quantas conclusões geraram isso. `n` = quantidade de blocos
-//     concluídos daquele serviço (cada peça de manutenção conta 1, etc).
+//   data.porServico: [{ servico, label, pontos, n, porCategoria }] — agregado
+//     da equipe toda (não por pessoa), pra ver quanto cada TIPO de etapa
+//     rendeu no total e quantas conclusões geraram isso. `n` = quantidade de
+//     blocos concluídos daquele serviço (cada peça de manutenção conta 1).
+//     `porCategoria.{atendimento,garantia,venda,fabricacao}` = { pontos, n }
+//     quebra a mesma linha por origem da OS (08/07/2026).
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
@@ -40,6 +42,16 @@ const BONUS_GAP_JULHO = {
   pontosTotais: 233,
 }
 
+// Categoriza uma entrada de pontos pela origem da OS — pra quebrar o placar
+// por tipo (08/07/2026). Garantia sempre vence (uma OS de garantia é sempre
+// tipo='atendimento' por baixo, mas semanticamente é outra categoria).
+function categoriaDe(e) {
+  if (e.garantia) return 'garantia'
+  if (e.tipo === 'venda') return 'venda'
+  if (e.tipo === 'fabricacao') return 'fabricacao'
+  return 'atendimento'
+}
+
 export function usePontuacao({ iniIso, fimIso } = {}) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -51,7 +63,7 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
       setLoading(true); setError(null)
       const { data: rows, error: err } = await supabase
         .from('os')
-        .select('id, numero, tipo_equipamento, pre_diagnostico, garantia')
+        .select('id, numero, tipo, tipo_equipamento, pre_diagnostico, garantia')
         .is('deleted_at', null)
 
       if (cancel) return
@@ -64,6 +76,7 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
         const entries = calcularPontosOS({
           id: os.id,
           numero: os.numero,
+          tipo: os.tipo,
           tipoEquipamento: os.tipo_equipamento,
           pre_diagnostico: os.pre_diagnostico,
           garantia: os.garantia,
@@ -97,9 +110,13 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
         porFunc[chave].porServico[e.servico].n += 1
         porFunc[chave].entries.push(e)
 
-        if (!porServicoAgg[e.servico]) porServicoAgg[e.servico] = { pontos: 0, n: 0 }
+        if (!porServicoAgg[e.servico]) porServicoAgg[e.servico] = { pontos: 0, n: 0, porCategoria: {} }
         porServicoAgg[e.servico].pontos += e.pontos
         porServicoAgg[e.servico].n += 1
+        const cat = categoriaDe(e)
+        if (!porServicoAgg[e.servico].porCategoria[cat]) porServicoAgg[e.servico].porCategoria[cat] = { pontos: 0, n: 0 }
+        porServicoAgg[e.servico].porCategoria[cat].pontos += e.pontos
+        porServicoAgg[e.servico].porCategoria[cat].n += 1
       }
 
       // Bônus do gap de lançamento — só quando o período pedido cobre a
@@ -126,14 +143,19 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
             porFunc[f.id].porServico['ajuste_gap'].pontos += bonusPorPessoa
             porFunc[f.id].porServico['ajuste_gap'].n += 1
           }
-          if (!porServicoAgg['ajuste_gap']) porServicoAgg['ajuste_gap'] = { pontos: 0, n: 0 }
+          // Sem porCategoria — o ajuste é um bônus fixo, não vem de OS
+          // específicas com tipo/garantia rastreável.
+          if (!porServicoAgg['ajuste_gap']) porServicoAgg['ajuste_gap'] = { pontos: 0, n: 0, porCategoria: {} }
           porServicoAgg['ajuste_gap'].pontos += bonusPorPessoa * lista.length
           porServicoAgg['ajuste_gap'].n += lista.length
         }
       }
 
       const porServico = Object.entries(porServicoAgg)
-        .map(([servico, v]) => ({ servico, label: LABEL_SERVICO[servico] || servico, pontos: v.pontos, n: v.n }))
+        .map(([servico, v]) => ({
+          servico, label: LABEL_SERVICO[servico] || servico, pontos: v.pontos, n: v.n,
+          porCategoria: v.porCategoria,
+        }))
         .sort((a, b) => b.pontos - a.pontos)
 
       const equipe = Object.values(porFunc).sort((a, b) => b.total - a.total)

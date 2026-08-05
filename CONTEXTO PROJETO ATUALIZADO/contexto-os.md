@@ -631,3 +631,11 @@ Nova seção `PontosPorEtapa` em `Relatorios.jsx`, entre os KPIs e os cards por 
 Complementa §27 — o Toni pediu pra lista com barra (Etapa · Concluídas · Pontos) aparecer **dentro de cada card de pessoa** também, não só no agregado da equipe. Mudança de formato: `porFunc[chave].porServico[servico]` deixou de ser um número (`pontos`) e virou objeto `{ pontos, n }` — igual ao `data.porServico` agregado (§27), pra reaproveitar a mesma lógica de renderização nos dois lugares.
 
 **Consumidores atualizados** (badges pill → lista com barra): `PessoaCard` em `Relatorios.jsx` e `CardPontos` em `PainelFuncionario.jsx` — os dois quebrariam silenciosamente sem essa atualização (mostrariam `[object Object]` no lugar do número). Testado a agregação por pessoa isolada antes de subir.
+
+## 29. "Pontos por etapa" — colunas por tipo de OS (08/07/2026)
+
+Complementa §27/28 — o Toni pediu pra ver, além do total geral de cada etapa, quanto veio especificamente de **Garantia**, **Venda** ou **Fabricação** (o resto é "Atendimento normal", embutido no Geral mas sem coluna própria).
+
+**`calcularPontosOS`** agora inclui `tipo` e `garantia` em cada entrada retornada. **`usePontuacao.js`** busca `os.tipo` (antes só buscava `tipo_equipamento`) e categoriza cada entrada via `categoriaDe(e)` — garantia tem prioridade (uma OS de garantia é sempre `tipo='atendimento'` por baixo, mas semanticamente é outra categoria). `data.porServico[i].porCategoria = { atendimento, garantia, venda, fabricacao }`, cada um `{ pontos, n }`.
+
+**UI**: tabela "Pontos por etapa" ganhou 3 colunas (Garantia/Venda/Fabricação) ao lado de Geral — célula vazia mostra "—" em vez de 0 (etapa que não se aplica àquele tipo, ex: Venda nunca tem Diagnóstico). Rodapé avisa que as colunas são fatias do Geral, não somam à parte. Testado a categorização isolada (mistura de atendimento/garantia/fabricação/venda numa mesma etapa) batendo os totais esperados antes de subir.
