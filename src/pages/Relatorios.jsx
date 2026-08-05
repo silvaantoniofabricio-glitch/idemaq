@@ -1408,34 +1408,6 @@ function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel,
           <StatMini T={T} dark={dark} label="Tempo médio" valor={f.tempoMedio} />
         </div>
 
-        {/* Distribuição de etapas — onde essa pessoa mais atua */}
-        {f.distribuicaoEtapas?.length > 0 && (
-          <div>
-            <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '.03em' }}>
-              Onde atua mais
-            </div>
-            <div style={{ fontSize: 10, color: T.textDim, marginBottom: 6 }}>
-              Movimentações no Kanban — não é o mesmo total de "Pontos no período" abaixo
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {f.distribuicaoEtapas.map(d => (
-                <div key={d.etapa} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{
-                    fontSize: 11, color: T.textSecondary, width: 82, flexShrink: 0,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>{d.label}</span>
-                  <div style={{ flex: 1, height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
-                    <div style={{ width: `${d.pct}%`, height: '100%', background: azul, borderRadius: 3 }} />
-                  </div>
-                  <span style={{
-                    fontSize: 10.5, color: T.textMuted, fontVariantNumeric: 'tabular-nums',
-                    width: 18, textAlign: 'right', flexShrink: 0,
-                  }}>{d.n}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Qualidade — retrabalho e garantia */}
         <div style={{
