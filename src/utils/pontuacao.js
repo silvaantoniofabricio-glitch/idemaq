@@ -6,36 +6,43 @@
 //   fatores: limpeza 1.5 · coleta/entrega 1.3 · diagnóstico/desm/manut/mont 1.0
 //            · teste/acabamento 0.7 · lava_seca = tudo +0.3
 //
+// Rebalanceamento 09/07/2026: Higienização concentrava desempenho demais
+// (uma única OS com higienização valia mais que Coleta+Diagnóstico+
+// Desmontagem+Montagem+Entrega juntas) — analisado com dados reais de
+// julho/2026, onde a diferença entre os 2 funcionários vinha quase toda
+// (81%) dessa única etapa. Ajuste combinado com o Toni: limpeza -2,
+// coleta +1, entrega +1 (mesma mudança nas 2 tabelas, normal e lava_seca).
+//
 // Cada serviço só pontua quando o BLOCO está completo E tem carimbo de autor
 // (checks anteriores a 06/07/2026 não têm autor — não pontuam, naturalmente).
 // Desmontagem/Montagem contam 1x por OS (compartilhadas entre Limpeza e
 // Manutenção — ver AcaoOficinaHIG.jsx).
 
 export const PONTOS = {
-  coleta: 5,
+  coleta: 6,
   diagnostico: 4,
   desmontagem: 4,
-  limpeza: 18,
+  limpeza: 16,
   manutencao: 3, // por peça/componente
   montagem: 4,
   teste_final: 1,
   acabamento: 2,
-  entrega: 5,
+  entrega: 6,
 }
 
 // Pesos da lava e seca ajustados manualmente pelo Toni em 08/07/2026
 // (desmontagem/montagem valem bem mais que a lavadora normal — mecanismo
 // extra de secagem torna essas duas etapas mais trabalhosas).
 export const PONTOS_LAVA_SECA = {
-  coleta: 5,
+  coleta: 6,
   diagnostico: 4,
   desmontagem: 7,
-  limpeza: 22,
+  limpeza: 20,
   manutencao: 4,
   montagem: 8,
   teste_final: 1,
   acabamento: 2,
-  entrega: 5,
+  entrega: 6,
 }
 
 export const LABEL_SERVICO = {

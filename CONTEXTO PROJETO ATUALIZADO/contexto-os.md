@@ -647,3 +647,13 @@ Reordenado `Relatorios.jsx`: o bloco `PontosPorEtapa` (agregado da equipe, §27/
 Coluna "%" acrescentada nas 3 listas de pontos por etapa: `PontosPorEtapa` (agregado — % do total da equipe), `PessoaCard` em `Relatorios.jsx` e `CardPontos` em `PainelFuncionario.jsx` (cada um usando o próprio total da pessoa como denominador, não o da equipe).
 
 **Confusão resolvida**: o card de pessoa em `Relatorios.jsx` tinha 2 listas parecidas mas de fontes diferentes — "Onde atua mais" (`distribuicaoEtapas`, de `useRelatorios.js`) contava **movimentações no Kanban** (todo `os_historico` daquela pessoa, `etapa_de`), enquanto "Pontos no período" conta **blocos de checklist assinados** (`usePontuacao.js`, só o que gera pontos pro prêmio). Primeiro tentei só avisar com subtítulo, mas o Toni disse que só interessa a pontuação dos checks mesmo — removida a seção "Onde atua mais" inteira do card (o cálculo `distribuicaoEtapas` continua existindo em `useRelatorios.js`, só não é mais renderizado ali).
+
+## 31. Rebalanceamento dos pesos — Higienização reduzida (09/07/2026)
+
+Análise comparativa de julho/2026 (Alessandro vs Gui) mostrou que a Higienização (18-22 pts, único bloco por OS) concentrava demais o resultado do placar — sozinha explicava 81% da diferença total entre os dois no mês, mesmo o Alessandro tendo tocado em mais etapas no total. Como não existe divisão fixa de papel (ver `feedback_nao_ha_divisao_de_papel_por_tarefa`), quem pegasse mais OS com higienização vencia o mês quase sozinho, independente do resto do trabalho.
+
+**Ajuste aplicado em `PONTOS` e `PONTOS_LAVA_SECA`** (`pontuacao.js`): Higienização -2 (18→16 normal, 22→20 lava_seca), Coleta +1 (5→6), Entrega +1 (5→6). Resto da tabela sem mudança. Simulado com os dados reais de julho antes de aplicar: a diferença entre os dois funcionários caiu de 221,5 pra 170 pontos (~23%) — não zera porque o Gui também tinha mais volume de blocos completos em quase toda etapa de conserto naquele mês, o que é esforço real, não distorção de peso.
+
+Outras combinações foram simuladas e descartadas: reduzir Higienização mais agressivo + subir Teste final chegava a 159 (melhor, mas o Toni preferiu a mudança mais simples); subir Manutenção e baixar Diagnóstico **piorava** o desequilíbrio (182) porque o Gui tinha mais volume em Manutenção e resistia melhor à perda em Diagnóstico — mudança descartada por ir na direção contrária à intenção.
+
+**Bônus do gap de lançamento (§24, `BONUS_GAP_JULHO` = 233 pts fixos) não foi recalculado** — não temos salvo o detalhamento por etapa da consulta `sql/127` que gerou esse total, e é um ajuste único/histórico pequeno; não vale reabrir a cada mudança de peso. Se precisar recalcular certinho no futuro, rodar `sql/127` de novo e aplicar a régua nova no resultado.
