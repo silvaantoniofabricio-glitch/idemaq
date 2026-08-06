@@ -9,11 +9,22 @@ import Sparkline from '../ui/Sparkline'
 import DeltaPill from '../ui/DeltaPill'
 import SectionHeader, { SectionAction } from '../ui/SectionHeader'
 
+const MESES_CURTO = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+
 export default function HeroFaturamento({ T, dark, hero }) {
   const blueC = corEtapa('blue', dark)
   const blueLightC = corEtapa('blueLight', dark)
   const pctMeta = hero.meta > 0 ? Math.round((hero.atual / hero.meta) * 100) : 0
   const falta = Math.max(hero.meta - hero.atual, 0)
+
+  // spark30d[29] = hoje, spark30d[0] = 29 dias atrás — label por dia pro
+  // tooltip de hover do Sparkline.
+  const spark30dLabels = (hero.spark30d || []).map((_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (29 - i))
+    const label = `${String(d.getDate()).padStart(2, '0')}/${MESES_CURTO[d.getMonth()]}`
+    return i === 29 ? `${label} · hoje` : label
+  })
 
   return (
     <Card T={T} dark={dark} radius={14}
@@ -59,7 +70,7 @@ export default function HeroFaturamento({ T, dark, hero }) {
               borderRadius: 99, transition: 'width .6s ease',
             }} />
           </div>
-          {/* Meta diária restante — pacing pros dias úteis que sobram no mês */}
+          {/* Meta diária fixa do mês (meta ÷ dias úteis do mês, não recalcula) */}
           <div style={{ marginTop: 8, fontSize: 11, color: T.textMuted, lineHeight: 1.35 }}>
             {hero.metaBatida ? (
               <span>
@@ -67,20 +78,35 @@ export default function HeroFaturamento({ T, dark, hero }) {
                 Meta do mês batida — qualquer R$ daqui pra frente é acima do alvo.
               </span>
             ) : hero.diasUteisRestantes > 0 ? (
-              <span>
-                <i className="ti ti-calendar-stats" style={{ fontSize: 12, color: T.textDim, marginRight: 4 }} aria-hidden="true" />
-                Pra bater nos <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                  {hero.diasUteisRestantes} {hero.diasUteisRestantes === 1 ? 'dia útil' : 'dias úteis'}
-                </strong> que faltam:{' '}
-                <strong style={{ color: blueC, fontVariantNumeric: 'tabular-nums' }}>
-                  {fmtBRL(hero.metaDiariaRestante)}/dia
-                </strong>
-              </span>
+              hero.hojeBatida ? (
+                <span>
+                  <i className="ti ti-check" style={{ fontSize: 12, color: blueC, marginRight: 4 }} aria-hidden="true" />
+                  Meta de hoje (<strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(hero.metaDiariaRestante)}</strong>) batida —
+                  recebeu <strong style={{ color: blueC, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(hero.recebidoHoje)}</strong>
+                  {hero.excedenteHoje > 0 && <>, excedente de <strong style={{ color: blueC, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(hero.excedenteHoje)}</strong> a mais que o alvo do dia</>}.
+                </span>
+              ) : (
+                <span>
+                  <i className="ti ti-calendar-stats" style={{ fontSize: 12, color: T.textDim, marginRight: 4 }} aria-hidden="true" />
+                  Meta de hoje: <strong style={{ color: blueC, fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtBRL(hero.metaDiariaRestante)}
+                  </strong> · já recebeu <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(hero.recebidoHoje)}</strong>
+                  {' '}· faltam <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(hero.faltaHoje)}</strong>
+                </span>
+              )
             ) : (
               <span>
                 <i className="ti ti-calendar-off" style={{ fontSize: 12, color: T.textDim, marginRight: 4 }} aria-hidden="true" />
                 Mês encerrado — sem dias úteis restantes.
               </span>
+            )}
+            {hero.mostrarRitmoRecuperacao && (
+              <div style={{ marginTop: 4, color: T.textDim }}>
+                <i className="ti ti-alert-triangle" style={{ fontSize: 12, color: '#FFD966', marginRight: 4 }} aria-hidden="true" />
+                Reta final: pra ainda bater a meta do mês nos <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                  {hero.diasUteisRestantes} {hero.diasUteisRestantes === 1 ? 'dia útil' : 'dias úteis'}
+                </strong> que faltam, precisa de <strong style={{ color: '#FFD966', fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(hero.ritmoRecuperacao)}/dia</strong>.
+              </div>
             )}
           </div>
         </div>
@@ -89,7 +115,8 @@ export default function HeroFaturamento({ T, dark, hero }) {
         <div style={{ fontSize: 10, color: T.textDim, marginBottom: 6, letterSpacing: '.05em', textTransform: 'uppercase', fontWeight: 600 }}>
           Recebimentos diários · últimos 30 dias
         </div>
-        <Sparkline data={hero.spark30d} color={blueC} fill={0.18} height={56} />
+        <Sparkline data={hero.spark30d} color={blueC} fill={0.18} height={56}
+          labels={spark30dLabels} formatValue={(v) => fmtBRL(v)} />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
           <span>{hero.inicioLabel || ''}</span><span>{hero.meioLabel || ''}</span>
           <span style={{ color: blueC, fontWeight: 600 }}>{hero.hojeLabel} · hoje</span>
