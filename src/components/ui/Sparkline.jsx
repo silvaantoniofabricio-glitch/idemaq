@@ -74,7 +74,7 @@ export default function Sparkline({
         {ponto && (
           <>
             <line x1={ponto.x} y1={0} x2={ponto.x} y2={height}
-              stroke={dark ? 'rgba(255,255,255,0.18)' : 'rgba(9,30,66,0.14)'} strokeWidth={0.6} />
+              stroke={dark ? 'rgba(255,255,255,0.18)' : 'rgba(9,30,66,0.14)'} strokeWidth={0.25} />
             <rect x={ponto.x - 1.6} y={ponto.y - 1.6} width={3.2} height={3.2} rx={0.6}
               fill={color} />
           </>
