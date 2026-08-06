@@ -5,9 +5,14 @@
 
 import React, { useRef, useState } from 'react'
 
+const ATL_RADIUS = 4
+const ATL_FONT =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
+
 export default function Sparkline({
   data, color, fill = 0.22, height = 38, strokeWidth = 1.5,
   labels, formatValue = (v) => v.toLocaleString('pt-BR'),
+  T, dark,
 }) {
   const svgRef = useRef(null)
   const [hoverIdx, setHoverIdx] = useState(null)
@@ -68,8 +73,10 @@ export default function Sparkline({
         <path d={path} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
         {ponto && (
           <>
-            <line x1={ponto.x} y1={0} x2={ponto.x} y2={height} stroke={color} strokeWidth={0.5} strokeDasharray="2,2" opacity={0.4} />
-            <circle cx={ponto.x} cy={ponto.y} r={2.2} fill={color} stroke="#fff" strokeWidth={0.8} />
+            <line x1={ponto.x} y1={0} x2={ponto.x} y2={height}
+              stroke={dark ? 'rgba(255,255,255,0.18)' : 'rgba(9,30,66,0.14)'} strokeWidth={0.6} />
+            <rect x={ponto.x - 1.6} y={ponto.y - 1.6} width={3.2} height={3.2} rx={0.6}
+              fill={color} />
           </>
         )}
       </svg>
@@ -82,17 +89,25 @@ export default function Sparkline({
           top: 0,
           transform: `translate(${tooltipEsq ? '8px' : '-8px'}, -100%)`,
           marginTop: -6,
-          background: '#1A1F24', color: '#fff',
-          padding: '5px 9px', borderRadius: 6,
-          fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+          background: T?.card || '#22272B',
+          border: `1px solid ${T?.border || 'rgba(255,255,255,0.12)'}`,
+          borderRadius: ATL_RADIUS,
+          padding: '5px 9px',
+          whiteSpace: 'nowrap',
+          boxShadow: dark ? '0 4px 12px rgba(0,0,0,0.4)' : '0 4px 12px rgba(9,30,66,0.15)',
           pointerEvents: 'none', zIndex: 20,
-          fontVariantNumeric: 'tabular-nums',
+          fontFamily: ATL_FONT,
         }}>
           {labelHover && (
-            <div style={{ fontSize: 9.5, fontWeight: 500, opacity: 0.7, marginBottom: 1 }}>{labelHover}</div>
+            <div style={{
+              fontSize: 10, fontWeight: 500, color: T?.textMuted || '#8C9BAB',
+              letterSpacing: '-0.005em', marginBottom: 1,
+            }}>{labelHover}</div>
           )}
-          {formatValue(valorHover)}
+          <div style={{
+            fontSize: 12, fontWeight: 600, color: T?.textPrimary || '#fff',
+            fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.005em',
+          }}>{formatValue(valorHover)}</div>
         </div>
       )}
     </div>

@@ -116,7 +116,7 @@ export default function HeroFaturamento({ T, dark, hero }) {
           Recebimentos diários · últimos 30 dias
         </div>
         <Sparkline data={hero.spark30d} color={blueC} fill={0.18} height={56}
-          labels={spark30dLabels} formatValue={(v) => fmtBRL(v)} />
+          labels={spark30dLabels} formatValue={(v) => fmtBRL(v)} T={T} dark={dark} />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: T.textDim, fontVariantNumeric: 'tabular-nums' }}>
           <span>{hero.inicioLabel || ''}</span><span>{hero.meioLabel || ''}</span>
           <span style={{ color: blueC, fontWeight: 600 }}>{hero.hojeLabel} · hoje</span>

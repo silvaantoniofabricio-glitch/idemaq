@@ -1482,7 +1482,7 @@ function KPI({ T, dark, label, valor, delta, cor, icon, sparkData, sparkCor, del
         {valor}
       </div>
       {sparkData && (
-        <Sparkline data={sparkData} color={sparkCor || cor} height={32} />
+        <Sparkline data={sparkData} color={sparkCor || cor} height={32} T={T} dark={dark} />
       )}
     </Card>
   )

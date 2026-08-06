@@ -28,7 +28,7 @@ export default function KPICard({ k, T, dark }) {
         {k.sub && <span style={{ fontSize: 11, color: T.textDim }}>· {k.sub}</span>}
       </div>
       <div style={{ marginTop: 'auto', paddingTop: 8, marginLeft: -18, marginRight: -18 }}>
-        <Sparkline data={k.spark} color={cor} fill={0.22} height={32} />
+        <Sparkline data={k.spark} color={cor} fill={0.22} height={32} T={T} dark={dark} />
       </div>
     </Card>
   )
