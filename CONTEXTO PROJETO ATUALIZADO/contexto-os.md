@@ -657,3 +657,9 @@ Análise comparativa de julho/2026 (Alessandro vs Gui) mostrou que a Higienizaç
 Outras combinações foram simuladas e descartadas: reduzir Higienização mais agressivo + subir Teste final chegava a 159 (melhor, mas o Toni preferiu a mudança mais simples); subir Manutenção e baixar Diagnóstico **piorava** o desequilíbrio (182) porque o Gui tinha mais volume em Manutenção e resistia melhor à perda em Diagnóstico — mudança descartada por ir na direção contrária à intenção.
 
 **Bônus do gap de lançamento (§24, `BONUS_GAP_JULHO` = 233 pts fixos) não foi recalculado** — não temos salvo o detalhamento por etapa da consulta `sql/127` que gerou esse total, e é um ajuste único/histórico pequeno; não vale reabrir a cada mudança de peso. Se precisar recalcular certinho no futuro, rodar `sql/127` de novo e aplicar a régua nova no resultado.
+
+## 32. Funcionário perde Voltar/Avançar/Pular no rodapé da OS (29/07/2026)
+
+Pedido do Toni: funcionário só deve conseguir avançar a OS confirmando a ação real dentro da etapa (ex: botão "Entregue" na etapa Entrega, "Concluir diagnóstico", etc — cada um já chama `onMoverOS` sozinho) — não pelo rodapé genérico com Voltar/Avançar/"Pular para…", que permitia pular etapas ou voltar sem realmente ter feito o trabalho.
+
+`Footer.jsx` (desktop) e `FooterMobile.jsx`: `if (!admin) return null` logo após o caso especial de OS recusada (que continua mostrando o banner informativo pra todo mundo, só não tem botão de navegação mesmo). Dono continua com o rodapé completo.
