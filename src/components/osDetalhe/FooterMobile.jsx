@@ -35,6 +35,11 @@ export default function FooterMobile({ T, dark, os, admin, onMoverOS }) {
     )
   }
 
+  // Funcionário não tem Voltar/Avançar/Pular — só avança confirmando a ação
+  // dentro da própria etapa (ex: botão "Entregue" na etapa Entrega), que já
+  // chama onMoverOS sozinho. Evita pular etapa ou voltar sem querer.
+  if (!admin) return null
+
   const anteriorCfg = etapaIdx > 0 ? etapas[etapaIdx - 1] : null
   const proximaCfg = etapaIdx < etapas.length - 1 ? etapas[etapaIdx + 1] : null
 
