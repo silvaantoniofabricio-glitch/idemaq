@@ -628,8 +628,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Supermercado Chama 18/06 (b)',   valor: 11.51,  categoria: 'Supermercado' },
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Supermercado Chama 11/06',       valor: 24.01,  categoria: 'Supermercado' },
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 4/6',   valor: 121.75, categoria: 'Servicos' },
-  // --- Financiamento (Civic, Rafa) — extrato Cresol ---
-  { data: '16/07/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 16/07', valor: 1526.48, categoria: 'Financiamento' },
+  // Parcela Civic: e da Rafa — fica em DESPESAS_PF_RAFA_JULHO_2026.
   // --- Itens avulsos reportados por Toni (sem documento fonte, data 10/07 usada como referencia) ---
   { data: '10/07/2026', origem: 'Nubank PF',      descricao: 'Churrasco 10/07',              valor: 52.00, categoria: 'Alimentacao' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'IOF 10/07',                    valor: 16.52, categoria: 'IOF' },
@@ -660,6 +659,8 @@ export const DESPESAS_PF_RAFA_JULHO_2026 = [
   { data: '31/07/2026', origem: 'Caixa',           descricao: 'Drogasil 31/07',             valor: 20.00,   categoria: 'Farmacia' },
   { data: '31/07/2026', origem: 'Caixa',           descricao: 'Churros 31/07',              valor: 9.99,    categoria: 'Alimentacao' },
   { data: '31/07/2026', origem: 'Caixa',           descricao: 'Espetinho 31/07',            valor: 24.00,   categoria: 'Alimentacao' },
+  // --- Financiamento (Civic) — extrato Cresol ---
+  { data: '16/07/2026', origem: 'Cresol',          descricao: 'Parcela Civic (emprestimo PF) 16/07', valor: 1526.48, categoria: 'Financiamento' },
 ]
 
 // Despesas PF agosto/2026 — TONI
