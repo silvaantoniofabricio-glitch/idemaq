@@ -28,11 +28,14 @@ const ORIGENS_CARTAO = new Set(['Elo Grafite', 'Inter', 'MP Cartao', 'Bradesco P
 // como aparece na tela. Origens PF e PJ chegam com nomes diferentes pro mesmo
 // cartao (ex.: 'Visa Bradesco' no PF, 'Bradesco Visa' no PJ), entao as duas
 // grafias apontam pro mesmo rotulo.
+// 'Visa Bradesco' (PF), 'Bradesco Visa' (PJ) e 'Bradesco NEO' (PF) sao todos o
+// MESMO cartao — o Neo Visa Platinum final 6669. Foram batizados diferente ao
+// longo do tempo; aqui os tres viram um rotulo so.
 const ROTULO_ORIGEM = {
   'Elo Grafite':       'Cartão Bradesco Elo Grafite',
-  'Visa Bradesco':     'Cartão Bradesco Visa',
-  'Bradesco Visa':     'Cartão Bradesco Visa',
-  'Bradesco NEO':      'Cartão Bradesco NEO',
+  'Visa Bradesco':     'Cartão Bradesco Neo Visa',
+  'Bradesco Visa':     'Cartão Bradesco Neo Visa',
+  'Bradesco NEO':      'Cartão Bradesco Neo Visa',
   'Bradesco PJ ELO':   'Cartão Bradesco Elo Mais',
   'Bradesco PJ':       'Cartão Bradesco Elo Mais',
   'Cresol Mastercard': 'Cartão Cresol Mastercard',
