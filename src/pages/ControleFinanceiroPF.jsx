@@ -706,6 +706,7 @@ function Dashboard({ T, dark, analise, isMobile }) {
 function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
   const [busca, setBusca] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
+  const [origemFiltro, setOrigemFiltro] = useState('')
   const [ordemValor, setOrdemValor] = useState(null) // null | 'desc' | 'asc'
 
   const despesasReais = useMemo(
@@ -718,10 +719,26 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
     return Array.from(s).sort()
   }, [despesasReais])
 
+  const origens = useMemo(() => {
+    const s = new Set(despesasReais.map(d => d.origem))
+    return Array.from(s).sort()
+  }, [despesasReais])
+
+  // Se trocar de mes/pessoa e a origem selecionada sumir da lista, limpa o
+  // filtro — senao a planilha fica vazia sem motivo aparente.
+  useEffect(() => {
+    if (origemFiltro && !origens.includes(origemFiltro)) setOrigemFiltro('')
+  }, [origens, origemFiltro])
+
+  useEffect(() => {
+    if (categoriaFiltro && !categorias.includes(categoriaFiltro)) setCategoriaFiltro('')
+  }, [categorias, categoriaFiltro])
+
   const filtradas = useMemo(() => {
     const buscaLower = busca.toLowerCase().trim()
     const lista = despesasReais.filter(d => {
       if (categoriaFiltro && d.categoria !== categoriaFiltro) return false
+      if (origemFiltro && d.origem !== origemFiltro) return false
       if (buscaLower && !d.descricao.toLowerCase().includes(buscaLower)
           && !d.origem.toLowerCase().includes(buscaLower)) return false
       return true
@@ -729,7 +746,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
     if (ordemValor === 'desc') return [...lista].sort((a, b) => b.valor - a.valor)
     if (ordemValor === 'asc')  return [...lista].sort((a, b) => a.valor - b.valor)
     return lista
-  }, [despesasReais, busca, categoriaFiltro, ordemValor])
+  }, [despesasReais, busca, categoriaFiltro, origemFiltro, ordemValor])
 
   function toggleOrdem() {
     setOrdemValor(o => o === null ? 'desc' : o === 'desc' ? 'asc' : null)
@@ -766,6 +783,20 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
         >
           <option value="">Todas categorias</option>
           {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select
+          value={origemFiltro}
+          onChange={e => setOrigemFiltro(e.target.value)}
+          style={{
+            flex: isMobile ? '1 1 auto' : undefined,
+            boxSizing: 'border-box', height: inputHeight,
+            background: T.cardAlt, border: `1px solid ${T.border}`,
+            borderRadius: 8, padding: '8px 12px',
+            color: T.textPrimary, fontSize: 13,
+          }}
+        >
+          <option value="">Todas origens</option>
+          {origens.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
         <div style={{
           flex: isMobile ? '1 1 auto' : undefined,
