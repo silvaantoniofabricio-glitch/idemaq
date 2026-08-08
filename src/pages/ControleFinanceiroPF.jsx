@@ -22,6 +22,33 @@ const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out',
 // Origens que sao cartoes de credito — itens listados individualmente, nao sao Pix/Dinheiro
 const ORIGENS_CARTAO = new Set(['Elo Grafite', 'Inter', 'MP Cartao', 'Bradesco PJ ELO', 'Visa Bradesco', 'Cresol Mastercard'])
 
+// ─── Rotulo de exibicao das origens ─────────────────────────────────────────
+// Padrao pedido pelo Toni: Cartao <banco> <nome do cartao>.
+// O dado nao muda — o valor cru continua sendo a chave de filtro; isto e so
+// como aparece na tela. Origens PF e PJ chegam com nomes diferentes pro mesmo
+// cartao (ex.: 'Visa Bradesco' no PF, 'Bradesco Visa' no PJ), entao as duas
+// grafias apontam pro mesmo rotulo.
+const ROTULO_ORIGEM = {
+  'Elo Grafite':       'Cartão Bradesco Elo Grafite',
+  'Visa Bradesco':     'Cartão Bradesco Visa',
+  'Bradesco Visa':     'Cartão Bradesco Visa',
+  'Bradesco NEO':      'Cartão Bradesco NEO',
+  'Bradesco PJ ELO':   'Cartão Bradesco Elo Mais',
+  'Bradesco PJ':       'Cartão Bradesco Elo Mais',
+  'Cresol Mastercard': 'Cartão Cresol Mastercard',
+  'Cresol Cartão':     'Cartão Cresol Mastercard',
+  'MP Cartao':         'Cartão Mercado Pago',
+  'Mercado Pago Cartão': 'Cartão Mercado Pago',
+  'Inter':             'Cartão Inter',
+  'Nubank PF':         'Cartão Nubank PF',
+  'Nubank PJ':         'Cartão Nubank PJ',
+}
+
+// Contas correntes, poupanca e maquininhas ficam com o nome proprio.
+function rotuloOrigem(origem) {
+  return ROTULO_ORIGEM[origem] || origem || 'Sem conta'
+}
+
 function periodoToFiltro(periodo) {
   const hoje = new Date()
   let de, ate
@@ -148,7 +175,7 @@ function ExportDropdown({ T, dark, despesas, analise, mesLabel, pessoaLabel }) {
     const linhas = [['Data', 'Origem', 'Descrição', 'Categoria', 'Valor'].join(';')]
     for (const d of itens) {
       const v = d.valor.toFixed(2).replace('.', ',')
-      linhas.push([d.data, d.origem, `"${d.descricao}"`, d.categoria, v].join(';'))
+      linhas.push([d.data, rotuloOrigem(d.origem), `"${d.descricao}"`, d.categoria, v].join(';'))
     }
     const bom = '﻿'
     const blob = new Blob([bom + linhas.join('\n')], { type: 'text/csv;charset=utf-8' })
@@ -164,7 +191,7 @@ function ExportDropdown({ T, dark, despesas, analise, mesLabel, pessoaLabel }) {
     const rows = itens.map(d => `
       <tr>
         <td>${d.data}</td>
-        <td>${d.origem}</td>
+        <td>${rotuloOrigem(d.origem)}</td>
         <td>${d.descricao}</td>
         <td>${d.categoria}</td>
         <td class="val">R$ ${d.valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}</td>
@@ -769,8 +796,11 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
     const lista = despesasReais.filter(d => {
       if (categoriaFiltro && d.categoria !== categoriaFiltro) return false
       if (origemFiltro && d.origem !== origemFiltro) return false
+      // busca casa com a descricao, com o nome cru da origem e com o rotulo
+      // exibido — senao digitar "Cartão Bradesco" nao acharia nada.
       if (buscaLower && !d.descricao.toLowerCase().includes(buscaLower)
-          && !d.origem.toLowerCase().includes(buscaLower)) return false
+          && !d.origem.toLowerCase().includes(buscaLower)
+          && !rotuloOrigem(d.origem).toLowerCase().includes(buscaLower)) return false
       return true
     })
     if (ordemValor === 'desc') return [...lista].sort((a, b) => b.valor - a.valor)
@@ -826,7 +856,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
           }}
         >
           <option value="">Todas origens</option>
-          {origens.map(o => <option key={o} value={o}>{o}</option>)}
+          {origens.map(o => <option key={o} value={o}>{rotuloOrigem(o)}</option>)}
         </select>
         <div style={{
           flex: isMobile ? '1 1 auto' : undefined,
@@ -875,7 +905,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <Badge variant="amarelo" dark={dark} sm>{d.categoria}</Badge>
                 {d.pj && <Badge variant="azul" dark={dark} sm>PJ</Badge>}
-                <span style={{ fontSize: 12, color: T.textMuted }}>{d.origem}</span>
+                <span style={{ fontSize: 12, color: T.textMuted }}>{rotuloOrigem(d.origem)}</span>
                 <span style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{d.data}</span>
               </div>
             </div>
@@ -915,7 +945,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
                 fontSize: 12, color: T.textSecondary,
               }}>
                 <div style={{ fontVariantNumeric: 'tabular-nums' }}>{d.data}</div>
-                <div style={{ color: T.textMuted }}>{d.origem}</div>
+                <div style={{ color: T.textMuted }}>{rotuloOrigem(d.origem)}</div>
                 <div style={{ color: corHero(dark), fontWeight: 500 }}>{d.descricao}</div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   <Badge variant="amarelo" dark={dark} sm>
@@ -1199,7 +1229,7 @@ function ListaMaiores({ T, dark, itens, isMobile }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
                 <Badge variant="amarelo" dark={dark} sm>{d.categoria}</Badge>
-                <span style={{ fontSize: 11, color: T.textMuted }}>{d.origem} · {d.data}</span>
+                <span style={{ fontSize: 11, color: T.textMuted }}>{rotuloOrigem(d.origem)} · {d.data}</span>
               </div>
             </div>
             <div style={{
@@ -1233,7 +1263,7 @@ function ListaMaiores({ T, dark, itens, isMobile }) {
               {d.descricao}
             </div>
             <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>
-              {d.origem} · {d.data}
+              {rotuloOrigem(d.origem)} · {d.data}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
