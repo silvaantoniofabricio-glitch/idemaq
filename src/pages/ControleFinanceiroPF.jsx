@@ -106,6 +106,30 @@ const SECOES = [
   { id: 'conselhos', label: 'Análise' },
 ]
 
+// ─── Preferencias de tela (sobrevivem ao F5) ────────────────────────────────
+// Guarda periodo/pessoa/secao no proprio navegador. Valida na leitura: se um
+// id sair do codigo depois (ou o dado vier corrompido), cai no padrao em vez
+// de deixar a tela num estado invalido.
+const CHAVE_PREFS = 'idemaq:financeiro-pf:prefs'
+const PERIODOS_VALIDOS = new Set(['mes', 'mes_ant', 'sel_mes', 'sel_period'])
+
+function lerPreferencias() {
+  try {
+    const p = JSON.parse(localStorage.getItem(CHAVE_PREFS) || '{}')
+    const out = {}
+    if (p.periodo && PERIODOS_VALIDOS.has(p.periodo.id)) out.periodo = p.periodo
+    if (PESSOAS.some(x => x.id === p.pessoa))            out.pessoa  = p.pessoa
+    if (SECOES.some(x => x.id === p.secao))              out.secao   = p.secao
+    return out
+  } catch {
+    return {}   // localStorage bloqueado (aba anonima) ou JSON invalido
+  }
+}
+
+function gravarPreferencias(prefs) {
+  try { localStorage.setItem(CHAVE_PREFS, JSON.stringify(prefs)) } catch { /* sem persistencia, segue normal */ }
+}
+
 // ─── ExportDropdown ──────────────────────────────────────────────────────────
 function ExportDropdown({ T, dark, despesas, analise, mesLabel, pessoaLabel }) {
   const [aberto, setAberto] = useState(false)
@@ -274,9 +298,15 @@ export default function ControleFinanceiroPF({ T, dark }) {
   const amarelo  = corEtapa('yellow', dark)
   const azulBg   = dark ? 'rgba(91,155,213,0.15)' : '#e8f0fb'
 
-  const [periodo, setPeriodo]         = useState({ id: 'mes' })
-  const [pessoaAtiva, setPessoaAtiva] = useState('total')
-  const [verSecao, setVerSecao]       = useState('dashboard')
+  // Restaura periodo/pessoa/secao do ultimo acesso (sobrevive ao F5).
+  const salvo = useMemo(lerPreferencias, [])
+  const [periodo, setPeriodo]         = useState(() => salvo.periodo || { id: 'mes' })
+  const [pessoaAtiva, setPessoaAtiva] = useState(() => salvo.pessoa  || 'total')
+  const [verSecao, setVerSecao]       = useState(() => salvo.secao   || 'dashboard')
+
+  useEffect(() => {
+    gravarPreferencias({ periodo, pessoa: pessoaAtiva, secao: verSecao })
+  }, [periodo, pessoaAtiva, verSecao])
 
   const filtroEmp = useMemo(() => periodoToFiltro(periodo), [periodo])
   const mesKey    = useMemo(() => periodoToMesKey(periodo), [periodo])
