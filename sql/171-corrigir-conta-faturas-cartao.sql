@@ -24,11 +24,37 @@ SET conta_id = (SELECT id FROM conta_bancaria WHERE nome = 'Elo Grafite' LIMIT 1
 WHERE deleted_at IS NULL
   AND descricao LIKE 'FAT-ELO-GRAFITE-%';
 
--- Visa Bradesco: maio e junho
+-- Visa Bradesco (= Neo Visa Platinum 6669): maio e junho
 UPDATE lancamento_financeiro
 SET conta_id = (SELECT id FROM conta_bancaria WHERE nome = 'Bradesco Visa' LIMIT 1)
 WHERE deleted_at IS NULL
   AND descricao LIKE 'FAT-VISA-BRADESCO-%';
+
+-- ── Nubank: separa os dois cartoes ─────────────────────────────────────────
+-- Hoje os dois cartoes e a conta corrente estao todos na conta 'Nubank'.
+-- Confirmado por Toni: fatura que vence dia 02 = cartao pessoal (5876),
+-- fatura que vence dia 23 = cartao empresa (6707, CNPJ).
+--
+-- Atencao: a natureza do gasto e o cartao usado sao coisas diferentes. Anthropic
+-- e FleetNet sao despesa PJ, mas foram passados no cartao PESSOAL — continuam
+-- PJ (nao mexemos em categoria), so passam a aparecer sob o cartao certo.
+
+-- a conta do cartao PJ ja existe no seed; a do PF precisa ser criada
+INSERT INTO conta_bancaria (nome, tipo)
+SELECT 'Nubank PF', 'cartao'
+WHERE NOT EXISTS (SELECT 1 FROM conta_bancaria WHERE nome = 'Nubank PF' AND deleted_at IS NULL);
+
+-- cartao pessoal (venc. dia 02): Claude.Ai, Anthropic, FleetNet
+UPDATE lancamento_financeiro
+SET conta_id = (SELECT id FROM conta_bancaria WHERE nome = 'Nubank PF' AND deleted_at IS NULL LIMIT 1)
+WHERE deleted_at IS NULL
+  AND (descricao LIKE 'FAT-NUBANK-02JUN%' OR descricao LIKE 'FAT-NUBANK-PF-%');
+
+-- cartao empresa (venc. dia 23): Facebook Ads
+UPDATE lancamento_financeiro
+SET conta_id = (SELECT id FROM conta_bancaria WHERE nome = 'Nubank PJ' AND deleted_at IS NULL LIMIT 1)
+WHERE deleted_at IS NULL
+  AND (descricao LIKE 'FAT-NUBANK-EMP-%' OR descricao LIKE 'FAT-NUBANK-23JUN%');
 
 COMMIT;
 
@@ -45,3 +71,12 @@ ORDER BY total DESC;
 SELECT COUNT(*) AS qtd, SUM(valor) AS total
 FROM lancamento_financeiro
 WHERE deleted_at IS NULL AND descricao LIKE 'FAT-ELO-GRAFITE-JUN:%';
+
+-- Confere a separacao do Nubank (nenhuma linha deve sobrar em 'Nubank' com
+-- prefixo de fatura de cartao)
+SELECT cb.nome AS conta, COUNT(*) AS qtd, SUM(lf.valor) AS total
+FROM lancamento_financeiro lf
+JOIN conta_bancaria cb ON cb.id = lf.conta_id
+WHERE lf.deleted_at IS NULL AND lf.descricao LIKE 'FAT-NUBANK%'
+GROUP BY cb.nome
+ORDER BY cb.nome;
