@@ -86,6 +86,9 @@ function adaptarEmpresaParaPF(lancs) {
     descricao: l.descricao || '(sem descricao)',
     valor: Number(l.valor || 0),
     categoria: l.categoria || 'Diverso',
+    // marca a procedencia: no modo "Tudo" a lista vem misturada e a regra de
+    // ORIGENS_CARTAO so vale pro PF (ha conta PJ chamada 'Inter', que colide).
+    _pj: true,
   }))
 }
 
@@ -94,6 +97,7 @@ const PESSOAS = [
   { id: 'toni',    label: 'Toni' },
   { id: 'rafa',    label: 'Rafa' },
   { id: 'empresa', label: 'Empresa' },
+  { id: 'tudo',    label: 'Tudo (PF + PJ)' },
 ]
 
 const SECOES = [
@@ -280,11 +284,15 @@ export default function ControleFinanceiroPF({ T, dark }) {
   const { lancamentos: lancsEmpresa } = useFinanceiro(filtroEmp)
   const despesasEmpresa = useMemo(() => adaptarEmpresaParaPF(lancsEmpresa), [lancsEmpresa])
 
-  const despesas = pessoaAtiva === 'empresa'
-    ? despesasEmpresa
-    : ((DESPESAS_PF_POR_MES[mesKey] || {})[pessoaAtiva] || [])
+  const despesas = useMemo(() => {
+    const doMes = DESPESAS_PF_POR_MES[mesKey] || {}
+    if (pessoaAtiva === 'empresa') return despesasEmpresa
+    // "Tudo" = casal (PF) + empresa (PJ) na mesma lista
+    if (pessoaAtiva === 'tudo')    return [...(doMes.total || []), ...despesasEmpresa]
+    return doMes[pessoaAtiva] || []
+  }, [pessoaAtiva, mesKey, despesasEmpresa])
 
-  const analise = useMemo(() => analisarDespesas(despesas, { isEmpresa: pessoaAtiva === 'empresa' }), [despesas, pessoaAtiva])
+  const analise = useMemo(() => analisarDespesas(despesas), [despesas])
 
   const mesLabel    = labelPeriodoPF(periodo)
   const pessoaLabel = PESSOAS.find(p => p.id === pessoaAtiva)?.label || pessoaAtiva
@@ -533,7 +541,7 @@ function CaixaPeriodoPF({ T, dark, periodo, setPeriodo }) {
 // =====================================================================
 // Funções de análise
 // =====================================================================
-function analisarDespesas(despesas, { isEmpresa = false } = {}) {
+function analisarDespesas(despesas) {
   let totalBruto = 0
   let totalReal = 0
   let totalTransferencia = 0
@@ -553,7 +561,7 @@ function analisarDespesas(despesas, { isEmpresa = false } = {}) {
 
     // Para empresa os lançamentos já vêm item a item do banco — não há
     // boleto de fatura separado, então ORIGENS_CARTAO não se aplica.
-    if (!isEmpresa && ORIGENS_CARTAO.has(d.origem)) totalCartaoItens += v
+    if (!d._pj && ORIGENS_CARTAO.has(d.origem)) totalCartaoItens += v
 
     if (d.categoria === 'Transferencia') {
       totalTransferencia += v
