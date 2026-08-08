@@ -544,6 +544,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Portal Conveniencia 24/06',                    valor: 5.99,   categoria: 'Supermercado' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Portal Auto Posto 24/06',                      valor: 200.00, categoria: 'Combustivel' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal CG 24/06 (2)',                 valor: 8.90,   categoria: 'Pedagio' },
+  { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal CG 24/06 (3)',                 valor: 6.50,   categoria: 'Pedagio' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 26/06',                        valor: 84.62,  categoria: 'Supermercado' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Anuidade Diferenciada Elo Grafite 26/06',      valor: 56.00,  categoria: 'Tarifa cartao' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 28/06',                          valor: 46.89,  categoria: 'Supermercado' },
