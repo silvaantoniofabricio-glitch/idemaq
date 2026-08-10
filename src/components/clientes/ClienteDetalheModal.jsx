@@ -696,7 +696,7 @@ function HistoricoOS({ T, dark, clienteId, clienteFone, osList, onAbrirOS }) {
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
                     {fmtBRL(os.valor)}
                   </span>
-                  {['entrega', 'pagamento', 'concluido'].includes(os.etapa) && !os.garantia && os.tipo === 'atendimento' && estaEmGarantia(os) && (
+                  {['entrega', 'entregue', 'pagamento', 'concluido'].includes(os.etapa) && !os.garantia && (os.tipo === 'atendimento' || os.tipo === 'venda') && estaEmGarantia(os) && (
                     <button
                       type="button"
                       disabled={criandoGarantia === os.id}
