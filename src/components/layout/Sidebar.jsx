@@ -116,24 +116,14 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
         <div style={{ flex: 1, padding: '6px 0', overflowY: 'auto', overflowX: 'hidden' }}>
           {(() => {
             const SECOES = [
-              { key: 'principal', label: null },
-              { key: 'operacao',  label: 'Gestão' },
+              { key: 'principal' },
+              { key: 'operacao' },
             ]
             const grupos = SECOES
               .map(s => ({ ...s, items: menusVisiveis.filter(m => m.section === s.key) }))
               .filter(g => g.items.length > 0)
-            return grupos.map((grupo, gi) => (
+            return grupos.map((grupo) => (
               <React.Fragment key={grupo.key}>
-                {gi > 0 && (
-                  <div style={{ height: 1, background: T.border, margin: '6px 10px' }} />
-                )}
-                {expanded && grupo.label && (
-                  <div style={{
-                    fontSize: 10, fontWeight: 700, color: T.textDim,
-                    textTransform: 'uppercase', letterSpacing: '0.07em',
-                    padding: '10px 16px 3px',
-                  }}>{grupo.label}</div>
-                )}
                 <div style={{ padding: '0 2px' }}>
                   {grupo.items.map(m =>
                     <NavItem key={m.id} m={m} active={pagina === m.id} onClick={() => setPagina(m.id)} collapsed={!expanded} T={T} dark={dark} />
