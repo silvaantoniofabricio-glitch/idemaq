@@ -436,9 +436,12 @@ export default function Painel({ T, dark, user }) {
   const hojeBatida = metaDiariaFixaMes > 0 && finAgg.recebidoHoje >= metaDiariaFixaMes
   const excedenteHoje = hojeBatida ? finAgg.recebidoHoje - metaDiariaFixaMes : 0
 
-  // Ritmo de recuperação — aviso secundário, só aparece quando faltam
-  // poucos dias úteis (reta final do mês) E o ritmo real necessário já
-  // passou visivelmente do ritmo fixo (ficou pra trás da meta).
+  // Ritmo de recuperação — "quanto falta por dia útil pra bater a meta do
+  // mês", recalculado sozinho conforme o dinheiro entra (falta ÷ dias úteis
+  // restantes). Sempre mostrado no Hero (pedido do Toni, 29/07/2026 — era
+  // assim antes da meta diária virar fixa). `mostrarRitmoRecuperacao` agora
+  // só controla o ESTILO de urgência (amarelo) quando faltam poucos dias
+  // úteis (reta final) E o ritmo já passou visivelmente do ritmo fixo.
   const ritmoRecuperacao = diasUteisRestantes > 0
     ? Math.round(faltaMeta / diasUteisRestantes)
     : 0
