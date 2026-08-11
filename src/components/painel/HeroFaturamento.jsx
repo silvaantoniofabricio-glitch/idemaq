@@ -101,15 +101,13 @@ export default function HeroFaturamento({ T, dark, hero }) {
               </span>
             )}
             {!hero.metaBatida && hero.diasUteisRestantes > 0 && (
-              <div style={{ marginTop: 4, color: T.textDim }}>
-                <i className={`ti ${hero.mostrarRitmoRecuperacao ? 'ti-alert-triangle' : 'ti-trending-up'}`}
-                   style={{ fontSize: 12, color: hero.mostrarRitmoRecuperacao ? '#FFD966' : T.textDim, marginRight: 4 }} aria-hidden="true" />
-                Pra bater a meta do mês, precisa de <strong style={{ color: hero.mostrarRitmoRecuperacao ? '#FFD966' : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ color: T.textDim }}>
+                {' '}· pra bater a meta do mês, precisa de <strong style={{ color: hero.mostrarRitmoRecuperacao ? '#FFD966' : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
                   {fmtBRL(hero.ritmoRecuperacao)}/dia
                 </strong> nos <strong style={{ color: T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
                   {hero.diasUteisRestantes} {hero.diasUteisRestantes === 1 ? 'dia útil' : 'dias úteis'}
-                </strong> que faltam.
-              </div>
+                </strong> que faltam
+              </span>
             )}
           </div>
         </div>
