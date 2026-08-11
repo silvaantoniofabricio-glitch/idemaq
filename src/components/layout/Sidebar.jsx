@@ -31,7 +31,9 @@ export default function Sidebar({ pagina, setPagina, user, sair, T, dark, toggle
   }, [pinned])
 
   const menusVisiveis = useMemo(() => {
-    if (isAdmin(user)) return MENUS
+    // "Relatório" (singular) é o relatório pessoal do funcionário — dono já
+    // tem "Relatórios" (plural, completo) e não precisa dele duplicado.
+    if (isAdmin(user)) return MENUS.filter(m => m.id !== 'meu-relatorio')
     return MENUS.filter(m => !MENUS_ADMIN_ONLY.includes(m.id))
   }, [user])
 
