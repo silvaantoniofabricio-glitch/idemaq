@@ -11,7 +11,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import { fetchTodosOSItemServico } from '../../utils/fetchOSItensServico'
-import { useOS, uiEtapaToDb } from '../../hooks/useOS'
+import { useOS, uiEtapaToDb, baixarEstoqueAoConcluir, criarMaquinaAoConcluir } from '../../hooks/useOS'
 import { useUsuarios } from '../../hooks/useUsuarios'
 import { normalizePatchOS } from '../../utils/osPatch'
 import {
@@ -227,6 +227,13 @@ export default function OSMobile({ T, dark, user }) {
       // (AFTER UPDATE OF etapa) — já preenche funcionario_id via auth.uid() e
       // calcula duracao_segundos. Inserir aqui manualmente duplicava a linha
       // (bug pré-existente — o mobile já duplicava antes de qualquer mudança de hoje).
+      // Baixa de estoque + criação de máquina (Fabricação) ao concluir — essa
+      // função escreve direto no banco (não passa pelo updateOS do useOS.js),
+      // então precisa disparar isso aqui manualmente (bug achado 12/08/2026).
+      if (etapaFinal === 'concluido' && os.etapa !== 'concluido') {
+        baixarEstoqueAoConcluir(os.id, os.numero)
+        if (os.tipo === 'fabricacao') criarMaquinaAoConcluir(os.id, os.numero)
+      }
     } catch { setOsList(prev); notify('erro', 'Erro ao mover OS — revertido') }
   }
 

@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../supabase'
 import { fetchTodosOSItemServico } from '../utils/fetchOSItensServico'
-import { useOS, uiEtapaToDb } from '../hooks/useOS'
+import { useOS, uiEtapaToDb, baixarEstoqueAoConcluir, criarMaquinaAoConcluir } from '../hooks/useOS'
 import { duplicarOS } from '../utils/osDerivada'
 import { useUsuarios } from '../hooks/useUsuarios'
 import { P } from '../theme'
@@ -233,6 +233,13 @@ export default function Kanban({ T, dark, user }) {
       // os_historico é gravado automaticamente pelo trigger `os_registra_historico`
       // (AFTER UPDATE OF etapa) — já preenche funcionario_id via auth.uid() e
       // calcula duracao_segundos. Inserir aqui manualmente duplicava a linha.
+      // Baixa de estoque + criação de máquina (Fabricação) ao concluir — essa
+      // função escreve direto no banco (não passa pelo updateOS do useOS.js),
+      // então precisa disparar isso aqui manualmente (bug achado 12/08/2026).
+      if (etapaFinal === 'concluido' && os.etapa !== 'concluido') {
+        baixarEstoqueAoConcluir(os.id, os.numero)
+        if (os.tipo === 'fabricacao') criarMaquinaAoConcluir(os.id, os.numero)
+      }
     } catch { setOsList(osPrev); notify('erro', 'Erro ao mover OS — revertido') }
   }
 

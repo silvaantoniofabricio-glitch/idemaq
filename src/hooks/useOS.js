@@ -236,7 +236,13 @@ export function useOS(buscando = false) {
 // UPDATE atômico antes de mexer em estoque, então 2 chamadas concorrentes
 // (race entre devices/tabs) só fazem trabalho uma vez. Pré-requisito:
 // sql/07-os-itens-baixados.sql aplicado.
-async function baixarEstoqueAoConcluir(osId, osNumero) {
+//
+// Exportada porque Kanban.jsx e OSMobile.jsx têm sua PRÓPRIA função de mover
+// etapa (moverOS) que escreve direto no Supabase sem passar pelo updateOS
+// deste hook — precisam chamar isso manualmente no mesmo ponto (bug achado
+// 12/08/2026: as automações nunca disparavam de verdade via drag-and-drop
+// ou pelos botões de confirmar etapa, só se updateOS fosse chamado direto).
+export async function baixarEstoqueAoConcluir(osId, osNumero) {
   try {
     const res = await baixarItensDaOS(osId)
     if (!res?.ok) {
@@ -267,8 +273,9 @@ async function baixarEstoqueAoConcluir(osId, osNumero) {
 // entra em 'concluido' — a máquina fabricada entra automaticamente no
 // estoque de Máquinas (estado 'disponivel'). Best-effort: logs no console,
 // não interrompe o UPDATE da OS. Idempotente via os.maquina_criada
-// (sql/149-os-maquina-criada.sql).
-async function criarMaquinaAoConcluir(osId, osNumero) {
+// (sql/149-os-maquina-criada.sql). Exportada pelo mesmo motivo de
+// baixarEstoqueAoConcluir acima.
+export async function criarMaquinaAoConcluir(osId, osNumero) {
   try {
     const res = await criarMaquinaAoConcluirFabricacao(osId)
     if (!res?.ok) {
