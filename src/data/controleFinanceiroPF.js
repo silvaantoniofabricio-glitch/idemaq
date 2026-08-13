@@ -622,7 +622,8 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/07/2026', origem: 'MP Cartao', descricao: '2Produtos 25/02 5/12',                  valor: 12.43,  categoria: 'Compras pessoais' },
   { data: '20/07/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 26/01 6/8',                valor: 27.37,  categoria: 'Compras pessoais' },
   { data: '20/07/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 09/03 5/10',               valor: 44.81,  categoria: 'Compras pessoais' },
-  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'Tenis New Balance 480 08/07 1/8',        valor: 43.49,  categoria: 'Vestuario' },
+  // 1a parcela absorve o arredondamento: 43,51 + 7x 43,49 = 347,94 (valor da fatura)
+  { data: '20/07/2026', origem: 'MP Cartao', descricao: 'Tenis New Balance 480 08/07 1/8',        valor: 43.51,  categoria: 'Vestuario' },
   // --- Cresol Mastercard — fatura periodo 01/06-30/06 ---
   // Cartao PJ do Cresol, quase todo PJ (pecas/materiais). PJ em sql/151 + sql/161 (Mano Auto Posto).
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'Supermercado Chama 18/06 (a)',   valor: 12.99,  categoria: 'Supermercado' },
