@@ -780,8 +780,11 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
     return Array.from(s).sort()
   }, [despesasReais])
 
+  // Agrupa pelo ROTULO, nao pelo nome cru: o mesmo cartao chega com grafias
+  // diferentes do PF e do PJ ('Visa Bradesco' x 'Bradesco Visa'), e sem isso
+  // apareceria duas vezes na lista.
   const origens = useMemo(() => {
-    const s = new Set(despesasReais.map(d => d.origem))
+    const s = new Set(despesasReais.map(d => rotuloOrigem(d.origem)))
     return Array.from(s).sort()
   }, [despesasReais])
 
@@ -806,7 +809,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
     const buscaLower = busca.toLowerCase().trim()
     const lista = despesasReais.filter(d => {
       if (categoriaFiltro && d.categoria !== categoriaFiltro) return false
-      if (origemFiltro && d.origem !== origemFiltro) return false
+      if (origemFiltro && rotuloOrigem(d.origem) !== origemFiltro) return false
       // busca casa com a descricao, com o nome cru da origem e com o rotulo
       // exibido — senao digitar "Cartão Bradesco" nao acharia nada.
       if (buscaLower && !d.descricao.toLowerCase().includes(buscaLower)
@@ -867,7 +870,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
           }}
         >
           <option value="">Todas origens</option>
-          {opcoesOrigem.map(o => <option key={o} value={o}>{rotuloOrigem(o)}</option>)}
+          {opcoesOrigem.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
         <div style={{
           flex: isMobile ? '1 1 auto' : undefined,
