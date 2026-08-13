@@ -120,7 +120,7 @@ const isoMaisDias = (d) => {
 // estas constantes são apenas SUGESTÕES pros selects (mesmas exportadas pelo
 // hook em `CATEGORIAS_SUGESTAO`). Contas vem do hook dinamicamente.
 const CATEGORIAS_RECEITA = ['Higienização', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros']
-const CATEGORIAS_DESPESA = ['Funcionários', 'Peças', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento']
+const CATEGORIAS_DESPESA = ['Funcionários', 'Peças', 'Terceiros', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento']
 const FORMAS = ['PIX', 'Dinheiro', 'Cartão 1x', 'Cartão 2x', 'Cartão 3x', 'Boleto', 'Link InfinitePay']
 
 // Mocks de lançamentos vivem dentro do hook (`useFinanceiro`) e são devolvidos

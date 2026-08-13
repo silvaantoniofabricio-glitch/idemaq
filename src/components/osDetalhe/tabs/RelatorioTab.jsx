@@ -22,6 +22,7 @@ import { useFalhaTeste } from '../../../hooks/useFalhaTeste'
 import { resolverFotoUrl } from '../../../utils/osStorage'
 import { CATEGORIAS_PECA } from '../../../utils/categoriasPeca'
 import FotoAmpliadaModal from '../FotoAmpliadaModal'
+import CustoTerceiroPanel from '../CustoTerceiroPanel'
 import {
   AtlPanel, ATL_FONT, atlHover, atlSurfaceSunken,
 } from '../acoes/_AtlassianUI'
@@ -830,6 +831,9 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
             <ACardHeader T={T} dark={dark} icon="cash-banknote" label="Financeiro" />
             <div style={{ padding: 16, color: T.textDim, fontSize: 12, textAlign: 'center' }}>Carregando…</div>
           </ACard>
+        )}
+        {admin && os?.id && (
+          <CustoTerceiroPanel T={T} dark={dark} os={os} />
         )}
         <ColHistorico
           T={T} dark={dark} os={os} admin={admin}

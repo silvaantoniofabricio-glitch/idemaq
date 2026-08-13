@@ -101,7 +101,7 @@ function filtrarMockClientSide(lancs, filtros) {
 // Exportadas pra UI usar como autocomplete/select.
 export const CATEGORIAS_SUGESTAO = {
   receita: ['Higienização', 'Manutenção', 'Peças', 'Venda de máquina', 'Taxa diagnóstico', 'Outros'],
-  despesa: ['Funcionários', 'Peças', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento', 'Outros'],
+  despesa: ['Funcionários', 'Peças', 'Terceiros', 'Marketing', 'Utilidades', 'Combustível', 'Materiais', 'Impostos', 'Financiamento', 'Outros'],
 }
 
 // ─── Hook principal ─────────────────────────────────────────────────────────
