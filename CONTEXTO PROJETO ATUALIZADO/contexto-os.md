@@ -663,3 +663,11 @@ Outras combinações foram simuladas e descartadas: reduzir Higienização mais 
 Pedido do Toni: funcionário só deve conseguir avançar a OS confirmando a ação real dentro da etapa (ex: botão "Entregue" na etapa Entrega, "Concluir diagnóstico", etc — cada um já chama `onMoverOS` sozinho) — não pelo rodapé genérico com Voltar/Avançar/"Pular para…", que permitia pular etapas ou voltar sem realmente ter feito o trabalho.
 
 `Footer.jsx` (desktop) e `FooterMobile.jsx`: `if (!admin) return null` logo após o caso especial de OS recusada (que continua mostrando o banner informativo pra todo mundo, só não tem botão de navegação mesmo). Dono continua com o rodapé completo.
+
+## 33. Painel "Custo de terceiro / repasse" na OS (13/08/2026)
+
+Pedido do Toni: quando uma etapa do serviço é feita por terceiro (ex: motor mandado pra retificar fora) e isso gera um custo, não tinha jeito de registrar isso vinculado à OS — a aba "A receber" só mostra o que é cobrado do cliente, e o Financeiro não tinha campo de UI pra linkar uma despesa a uma OS (o banco já suportava `lancamento_financeiro.os_id`, só não tinha tela usando).
+
+**Implementado**: `src/components/osDetalhe/CustoTerceiroPanel.jsx` — novo card na aba Resumo (`RelatorioTab.jsx`, admin only, logo abaixo do card Financeiro), com lista dos custos já lançados + botão "Adicionar custo" (descrição, valor, data, conta opcional, toggle "já foi pago"). Salva em `lancamento_financeiro` com `tipo='despesa'`, `categoria='Terceiros'`, `os_id` = esta OS — aparece automaticamente em Financeiro → A pagar (ou Caixa se marcado como já pago). Categoria "Terceiros" adicionada nas listas de sugestão/filtro do Financeiro.
+
+Componente compartilhado entre desktop e mobile (RelatorioTab.jsx já é usado nos dois) — não precisou duplicar.
