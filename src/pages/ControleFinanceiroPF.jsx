@@ -785,15 +785,22 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
     return Array.from(s).sort()
   }, [despesasReais])
 
-  // Se trocar de mes/pessoa e a origem selecionada sumir da lista, limpa o
-  // filtro — senao a planilha fica vazia sem motivo aparente.
-  useEffect(() => {
-    if (origemFiltro && !origens.includes(origemFiltro)) setOrigemFiltro('')
-  }, [origens, origemFiltro])
-
-  useEffect(() => {
-    if (categoriaFiltro && !categorias.includes(categoriaFiltro)) setCategoriaFiltro('')
-  }, [categorias, categoriaFiltro])
+  // Ao trocar de mes/pessoa a selecao e mantida de proposito. Se a opcao
+  // escolhida nao existir no novo periodo, ela continua na lista (marcada) —
+  // senao o <select> perderia o valor e pareceria que resetou sozinho.
+  const opcoesCategoria = useMemo(
+    () => (categoriaFiltro && !categorias.includes(categoriaFiltro))
+      ? [...categorias, categoriaFiltro] : categorias,
+    [categorias, categoriaFiltro]
+  )
+  const opcoesOrigem = useMemo(
+    () => (origemFiltro && !origens.includes(origemFiltro))
+      ? [...origens, origemFiltro] : origens,
+    [origens, origemFiltro]
+  )
+  const filtroSemDadosNoMes =
+    (categoriaFiltro && !categorias.includes(categoriaFiltro)) ||
+    (origemFiltro && !origens.includes(origemFiltro))
 
   const filtradas = useMemo(() => {
     const buscaLower = busca.toLowerCase().trim()
@@ -846,7 +853,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
           }}
         >
           <option value="">Todas categorias</option>
-          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+          {opcoesCategoria.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select
           value={origemFiltro}
@@ -860,7 +867,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
           }}
         >
           <option value="">Todas origens</option>
-          {origens.map(o => <option key={o} value={o}>{rotuloOrigem(o)}</option>)}
+          {opcoesOrigem.map(o => <option key={o} value={o}>{rotuloOrigem(o)}</option>)}
         </select>
         <div style={{
           flex: isMobile ? '1 1 auto' : undefined,
@@ -874,6 +881,24 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
           {filtradas.length} itens · {fmtBRL(totalFiltrado, { fr: true })}
         </div>
       </div>
+
+      {/* Filtro mantido de um mes pro outro que nao existe neste periodo —
+          avisa em vez de deixar a tabela vazia sem explicacao. */}
+      {filtroSemDadosNoMes && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
+          padding: '10px 12px', borderRadius: 8,
+          background: bgEtapa('yellow', dark),
+          border: `1px solid ${corEtapa('yellow', dark)}55`,
+          fontSize: 12.5, color: T.textPrimary,
+        }}>
+          <i className="ti ti-filter-off" style={{ fontSize: 16, color: corEtapa('yellow', dark) }} aria-hidden="true" />
+          <span>
+            Não há lançamentos deste filtro no período selecionado. O filtro continua ativo —
+            troque de mês ou escolha “Todas”.
+          </span>
+        </div>
+      )}
 
       {isMobile ? (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
