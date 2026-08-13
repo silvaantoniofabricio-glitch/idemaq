@@ -175,10 +175,10 @@ function ExportDropdown({ T, dark, despesas, analise, mesLabel, pessoaLabel }) {
 
   function gerarCSV() {
     const itens = despesas.filter(d => !CATEGORIAS_FLUXO_INTERNO.has(d.categoria))
-    const linhas = [['Data', 'Origem', 'Descrição', 'Categoria', 'Valor'].join(';')]
+    const linhas = [['Data', 'Origem', 'Descrição', 'PF/PJ', 'Categoria', 'Valor'].join(';')]
     for (const d of itens) {
       const v = d.valor.toFixed(2).replace('.', ',')
-      linhas.push([d.data, rotuloOrigem(d.origem), `"${d.descricao}"`, d.categoria, v].join(';'))
+      linhas.push([d.data, rotuloOrigem(d.origem), `"${d.descricao}"`, d._pj ? 'PJ' : 'PF', d.categoria, v].join(';'))
     }
     const bom = '﻿'
     const blob = new Blob([bom + linhas.join('\n')], { type: 'text/csv;charset=utf-8' })
@@ -196,6 +196,7 @@ function ExportDropdown({ T, dark, despesas, analise, mesLabel, pessoaLabel }) {
         <td>${d.data}</td>
         <td>${rotuloOrigem(d.origem)}</td>
         <td>${d.descricao}</td>
+        <td>${d._pj ? 'PJ' : 'PF'}</td>
         <td>${d.categoria}</td>
         <td class="val">R$ ${d.valor.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}</td>
       </tr>`).join('')
@@ -227,9 +228,9 @@ function ExportDropdown({ T, dark, despesas, analise, mesLabel, pessoaLabel }) {
   <div class="kpi"><div class="kpi-label">Dízimo + Oferta</div><div class="kpi-val">${fmtBRL(analise.totalDizimo + analise.totalOferta)}</div></div>
 </div>
 <table>
-  <thead><tr><th>Data</th><th>Origem</th><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead>
+  <thead><tr><th>Data</th><th>Origem</th><th>Descrição</th><th>PF/PJ</th><th>Categoria</th><th style="text-align:right">Valor</th></tr></thead>
   <tbody>${rows}
-  <tr class="total-row"><td colspan="4">TOTAL</td><td class="val">R$ ${analise.totalReal.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}</td></tr>
+  <tr class="total-row"><td colspan="5">TOTAL</td><td class="val">R$ ${analise.totalReal.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}</td></tr>
   </tbody>
 </table>
 <script>window.onload = () => window.print()</script>
@@ -906,8 +907,8 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Badge variant={d._pj ? 'azul' : 'neutro'} dark={dark} sm>{d._pj ? 'PJ' : 'PF'}</Badge>
                 <Badge variant="amarelo" dark={dark} sm>{d.categoria}</Badge>
-                {d.pj && <Badge variant="azul" dark={dark} sm>PJ</Badge>}
                 <span style={{ fontSize: 12, color: T.textMuted }}>{rotuloOrigem(d.origem)}</span>
                 <span style={{ fontSize: 12, color: T.textMuted, fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{d.data}</span>
               </div>
@@ -917,7 +918,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
       ) : (
         <>
           <div style={{
-            display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 130px 110px',
+            display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 58px 130px 110px',
             gap: 8, padding: '8px 10px',
             background: T.cardAlt, borderRadius: 6,
             fontSize: 10.5, color: T.textMuted, fontWeight: 600,
@@ -926,6 +927,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
             <div>Data</div>
             <div>Origem</div>
             <div>Descrição</div>
+            <div>PF/PJ</div>
             <div>Categoria</div>
             <div
               onClick={toggleOrdem}
@@ -942,7 +944,7 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
           <div style={{ maxHeight: 600, overflowY: 'auto' }}>
             {filtradas.map((d, i) => (
               <div key={i} style={{
-                display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 130px 110px',
+                display: 'grid', gridTemplateColumns: '90px 1fr 1.5fr 58px 130px 110px',
                 gap: 8, padding: '10px',
                 borderBottom: `1px solid ${T.border}`,
                 fontSize: 12, color: T.textSecondary,
@@ -950,11 +952,15 @@ function PlanilhaCompleta({ T, dark, despesas, isMobile }) {
                 <div style={{ fontVariantNumeric: 'tabular-nums' }}>{d.data}</div>
                 <div style={{ color: T.textMuted }}>{rotuloOrigem(d.origem)}</div>
                 <div style={{ color: corHero(dark), fontWeight: 500 }}>{d.descricao}</div>
+                <div>
+                  <Badge variant={d._pj ? 'azul' : 'neutro'} dark={dark} sm>
+                    {d._pj ? 'PJ' : 'PF'}
+                  </Badge>
+                </div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   <Badge variant="amarelo" dark={dark} sm>
                     {d.categoria}
                   </Badge>
-                  {d.pj && <Badge variant="azul" dark={dark} sm>PJ</Badge>}
                 </div>
                 <div style={{
                   textAlign: 'right', fontWeight: 600,
