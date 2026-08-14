@@ -13,6 +13,11 @@
 // linhas duplas; agora ~6 linhas simples.
 //
 // Dias levantados do historico real (mai/jun/jul 2026) na revisao de 08/2026.
+// ATENCAO: o historico registra quando o dinheiro SAIU, que nem sempre e o
+// vencimento. A contabilidade, por exemplo, aparecia dia 11 e 14 no extrato mas
+// vence dia 10 (Toni corrigiu). Quando o Toni informar o dia real de algum
+// item, vale mais que o extrato.
+//
 // PRA EDITAR: mexa so na lista VENCIMENTOS_FIXOS abaixo.
 import React, { useMemo, useState } from 'react'
 import { corEtapa, bgEtapa } from '../../utils/colors'
@@ -27,10 +32,10 @@ const VENCIMENTOS_FIXOS = [
   { dia:  6, label: 'Parcela da casa'                          },
   { dia:  7, label: 'Energia'                                  },
   { dia: 10, label: 'Internet (FleetNet)'                      },
+  { dia: 10, label: 'Contabilidade (Zion)'                     },
   { dia: 10, label: 'Bradesco Elo Mais',          cartao: true },
   { dia: 11, label: 'Elo Grafite',                cartao: true },
   { dia: 13, label: 'Água (Sanesul)'                           },
-  { dia: 14, label: 'Contabilidade (Zion)'                     },
   { dia: 16, label: 'Financiamento Civic'                      },
   { dia: 20, label: 'DAS / impostos'                           },
   { dia: 20, label: 'Bradesco Neo Visa',          cartao: true },
