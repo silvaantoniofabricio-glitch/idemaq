@@ -2,13 +2,13 @@
 // Aba Etapa — onde a AÇÃO acontece. Delega pra um componente em acoes/ conforme
 // a etapa atual da OS. Cada ação é responsável pelo form + botão que avança.
 //
-// IMPORTANTE: o alerta amarelo "ATENÇÃO · observações da OS" é renderizado
-// AQUI, no wrapper, pra aparecer automaticamente em TODAS as etapas. As etapas
-// individuais mantem seus campos editaveis de observacoes (que escrevem em
-// os.observacoes), e este alerta no topo serve so de destaque visual pra
-// tecnico nunca esquecer (ex: 'levar a capa na entrega').
+// IMPORTANTE: o painel "Observações internas" é renderizado AQUI, no
+// wrapper, pra aparecer sempre no topo de TODAS as etapas — editável ali
+// mesmo, sem precisar caçar campo escondido dentro de cada etapa. Escreve
+// em os.observacoes (mesmo campo que os textareas de observação de etapas
+// específicas, tipo entrega, já usavam — fica tudo sincronizado).
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useTheme } from '../../../theme'
 import { TI, PALETA } from '../../_shared/PrimitivasMobile'
 import {
@@ -51,13 +51,24 @@ const MAP = {
   entregue: AcaoEntregaHIG,
 }
 
-// Alerta amarelo persistente — aparece no topo de toda etapa quando há
-// observacoes na OS. Conteudo somente leitura (cada etapa tem seu campo
-// editavel proprio que escreve em os.observacoes).
-function AlertaObservacoes({ os }) {
-  const { T, dark } = useTheme()
+// Painel "Observações internas" — sempre visível no topo de toda etapa,
+// editável direto ali (não precisa caçar o campo de observação escondido
+// dentro de cada Acao*HIG). Escreve em os.observacoes — mesmo campo que
+// os textareas de observação de etapas específicas (ex: entrega) já usavam,
+// então tudo fica sincronizado num campo só.
+function ObservacoesInternas({ T, dark, os, onUpdateOS }) {
+  const [editando, setEditando] = useState(false)
+  const [valor, setValor] = useState(os?.observacoes || '')
+  const [salvando, setSalvando] = useState(false)
   const obs = (os?.observacoes || '').trim()
-  if (!obs) return null
+
+  function abrir() { setValor(os?.observacoes || ''); setEditando(true) }
+  async function salvar() {
+    setSalvando(true)
+    await onUpdateOS?.(os.numero, { observacoes: valor.trim() })
+    setSalvando(false)
+    setEditando(false)
+  }
 
   return (
     <div style={{
@@ -67,33 +78,82 @@ function AlertaObservacoes({ os }) {
     }}>
       <div style={{
         padding: '3px 6px 3px 8px',
-        background: dark ? 'rgba(255,217,102,0.10)' : '#FFF7DC',
-        borderBottom: `1px solid ${T.border}`,
+        background: obs ? (dark ? 'rgba(255,217,102,0.10)' : '#FFF7DC') : (dark ? 'rgba(255,255,255,0.02)' : '#FAFBFC'),
+        borderBottom: editando || obs ? `1px solid ${T.border}` : 'none',
         display: 'flex', alignItems: 'center', gap: 7,
       }}>
         <span style={{
           width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-          background: dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg,
-          color: PALETA.yellowStrong,
+          background: obs ? (dark ? 'rgba(255,217,102,0.18)' : PALETA.yellowBg) : (dark ? 'rgba(255,255,255,0.06)' : '#EDEFF2'),
+          color: obs ? PALETA.yellowStrong : T.textMuted,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <TI name="alert-circle" size={11} />
+          <TI name={obs ? 'alert-circle' : 'note'} size={11} />
         </span>
         <span style={{
           flex: 1, fontSize: 11, fontWeight: 700, color: T.textPrimary,
           textTransform: 'uppercase', letterSpacing: '.04em',
-        }}>Atenção · observações da OS</span>
-        <span style={{
-          fontSize: 9.5, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-          background: PALETA.yellowStrong, color: '#fff',
-          textTransform: 'uppercase', letterSpacing: '.05em',
-        }}>NÃO ESQUECER</span>
+        }}>Observações internas</span>
+        {!editando && (
+          <button
+            onClick={abrir}
+            style={{
+              background: 'transparent', border: 'none', color: T.textMuted,
+              cursor: 'pointer', fontSize: 11, fontWeight: 600, padding: '2px 6px',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>
+            <TI name={obs ? 'pencil' : 'plus'} size={11} />
+            {obs ? 'Editar' : 'Adicionar'}
+          </button>
+        )}
       </div>
-      <div style={{
-        padding: 10,
-        fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
-        whiteSpace: 'pre-wrap',
-      }}>{obs}</div>
+      {editando ? (
+        <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <textarea
+            value={valor}
+            onChange={e => setValor(e.target.value)}
+            placeholder="Ex: cliente pediu pra ligar antes de ir, levar a capa na entrega…"
+            rows={3}
+            autoFocus
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '8px 10px', borderRadius: 6,
+              border: `1px solid ${T.border}`,
+              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
+              color: T.textPrimary, fontSize: 13, fontFamily: 'inherit',
+              outline: 'none', resize: 'vertical',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setEditando(false)}
+              style={{
+                flex: 1, padding: '7px', borderRadius: 6, border: `1px solid ${T.border}`,
+                background: 'transparent', color: T.textSecondary, fontSize: 12, cursor: 'pointer',
+                fontFamily: 'inherit', fontWeight: 500,
+              }}>
+              Cancelar
+            </button>
+            <button
+              onClick={salvar}
+              disabled={salvando}
+              style={{
+                flex: 1, padding: '7px', borderRadius: 6, border: 'none',
+                background: PALETA.yellowStrong, color: '#1a1500', fontSize: 12, fontWeight: 700,
+                cursor: salvando ? 'default' : 'pointer', opacity: salvando ? 0.6 : 1,
+                fontFamily: 'inherit',
+              }}>
+              {salvando ? 'Salvando…' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      ) : obs ? (
+        <div style={{
+          padding: 10,
+          fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
+          whiteSpace: 'pre-wrap',
+        }}>{obs}</div>
+      ) : null}
     </div>
   )
 }
@@ -103,6 +163,7 @@ export default function EtapaTab(props) {
 
   return (
     <div style={{ padding: '16px 18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <ObservacoesInternas T={props.T} dark={props.dark} os={props.os} onUpdateOS={props.onUpdateOS} />
       {Componente
         ? <Componente {...props} />
         : <SemAcao {...props} />}
