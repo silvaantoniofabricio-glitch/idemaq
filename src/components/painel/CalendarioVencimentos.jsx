@@ -98,8 +98,22 @@ export default function CalendarioVencimentos({ T, dark }) {
           fontVariantNumeric: 'tabular-nums',
         }}>{String(g.dia).padStart(2, '0')}</div>
 
-        <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: T.textPrimary, lineHeight: 1.35 }}>
-          {g.labels.join(' · ')}
+        {/* Coluna estreita: mostra o 1o compromisso + "+N" em vez de emendar
+            todos, senao o dia 20 (5 itens) quebraria em 4 linhas. O titulo
+            traz a lista inteira ao passar o mouse. */}
+        <div
+          title={g.labels.length > 1 ? g.labels.join(' · ') : undefined}
+          style={{
+            flex: 1, minWidth: 0, fontSize: 12.5, color: T.textPrimary, lineHeight: 1.35,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+          {g.labels[0]}
+          {g.labels.length > 1 && (
+            <span style={{
+              marginLeft: 5, fontSize: 10.5, fontWeight: 700,
+              color: T.textMuted, whiteSpace: 'nowrap',
+            }}>+{g.labels.length - 1}</span>
+          )}
           {g.cartao && (
             <i className="ti ti-credit-card"
                title="Inclui fatura de cartão — valor só fecha perto do vencimento"

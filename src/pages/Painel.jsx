@@ -510,12 +510,9 @@ export default function Painel({ T, dark, user }) {
       valor: dados.osAtrasadas, corKey: 'red', formatoCru: true,
       deltaTxt: dados.osAtrasadas > 0 ? 'prazo vencido — agir hoje' : 'tudo no prazo',
     },
-    {
-      id: 'faturamento', label: 'Faturamento do mês', icon: 'ti-cash',
-      valor: finAgg.faturamentoMes, corKey: 'blue',
-      delta: dados.deltaPct, deltaLbl: lblAnt,
-      spark: finAgg.spark30d,
-    },
+    // "Faturamento do mês" saiu daqui (08/2026): repetia exatamente o valor,
+    // a variação e o gráfico que o HeroFaturamento ja mostra logo acima. O slot
+    // virou o CalendarioVencimentos.
     {
       id: 'ticket', label: 'Ticket médio', icon: 'ti-receipt',
       valor: dados.ticketMedio, corKey: 'yellow',
@@ -592,9 +589,14 @@ export default function Painel({ T, dark, user }) {
         <HojeSidekick T={T} dark={dark} hoje={hoje} />
       </div>
 
-      {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+      {/* KPI row — 3 indicadores + calendario de vencimentos no 4o slot.
+          alignItems:start pra o calendario (mais alto) nao esticar os KPIs. */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: 12, alignItems: 'start',
+      }}>
         {kpis.map(k => <KPICard key={k.id} k={k} T={T} dark={dark} />)}
+        <CalendarioVencimentos T={T} dark={dark} />
       </div>
 
       <AlertasCriticos T={T} dark={dark} criticos={criticos}
@@ -628,10 +630,6 @@ export default function Painel({ T, dark, user }) {
         </Card>
         <ProximosVencimentos T={T} dark={dark} vencimentos={proximosVencimentos} onVer={() => navigate('/financeiro')} />
       </div>
-
-      {/* Calendario fixo dos compromissos do mes — so lembrete, sem valor.
-          Complementa o widget acima, que mostra contas a pagar reais. */}
-      <CalendarioVencimentos T={T} dark={dark} />
     </div>
   )
 }
