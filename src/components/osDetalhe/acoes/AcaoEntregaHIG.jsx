@@ -97,18 +97,14 @@ function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
   const [diaSel, setDiaSel]      = useState(dataIso || dias[1]?.iso || dias[0]?.iso)
   const [periodoSel, setPeriodo] = useState(detectarPeriodo(dataHora))
   const [horaSel, setHoraSel]    = useState(dataHora || null)
-  const [obs, setObs]            = useState(os?.observacoes || '')
   const horarios = useMemo(() => horariosDoPeriodo(periodoSel), [periodoSel])
   const reagendando = !!dataIso
   const podeAgendar = !!diaSel && !!horaSel
-
-  useEffect(() => { setObs(os?.observacoes || '') }, [os?.observacoes])
 
   function agendar() {
     if (!podeAgendar) { notify('erro', 'Escolha o dia e o horário da entrega'); return }
     const iso = `${diaSel}T${horaSel}:00`
     onUpdateOS?.(os.numero, {
-      observacoes: obs,
       pre_diagnostico: {
         ...(os.pre_diagnostico || {}),
         entrega: { ...entregaSalva, data: iso },
@@ -168,29 +164,6 @@ function FormAgendarEntrega({ os, onUpdateOS, onCancelar }) {
               selected={h === horaSel}
               onClick={() => setHoraSel(h)} />
           ))}
-        </div>
-      </AtlPanel>
-
-      {/* 4. Observacoes */}
-      <AtlPanel T={T} dark={dark}
-        title="Observações"
-        footer="Visível em todas as etapas. Ex: levar a capa, entregar no portão.">
-        <div style={{ padding: '10px 14px' }}>
-          <textarea
-            placeholder="Ex: entregar pela manhã, prédio 2º andar…"
-            value={obs}
-            onChange={e => setObs(e.target.value)}
-            rows={2}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              padding: '8px 10px', borderRadius: 3,
-              border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-              color: T.textPrimary, fontSize: 13, fontFamily: ATL_FONT,
-              outline: 'none', resize: 'vertical',
-              letterSpacing: '-0.005em', lineHeight: 1.45,
-            }}
-          />
         </div>
       </AtlPanel>
 

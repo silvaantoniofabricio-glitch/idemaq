@@ -174,18 +174,6 @@ export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelo, serie])
 
-  // ── Observações ───────────────────────────────────────────────────────────
-  const [obs, setObs] = useState(os?.observacoes || '')
-  useEffect(() => { setObs(os?.observacoes || '') }, [os?.observacoes])
-  useEffect(() => {
-    if (obs === (os?.observacoes || '')) return
-    const t = setTimeout(() => {
-      onUpdateOS?.(os.numero, { observacoes: obs })
-    }, 500)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [obs])
-
   // ── Detecta foto ja existente pra habilitar CTA ──────────────────────────
   const temFoto = !!(
     os?.pre_diagnostico?.foto_coleta_1
@@ -202,7 +190,6 @@ export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
     const patch = {}
     if (modelo !== (os?.modelo_equipamento || os?.modelo || '')) patch.modelo_equipamento = modelo
     if (serie  !== (os?.numero_serie || os?.serie || ''))         patch.numero_serie = serie
-    if (obs !== (os?.observacoes || ''))                           patch.observacoes = obs
     // Autoria: quem confirmou a coleta + quando (pontuação por desempenho)
     patch.pre_diagnostico = {
       ...(os.pre_diagnostico || {}),
@@ -276,32 +263,7 @@ export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
         }}
       />
 
-      {/* 5. Observacoes */}
-      <AtlPanel T={T} dark={dark} title="Observações"
-        footer="Visível em todas as etapas. Ex: chegou sem capa, mangueira solta.">
-        <div style={{ padding: '10px 14px' }}>
-          <textarea
-            placeholder="Ex: cliente informou que parou de lavar semana passada, sem barulho anormal…"
-            value={obs}
-            onChange={(e) => setObs(e.target.value)}
-            rows={3}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              padding: '8px 10px',
-              borderRadius: 3,
-              border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
-              color: T.textPrimary,
-              fontSize: 13, fontFamily: ATL_FONT,
-              outline: 'none', resize: 'vertical',
-              letterSpacing: '-0.005em',
-              lineHeight: 1.45,
-            }}
-          />
-        </div>
-      </AtlPanel>
-
-      {/* 6. CTA Confirmar coleta */}
+      {/* 5. CTA Confirmar coleta */}
       <AtlButton
         T={T} dark={dark}
         variant="primary"

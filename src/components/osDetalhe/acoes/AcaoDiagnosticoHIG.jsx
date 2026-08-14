@@ -7,8 +7,10 @@
 //   2. Testes de funcionamento — toggle 'não liga' + 4 test rows OK/Defeito/Barulho
 //   3. Vazamentos — toggle cards (só lavadora/lava-louças)
 //   4. Componentes afetados — busca + grupos accordion + itens Troca/Manutenção
-//   5. Observações internas — textarea
-//   6. CTA Concluir diagnóstico → Orçamento
+//   5. CTA Concluir diagnóstico → Orçamento
+//
+// Observações internas: campo único no topo de EtapaTab.jsx (não mais
+// duplicado aqui — removido em 13/08/2026).
 //
 // Persiste (tudo em os.pre_diagnostico — chaves INALTERADAS pra compat com
 // OS antigas e com o RelatorioTab):
@@ -411,7 +413,6 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
 
   // ── Estado: componentes (ex-Diagnóstico) ──────────────────────────────────
   const preDiag = os?.pre_diagnostico || {}
-  const [obs, setObs]                   = useState(os?.observacoes || '')
   const [marcadosPorGrupo, setMarcados] = useState(() => normalizeMarcados(preDiag.componentes_marcados))
   // Autoria por componente: { [itemId]: { uid, em, apelido } }
   const [autores, setAutores]           = useState(() => preDiag.componentes_autores || {})
@@ -427,7 +428,6 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
 
   // ── Hidratação ────────────────────────────────────────────────────────────
   useEffect(() => {
-    setObs(os?.observacoes || '')
     setMarcados(normalizeMarcados(os?.pre_diagnostico?.componentes_marcados))
     setAutores(os?.pre_diagnostico?.componentes_autores || {})
   }, [os?.id])
@@ -465,14 +465,8 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
       return { ...acc, [t.id]: found?.valor ?? null }
     }, {})
     setTestes(novo)
-    setObs(os?.observacoes || '')
     setHidratado(true)
-  }, [loadingChk, chkItens, hidratado, os?.observacoes])
-
-  useEffect(() => {
-    if (hidratado) setObs(os?.observacoes || '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [os?.observacoes])
+  }, [loadingChk, chkItens, hidratado])
 
   // ── Persistência: testes ──────────────────────────────────────────────────
   // Autoria: quando o valor de um teste MUDA, carimba com o usuário logado;
@@ -548,14 +542,6 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [naoLiga, motivoNaoLiga, vazamentos, hidratado])
 
-  // ── Persistência: observações (debounce) ──────────────────────────────────
-  useEffect(() => {
-    if (!hidratado || obs === (os?.observacoes || '')) return
-    const t = setTimeout(() => onUpdateOS?.(os.numero, { observacoes: obs }), 500)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [obs, hidratado])
-
   // ── Persistência: componentes (autosave debounce) ─────────────────────────
   useEffect(() => {
     if (!os?.id) return
@@ -595,7 +581,6 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
     const { itens, alertas } = montarItensTestes(testes, naoLiga)
     const todosAlertas = [...alertas, ...alertasPendentes]
     onUpdateOS?.(os.numero, {
-      ...(obs !== (os?.observacoes || '') ? { observacoes: obs } : {}),
       pre_diagnostico: {
         ...base,
         checklist: {
@@ -886,31 +871,7 @@ export default function AcaoDiagnosticoHIG({ os, onUpdateOS, onMoverOS }) {
         })()}
       </AtlPanel>
 
-      {/* 5. Observações Internas */}
-      <AtlPanel T={T} dark={dark} title="Observações Internas"
-        footer="Visível e editável em todas as etapas da OS.">
-        <div style={{ padding: '10px 14px' }}>
-          <textarea
-            placeholder="Ex: Rolamento do tambor desgastado, correia rompida…"
-            value={obs}
-            onChange={e => setObs(e.target.value)}
-            rows={3}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              padding: '8px 10px',
-              borderRadius: 3,
-              border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-              color: T.textPrimary,
-              fontSize: 13, fontFamily: ATL_FONT,
-              outline: 'none', resize: 'vertical',
-              letterSpacing: '-0.005em', lineHeight: 1.45,
-            }}
-          />
-        </div>
-      </AtlPanel>
-
-      {/* 6. CTA */}
+      {/* 5. CTA */}
       <AtlButton
         T={T} dark={dark}
         variant="primary"

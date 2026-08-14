@@ -210,7 +210,6 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
   const [acabamento, setAcabamento] = useState(
     () => ACABAMENTO.reduce((acc, a) => ({ ...acc, [a.id]: false }), {})
   )
-  const [obs, setObs] = useState(os?.observacoes || '')
   const [hidratado, setHidratado] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
@@ -226,9 +225,8 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     }, {})
     setTestes(novoTestes)
     setAcabamento(novoAcab)
-    setObs(os?.observacoes || '')
     setHidratado(true)
-  }, [loadingChk, chkItens, hidratado, os?.observacoes])
+  }, [loadingChk, chkItens, hidratado])
 
   // Reset quando o tipo de equipamento muda durante a sessão
   const prevTipoRef = useRef(null)
@@ -242,18 +240,6 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     setAcabamento(a.reduce((acc, x) => ({ ...acc, [x.id]: false }), {}))
     setHidratado(false)
   }, [tipoEquip])
-
-  useEffect(() => {
-    if (hidratado) setObs(os?.observacoes || '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [os?.observacoes])
-
-  useEffect(() => {
-    if (!hidratado || obs === (os?.observacoes || '')) return
-    const t = setTimeout(() => onUpdateOS?.(os.numero, { observacoes: obs }), 500)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [obs, hidratado])
 
   // Autoria: quando o valor de um item MUDA, carimba com o usuário logado;
   // quando não muda, preserva o autor anterior (não sobrescreve quem fez).
@@ -342,7 +328,6 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     setSalvando(true)
     const { itens, alertas } = serializarChecklist()
     await salvarChk(itens, null, alertas)
-    if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     await sincronizarAbertas([])
     const proxima = proximaEtapaCfg
       ? ETAPAS_TODOS.find(e => e.match?.[os.tipo] === proximaEtapaCfg.id)
@@ -355,7 +340,6 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
     setSalvando(true)
     const { itens, alertas } = serializarChecklist()
     await salvarChk(itens, null, alertas)
-    if (obs !== (os?.observacoes || '')) onUpdateOS?.(os.numero, { observacoes: obs })
     await sincronizarAbertas(falhas)
     const oficina = ETAPAS_TODOS.find(e => e.match?.[os.tipo] === 'oficina')
     setSalvando(false)
@@ -411,31 +395,7 @@ export default function AcaoTesteHIG({ os, onMoverOS, onUpdateOS }) {
         </AtlPanel>
       )}
 
-      {/* 3. Observações Internas */}
-      <AtlPanel T={T} dark={dark} title="Observações Internas"
-        footer="Visível e editável em todas as etapas da OS.">
-        <div style={{ padding: '10px 14px' }}>
-          <textarea
-            placeholder="Ex: ficou tudo OK; cliente vai retirar amanhã…"
-            value={obs}
-            onChange={e => setObs(e.target.value)}
-            rows={3}
-            style={{
-              width: '100%', boxSizing: 'border-box',
-              padding: '8px 10px',
-              borderRadius: 3,
-              border: `1px solid ${T.border}`,
-              background: dark ? 'rgba(255,255,255,0.04)' : '#fff',
-              color: T.textPrimary,
-              fontSize: 13, fontFamily: ATL_FONT,
-              outline: 'none', resize: 'vertical',
-              letterSpacing: '-0.005em', lineHeight: 1.45,
-            }}
-          />
-        </div>
-      </AtlPanel>
-
-      {/* 4. CTA */}
+      {/* 3. CTA */}
       {!podeVoltarOficina ? (
         <AtlButton
           T={T} dark={dark}
