@@ -17,7 +17,7 @@
 //
 // PRA EDITAR: mexa so na lista VENCIMENTOS_FIXOS abaixo.
 import React, { useMemo, useState } from 'react'
-import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
+import { corEtapa, bgEtapa } from '../../utils/colors'
 import Card from '../ui/Card'
 import SectionHeader from '../ui/SectionHeader'
 
@@ -86,53 +86,48 @@ export default function CalendarioVencimentos({ T, dark, compacto = false }) {
     return (
       <Card T={T} dark={dark} radius={14} padding={'16px 18px'}
         style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Sem numero grande de proposito: ele engordava o card e esticava os
+            KPIs vizinhos. A contagem cabe no proprio titulo. */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
           fontSize: 10.5, color: T.textMuted, fontWeight: 600,
           textTransform: 'uppercase', letterSpacing: '.05em',
         }}>
           <i className="ti ti-calendar-repeat" style={{ fontSize: 13, color: cor }} aria-hidden="true" />
-          Vencimentos do mês
+          Vencimentos do mês · {totalAVir} a vir
         </div>
 
-        <div style={{
-          fontSize: 26, fontWeight: 700, color: corHero(dark),
-          letterSpacing: '-.025em', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-        }}>{totalAVir}</div>
-
-        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, minHeight: 22 }}>
-          <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>
-            a vir{totalPass > 0 && ` · ${totalPass} já venceram`}
-          </span>
-        </div>
-
-        {/* Os 2 mais urgentes, no lugar onde os KPIs poem o sparkline */}
-        <div style={{ marginTop: 'auto', paddingTop: 8 }}>
-          {aVir.slice(0, 2).map(g => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {aVir.slice(0, 3).map(g => (
             <div key={g.dia} style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              fontSize: 11, padding: '2px 0',
+              display: 'flex', alignItems: 'center', gap: 8,
+              fontSize: 12, padding: '3px 0',
             }}>
               <span style={{
                 fontWeight: 700, color: g.estado === 'hoje' ? amareloC : azulC,
                 fontVariantNumeric: 'tabular-nums',
               }}>{String(g.dia).padStart(2, '0')}</span>
               <span style={{
-                flex: 1, minWidth: 0, color: T.textSecondary,
+                flex: 1, minWidth: 0, color: T.textPrimary,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                {g.labels[0]}{g.labels.length > 1 && ` +${g.labels.length - 1}`}
+                {g.labels[0]}{g.labels.length > 1 && (
+                  <span style={{ color: T.textMuted, fontWeight: 600 }}> +{g.labels.length - 1}</span>
+                )}
               </span>
               <span style={{
                 color: g.estado === 'hoje' ? amareloC : T.textMuted,
-                fontWeight: 600, whiteSpace: 'nowrap',
+                fontWeight: 600, whiteSpace: 'nowrap', fontSize: 11,
               }}>{prazoDe(g)}</span>
             </div>
           ))}
           {aVir.length === 0 && (
-            <div style={{ fontSize: 11, color: T.textMuted }}>nada a vencer este mês</div>
+            <div style={{ fontSize: 11.5, color: T.textMuted }}>nada a vencer este mês</div>
           )}
         </div>
+
+        {/* Os ja vencidos ficam so no calendario completo (rodape) — aqui
+            engordariam o card e esticariam os KPIs vizinhos. */}
       </Card>
     )
   }
