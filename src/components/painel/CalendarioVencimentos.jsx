@@ -1,26 +1,23 @@
 // src/components/painel/CalendarioVencimentos.jsx
-// Widget do Painel (dono): calendario FIXO dos compromissos que se repetem todo
-// mes — so lembrete, nao gera lancamento nem precisa de baixa.
+// Calendario FIXO dos compromissos que se repetem todo mes — so lembrete, nao
+// gera lancamento nem precisa de baixa.
 //
-// Diferenca pro "Proximos vencimentos" (ProximosVencimentos.jsx), que fica ao
-// lado: aquele le contas a pagar reais do banco (com valor, some quando paga).
-// Este aqui e um calendario estatico: sempre mostra os mesmos dias, mes apos
-// mes, so pra Toni nao esquecer de pagar. Sem valor de proposito — os valores
-// variam e a fatura de cartao so fecha perto do vencimento.
+// Dois modos:
+//   <CalendarioVencimentos compacto />  -> card no formato KPI (linha de cima):
+//        so a contagem e os 2 mais urgentes, pra nao destoar dos KPIs vizinhos.
+//   <CalendarioVencimentos />           -> lista completa do mes (rodape).
 //
-// Compacto por pedido do Toni (08/2026): agrupa o mesmo dia numa linha, poe o
-// prazo inline e recolhe os ja vencidos atras de um toggle. Antes eram 18
-// linhas duplas; agora ~6 linhas simples.
+// Nao confundir com ProximosVencimentos.jsx: aquele le contas a pagar REAIS do
+// banco (com valor, some quando paga). Este e estatico — sempre os mesmos dias.
 //
 // Dias levantados do historico real (mai/jun/jul 2026) na revisao de 08/2026.
 // ATENCAO: o historico registra quando o dinheiro SAIU, que nem sempre e o
 // vencimento. A contabilidade, por exemplo, aparecia dia 11 e 14 no extrato mas
-// vence dia 10 (Toni corrigiu). Quando o Toni informar o dia real de algum
-// item, vale mais que o extrato.
+// vence dia 10 (Toni corrigiu). Informacao do Toni vale mais que o extrato.
 //
 // PRA EDITAR: mexa so na lista VENCIMENTOS_FIXOS abaixo.
 import React, { useMemo, useState } from 'react'
-import { corEtapa, bgEtapa } from '../../utils/colors'
+import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import Card from '../ui/Card'
 import SectionHeader from '../ui/SectionHeader'
 
@@ -46,47 +43,107 @@ const VENCIMENTOS_FIXOS = [
   { dia: 25, label: 'Inter',                      cartao: true },
 ]
 
-export default function CalendarioVencimentos({ T, dark }) {
+// Agrupa por dia (o dia 20 sozinho tem 5) e classifica pelo quanto falta.
+function agrupar() {
+  const hoje = new Date().getDate()
+  const porDia = new Map()
+  for (const v of VENCIMENTOS_FIXOS) {
+    if (!porDia.has(v.dia)) porDia.set(v.dia, { dia: v.dia, labels: [], cartao: false })
+    const g = porDia.get(v.dia)
+    g.labels.push(v.label)
+    g.cartao = g.cartao || !!v.cartao
+  }
+  const grupos = [...porDia.values()]
+    .map(g => {
+      const faltam = g.dia - hoje
+      return { ...g, faltam, estado: faltam === 0 ? 'hoje' : faltam > 0 ? 'aVir' : 'passou' }
+    })
+    .sort((a, b) => a.dia - b.dia)
+  return {
+    aVir:     grupos.filter(g => g.estado !== 'passou'),
+    passados: grupos.filter(g => g.estado === 'passou'),
+  }
+}
+
+const prazoDe = g =>
+    g.estado === 'hoje' ? 'vence hoje'
+  : g.faltam === 1      ? 'amanhã'
+  : `em ${g.faltam}d`
+
+export default function CalendarioVencimentos({ T, dark, compacto = false }) {
   const [verPassados, setVerPassados] = useState(false)
+  const { aVir, passados } = useMemo(agrupar, [])
   const amareloC = corEtapa('yellow', dark)
   const azulC    = corEtapa('blue', dark)
 
-  // Agrupa por dia (o dia 20 sozinho tem 5 compromissos) e classifica pelo
-  // quanto falta. Ordena: hoje > a vir > ja passou.
-  const { aVir, passados } = useMemo(() => {
-    const hoje = new Date().getDate()
-    const porDia = new Map()
-    for (const v of VENCIMENTOS_FIXOS) {
-      if (!porDia.has(v.dia)) porDia.set(v.dia, { dia: v.dia, labels: [], cartao: false })
-      const g = porDia.get(v.dia)
-      g.labels.push(v.label)
-      g.cartao = g.cartao || !!v.cartao
-    }
-    const grupos = [...porDia.values()]
-      .map(g => {
-        const faltam = g.dia - hoje
-        return { ...g, faltam, estado: faltam === 0 ? 'hoje' : faltam > 0 ? 'aVir' : 'passou' }
-      })
-      .sort((a, b) => a.dia - b.dia)
-    return {
-      aVir:     grupos.filter(g => g.estado !== 'passou'),
-      passados: grupos.filter(g => g.estado === 'passou'),
-    }
-  }, [])
-
   const totalAVir = aVir.reduce((s, g) => s + g.labels.length, 0)
   const totalPass = passados.reduce((s, g) => s + g.labels.length, 0)
+  const temHoje   = aVir.some(g => g.estado === 'hoje')
 
+  // ─── Modo compacto: mesma silhueta dos KPIs da linha de cima ──────────────
+  if (compacto) {
+    const cor = temHoje ? amareloC : azulC
+    return (
+      <Card T={T} dark={dark} radius={14} padding={'16px 18px'}
+        style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
+          fontSize: 10.5, color: T.textMuted, fontWeight: 600,
+          textTransform: 'uppercase', letterSpacing: '.05em',
+        }}>
+          <i className="ti ti-calendar-repeat" style={{ fontSize: 13, color: cor }} aria-hidden="true" />
+          Vencimentos do mês
+        </div>
+
+        <div style={{
+          fontSize: 26, fontWeight: 700, color: corHero(dark),
+          letterSpacing: '-.025em', lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+        }}>{totalAVir}</div>
+
+        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, minHeight: 22 }}>
+          <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>
+            a vir{totalPass > 0 && ` · ${totalPass} já venceram`}
+          </span>
+        </div>
+
+        {/* Os 2 mais urgentes, no lugar onde os KPIs poem o sparkline */}
+        <div style={{ marginTop: 'auto', paddingTop: 8 }}>
+          {aVir.slice(0, 2).map(g => (
+            <div key={g.dia} style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              fontSize: 11, padding: '2px 0',
+            }}>
+              <span style={{
+                fontWeight: 700, color: g.estado === 'hoje' ? amareloC : azulC,
+                fontVariantNumeric: 'tabular-nums',
+              }}>{String(g.dia).padStart(2, '0')}</span>
+              <span style={{
+                flex: 1, minWidth: 0, color: T.textSecondary,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {g.labels[0]}{g.labels.length > 1 && ` +${g.labels.length - 1}`}
+              </span>
+              <span style={{
+                color: g.estado === 'hoje' ? amareloC : T.textMuted,
+                fontWeight: 600, whiteSpace: 'nowrap',
+              }}>{prazoDe(g)}</span>
+            </div>
+          ))}
+          {aVir.length === 0 && (
+            <div style={{ fontSize: 11, color: T.textMuted }}>nada a vencer este mês</div>
+          )}
+        </div>
+      </Card>
+    )
+  }
+
+  // ─── Modo completo: lista do mes inteiro ──────────────────────────────────
   function Linha({ g, esmaecido }) {
     const cor = esmaecido ? T.textMuted : g.estado === 'hoje' ? amareloC : azulC
     const bg  = esmaecido ? 'transparent' : g.estado === 'hoje' ? bgEtapa('yellow', dark) : bgEtapa('blue', dark)
-    const prazo = esmaecido        ? 'já passou'
-                : g.estado === 'hoje' ? 'vence hoje'
-                : g.faltam === 1      ? 'amanhã'
-                : `em ${g.faltam}d`
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0',
+        display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
         borderTop: `1px solid ${T.border}`, opacity: esmaecido ? 0.5 : 1,
       }}>
         <div style={{
@@ -98,22 +155,8 @@ export default function CalendarioVencimentos({ T, dark }) {
           fontVariantNumeric: 'tabular-nums',
         }}>{String(g.dia).padStart(2, '0')}</div>
 
-        {/* Coluna estreita: mostra o 1o compromisso + "+N" em vez de emendar
-            todos, senao o dia 20 (5 itens) quebraria em 4 linhas. O titulo
-            traz a lista inteira ao passar o mouse. */}
-        <div
-          title={g.labels.length > 1 ? g.labels.join(' · ') : undefined}
-          style={{
-            flex: 1, minWidth: 0, fontSize: 12.5, color: T.textPrimary, lineHeight: 1.35,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-          {g.labels[0]}
-          {g.labels.length > 1 && (
-            <span style={{
-              marginLeft: 5, fontSize: 10.5, fontWeight: 700,
-              color: T.textMuted, whiteSpace: 'nowrap',
-            }}>+{g.labels.length - 1}</span>
-          )}
+        <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: T.textPrimary, lineHeight: 1.35 }}>
+          {g.labels.join(' · ')}
           {g.cartao && (
             <i className="ti ti-credit-card"
                title="Inclui fatura de cartão — valor só fecha perto do vencimento"
@@ -123,44 +166,41 @@ export default function CalendarioVencimentos({ T, dark }) {
         </div>
 
         <div style={{
-          flexShrink: 0, fontSize: 11, fontWeight: 600, color: cor,
-          whiteSpace: 'nowrap',
-        }}>{prazo}</div>
+          flexShrink: 0, fontSize: 11, fontWeight: 600, color: cor, whiteSpace: 'nowrap',
+        }}>{esmaecido ? 'já passou' : prazoDe(g)}</div>
       </div>
     )
   }
 
   return (
-    <Card T={T} dark={dark} radius={14} padding={'16px 18px'}>
+    <Card T={T} dark={dark} radius={14} padding={'16px 20px'}>
       <SectionHeader T={T} dark={dark} icon="ti-calendar-repeat">
         Vencimentos do mês · {totalAVir} a vir
       </SectionHeader>
 
-      {/* Altura limitada pra o card nao destoar dos KPIs ao lado (~130px).
-          Passando de ~4 dias a lista rola dentro do proprio card. */}
-      {/* So a lista rola — o botao dos vencidos fica fixo embaixo, senao some
-          da vista justo quando a lista passa da altura. */}
-      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 78, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {aVir.map(g => <Linha key={g.dia} g={g} />)}
-        {verPassados && passados.map(g => <Linha key={`p${g.dia}`} g={g} esmaecido />)}
-      </div>
 
-      {totalPass > 0 && (
-        <button
-          onClick={() => setVerPassados(v => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 0 0', marginTop: 4,
-            borderTop: `1px solid ${T.border}`,
-            background: 'transparent', border: 'none', borderTopStyle: 'solid',
-            color: T.textMuted, fontSize: 11, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
-          }}>
-          <i className={`ti ti-chevron-${verPassados ? 'down' : 'right'}`}
-             style={{ fontSize: 13 }} aria-hidden="true" />
-          {totalPass} {totalPass === 1 ? 'já venceu' : 'já venceram'} este mês
-        </button>
-      )}
+        {totalPass > 0 && (
+          <>
+            <button
+              onClick={() => setVerPassados(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 0 5px', marginTop: 2,
+                borderTop: `1px solid ${T.border}`,
+                background: 'transparent', border: 'none', borderTopStyle: 'solid',
+                color: T.textMuted, fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
+              }}>
+              <i className={`ti ti-chevron-${verPassados ? 'down' : 'right'}`}
+                 style={{ fontSize: 13 }} aria-hidden="true" />
+              {totalPass} {totalPass === 1 ? 'já venceu' : 'já venceram'} este mês
+            </button>
+            {verPassados && passados.map(g => <Linha key={`p${g.dia}`} g={g} esmaecido />)}
+          </>
+        )}
+      </div>
     </Card>
   )
 }

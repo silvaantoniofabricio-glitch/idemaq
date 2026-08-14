@@ -589,14 +589,11 @@ export default function Painel({ T, dark, user }) {
         <HojeSidekick T={T} dark={dark} hoje={hoje} />
       </div>
 
-      {/* KPI row — 3 indicadores + calendario de vencimentos no 4o slot.
-          alignItems:start pra o calendario (mais alto) nao esticar os KPIs. */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 12, alignItems: 'start',
-      }}>
+      {/* KPI row — 3 indicadores + resumo dos vencimentos no 4o slot (formato
+          KPI: contagem + os 2 mais urgentes). A lista completa fica no rodape. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
         {kpis.map(k => <KPICard key={k.id} k={k} T={T} dark={dark} />)}
-        <CalendarioVencimentos T={T} dark={dark} />
+        <CalendarioVencimentos T={T} dark={dark} compacto />
       </div>
 
       <AlertasCriticos T={T} dark={dark} criticos={criticos}
@@ -630,6 +627,10 @@ export default function Painel({ T, dark, user }) {
         </Card>
         <ProximosVencimentos T={T} dark={dark} vencimentos={proximosVencimentos} onVer={() => navigate('/financeiro')} />
       </div>
+
+      {/* Calendario completo — mes inteiro, com espaco pra mostrar todos os
+          compromissos de cada dia sem abreviar. O resumo fica na linha de KPIs. */}
+      <CalendarioVencimentos T={T} dark={dark} />
     </div>
   )
 }
