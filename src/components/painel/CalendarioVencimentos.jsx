@@ -86,7 +86,7 @@ export default function CalendarioVencimentos({ T, dark }) {
                 : `em ${g.faltam}d`
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
+        display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0',
         borderTop: `1px solid ${T.border}`, opacity: esmaecido ? 0.5 : 1,
       }}>
         <div style={{
@@ -131,34 +131,36 @@ export default function CalendarioVencimentos({ T, dark }) {
   }
 
   return (
-    <Card T={T} dark={dark} radius={14} padding={'16px 20px'}>
+    <Card T={T} dark={dark} radius={14} padding={'16px 18px'}>
       <SectionHeader T={T} dark={dark} icon="ti-calendar-repeat">
         Vencimentos do mês · {totalAVir} a vir
       </SectionHeader>
 
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Altura limitada pra o card nao destoar dos KPIs ao lado (~130px).
+          Passando de ~4 dias a lista rola dentro do proprio card. */}
+      {/* So a lista rola — o botao dos vencidos fica fixo embaixo, senao some
+          da vista justo quando a lista passa da altura. */}
+      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 78, overflowY: 'auto' }}>
         {aVir.map(g => <Linha key={g.dia} g={g} />)}
-
-        {totalPass > 0 && (
-          <>
-            <button
-              onClick={() => setVerPassados(v => !v)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '7px 0 5px', marginTop: 2,
-                borderTop: `1px solid ${T.border}`,
-                background: 'transparent', border: 'none', borderTopStyle: 'solid',
-                color: T.textMuted, fontSize: 11, fontWeight: 600,
-                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
-              }}>
-              <i className={`ti ti-chevron-${verPassados ? 'down' : 'right'}`}
-                 style={{ fontSize: 13 }} aria-hidden="true" />
-              {totalPass} {totalPass === 1 ? 'já venceu' : 'já venceram'} este mês
-            </button>
-            {verPassados && passados.map(g => <Linha key={g.dia} g={g} esmaecido />)}
-          </>
-        )}
+        {verPassados && passados.map(g => <Linha key={`p${g.dia}`} g={g} esmaecido />)}
       </div>
+
+      {totalPass > 0 && (
+        <button
+          onClick={() => setVerPassados(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 0 0', marginTop: 4,
+            borderTop: `1px solid ${T.border}`,
+            background: 'transparent', border: 'none', borderTopStyle: 'solid',
+            color: T.textMuted, fontSize: 11, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
+          }}>
+          <i className={`ti ti-chevron-${verPassados ? 'down' : 'right'}`}
+             style={{ fontSize: 13 }} aria-hidden="true" />
+          {totalPass} {totalPass === 1 ? 'já venceu' : 'já venceram'} este mês
+        </button>
+      )}
     </Card>
   )
 }
