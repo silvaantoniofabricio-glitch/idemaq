@@ -457,3 +457,65 @@ Toni pediu um arquivo mensal (entradas/saídas do mês anterior) pra declarar co
 Parte da troca geral de nome do serviço (pedido do Toni, ver `contexto-os.md` §27). `CATEGORIAS_RECEITA` (Financeiro.jsx) e `CATEGORIAS_SUGESTAO.receita` (useFinanceiro.js) agora mostram "Higienização" em vez de "Limpeza".
 
 **Cuidado que tomei aqui por ser dado financeiro**: lançamento antigo continua salvo no banco com `categoria = 'Limpeza'` (decisão do Toni foi só mudar a interface, não migrar dado). Diferente do filtro de serviço da OS (que já usa regex tolerante), o filtro de categoria do Financeiro é comparação exata (`i.categoria === categoria`) — se eu só trocasse o rótulo, selecionar "Higienização" escondia todo o histórico de receita salvo como "Limpeza". Corrigido pra tratar as duas strings como equivalentes só quando "Higienização" está selecionado (linha ~991 de `Financeiro.jsx`). Lançamento NOVO criado por `NovoLancamentoModal` já nasce com `categoria = 'Higienização'`.
+
+---
+
+## 19. Calendário de vencimentos fixos (08/2026)
+
+Levantado do histórico real de mai/jun/jul 2026 na revisão de fechamento. Vive em
+`components/painel/CalendarioVencimentos.jsx` (widget do Painel) — **pra editar,
+mexer só na lista `VENCIMENTOS_FIXOS` do topo do arquivo.**
+
+| Dia | Compromisso | Dia | Compromisso |
+|---|---|---|---|
+| 02 | Fatura Nubank PF | 13 | Água (Sanesul) |
+| 05 | Salários (Alessandro + Guilherme) | 14 | Contabilidade (Zion) |
+| 05 | Pacote de serviços Cresol | 16 | Financiamento Civic |
+| 06 | Parcela da casa | 20 | DAS / impostos |
+| 07 | Energia | 20 | Faturas Neo Visa · Cresol Master · Mercado Pago |
+| 10 | Internet (FleetNet) | 20 | Empréstimo Cresol PJ |
+| 10 | Parcela Bradesco Elo Mais *(cancelado, quitando)* | 23 | Fatura Nubank Empresa |
+| 11 | Fatura Elo Grafite | 25 | Fatura Inter |
+
+**Dois widgets diferentes no Painel, não confundir:**
+- `CalendarioVencimentos` — calendário **fixo**, sem valor, só lembrete. Não gera
+  lançamento nem precisa de baixa; repete igual todo mês.
+- `ProximosVencimentos` — contas a pagar **reais** (`lancamento_financeiro`,
+  `pago_em IS NULL`), com valor, some quando paga.
+
+**Sem valor de propósito**: os valores variam (contabilidade foi R$320→R$250,
+salário do Guilherme saiu partido em 2 parcelas em julho) e fatura de cartão só
+fecha perto do vencimento.
+
+**Concentrações**: dias 5-7 (salários + casa + energia + tarifa) e dia 20
+(quatro faturas + DAS + empréstimo no mesmo dia).
+
+**Oscilações observadas**: Mercado Pago e empréstimo Cresol caíram dia 22 em
+junho e dia 20 em julho — provável ajuste por dia útil (20/06 foi sábado). Inter
+caiu 26 em maio (dia 25 foi domingo).
+
+---
+
+## 20. Regras firmadas no fechamento mai–jul/2026
+
+**Fatura conta no mês do VENCIMENTO**, não no mês da compra. Confirmado pelo Toni
+depois de uma confusão em que faturas ficaram deslocadas um mês. Corrigido em
+`sql/169` (criou agosto/2026 no PF).
+
+**Lançamento de cartão vai na conta do CARTÃO, não do banco.** Os scripts antigos
+jogavam tudo em contas genéricas ('Bradesco PJ', 'Mercado Pago', 'Nubank'), o que
+partia a mesma fatura em duas origens na tela. Corrigido em `sql/171` (Elo
+Grafite, Neo Visa, Nubank PF/PJ) e `sql/172` (Mercado Pago). As contas certas já
+existiam no seed `sql/01` sem uso.
+
+**Maquininha é Ton, InfinitePay só pra link de pagamento** — `sql/146`,
+`osToFinanceiro.js`.
+
+**Natureza do gasto ≠ conta que pagou.** Casos reais: parcela do Civic é PF mas
+sai da conta PJ; Carro BV é PJ mas saiu do banco pessoal da Rafa; Anthropic e
+FleetNet são PJ mas passaram no cartão pessoal.
+
+**Nomes do mesmo cartão divergem entre PF e PJ** ('Visa Bradesco' × 'Bradesco
+Visa', 'Bradesco PJ ELO' × 'Bradesco PJ'). `ROTULO_ORIGEM` em
+`ControleFinanceiroPF.jsx` unifica na exibição — a lista de origens agrupa pelo
+rótulo, senão o mesmo cartão aparece duas vezes.

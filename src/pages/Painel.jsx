@@ -33,6 +33,7 @@ import KPICard                 from '../components/painel/KPICard'
 import PipelineOS              from '../components/painel/PipelineOS'
 import AlertasCriticos         from '../components/painel/AlertasCriticos'
 import ProximosVencimentos     from '../components/painel/ProximosVencimentos'
+import CalendarioVencimentos   from '../components/painel/CalendarioVencimentos'
 
 ChartJS.register(...registerables)
 
@@ -627,6 +628,10 @@ export default function Painel({ T, dark, user }) {
         </Card>
         <ProximosVencimentos T={T} dark={dark} vencimentos={proximosVencimentos} onVer={() => navigate('/financeiro')} />
       </div>
+
+      {/* Calendario fixo dos compromissos do mes — so lembrete, sem valor.
+          Complementa o widget acima, que mostra contas a pagar reais. */}
+      <CalendarioVencimentos T={T} dark={dark} />
     </div>
   )
 }
