@@ -671,3 +671,9 @@ Pedido do Toni: quando uma etapa do serviço é feita por terceiro (ex: motor ma
 **Implementado**: `src/components/osDetalhe/CustoTerceiroPanel.jsx` — novo card na aba Resumo (`RelatorioTab.jsx`, admin only, logo abaixo do card Financeiro), com lista dos custos já lançados + botão "Adicionar custo" (descrição, valor, data, conta opcional, toggle "já foi pago"). Salva em `lancamento_financeiro` com `tipo='despesa'`, `categoria='Terceiros'`, `os_id` = esta OS — aparece automaticamente em Financeiro → A pagar (ou Caixa se marcado como já pago). Categoria "Terceiros" adicionada nas listas de sugestão/filtro do Financeiro.
 
 Componente compartilhado entre desktop e mobile (RelatorioTab.jsx já é usado nos dois) — não precisou duplicar.
+
+## 34. "Observações internas" sempre visível e editável no topo (13/08/2026)
+
+Achado: `EtapaTab.jsx` tinha um componente `AlertaObservacoes` pronto (banner amarelo "ATENÇÃO · observações da OS") mas ele **nunca era renderizado** — só existia definido no arquivo, sem chamada no JSX de retorno. Além disso era só leitura, escondido quando `os.observacoes` estava vazio.
+
+Pedido do Toni: campo "Observações Internas" sempre no topo de toda etapa. Virou `ObservacoesInternas` — painel sempre visível (mesmo vazio, com botão "Adicionar"), editável ali mesmo (clique em Editar/Adicionar abre textarea + Salvar/Cancelar, chama `onUpdateOS`). Continua escrevendo no mesmo `os.observacoes` que os campos de observação específicos de etapa (ex: textarea da Entrega) já usavam — tudo sincronizado num campo só.
