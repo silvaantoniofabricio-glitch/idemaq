@@ -123,6 +123,12 @@ export default function Kanban({ T, dark, user }) {
     for (const it of roteiroItens) if (it.os_id) m.set(it.os_id, it.responsavel_id)
     return m
   }, [roteiroItens])
+  // OS marcadas como prioridade no Roteiro de hoje — ícone no card do Kanban.
+  const prioridadeHojeSet = useMemo(() => {
+    const s = new Set()
+    for (const it of roteiroItens) if (it.os_id && it.urgente) s.add(it.os_id)
+    return s
+  }, [roteiroItens])
   // Ordem manual dos cards (compartilhada): { [etapa]: { [os.numero]: chaveFloat } }
   const { get: cfgGet, set: cfgSet, refetch: cfgRefetch } = useConfiguracoes()
   const kanbanOrdem = cfgGet('kanban_ordem', {}) || {}
@@ -343,8 +349,9 @@ export default function Kanban({ T, dark, user }) {
           manutPecaStatus: calcManutPecaStatus(os, pecasPorOS.get(os.id), faltaSet),
           _temLimp: temLimpeza.has(os.id),
           _temManut: temManutencao.has(os.id) || (pecasPorOS.get(os.id)?.length > 0),
+          _prioridadeHoje: prioridadeHojeSet.has(os.id),
         }
-      : os
+      : { ...os, _prioridadeHoje: prioridadeHojeSet.has(os.id) }
     porEtapa[ec.id].push(card)
   })
   Object.keys(porEtapa).forEach(k => { porEtapa[k] = ordenarColunaManual(k, porEtapa[k], kanbanOrdem[k]) })

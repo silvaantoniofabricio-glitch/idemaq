@@ -225,6 +225,10 @@ export default function KanbanCard({
               fontSize: 8.5, fontWeight: 700, letterSpacing: '-0.03em',
             }}>{(funcRoteiro.nome || '?').slice(0, 2).toUpperCase()}</span>
           )}
+          {os._prioridadeHoje && (
+            <i className="ti ti-flag-3-filled" title="Prioridade hoje"
+              style={{ fontSize: 12, color: '#FF6B6B', flexShrink: 0 }} aria-hidden="true" />
+          )}
           {!cantoLimpo && (() => {
             // Conta a partir da confirmação de coleta (entrada em 'diagnostico';
             // registros antigos de 'recebido' são mapeados pelo dbEtapaToUI).

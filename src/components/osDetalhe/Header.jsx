@@ -77,6 +77,7 @@ export default function Header({
   const funcionarios = usuarios.filter(u => u.papel !== 'dono')
   const [roteiroModo, setRoteiroModo] = useState(false)
   const [roteiroDia, setRoteiroDia]   = useState('hoje')  // 'hoje' | 'amanha'
+  const [roteiroPrioridade, setRoteiroPrioridade] = useState(false)
   const [enviandoRot, setEnviandoRot] = useState(false)
   const [roteiroDialog, setRoteiroDialog] = useState(null) // { funcionario } | null
 
@@ -90,13 +91,14 @@ export default function Header({
       const diaIso = dia
         ? dia.toLocaleDateString('pt-BR', { timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-')
         : undefined
-      const r = await enviarOSParaRoteiro({ os, responsavelId, dia: diaIso, texto, apelidoDe })
+      const r = await enviarOSParaRoteiro({ os, responsavelId, dia: diaIso, texto, apelidoDe, urgente: roteiroPrioridade })
       const quando = roteiroDia === 'amanha' ? 'amanhã' : 'hoje'
       if (r.error) { notify('erro', `Erro: ${r.error.message || 'desconhecido'}`) }
       else if (r.jaExiste) { notify('erro', `OS #${os.numero} já está no roteiro de ${r.responsavelNome || 'alguém'} (${quando})`) }
-      else { notify('ok', `OS #${os.numero} → roteiro de ${apelidoDe(responsavelId)} · ${quando}`) }
+      else { notify('ok', `OS #${os.numero} → roteiro de ${apelidoDe(responsavelId)} · ${quando}${roteiroPrioridade ? ' · prioridade' : ''}`) }
       setRoteiroModo(false)
       setMenuAberto(false)
+      setRoteiroPrioridade(false)
     } finally {
       setEnviandoRot(false)
     }
@@ -393,6 +395,18 @@ export default function Header({
                           }}>{lbl}</button>
                       ))}
                     </div>
+                    <button onClick={() => setRoteiroPrioridade(v => !v)}
+                      style={{
+                        width: '100%', marginTop: 6, padding: '7px 8px', borderRadius: 7,
+                        border: `1px solid ${roteiroPrioridade ? '#FF6B6B' : T.border}`,
+                        background: roteiroPrioridade ? (dark ? 'rgba(255,107,107,0.14)' : '#fdecec') : 'transparent',
+                        color: roteiroPrioridade ? '#FF6B6B' : T.textMuted,
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}>
+                      <i className="ti ti-flag-3" style={{ fontSize: 13 }} aria-hidden="true" />
+                      Prioridade
+                    </button>
                     <button onClick={() => setRoteiroModo(false)}
                       style={{
                         width: '100%', marginTop: 8, padding: '7px 10px', borderRadius: 7,

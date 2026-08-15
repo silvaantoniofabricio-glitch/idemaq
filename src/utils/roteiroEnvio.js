@@ -41,7 +41,7 @@ export function diaRelativo(offset = 0) {
   return diaCuiaba(d)
 }
 
-export async function enviarOSParaRoteiro({ os, responsavelId, dia, texto, apelidoDe } = {}) {
+export async function enviarOSParaRoteiro({ os, responsavelId, dia, texto, apelidoDe, urgente = false } = {}) {
   if (!os?.id) return { error: new Error('OS sem id') }
   if (!responsavelId) return { error: new Error('responsavelId obrigatório') }
   const diaAlvo = dia || diaCuiaba()
@@ -83,6 +83,7 @@ export async function enviarOSParaRoteiro({ os, responsavelId, dia, texto, apeli
       os_id: os.id,
       texto: texto != null ? texto : textoAutoPorEtapa(os.etapa),
       ordem,
+      urgente: !!urgente,
     })
     .select().single()
   if (error) return { error }
