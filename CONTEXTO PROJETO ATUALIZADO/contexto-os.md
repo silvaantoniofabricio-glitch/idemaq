@@ -677,3 +677,11 @@ Componente compartilhado entre desktop e mobile (RelatorioTab.jsx já é usado n
 Achado: `EtapaTab.jsx` tinha um componente `AlertaObservacoes` pronto (banner amarelo "ATENÇÃO · observações da OS") mas ele **nunca era renderizado** — só existia definido no arquivo, sem chamada no JSX de retorno. Além disso era só leitura, escondido quando `os.observacoes` estava vazio.
 
 Pedido do Toni: campo "Observações Internas" sempre no topo de toda etapa. Virou `ObservacoesInternas` — painel sempre visível (mesmo vazio, com botão "Adicionar"), editável ali mesmo (clique em Editar/Adicionar abre textarea + Salvar/Cancelar, chama `onUpdateOS`). Continua escrevendo no mesmo `os.observacoes` que os campos de observação específicos de etapa (ex: textarea da Entrega) já usavam — tudo sincronizado num campo só.
+
+## 35. Prioridade no "Mandar pro roteiro" + ícone no card do Kanban (13/08/2026)
+
+A coluna `roteiro_item.urgente` (sql/83) já existia e já tinha tratamento visual completo dentro do Roteiro do Dia (bandeira vermelha, linha destacada) — só não dava pra marcar prioridade no momento de mandar a OS pro roteiro (só depois, abrindo a página do Roteiro e marcando lá).
+
+**Implementado**: botão "Prioridade" no popover "Mandar pro roteiro" (`Header.jsx`, desktop), logo abaixo de Hoje/Amanhã — `roteiroEnvio.js` passou a aceitar `urgente` no insert. `Kanban.jsx` já carregava `roteiroItens` (do dia de hoje) pro avatar do card; virou também a fonte de um `prioridadeHojeSet` que marca `_prioridadeHoje` em qualquer card cuja OS esteja marcada urgente no roteiro de hoje. `KanbanCard.jsx` mostra ícone de bandeira vermelha ao lado do número quando ativo.
+
+**Escopo**: só desktop — `HeaderMobile.jsx` ainda não tem "Mandar pro roteiro" (só existe no `Header.jsx` desktop), então não dava pra replicar lá.
