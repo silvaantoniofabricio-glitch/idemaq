@@ -237,75 +237,6 @@ function SecaoManutencao({ T, dark, status, desmVal, manutVal, montVal, manutChe
   )
 }
 
-// ─── Diagnostico resumo ─────────────────────────────────────────────────
-function ResumoDiagnostico({ T, dark, relato, causa, componentes }) {
-  const azul = corEtapa('blue', dark)
-  if (!relato && !causa && componentes.length === 0) return null
-  return (
-    <AtlPanel T={T} dark={dark} title="Diagnóstico">
-      {relato && (
-        <div style={{ padding: '12px 14px' }}>
-          <div style={{
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-            marginBottom: 4,
-          }}>Relato do cliente</div>
-          <div style={{
-            borderLeft: `3px solid #FFCC00`,
-            paddingLeft: 10,
-            fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
-          }}>{relato}</div>
-        </div>
-      )}
-      {causa && (
-        <div style={{
-          padding: '12px 14px',
-          borderTop: relato ? `1px solid ${T.border}` : 'none',
-        }}>
-          <div style={{
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-            marginBottom: 4,
-          }}>Causa identificada</div>
-          <div style={{
-            borderLeft: `3px solid ${azul}`,
-            paddingLeft: 10,
-            fontSize: 13, color: T.textPrimary, lineHeight: 1.45,
-          }}>{causa}</div>
-        </div>
-      )}
-      {componentes.length > 0 && (
-        <div style={{
-          padding: '12px 14px',
-          borderTop: (relato || causa) ? `1px solid ${T.border}` : 'none',
-        }}>
-          <div style={{
-            fontSize: 10.5, fontWeight: 700, color: T.textMuted,
-            textTransform: 'uppercase', letterSpacing: '0.06em',
-            marginBottom: 6,
-          }}>Componentes · {componentes.length}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-            {componentes.map(c => (
-              <span key={c.id} style={{
-                fontSize: 11.5, fontWeight: 600,
-                padding: '3px 8px', borderRadius: 3,
-                background: c.badge.cor + '22',
-                color: c.badge.cor,
-                border: `1px solid ${c.badge.cor}44`,
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                letterSpacing: '-0.005em',
-              }}>
-                <span style={{ fontWeight: 700, fontSize: 10 }}>{c.badge.label}</span>
-                {c.label}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </AtlPanel>
-  )
-}
-
 // ─── Banner falhas do teste final ────────────────────────────────────────
 function BannerFalhas({ T, dark, falhas }) {
   const vermelho = corEtapa('red', dark)
@@ -374,31 +305,6 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
     () => (itens || []).some(it => /limpeza|higieniz/i.test(it.nome || '')),
     [itens]
   )
-  // Componentes do diagnóstico — SÓ informativo (resumo). Não é o checklist.
-  const diagComponentes = useMemo(() => {
-    const marcados = os?.pre_diagnostico?.componentes_marcados || {}
-    const out = []
-    for (const [, items] of Object.entries(marcados)) {
-      if (!items || typeof items !== 'object') continue
-      const pares = Array.isArray(items)
-        ? items.map(id => [id, 'troca'])
-        : Object.entries(items)
-      for (const [itemId, acao] of pares) {
-        const cat = CATEGORIA_POR_ID[itemId]
-        const isManut = acao === 'manutencao'
-        out.push({
-          id: itemId,
-          label: cat?.label || itemId,
-          badge: {
-            label: isManut ? 'Manut.' : 'Troca',
-            cor: isManut ? amarelo : vermelho,
-          },
-        })
-      }
-    }
-    return out
-  }, [os?.pre_diagnostico?.componentes_marcados, amarelo, vermelho])
-
   // Checklist da manutenção = combinação de duas fontes:
   //   1) Componentes do diagnóstico marcados como MANUTENÇÃO → mão de obra, sem
   //      peça no orçamento. O check vem do próprio componente.
@@ -551,18 +457,10 @@ export default function AcaoOficinaHIG({ os, onUpdateOS, onMoverOS, onAbrirAba, 
       gap: 12, fontFamily: ATL_FONT, padding: '0 0 12px',
     }}>
 
-      {/* 1. Resumo diagnostico */}
-      <ResumoDiagnostico
-        T={T} dark={dark}
-        relato={os?.defeito || ''}
-        causa={os?.pre_diagnostico?.causa_diagnostico || ''}
-        componentes={diagComponentes}
-      />
-
-      {/* 2. Banner falhas */}
+      {/* 1. Banner falhas */}
       <BannerFalhas T={T} dark={dark} falhas={falhas} />
 
-      {/* 2b. Peças a comprar (em falta no estoque) */}
+      {/* 1b. Peças a comprar (em falta no estoque) */}
       <PecasComprarSection
         T={T} dark={dark} os={os} itens={itens} admin={admin}
         faltaSet={faltaSet}
