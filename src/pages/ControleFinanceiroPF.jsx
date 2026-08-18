@@ -119,7 +119,16 @@ function adaptarEmpresaParaPF(lancs) {
     // marca a procedencia: no modo "Tudo" a lista vem misturada e a regra de
     // ORIGENS_CARTAO so vale pro PF (ha conta PJ chamada 'Inter', que colide).
     _pj: true,
+    // tipo da conta ('cartao' | 'banco' | 'digital' | 'maquininha') — e o que
+    // diz se o lancamento veio de fatura, sem depender do nome da conta.
+    _tipoConta: l.conta?.tipo || null,
   }))
+}
+
+// Um lancamento veio de fatura de cartao? No PF a pista e o nome da origem;
+// no PJ e o tipo da conta, que o banco ja informa.
+function ehDeCartao(d) {
+  return d._pj ? d._tipoConta === 'cartao' : ORIGENS_CARTAO.has(d.origem)
 }
 
 const PESSOAS = [
@@ -620,9 +629,9 @@ function analisarDespesas(despesas) {
     const v = Number(d.valor || 0)
     totalBruto += v
 
-    // Para empresa os lançamentos já vêm item a item do banco — não há
-    // boleto de fatura separado, então ORIGENS_CARTAO não se aplica.
-    if (!d._pj && ORIGENS_CARTAO.has(d.origem)) totalCartaoItens += v
+    // Quanto do gasto veio de fatura de cartão (já contado item a item, então
+    // o boleto da fatura não deve ser somado de novo).
+    if (ehDeCartao(d)) totalCartaoItens += v
 
     if (d.categoria === 'Transferencia') {
       totalTransferencia += v
