@@ -18,6 +18,7 @@ export const GRUPOS_CATEGORIA = {
 
 export const CATEGORIAS_PECA = [
   // Motor e transmissão
+  { id: 'motor',             label: 'Motor',                grupo: 'motor' },
   { id: 'correia',           label: 'Correia',              grupo: 'motor' },
   { id: 'polia',             label: 'Polia',                grupo: 'motor' },
   { id: 'mecanismo',         label: 'Mecanismo',            grupo: 'motor' },
