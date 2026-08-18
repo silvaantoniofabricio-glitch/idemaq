@@ -9,22 +9,16 @@ import Sparkline from '../ui/Sparkline'
 import DeltaPill from '../ui/DeltaPill'
 import SectionHeader, { SectionAction } from '../ui/SectionHeader'
 
-const MESES_CURTO = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
-
 export default function HeroFaturamento({ T, dark, hero }) {
   const blueC = corEtapa('blue', dark)
   const blueLightC = corEtapa('blueLight', dark)
   const pctMeta = hero.meta > 0 ? Math.round((hero.atual / hero.meta) * 100) : 0
   const falta = Math.max(hero.meta - hero.atual, 0)
 
-  // spark30d[29] = hoje, spark30d[0] = 29 dias atrás — label por dia pro
-  // tooltip de hover do Sparkline.
-  const spark30dLabels = (hero.spark30d || []).map((_, i) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (29 - i))
-    const label = `${String(d.getDate()).padStart(2, '0')}/${MESES_CURTO[d.getMonth()]}`
-    return i === 29 ? `${label} · hoje` : label
-  })
+  // Labels por dia útil (já sem domingo) pro tooltip do Sparkline — vem
+  // pronto do Painel.jsx (finAgg.diasUteis30), não dá pra recalcular aqui
+  // com offset de dia corrido porque domingo é pulado.
+  const spark30dLabels = hero.spark30dLabels || []
 
   return (
     <Card T={T} dark={dark} radius={14}

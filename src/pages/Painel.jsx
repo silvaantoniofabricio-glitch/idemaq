@@ -104,7 +104,22 @@ export default function Painel({ T, dark, user }) {
 
     const recebidoSerie = Array(12).fill(0)
     const pagoSerie     = Array(12).fill(0)
-    const spark30d      = Array(30).fill(0)
+
+    // Sparkline: últimos 30 DIAS ÚTEIS (pula domingo, não é dia trabalhado) —
+    // não é "últimos 30 dias corridos". Monta a lista de datas primeiro (mais
+    // antiga → hoje) pra depois indexar os lançamentos por data exata, já
+    // que o offset em dias corridos não bate mais quando pula domingo.
+    const diasUteis30 = []
+    {
+      const cursor = new Date(hojeZero)
+      while (diasUteis30.length < 30) {
+        if (cursor.getDay() !== 0) diasUteis30.push(new Date(cursor))
+        cursor.setDate(cursor.getDate() - 1)
+      }
+      diasUteis30.reverse()
+    }
+    const idxPorData = new Map(diasUteis30.map((d, i) => [d.toDateString(), i]))
+    const spark30d = Array(30).fill(0)
     let recebidoHoje = 0
     let faturamentoAntCrossYear = 0 // pra cobrir jan→dez ano anterior
 
@@ -125,10 +140,10 @@ export default function Painel({ T, dark, user }) {
         faturamentoAntCrossYear += valor
       }
 
-      // Sparkline 30 dias — só receitas
+      // Sparkline últimos 30 dias úteis — só receitas
       if (l.tipo === 'receita') {
-        const diff = Math.round((hojeZero - dt) / 86400000)
-        if (diff >= 0 && diff < 30) spark30d[29 - diff] += valor
+        const idx = idxPorData.get(dt.toDateString())
+        if (idx != null) spark30d[idx] += valor
         if (dt.getTime() === hojeZero.getTime()) recebidoHoje += valor
       }
     }
@@ -148,7 +163,7 @@ export default function Painel({ T, dark, user }) {
     }
 
     return {
-      recebidoSerie, pagoSerie, saldoSerie, spark30d,
+      recebidoSerie, pagoSerie, saldoSerie, spark30d, diasUteis30,
       faturamentoMes, faturamentoAnt, recebidoHoje,
     }
   }, [lancsFin, hojeData])
@@ -401,9 +416,12 @@ export default function Painel({ T, dark, user }) {
   }, [lancsFin])
 
   // ─── Hero ─────────────────────────────────────────────────────────────────
-  const inicio30 = new Date(hojeData); inicio30.setDate(inicio30.getDate() - 29)
-  const meio30   = new Date(hojeData); meio30.setDate(meio30.getDate() - 14)
+  // inicio30/meio30 seguem os 30 DIAS ÚTEIS de verdade (finAgg.diasUteis30 já
+  // pula domingo), não 30 dias corridos — senão a legenda embaixo do gráfico
+  // não bateria mais com os pontos plotados.
   const fmtDM = (d) => `${String(d.getDate()).padStart(2, '0')}/${MESES_CURTO[d.getMonth()]}`
+  const inicio30 = finAgg.diasUteis30?.[0] || hojeData
+  const meio30   = finAgg.diasUteis30?.[14] || hojeData
 
   // Meta vem de `configuracoes` (Módulo 09). Fallback no default do hook.
   const metaMensal = Number(getConfig('meta_mensal', 20000)) || 20000
@@ -468,6 +486,10 @@ export default function Painel({ T, dark, user }) {
     inicioLabel: fmtDM(inicio30),
     meioLabel: fmtDM(meio30),
     spark30d: finAgg.spark30d,
+    spark30dLabels: (finAgg.diasUteis30 || []).map((d, i) => {
+      const label = fmtDM(d)
+      return i === (finAgg.diasUteis30.length - 1) ? `${label} · hoje` : label
+    }),
     demo: financeiroDemo, // true = tabela ainda não aplicada (mostra "demo")
   }
 

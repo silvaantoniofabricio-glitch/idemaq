@@ -83,6 +83,18 @@ export default function PainelMobile({ T, dark, user }) {
     const mesAtual = hojeData.getMonth()
     const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
     const recebidoSerie = Array(12).fill(0)
+
+    // Últimos 30 dias ÚTEIS (pula domingo) — não 30 dias corridos.
+    const diasUteis30 = []
+    {
+      const cursor = new Date(hojeZero)
+      while (diasUteis30.length < 30) {
+        if (cursor.getDay() !== 0) diasUteis30.push(new Date(cursor))
+        cursor.setDate(cursor.getDate() - 1)
+      }
+      diasUteis30.reverse()
+    }
+    const idxPorData = new Map(diasUteis30.map((d, i) => [d.toDateString(), i]))
     const spark30d = Array(30).fill(0)
     let recebidoHoje = 0
     let faturamentoAntCrossYear = 0
@@ -96,8 +108,8 @@ export default function PainelMobile({ T, dark, user }) {
       if (mesAtual === 0 && dt.getFullYear() === ano - 1 && dt.getMonth() === 11)
         faturamentoAntCrossYear += valor
       if (dt.getTime() === hojeZero.getTime()) recebidoHoje += valor
-      const diff = Math.round((hojeZero - dt) / 86400000)
-      if (diff >= 0 && diff < 30) spark30d[29 - diff] += valor
+      const idx = idxPorData.get(dt.toDateString())
+      if (idx != null) spark30d[idx] += valor
     }
 
     const faturamentoMes = recebidoSerie[mesAtual]
@@ -107,7 +119,7 @@ export default function PainelMobile({ T, dark, user }) {
       : null
 
     return {
-      faturamentoMes, faturamentoAnt, deltaPct, recebidoHoje, spark30d,
+      faturamentoMes, faturamentoAnt, deltaPct, recebidoHoje, spark30d, diasUteis30,
       labelMesAnt: MESES_CURTO[mesAtual === 0 ? 11 : mesAtual - 1],
     }
   }, [lancsFin, hojeData])
@@ -299,7 +311,7 @@ export default function PainelMobile({ T, dark, user }) {
         <KPIGrid T={T} dark={dark} kpis={kpis} loading={loading} />
 
         {/* 2b. Sparkline 30 dias */}
-        <Sparkline30d T={T} dark={dark} serie={finAgg.spark30d || []} />
+        <Sparkline30d T={T} dark={dark} serie={finAgg.spark30d || []} dias={finAgg.diasUteis30 || []} />
 
         {/* 3. Alertas */}
         {criticos.length > 0 && (
@@ -737,7 +749,7 @@ function ProximasPanel({ T, dark, proximas, onTap }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Sparkline 30 dias — barras SVG simples
 // ═══════════════════════════════════════════════════════════════════════════
-function Sparkline30d({ T, dark, serie }) {
+function Sparkline30d({ T, dark, serie, dias = [] }) {
   const azul = corEtapa('blue', dark)
   const temDados = serie.some(v => v > 0)
   if (!temDados) return null
@@ -746,12 +758,11 @@ function Sparkline30d({ T, dark, serie }) {
   const H = 36, gap = 2
   const totalW = 30 * (gap + 4) - gap
 
-  const hoje = new Date()
-  const labelIni = (() => {
-    const d = new Date(hoje); d.setDate(d.getDate() - 29)
-    return `${d.getDate()}/${MESES_CURTO[d.getMonth()]}`
-  })()
-  const labelFim = `${hoje.getDate()}/${MESES_CURTO[hoje.getMonth()]}`
+  // dias[] já são os 30 dias ÚTEIS de verdade (domingo pulado) — não dá pra
+  // recalcular aqui com offset de dia corrido.
+  const fmtDia = (d) => `${d.getDate()}/${MESES_CURTO[d.getMonth()]}`
+  const labelIni = dias[0] ? fmtDia(dias[0]) : ''
+  const labelFim = dias[dias.length - 1] ? fmtDia(dias[dias.length - 1]) : ''
 
   return (
     <div style={{
