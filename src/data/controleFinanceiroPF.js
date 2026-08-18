@@ -640,8 +640,9 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 4/6',   valor: 121.75, categoria: 'Servicos' },
   // Parcela Civic: e da Rafa — fica em DESPESAS_PF_RAFA_JULHO_2026.
   // --- Itens avulsos reportados por Toni (sem documento fonte, data 10/07 usada como referencia) ---
-  // Churrasco (compra 10/07) foi pra AGOSTO: a fatura Nubank PF de julho cobre
-  // 26/mai a 25/jun, entao compra de 10/07 cai na seguinte (fecha 26/07).
+  // Pago por PIX (extrato), nao por cartao — entao vale a data do pagamento,
+  // sem passar por fatura. Origem e a CONTA Nubank, nao o cartao.
+  { data: '10/07/2026', origem: 'Nubank',         descricao: 'Churrasco 10/07',              valor: 52.00, categoria: 'Alimentacao' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'IOF 10/07',                    valor: 16.52, categoria: 'IOF' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'Encargos 10/07',               valor: 19.50, categoria: 'Tarifa banco' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (a)',  valor: 21.90, categoria: 'Alimentacao' },
@@ -678,8 +679,6 @@ export const DESPESAS_PF_RAFA_JULHO_2026 = [
 // Fonte: REVISAO FECHAMENTO 2026/JULHO/FATURAS/Bradesco_31072026_142327.xls
 // Regra: fatura conta no mes do VENCIMENTO (11/08/2026), nao no mes da compra.
 export const DESPESAS_PF_TONI_AGOSTO_2026 = [
-  // --- Nubank PF — venc. 02/08/2026 (fatura fecha 26/07) ---
-  { data: '02/08/2026', origem: 'Nubank PF', descricao: 'Churrasco 10/07',                   valor: 52.00,  categoria: 'Alimentacao' },
   // --- Elo Grafite 3558/5900 — venc. 11/08/2026 ---
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'Anuidade Diferenciada Elo Grafite 29/07 7/12', valor: 56.00,  categoria: 'Tarifa cartao' },
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 28/07',                       valor: 61.00,  categoria: 'Alimentacao' },
