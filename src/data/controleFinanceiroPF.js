@@ -192,6 +192,8 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Subway Navirai',                                       valor: 38.00,   categoria: 'Alimentacao' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Amigao Navirai (30/03)',                               valor: 143.83,  categoria: 'Supermercado' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Boi Na Brasa A Arte de',                               valor: 78.60,   categoria: 'Cultura/Lazer' },
+  // Estava como PJ (sql/67, rotulado "linha PJ") — Toni confirmou que e PF. Ver sql/174.
+  { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Plano NuCel 19/04',                                    valor: 10.00,   categoria: 'Diverso' },
 ]
 
 // Despesas PF junho/2026 — TONI
@@ -514,8 +516,9 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '16/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   { data: '17/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
   { data: '18/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
-  // Plano NuCel (19/06, R$10) e PJ — esta em sql/141 como "linha PJ". Estava
-  // aqui tambem, contando dobrado na fatura.
+  // Plano NuCel: Toni confirmou que e PF nos tres meses. Estava como PJ em
+  // maio e julho (sql/141 chamava de "linha PJ") — corrigido em sql/174.
+  { data: '19/06/2026', origem: 'Nubank PF',  descricao: 'Plano NuCel 19/06',               valor:  10.00, categoria: 'Diverso' },
   { data: '20/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   // --- Bradesco NEO VISA PLATINUM (cartao ****6669) — venc. 20/07/2026 ---
   { data: '20/07/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada (08/07)', valor:  33.00, categoria: 'Tarifa cartao' },
