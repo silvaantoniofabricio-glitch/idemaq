@@ -500,7 +500,11 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '07/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome',                          valor:  40.00, categoria: 'Alimentacao' },
   { data: '08/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome',                          valor:  40.00, categoria: 'Alimentacao' },
   { data: '09/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
-  { data: '10/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
+  // Sao dois pedidos no mesmo dia — conferido na fatura (Nubank_2026-07-02.pdf,
+  // pag. 5: "10 JUN Mlp*Aiqfome Tempe R$19,90" aparece duas vezes). Ja removi
+  // um deles por engano numa auditoria; nao remover de novo.
+  { data: '10/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di) (1)',         valor:  19.90, categoria: 'Alimentacao' },
+  { data: '10/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di) (2)',         valor:  19.90, categoria: 'Alimentacao' },
   { data: '11/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome',                          valor:  27.86, categoria: 'Alimentacao' },
   { data: '11/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   { data: '12/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
@@ -510,7 +514,8 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '16/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   { data: '17/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
   { data: '18/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
-  { data: '19/06/2026', origem: 'Nubank PF',  descricao: 'Plano NuCel',                      valor:  10.00, categoria: 'Diverso' },
+  // Plano NuCel (19/06, R$10) e PJ — esta em sql/141 como "linha PJ". Estava
+  // aqui tambem, contando dobrado na fatura.
   { data: '20/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   // --- Bradesco NEO VISA PLATINUM (cartao ****6669) — venc. 20/07/2026 ---
   { data: '20/07/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada (08/07)', valor:  33.00, categoria: 'Tarifa cartao' },
@@ -632,7 +637,8 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '20/07/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 4/6',   valor: 121.75, categoria: 'Servicos' },
   // Parcela Civic: e da Rafa — fica em DESPESAS_PF_RAFA_JULHO_2026.
   // --- Itens avulsos reportados por Toni (sem documento fonte, data 10/07 usada como referencia) ---
-  { data: '10/07/2026', origem: 'Nubank PF',      descricao: 'Churrasco 10/07',              valor: 52.00, categoria: 'Alimentacao' },
+  // Churrasco (compra 10/07) foi pra AGOSTO: a fatura Nubank PF de julho cobre
+  // 26/mai a 25/jun, entao compra de 10/07 cai na seguinte (fecha 26/07).
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'IOF 10/07',                    valor: 16.52, categoria: 'IOF' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'Encargos 10/07',               valor: 19.50, categoria: 'Tarifa banco' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (a)',  valor: 21.90, categoria: 'Alimentacao' },
@@ -669,6 +675,8 @@ export const DESPESAS_PF_RAFA_JULHO_2026 = [
 // Fonte: REVISAO FECHAMENTO 2026/JULHO/FATURAS/Bradesco_31072026_142327.xls
 // Regra: fatura conta no mes do VENCIMENTO (11/08/2026), nao no mes da compra.
 export const DESPESAS_PF_TONI_AGOSTO_2026 = [
+  // --- Nubank PF — venc. 02/08/2026 (fatura fecha 26/07) ---
+  { data: '02/08/2026', origem: 'Nubank PF', descricao: 'Churrasco 10/07',                   valor: 52.00,  categoria: 'Alimentacao' },
   // --- Elo Grafite 3558/5900 — venc. 11/08/2026 ---
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'Anuidade Diferenciada Elo Grafite 29/07 7/12', valor: 56.00,  categoria: 'Tarifa cartao' },
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 28/07',                       valor: 61.00,  categoria: 'Alimentacao' },
