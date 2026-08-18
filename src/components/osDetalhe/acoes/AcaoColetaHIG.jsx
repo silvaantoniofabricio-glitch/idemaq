@@ -240,13 +240,13 @@ export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
           label="Modelo"
           placeholder="Ex: BWK11A, LSP11"
           value={modelo}
-          onChange={setModelo}
+          onChange={v => setModelo(v.toUpperCase())}
         />
         <AtlFieldRow T={T} dark={dark}
           label="Nº de série"
           placeholder="Ex: BR-2024-00887"
           value={serie}
-          onChange={setSerie}
+          onChange={v => setSerie(v.toUpperCase())}
           mono
         />
       </AtlPanel>
@@ -258,8 +258,8 @@ export default function AcaoColetaHIG({ os, onUpdateOS, onMoverOS }) {
         onUpdateOS={onUpdateOS}
         onCamposExtraidos={(campos) => {
           // IA leu a etiqueta — preenche so campos vazios
-          if (campos.modelo && !modelo) setModelo(campos.modelo)
-          if (campos.serie && !serie) setSerie(campos.serie)
+          if (campos.modelo && !modelo) setModelo(campos.modelo.toUpperCase())
+          if (campos.serie && !serie) setSerie(campos.serie.toUpperCase())
         }}
       />
 
