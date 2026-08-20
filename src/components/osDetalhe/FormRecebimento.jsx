@@ -41,6 +41,7 @@ const TAXAS_BANDEIRA = {
   },
 }
 TAXAS_BANDEIRA.visa = TAXAS_BANDEIRA.master // Visa = mesma tabela da Mastercard
+TAXAS_BANDEIRA.amex = TAXAS_BANDEIRA.elo    // American Express = mesma tabela do Elo
 
 const MAX_PARCELAS = 21
 
@@ -48,6 +49,7 @@ const BANDEIRAS = [
   { id: 'master', label: 'Mastercard' },
   { id: 'visa',   label: 'Visa' },
   { id: 'elo',    label: 'Elo' },
+  { id: 'amex',   label: 'American Express' },
 ]
 
 // Link InfinitePay = taxa do crédito + 0,90%.
@@ -363,7 +365,7 @@ export default function FormRecebimento({
             marginBottom: 4,
           }}>Bandeira</div>
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
+            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6,
             marginBottom: 8,
           }}>
             {BANDEIRAS.map(b => (
