@@ -655,7 +655,8 @@ export default function Kanban({ T, dark, user }) {
           onUpdateOS={updateOS}
           onExcluir={excluirOS}
           onDuplicar={handleDuplicarOS}
-          onRefetchOS={osRefetch} />
+          onRefetchOS={osRefetch}
+          onOrcamentoEnviado={(numero) => onReorderColuna('orcamento', null, numero)} />
       )}
     </>
   )

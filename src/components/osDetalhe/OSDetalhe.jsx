@@ -34,6 +34,7 @@ export default function OSDetalhe({
   onExcluir,
   onDuplicar,
   onRefetchOS,
+  onOrcamentoEnviado,
   mobile = false,
 }) {
   const admin = isAdmin(user)
@@ -114,6 +115,7 @@ export default function OSDetalhe({
   const tabProps = {
     T, dark, os, user, osBase, usuarios, admin,
     onAbrirOS, onToggleAgPeca, onMoverOS, onUpdateOS,
+    onOrcamentoEnviado,
     setAba,
     mobile,
   }

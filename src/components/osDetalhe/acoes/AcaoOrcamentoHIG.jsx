@@ -1858,7 +1858,7 @@ function AtlTotalCard({ T, dark, subtotais, descontoRS, total }) {
 }
 
 // ─── Status do orçamento em padrão Atlassian ──────────────────────────────
-function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsApp }) {
+function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsApp, onOrcamentoEnviado }) {
   const statusSalvo = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle'
   const [status, setStatus] = useState(statusSalvo)
   const [fase, setFase] = useState('normal') // 'normal' | 'confirmar' | 'desfazer'
@@ -2000,6 +2000,9 @@ function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsA
       // Msg automática do WhatsApp desativada por enquanto (pedido do Toni,
       // 13/08/2026) — só marca como aguardando resposta.
       setStatus('aguardando'); persistir('aguardando')
+      // Card vai pro final da fila da coluna Orçamento (só desktop — Kanban
+      // mobile não tem ordenação manual). Pedido do Toni, 13/08/2026.
+      onOrcamentoEnviado?.(os.numero)
     }
     else if (status === 'aguardando') setFase('confirmar')
     else if (resolvido) setFase('desfazer')
@@ -2426,7 +2429,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Componente principal
 // ═══════════════════════════════════════════════════════════════════════════
-export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
+export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS, onOrcamentoEnviado }) {
   const { T, dark } = useTheme()
   const notify = useToast()
   const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
@@ -2542,7 +2545,7 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS }) {
 
       {/* 5. Status do orçamento — Atlassian panel */}
       <AtlStatusOrcamento T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} onMoverOS={onMoverOS}
-        mensagemWhatsApp={mensagemOrcamento} />
+        mensagemWhatsApp={mensagemOrcamento} onOrcamentoEnviado={onOrcamentoEnviado} />
 
       {/* 6. Recebimentos já lançados (baixas) — lista com excluir que reverte
             os dois lados (Caixa + OS). */}
