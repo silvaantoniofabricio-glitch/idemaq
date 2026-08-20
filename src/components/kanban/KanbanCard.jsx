@@ -229,6 +229,19 @@ export default function KanbanCard({
             <i className="ti ti-flag-3-filled" title="Prioridade hoje"
               style={{ fontSize: 12, color: '#FF6B6B', flexShrink: 0 }} aria-hidden="true" />
           )}
+          {os.etapa === 'orcamento' && (() => {
+            const status = os.pre_diagnostico?.orcamento_status || os.orcamento_status || 'idle'
+            if (status !== 'idle' && status !== 'aguardando') return null
+            const enviado = status === 'aguardando'
+            return (
+              <span
+                title={enviado ? 'Orçamento enviado — aguardando resposta' : 'Orçamento ainda não enviado'}
+                style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: enviado ? corEtapa('yellow', dark) : (dark ? '#5a5f66' : '#B8BEC6'),
+                }} />
+            )
+          })()}
           {!cantoLimpo && (() => {
             // Conta a partir da confirmação de coleta (entrada em 'diagnostico';
             // registros antigos de 'recebido' são mapeados pelo dbEtapaToUI).

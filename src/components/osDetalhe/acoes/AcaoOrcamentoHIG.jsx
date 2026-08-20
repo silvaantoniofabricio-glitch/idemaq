@@ -1997,8 +1997,8 @@ function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsA
 
   function handleClick() {
     if (status === 'idle') {
-      // Abre o WhatsApp do cliente com o orçamento pronto e marca aguardando.
-      if (mensagemWhatsApp) abrirWhatsAppComTexto(os?.fone, mensagemWhatsApp)
+      // Msg automática do WhatsApp desativada por enquanto (pedido do Toni,
+      // 13/08/2026) — só marca como aguardando resposta.
       setStatus('aguardando'); persistir('aguardando')
     }
     else if (status === 'aguardando') setFase('confirmar')

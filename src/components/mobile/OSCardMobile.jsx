@@ -106,6 +106,19 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
             fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.005em',
           }}>#{os.numero}</span>
+          {os.etapa === 'orcamento' && (() => {
+            const st = os.pre_diagnostico?.orcamento_status || os.orcamento_status || 'idle'
+            if (st !== 'idle' && st !== 'aguardando') return null
+            const enviado = st === 'aguardando'
+            return (
+              <span
+                title={enviado ? 'Orçamento enviado — aguardando resposta' : 'Orçamento ainda não enviado'}
+                style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: enviado ? corEtapa('yellow', dark) : (dark ? '#5a5f66' : '#B8BEC6'),
+                }} />
+            )
+          })()}
           {(() => {
             const recebido = os.historico?.find(h => h.etapa === 'diagnostico')
             const base = recebido?.data || os.abertura
