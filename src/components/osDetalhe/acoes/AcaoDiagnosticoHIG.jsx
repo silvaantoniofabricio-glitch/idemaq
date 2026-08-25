@@ -40,6 +40,7 @@ import {
 const TESTES_POR_EQUIP = {
   lavadora: [
     { id: 'entrada_agua',  label: 'Entrada de água',  icon: 'droplet' },
+    { id: 'nivel_agua',    label: 'Nível de água',    icon: 'gauge', opcoes: ['ok', 'defeito'] },
     { id: 'saida_agua',    label: 'Saída de água',    icon: 'droplet-off' },
     { id: 'agitacao',      label: 'Agitação',         icon: 'refresh' },
     { id: 'centrifugacao', label: 'Centrifugação',    icon: 'rotate-clockwise' },
@@ -156,7 +157,10 @@ function AtlSwitch({ on, onChange, T, dark }) {
 }
 
 function TestRow({ T, dark, teste, value, onChange, first, autor }) {
-  const opSel = OPCOES.find(o => o.id === value)
+  // Alguns testes não fazem sentido com "Barulho" (ex: Nível de água) — o
+  // teste declara `opcoes: ['ok','defeito']` pra restringir.
+  const opcoesTeste = teste.opcoes ? OPCOES.filter(o => teste.opcoes.includes(o.id)) : OPCOES
+  const opSel = opcoesTeste.find(o => o.id === value)
   return (
     <div style={{
       padding: '10px 14px',
@@ -194,7 +198,7 @@ function TestRow({ T, dark, teste, value, onChange, first, autor }) {
       </div>
 
       <div style={{ display: 'flex', gap: 4 }}>
-        {OPCOES.map(op => {
+        {opcoesTeste.map(op => {
           const cor = corEtapa(op.corKey, dark)
           const sel = value === op.id
           return (
