@@ -610,6 +610,7 @@ export default function Kanban({ T, dark, user }) {
               onCardMouseDown={onCardPointerDown}
               admin={admin} funcionarios={funcionariosRoteiro} onMandarRoteiro={mandarOSparaRoteiro}
               roteiroPorOS={roteiroPorOS}
+              onUpdateOS={updateOS} onExcluir={excluirOS} onDuplicar={handleDuplicarOS}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
           ))}

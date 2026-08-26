@@ -2,8 +2,7 @@
 // Card do Kanban — Apple HIG: elevação, tipografia SF, tags em pill.
 
 import React from 'react'
-import { createPortal } from 'react-dom'
-import MandarRoteiroDialog from '../roteiro/MandarRoteiroDialog'
+import OSAcoesMenu from '../osDetalhe/OSAcoesMenu'
 import { P } from '../../theme'
 import { TIPOS_OS } from '../../utils/osData'
 import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar, statusServicoSub, secoesOficinaVisiveis } from '../../utils/osHelpers'
@@ -19,50 +18,19 @@ export default function KanbanCard({
   shaking,
   admin = false,
   funcionarios = [],
-  onMandarRoteiro,
   roteiroPorOS,
+  onUpdateOS, onExcluir, onDuplicar,
 }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
   // Funcionário a quem a OS foi atribuída no Roteiro de hoje (avatar no card).
   const respRoteiro = roteiroPorOS && roteiroPorOS.get ? roteiroPorOS.get(os.id) : null
   const funcRoteiro = respRoteiro ? funcionarios.find(f => f.id === respRoteiro) : null
-  const [hover, setHover]   = React.useState(false)
-  const [menu, setMenu]     = React.useState(false)
-  const [diaKey, setDiaKey] = React.useState('hoje')  // 'hoje' | 'amanha'
-  const [dialog, setDialog] = React.useState(null)    // { funcionario, diaKey } | null
-  const podeRoteiro = admin && funcionarios.length > 0 && !!onMandarRoteiro
-  // Trava propagação pra o ⋮ não disparar arraste do card nem abrir a OS.
-  const trava = e => { e.stopPropagation() }
+  const [hover, setHover] = React.useState(false)
+  const [menu, setMenu]   = React.useState(false)
   // Enquanto o ⋮ está visível, limpamos o canto sup. direito (prazo / "Nd aberto")
   // pra ele não ficar por cima do prazo.
-  const cantoLimpo = podeRoteiro && (hover || menu)
-
-  // Posição FIXA do menu — calculada NO CLIQUE a partir do próprio botão (evita
-  // pegar elemento defasado) e guardada em estado. Fixed escapa do recorte
-  // (overflow) da coluna. Abre pra cima quando o card está perto da base da tela.
-  const MENU_W = 186, MENU_H = 158
-  const [menuPos, setMenuPos] = React.useState(null)
-  function toggleMenu(e) {
-    trava(e)
-    if (menu) { setMenu(false); return }
-    const r = e.currentTarget.getBoundingClientRect()
-    const abreCima = r.bottom + MENU_H > window.innerHeight - 8
-    setMenuPos({
-      left: Math.max(8, Math.min(r.right - MENU_W, window.innerWidth - MENU_W - 8)),
-      top:  abreCima ? Math.max(8, r.top - MENU_H - 4) : r.bottom + 4,
-    })
-    setMenu(true)
-  }
-  // Fecha o menu ao clicar fora ou rolar.
-  React.useEffect(() => {
-    if (!menu) return
-    function onDoc(e) { if (!e.target.closest('[data-card-roteiro]')) setMenu(false) }
-    function onScroll() { setMenu(false) }
-    document.addEventListener('mousedown', onDoc)
-    window.addEventListener('scroll', onScroll, true)
-    return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('scroll', onScroll, true) }
-  }, [menu])
+  const cantoLimpo = hover || menu
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
   const tipoCfg = TIPOS_OS[os.tipo]
@@ -135,71 +103,13 @@ export default function KanbanCard({
       onMouseDown={e => { e.currentTarget.style.cursor = 'grabbing'; onCardMouseDown?.(os, e) }}
       onMouseUp={e => { e.currentTarget.style.cursor = 'grab' }}>
 
-      {/* ⋮ Mandar pro roteiro — só dono, aparece no hover (organiza no desktop) */}
-      {podeRoteiro && (hover || menu) && (
-        <div data-card-roteiro style={{ position: 'absolute', top: 4, right: 4, zIndex: 6 }}
-          onMouseDown={trava} onMouseUp={trava} onClick={trava}>
-          <button
-            aria-label="Mandar pro roteiro"
-            title="Mandar pro roteiro"
-            onMouseDown={trava}
-            onClick={toggleMenu}
-            style={{
-              width: 22, height: 22, borderRadius: 6, cursor: 'pointer',
-              border: `1px solid ${T.border}`, background: T.card, color: azul,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-            <i className="ti ti-dots-vertical" style={{ fontSize: 14 }} aria-hidden="true" />
-          </button>
-        </div>
-      )}
-      {/* Menu via PORTAL no body — o card tem transform no hover, que faria um
-          position:fixed se ancorar no card (e não na tela). O portal escapa disso. */}
-      {menu && menuPos && createPortal(
-        <div data-card-roteiro onMouseDown={trava} onClick={trava} style={{
-          position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 4000, width: MENU_W,
-          background: T.cardAlt || T.card, border: `1px solid ${T.border}`, borderRadius: 8,
-          padding: 6, boxShadow: dark ? '0 8px 24px rgba(0,0,0,0.45)' : '0 4px 16px rgba(0,0,0,0.14)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '2px 4px 7px', fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.05em' }}>
-            <i className="ti ti-checklist" style={{ fontSize: 12, color: azul }} aria-hidden="true" /> Mandar pro roteiro
-          </div>
-          {funcionarios.map(f => (
-            <button key={f.id}
-              onClick={() => { setDialog({ funcionario: f, diaKey }); setMenu(false) }}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                padding: '7px 8px', marginBottom: 4, borderRadius: 6,
-                border: 'none', background: 'transparent', color: T.textPrimary,
-                fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.06)' : '#f0f4ff' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}>
-              <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, background: (f.cor || azul) + '33', color: f.cor || azul, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{(f.nome || '?').slice(0, 2).toUpperCase()}</span>
-              {f.nome}
-            </button>
-          ))}
-          <div style={{ display: 'flex', gap: 5, marginTop: 2 }}>
-            {[['hoje', 'Hoje'], ['amanha', 'Amanhã']].map(([v, lbl]) => (
-              <button key={v} onClick={() => setDiaKey(v)}
-                style={{
-                  flex: 1, padding: '5px 6px', borderRadius: 6,
-                  border: `1px solid ${diaKey === v ? azul : T.border}`,
-                  background: diaKey === v ? (dark ? 'rgba(91,155,213,0.16)' : '#eef5fc') : 'transparent',
-                  color: diaKey === v ? azul : T.textMuted,
-                  fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                }}>{lbl}</button>
-            ))}
-          </div>
-        </div>,
-        document.body
-      )}
-      {dialog && (
-        <MandarRoteiroDialog
-          T={T} dark={dark} os={os}
-          funcionario={dialog.funcionario} diaKey={dialog.diaKey}
-          onConfirm={(texto) => { onMandarRoteiro?.(os, dialog.funcionario.id, dialog.diaKey, texto); setDialog(null) }}
-          onClose={() => setDialog(null)}
+      {/* ⋮ Mesmo menu do OSDetalhe — aparece no hover (organiza no desktop) */}
+      {(hover || menu) && (
+        <OSAcoesMenu
+          T={T} dark={dark} os={os} admin={admin}
+          onUpdateOS={onUpdateOS} onExcluir={onExcluir} onDuplicar={onDuplicar}
+          variant="card"
+          onOpenChange={setMenu}
         />
       )}
 
