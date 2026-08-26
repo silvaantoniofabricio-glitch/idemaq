@@ -19,6 +19,7 @@ import MandarRoteiroDialog from '../roteiro/MandarRoteiroDialog'
 import ClienteDetalheModal from '../clientes/ClienteDetalheModal'
 import FormEquipamentoEdit from './FormEquipamentoEdit'
 import RelatorioPontuacaoModal from './RelatorioPontuacaoModal'
+import CustoMargemModal from './CustoMargemModal'
 
 const ABAS = [
   { id: 'etapa',     label: 'Etapa',     icon: 'ti-checkup-list' },
@@ -217,6 +218,7 @@ export default function Header({
   const [modalCliente, setModalCliente] = useState(false)
   const [modalEquipamento, setModalEquipamento] = useState(false)
   const [modalPontuacao, setModalPontuacao] = useState(false)
+  const [modalCustoMargem, setModalCustoMargem] = useState(false)
   function abrirCadastroCliente() {
     if (!os?.cliente_id) { notify('info', 'Esta OS não tem cliente vinculado'); return }
     setModalCliente(true)
@@ -528,6 +530,11 @@ export default function Header({
                     Relatório de Pontuação
                   </MenuItem>
                 )}
+                {admin && (
+                  <MenuItem T={T} icon="ti-report-money" onClick={() => { setModalCustoMargem(true); setMenuAberto(false) }}>
+                    Custo e margem das peças
+                  </MenuItem>
+                )}
                 {admin && funcionarios.length > 0 && (
                   <MenuItem T={T} icon="ti-checklist" onClick={() => setRoteiroModo(true)}>
                     Mandar pro roteiro
@@ -665,6 +672,13 @@ export default function Header({
           T={T} dark={dark} mobile={mobile}
           os={os}
           onClose={() => setModalPontuacao(false)}
+        />
+      )}
+      {modalCustoMargem && (
+        <CustoMargemModal
+          T={T} dark={dark} mobile={mobile}
+          os={os}
+          onClose={() => setModalCustoMargem(false)}
         />
       )}
       {roteiroDialog && (
