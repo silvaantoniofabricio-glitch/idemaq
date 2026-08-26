@@ -110,7 +110,6 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   const totalVenda = itens.reduce((s, i) => s + i.totalVenda, 0)
   const totalCusto = itens.reduce((s, i) => s + (i.totalCusto || 0), 0)
   const totalMargem = totalVenda - totalCusto
-  const margemPct = totalVenda > 0 ? (totalMargem / totalVenda) * 100 : 0
   const temItemSemCusto = itens.some(i => i.custoUnit == null)
 
   // ── Margem total da OS: serviço e deslocamento não têm custo direto
@@ -149,102 +148,61 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
             Erro: {erro}
           </div>
         ) : (
-          <>
-            {/* Margem total da OS — visão geral: mão de obra + deslocamento
-                entram inteiros (sem custo direto conhecido), peças só pelo
-                lucro, desconto sai do total. */}
-            <AtlPanel T={T} dark={dark} title="Margem total da OS">
-              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Linha T={T} label="Mão de obra (serviços)" valor={fmtBRL(totalServicos)} cor={T.textPrimary} />
-                <Linha T={T} label="Deslocamento" valor={fmtBRL(totalDeslocamento)} cor={T.textPrimary} />
-                <Linha T={T} label="Lucro de peças (venda − custo)" valor={fmtBRL(totalMargem)} cor={totalMargem >= 0 ? verde : vermelho} />
-                <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
-                <Linha T={T} label="Subtotal" valor={fmtBRL(subtotalOS)} cor={T.textPrimary} />
-                {desconto > 0 && (
-                  <Linha T={T} label="Desconto" valor={`− ${fmtBRL(desconto)}`} cor={vermelho} />
-                )}
-                {taxaJuros > 0 && (
-                  <Linha T={T}
-                    label={taxaPct != null ? `Taxa da maquininha (${taxaPct.toFixed(1)}%)` : 'Taxa da maquininha'}
-                    valor={`− ${fmtBRL(taxaJuros)}`}
-                    cor={vermelho}
-                  />
-                )}
-                <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
-                <Linha T={T}
-                  label="Margem total"
-                  valor={`${fmtBRL(margemTotalOS)} · ${margemTotalPct.toFixed(0)}%`}
-                  cor={margemTotalOS >= 0 ? verde : vermelho}
-                  grande
-                />
-              </div>
-            </AtlPanel>
+          <AtlPanel T={T} dark={dark} title="Custo e margem da OS">
+            {/* Destrinchado numa tabela só: mão de obra → peças (item a item)
+                → deslocamento → margens finais (subtotal, deduções, total). */}
+            <div style={{ padding: '10px 14px' }}>
+              <Linha T={T} label="Mão de obra (serviços)" valor={fmtBRL(totalServicos)} cor={T.textPrimary} />
+            </div>
 
-            {itens.length === 0 ? (
-              <div style={{ padding: '4px 4px 8px', textAlign: 'center', color: T.textMuted, fontSize: 12.5 }}>
+            {itens.map((it, i) => {
+              const pctItem = it.custoUnit != null && it.vendaUnit > 0
+                ? ((it.vendaUnit - it.custoUnit) / it.vendaUnit) * 100
+                : null
+              return (
+                <div key={it.id} style={{ padding: '10px 14px', borderTop: `1px solid ${T.border}` }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    fontSize: 13, color: T.textPrimary, fontWeight: 600,
+                    marginBottom: 6,
+                  }}>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {it.nome}
+                    </span>
+                    <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500, flexShrink: 0 }}>{it.qtd}×</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 14, fontSize: 12 }}>
+                    <span style={{ color: T.textMuted }}>
+                      Venda <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(it.totalVenda)}</strong>
+                    </span>
+                    <span style={{ color: T.textMuted }}>
+                      Custo <strong style={{ color: it.totalCusto != null ? T.textPrimary : T.textDim, fontVariantNumeric: 'tabular-nums' }}>
+                        {it.totalCusto != null ? fmtBRL(it.totalCusto) : '—'}
+                      </strong>
+                    </span>
+                    <span style={{ color: T.textMuted, marginLeft: 'auto' }}>
+                      Margem{' '}
+                      <strong style={{
+                        color: pctItem == null ? T.textDim : pctItem >= 0 ? verde : vermelho,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {pctItem == null ? '—' : `${fmtBRL(it.totalVenda - it.totalCusto)} · ${pctItem.toFixed(0)}%`}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+
+            {itens.length === 0 && (
+              <div style={{ padding: '4px 14px 10px', color: T.textMuted, fontSize: 12.5 }}>
                 Nenhuma peça no orçamento dessa OS.
               </div>
-            ) : (
-            <>
-            <AtlPanel T={T} dark={dark} title="Peças do orçamento">
-              {itens.map((it, i) => {
-                const pctItem = it.custoUnit != null && it.vendaUnit > 0
-                  ? ((it.vendaUnit - it.custoUnit) / it.vendaUnit) * 100
-                  : null
-                return (
-                  <div key={it.id} style={{
-                    padding: '10px 14px',
-                    borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
-                  }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      fontSize: 13, color: T.textPrimary, fontWeight: 600,
-                      marginBottom: 6,
-                    }}>
-                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {it.nome}
-                      </span>
-                      <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500, flexShrink: 0 }}>{it.qtd}×</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 14, fontSize: 12 }}>
-                      <span style={{ color: T.textMuted }}>
-                        Venda <strong style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{fmtBRL(it.totalVenda)}</strong>
-                      </span>
-                      <span style={{ color: T.textMuted }}>
-                        Custo <strong style={{ color: it.totalCusto != null ? T.textPrimary : T.textDim, fontVariantNumeric: 'tabular-nums' }}>
-                          {it.totalCusto != null ? fmtBRL(it.totalCusto) : '—'}
-                        </strong>
-                      </span>
-                      <span style={{ color: T.textMuted, marginLeft: 'auto' }}>
-                        Margem{' '}
-                        <strong style={{
-                          color: pctItem == null ? T.textDim : pctItem >= 0 ? verde : vermelho,
-                          fontVariantNumeric: 'tabular-nums',
-                        }}>
-                          {pctItem == null ? '—' : `${fmtBRL(it.totalVenda - it.totalCusto)} · ${pctItem.toFixed(0)}%`}
-                        </strong>
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-              <div style={{
-                padding: '10px 14px',
-                borderTop: `1px solid ${T.border}`,
-                display: 'flex', flexDirection: 'column', gap: 6,
-              }}>
-                <Linha T={T} label="Total de venda" valor={fmtBRL(totalVenda)} cor={T.textPrimary} />
-                <Linha T={T} label="Total de custo" valor={fmtBRL(totalCusto)} cor={T.textPrimary} />
-                <Linha T={T}
-                  label="Subtotal (margem das peças)"
-                  valor={`${fmtBRL(totalMargem)} · ${margemPct.toFixed(0)}%`}
-                  cor={totalMargem >= 0 ? verde : vermelho}
-                />
-              </div>
-            </AtlPanel>
+            )}
 
             {temItemSemCusto && (
               <div style={{
+                padding: '0 14px 10px',
                 fontSize: 11.5, color: T.textDim, lineHeight: 1.4,
                 display: 'flex', alignItems: 'flex-start', gap: 6,
               }}>
@@ -252,9 +210,35 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
                 <span>Item avulso (texto livre, sem vínculo com o catálogo) não tem custo conhecido — aparece com "—" e não entra no total de custo/margem.</span>
               </div>
             )}
-            </>
-            )}
-          </>
+
+            <div style={{ padding: '10px 14px', borderTop: `1px solid ${T.border}` }}>
+              <Linha T={T} label="Deslocamento" valor={fmtBRL(totalDeslocamento)} cor={T.textPrimary} />
+            </div>
+
+            <div style={{
+              padding: '12px 14px', borderTop: `1px solid ${T.border}`,
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <Linha T={T} label="Subtotal" valor={fmtBRL(subtotalOS)} cor={T.textPrimary} />
+              {desconto > 0 && (
+                <Linha T={T} label="Desconto" valor={`− ${fmtBRL(desconto)}`} cor={vermelho} />
+              )}
+              {taxaJuros > 0 && (
+                <Linha T={T}
+                  label={taxaPct != null ? `Taxa da maquininha (${taxaPct.toFixed(1)}%)` : 'Taxa da maquininha'}
+                  valor={`− ${fmtBRL(taxaJuros)}`}
+                  cor={vermelho}
+                />
+              )}
+              <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
+              <Linha T={T}
+                label="Margem total"
+                valor={`${fmtBRL(margemTotalOS)} · ${margemTotalPct.toFixed(0)}%`}
+                cor={margemTotalOS >= 0 ? verde : vermelho}
+                grande
+              />
+            </div>
+          </AtlPanel>
         )}
       </div>
     </Modal>
