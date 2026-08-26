@@ -20,6 +20,8 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   const vermelho = corEtapa('red', dark)
 
   const [itens, setItens] = useState([])
+  const [servicos, setServicos] = useState([])
+  const [deslocamentos, setDeslocamentos] = useState([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
 
@@ -29,15 +31,15 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
       setLoading(true); setErro(null)
       const { data: rows, error: errItens } = await supabase
         .from('os_item')
-        .select('id, nome, quantidade, valor_unitario, peca_id')
+        .select('id, nome, categoria, quantidade, valor_unitario, peca_id')
         .eq('os_id', os.id)
-        .eq('categoria', 'peca')
         .is('deleted_at', null)
         .order('criado_em', { ascending: true })
       if (cancel) return
       if (errItens) { setErro(errItens.message); setLoading(false); return }
 
-      const pecaIds = [...new Set((rows || []).map(r => r.peca_id).filter(Boolean))]
+      const pecaRows = (rows || []).filter(r => r.categoria === 'peca')
+      const pecaIds = [...new Set(pecaRows.map(r => r.peca_id).filter(Boolean))]
       let custoPorPecaId = {}
       if (pecaIds.length) {
         const { data: pecas, error: errPecas } = await supabase
@@ -51,7 +53,7 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
         }
       }
 
-      const montados = (rows || []).map(r => {
+      const montados = pecaRows.map(r => {
         const qtd = Number(r.quantidade) || 0
         const vendaUnit = Number(r.valor_unitario) || 0
         const custoConhecido = r.peca_id != null && custoPorPecaId[r.peca_id] != null
@@ -66,7 +68,12 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
           totalCusto: custoUnit != null ? qtd * custoUnit : null,
         }
       })
-      if (!cancel) { setItens(montados); setLoading(false) }
+      if (!cancel) {
+        setItens(montados)
+        setServicos((rows || []).filter(r => r.categoria === 'servico'))
+        setDeslocamentos((rows || []).filter(r => r.categoria === 'desloc'))
+        setLoading(false)
+      }
     })()
     return () => { cancel = true }
   }, [os.id])
@@ -77,10 +84,21 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   const margemPct = totalVenda > 0 ? (totalMargem / totalVenda) * 100 : 0
   const temItemSemCusto = itens.some(i => i.custoUnit == null)
 
+  // ── Margem total da OS: serviço e deslocamento não têm custo direto
+  // conhecido no sistema (não existe "custo de mão de obra" cadastrado),
+  // então a receita deles entra inteira como lucro. Peças entram só pelo
+  // lucro (venda − custo real). Desconto sai do total.
+  const totalServicos = servicos.reduce((s, r) => s + (Number(r.quantidade) || 0) * (Number(r.valor_unitario) || 0), 0)
+  const totalDeslocamento = deslocamentos.reduce((s, r) => s + (Number(r.quantidade) || 0) * (Number(r.valor_unitario) || 0), 0)
+  const desconto = Number(os?.desconto || 0)
+  const margemTotalOS = totalServicos + totalDeslocamento + totalMargem - desconto
+  const receitaBrutaOS = totalServicos + totalDeslocamento + totalVenda - desconto
+  const margemTotalPct = receitaBrutaOS > 0 ? (margemTotalOS / receitaBrutaOS) * 100 : 0
+
   return (
     <Modal T={T} dark={dark} mobile={mobile} onClose={onClose} maxWidth={560}>
       <ModalHeader T={T}
-        title="Custo e margem das peças"
+        title="Custo e margem da OS"
         subtitle={`OS #${os?.numero}`}
         icon="ti-report-money"
         onClose={onClose}
@@ -100,12 +118,35 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
           <div style={{ padding: 24, textAlign: 'center', color: vermelho, fontSize: 13 }}>
             Erro: {erro}
           </div>
-        ) : itens.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: T.textMuted, fontSize: 13 }}>
-            Nenhuma peça no orçamento dessa OS.
-          </div>
         ) : (
           <>
+            {/* Margem total da OS — visão geral: mão de obra + deslocamento
+                entram inteiros (sem custo direto conhecido), peças só pelo
+                lucro, desconto sai do total. */}
+            <AtlPanel T={T} dark={dark} title="Margem total da OS">
+              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Linha T={T} label="Mão de obra (serviços)" valor={fmtBRL(totalServicos)} cor={T.textPrimary} />
+                <Linha T={T} label="Deslocamento" valor={fmtBRL(totalDeslocamento)} cor={T.textPrimary} />
+                <Linha T={T} label="Lucro de peças" valor={fmtBRL(totalMargem)} cor={totalMargem >= 0 ? verde : vermelho} />
+                {desconto > 0 && (
+                  <Linha T={T} label="Desconto" valor={`− ${fmtBRL(desconto)}`} cor={vermelho} />
+                )}
+                <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
+                <Linha T={T}
+                  label="Margem total"
+                  valor={`${fmtBRL(margemTotalOS)} · ${margemTotalPct.toFixed(0)}%`}
+                  cor={margemTotalOS >= 0 ? verde : vermelho}
+                  grande
+                />
+              </div>
+            </AtlPanel>
+
+            {itens.length === 0 ? (
+              <div style={{ padding: '4px 4px 8px', textAlign: 'center', color: T.textMuted, fontSize: 12.5 }}>
+                Nenhuma peça no orçamento dessa OS.
+              </div>
+            ) : (
+            <>
             <AtlPanel T={T} dark={dark} title="Peças">
               {itens.map((it, i) => {
                 const pctItem = it.custoUnit != null && it.vendaUnit > 0
@@ -172,6 +213,8 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
                 <i className="ti ti-info-circle" style={{ fontSize: 13, marginTop: 1, flexShrink: 0 }} aria-hidden="true" />
                 <span>Item avulso (texto livre, sem vínculo com o catálogo) não tem custo conhecido — aparece com "—" e não entra no total de custo/margem.</span>
               </div>
+            )}
+            </>
             )}
           </>
         )}
