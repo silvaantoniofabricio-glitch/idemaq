@@ -22,6 +22,7 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   const [itens, setItens] = useState([])
   const [servicos, setServicos] = useState([])
   const [deslocamentos, setDeslocamentos] = useState([])
+  const [taxaJuros, setTaxaJuros] = useState(0)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
 
@@ -29,6 +30,21 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
     let cancel = false
     ;(async () => {
       setLoading(true); setErro(null)
+
+      // Taxa da maquininha — quando o recebimento foi registrado com forma que
+      // cobra taxa (crédito, link etc), FormRecebimento já grava uma despesa
+      // "Taxa maquininha" separada em lancamento_financeiro, vinculada à OS
+      // (osToFinanceiro.js). Soma isso aqui pra tirar do lucro.
+      const { data: taxaRows, error: errTaxa } = await supabase
+        .from('lancamento_financeiro')
+        .select('valor')
+        .eq('os_id', os.id)
+        .eq('categoria', 'Taxa maquininha')
+        .is('deleted_at', null)
+      if (!cancel && !errTaxa) {
+        setTaxaJuros((taxaRows || []).reduce((s, r) => s + (Number(r.valor) || 0), 0))
+      }
+
       const { data: rows, error: errItens } = await supabase
         .from('os_item')
         .select('id, nome, categoria, quantidade, valor_unitario, peca_id')
@@ -87,11 +103,12 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   // ── Margem total da OS: serviço e deslocamento não têm custo direto
   // conhecido no sistema (não existe "custo de mão de obra" cadastrado),
   // então a receita deles entra inteira como lucro. Peças entram só pelo
-  // lucro (venda − custo real). Desconto sai do total.
+  // lucro (venda − custo real). Desconto e taxa da maquininha (se o
+  // recebimento foi numa forma com taxa) saem do total.
   const totalServicos = servicos.reduce((s, r) => s + (Number(r.quantidade) || 0) * (Number(r.valor_unitario) || 0), 0)
   const totalDeslocamento = deslocamentos.reduce((s, r) => s + (Number(r.quantidade) || 0) * (Number(r.valor_unitario) || 0), 0)
   const desconto = Number(os?.desconto || 0)
-  const margemTotalOS = totalServicos + totalDeslocamento + totalMargem - desconto
+  const margemTotalOS = totalServicos + totalDeslocamento + totalMargem - desconto - taxaJuros
   const receitaBrutaOS = totalServicos + totalDeslocamento + totalVenda - desconto
   const margemTotalPct = receitaBrutaOS > 0 ? (margemTotalOS / receitaBrutaOS) * 100 : 0
 
@@ -130,6 +147,9 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
                 <Linha T={T} label="Lucro de peças" valor={fmtBRL(totalMargem)} cor={totalMargem >= 0 ? verde : vermelho} />
                 {desconto > 0 && (
                   <Linha T={T} label="Desconto" valor={`− ${fmtBRL(desconto)}`} cor={vermelho} />
+                )}
+                {taxaJuros > 0 && (
+                  <Linha T={T} label="Taxa da maquininha" valor={`− ${fmtBRL(taxaJuros)}`} cor={vermelho} />
                 )}
                 <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
                 <Linha T={T}
