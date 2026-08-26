@@ -23,6 +23,7 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   const [servicos, setServicos] = useState([])
   const [deslocamentos, setDeslocamentos] = useState([])
   const [taxaJuros, setTaxaJuros] = useState(0)
+  const [taxaPct, setTaxaPct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
 
@@ -43,6 +44,18 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
         .is('deleted_at', null)
       if (!cancel && !errTaxa) {
         setTaxaJuros((taxaRows || []).reduce((s, r) => s + (Number(r.valor) || 0), 0))
+      }
+
+      // % da taxa fica gravado na receita (não na despesa) — busca só pra exibir.
+      const { data: receitaRows, error: errReceita } = await supabase
+        .from('lancamento_financeiro')
+        .select('taxa_pct')
+        .eq('os_id', os.id)
+        .eq('tipo', 'receita')
+        .not('taxa_pct', 'is', null)
+        .is('deleted_at', null)
+      if (!cancel && !errReceita && receitaRows?.length) {
+        setTaxaPct(Number(receitaRows[0].taxa_pct) || null)
       }
 
       const { data: rows, error: errItens } = await supabase
@@ -104,13 +117,13 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   // conhecido no sistema (não existe "custo de mão de obra" cadastrado),
   // então a receita deles entra inteira como lucro. Peças entram só pelo
   // lucro (venda − custo real). Desconto e taxa da maquininha (se o
-  // recebimento foi numa forma com taxa) saem do total.
+  // recebimento foi numa forma com taxa) saem do subtotal.
   const totalServicos = servicos.reduce((s, r) => s + (Number(r.quantidade) || 0) * (Number(r.valor_unitario) || 0), 0)
   const totalDeslocamento = deslocamentos.reduce((s, r) => s + (Number(r.quantidade) || 0) * (Number(r.valor_unitario) || 0), 0)
   const desconto = Number(os?.desconto || 0)
-  const margemTotalOS = totalServicos + totalDeslocamento + totalMargem - desconto - taxaJuros
-  const receitaBrutaOS = totalServicos + totalDeslocamento + totalVenda - desconto
-  const margemTotalPct = receitaBrutaOS > 0 ? (margemTotalOS / receitaBrutaOS) * 100 : 0
+  const subtotalOS = totalServicos + totalDeslocamento + totalMargem
+  const margemTotalOS = subtotalOS - desconto - taxaJuros
+  const margemTotalPct = subtotalOS > 0 ? (margemTotalOS / subtotalOS) * 100 : 0
 
   return (
     <Modal T={T} dark={dark} mobile={mobile} onClose={onClose} maxWidth={560}>
@@ -144,12 +157,18 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
               <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <Linha T={T} label="Mão de obra (serviços)" valor={fmtBRL(totalServicos)} cor={T.textPrimary} />
                 <Linha T={T} label="Deslocamento" valor={fmtBRL(totalDeslocamento)} cor={T.textPrimary} />
-                <Linha T={T} label="Lucro de peças" valor={fmtBRL(totalMargem)} cor={totalMargem >= 0 ? verde : vermelho} />
+                <Linha T={T} label="Lucro de peças (venda − custo)" valor={fmtBRL(totalMargem)} cor={totalMargem >= 0 ? verde : vermelho} />
+                <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
+                <Linha T={T} label="Subtotal" valor={fmtBRL(subtotalOS)} cor={T.textPrimary} />
                 {desconto > 0 && (
                   <Linha T={T} label="Desconto" valor={`− ${fmtBRL(desconto)}`} cor={vermelho} />
                 )}
                 {taxaJuros > 0 && (
-                  <Linha T={T} label="Taxa da maquininha" valor={`− ${fmtBRL(taxaJuros)}`} cor={vermelho} />
+                  <Linha T={T}
+                    label={taxaPct != null ? `Taxa da maquininha (${taxaPct.toFixed(1)}%)` : 'Taxa da maquininha'}
+                    valor={`− ${fmtBRL(taxaJuros)}`}
+                    cor={vermelho}
+                  />
                 )}
                 <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
                 <Linha T={T}
@@ -167,7 +186,7 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
               </div>
             ) : (
             <>
-            <AtlPanel T={T} dark={dark} title="Peças">
+            <AtlPanel T={T} dark={dark} title="Peças do orçamento">
               {itens.map((it, i) => {
                 const pctItem = it.custoUnit != null && it.vendaUnit > 0
                   ? ((it.vendaUnit - it.custoUnit) / it.vendaUnit) * 100
@@ -209,18 +228,17 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
                   </div>
                 )
               })}
-            </AtlPanel>
-
-            <AtlPanel T={T} dark={dark} title="Total">
-              <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{
+                padding: '10px 14px',
+                borderTop: `1px solid ${T.border}`,
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
                 <Linha T={T} label="Total de venda" valor={fmtBRL(totalVenda)} cor={T.textPrimary} />
                 <Linha T={T} label="Total de custo" valor={fmtBRL(totalCusto)} cor={T.textPrimary} />
-                <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
                 <Linha T={T}
-                  label="Margem de lucro"
+                  label="Subtotal (margem das peças)"
                   valor={`${fmtBRL(totalMargem)} · ${margemPct.toFixed(0)}%`}
                   cor={totalMargem >= 0 ? verde : vermelho}
-                  grande
                 />
               </div>
             </AtlPanel>
