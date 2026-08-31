@@ -10,7 +10,7 @@
 //
 // Exports preservados pro desktop (pages/Logistica.jsx):
 //   FiltroEtapas, RotaAccordion, CardFlutuanteOS, DiagnosticoMapa,
-//   NOMES_SLOT, LETRA_POR_SLOT, ETAPAS_DEFAULT_LOGISTICA,
+//   OSDisponiveisList, NOMES_SLOT, LETRA_POR_SLOT, ETAPAS_DEFAULT_LOGISTICA,
 //   tipoUiPorEtapa, normalizarTipoUi, VISUAL_TIPO.
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
@@ -716,7 +716,7 @@ export function CardFlutuanteOS({ T, dark, os, onClose, onAdicionar, onAbrirDeta
 }
 
 // Lista de OS disponiveis — cada item draggable + tap
-function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd, onTap }) {
+export function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, onDragEnd, onTap }) {
   return (
     <div>
       {osList.map((os, idx) => {

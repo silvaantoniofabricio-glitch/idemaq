@@ -12,6 +12,7 @@ import LogisticaMobile, {
   NOMES_SLOT, LETRA_POR_SLOT,
   ETAPAS_DEFAULT_LOGISTICA, tipoUiPorEtapa,
   CardFlutuanteOS, RotaAccordion, DiagnosticoMapa,
+  OSDisponiveisList,
   filtrarPorAgenda,
 } from './LogisticaMobile'
 import { useToast, ModuleHeader } from '../components/ui'
@@ -25,31 +26,6 @@ import MapaLogistica from '../components/logistica/MapaLogistica'
 import OSDetalhe from '../components/osDetalhe/OSDetalhe'
 
 const HOJE = new Date().toISOString().slice(0, 10)
-
-// Cor de chip por etapa na Agenda do Dia
-function corChipEtapa(etapaDb) {
-  if (etapaDb === 'agendamento')            return { bg: '#1565C0', text: '#fff' }
-  if (etapaDb === 'entrega')                return { bg: '#2E7D32', text: '#fff' }
-  if (etapaDb === 'pagamento')              return { bg: '#E65100', text: '#fff' }
-  if (etapaDb === 'teste_final')            return { bg: '#558B2F', text: '#fff' }
-  if (etapaDb === 'aguardando_agendamento') return { bg: '#546E7A', text: '#fff' }
-  return { bg: '#546E7A', text: '#fff' }
-}
-
-function horaLocal(iso) {
-  if (!iso) return null
-  try {
-    return new Date(iso).toLocaleTimeString('pt-BR', {
-      timeZone: 'America/Cuiaba', hour: '2-digit', minute: '2-digit',
-    })
-  } catch { return null }
-}
-
-function dataLocalHoje() {
-  return new Date().toLocaleDateString('pt-BR', {
-    timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).split('/').reverse().join('-')
-}
 
 function rotaCompletaUrl(enderecos) {
   return `https://www.google.com/maps/dir/${enderecos.map(e => encodeURIComponent(e)).join('/')}`
@@ -81,6 +57,8 @@ function LogisticaDesktop({ T, dark }) {
   const [filtroAgenda, setFiltroAgenda] = useState('hoje')
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
+  const [arrastando, setArrastando] = useState(null)
+  const [hoverRota, setHoverRota] = useState(null)
   const [novaRotaAberta, setNovaRotaAberta] = useState(false)
   const [rotaDetalhe, setRotaDetalhe] = useState(null)
   const [criandoRotasFalhou, setCriandoRotasFalhou] = useState(false)
@@ -165,6 +143,13 @@ function LogisticaDesktop({ T, dark }) {
     }
     return ids
   }, [slotsRotas])
+
+  // OS filtradas que ainda não estão em nenhuma rota — as mesmas que aparecem
+  // como pino tracejado no mapa. Lista arrastável pra soltar numa Rota A/B/C.
+  const osDisponiveis = useMemo(
+    () => osFiltradas.filter(o => !osIdsEmRota.has(o.id)),
+    [osFiltradas, osIdsEmRota]
+  )
 
   const pinosDoMapa = useMemo(() => {
     const lista = []
@@ -480,6 +465,8 @@ function LogisticaDesktop({ T, dark }) {
                     slot={slot} letra={letra}
                     primeiro={idx === 0}
                     expandida={rotaExpandida === letra}
+                    arrastando={arrastando}
+                    hoverAtiva={hoverRota === letra}
                     onToggle={() => setRotaExpandida(rotaExpandida === letra ? null : letra)}
                     onRemoverParada={(paradaId) => removerParada(slot.rota, paradaId)}
                     onReordenarParadas={async (novasParadas) => {
@@ -489,13 +476,76 @@ function LogisticaDesktop({ T, dark }) {
                     }}
                     onAdicionarAvulsa={(nome, end) => adicionarParadaAvulsa(slot.rota, nome, end)}
                     onAbrirOSDetalhe={abrirOSPorId}
+                    onDragOverRota={(e) => {
+                      if (!arrastando) return
+                      e.preventDefault()
+                      setHoverRota(letra)
+                    }}
+                    onDragLeaveRota={() => setHoverRota(null)}
+                    onDropRota={(e) => {
+                      e.preventDefault()
+                      if (arrastando?.os) adicionarOSemRota(arrastando.os, letra)
+                      setArrastando(null)
+                      setHoverRota(null)
+                    }}
                   />
                 )
               })}
             </div>
 
-            {/* Agenda do Dia */}
-            <AgendaDia T={T} dark={dark} osList={osList} onAbrirOS={abrirOSPorId} />
+            {/* OS disponíveis — mesmas OS dos pinos tracejados do mapa, arrastáveis pra uma rota */}
+            <div style={{
+              background: T.card, border: `1px solid ${T.border}`,
+              borderRadius: 4, overflow: 'hidden',
+              boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
+            }}>
+              <div style={{
+                padding: '10px 14px', borderBottom: `1px solid ${T.border}`,
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
+              }}>
+                <i className="ti ti-map-pin" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
+                <span style={{
+                  fontSize: 13, fontWeight: 600, color: T.textPrimary,
+                  letterSpacing: '-0.005em', flex: 1,
+                }}>OS disponíveis</span>
+                {osDisponiveis.length > 0 && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, color: T.textMuted,
+                    background: dark ? 'rgba(255,255,255,0.07)' : '#DFE1E6',
+                    padding: '2px 7px', borderRadius: 99,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>{osDisponiveis.length}</span>
+                )}
+              </div>
+              {osDisponiveis.length === 0 ? (
+                <div style={{ padding: '20px 14px', textAlign: 'center', color: T.textDim, fontSize: 12 }}>
+                  <i className="ti ti-map-pin-off"
+                    style={{ fontSize: 20, display: 'block', marginBottom: 6 }}
+                    aria-hidden="true" />
+                  Nenhuma OS disponível pra rotear
+                </div>
+              ) : (
+                <>
+                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    <OSDisponiveisList
+                      T={T} dark={dark}
+                      osList={osDisponiveis}
+                      arrastando={arrastando}
+                      onDragStart={(os) => setArrastando({ os })}
+                      onDragEnd={() => { setArrastando(null); setHoverRota(null) }}
+                      onTap={(os) => setOsPopup({ ...os })}
+                    />
+                  </div>
+                  <div style={{
+                    padding: '7px 14px', borderTop: `1px solid ${T.border}`,
+                    fontSize: 10.5, color: T.textDim, fontStyle: 'italic',
+                  }}>
+                    Clique pra ver opções ou arraste pra uma rota.
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Editar rota (avançado — DnD, status, observações) */}
             {dataAtiva && slotsRotas.some(s => s.rota) && (
@@ -614,109 +664,6 @@ function LegendaDot({ cor, titulo, tracejado = false }) {
       }} />
       {titulo.split(' (')[0]}
     </span>
-  )
-}
-
-function AgendaDia({ T, dark, osList, onAbrirOS }) {
-  const azul = corEtapa('blue', dark)
-  const hoje = dataLocalHoje()
-
-  const osHoje = useMemo(() => {
-    return osList
-      .filter(os => {
-        if (!os.data_agendamento) return false
-        const dataLocal = new Date(os.data_agendamento).toLocaleDateString('pt-BR', {
-          timeZone: 'America/Cuiaba',
-          year: 'numeric', month: '2-digit', day: '2-digit',
-        }).split('/').reverse().join('-')
-        return dataLocal === hoje
-      })
-      .sort((a, b) => (a.data_agendamento || '').localeCompare(b.data_agendamento || ''))
-  }, [osList, hoje])
-
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`,
-      borderRadius: 4, overflow: 'hidden',
-      boxShadow: dark ? 'none' : '0 1px 1px rgba(9,30,66,0.10)',
-    }}>
-      <div style={{
-        padding: '10px 14px', borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: dark ? 'rgba(255,255,255,0.015)' : '#FAFBFC',
-      }}>
-        <i className="ti ti-calendar-time" style={{ fontSize: 14, color: azul }} aria-hidden="true" />
-        <span style={{
-          fontWeight: 600, fontSize: 13, color: T.textPrimary,
-          letterSpacing: '-0.005em', flex: 1,
-        }}>Agenda do Dia</span>
-        {osHoje.length > 0 && (
-          <span style={{
-            background: azul, color: '#fff',
-            borderRadius: 99, padding: '1px 8px',
-            fontSize: 11, fontWeight: 700,
-            fontVariantNumeric: 'tabular-nums',
-          }}>{osHoje.length}</span>
-        )}
-      </div>
-
-      {osHoje.length === 0 ? (
-        <div style={{ padding: '20px 14px', textAlign: 'center', color: T.textDim, fontSize: 12 }}>
-          <i className="ti ti-calendar-off"
-            style={{ fontSize: 20, display: 'block', marginBottom: 6 }}
-            aria-hidden="true" />
-          Nenhum agendamento pra hoje
-        </div>
-      ) : (
-        <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-          {osHoje.map((os, idx) => {
-            const hora = horaLocal(os.data_agendamento)
-            const chip = corChipEtapa(os.etapa_db)
-            return (
-              <div
-                key={os.id}
-                onClick={() => onAbrirOS?.(os.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 14px',
-                  borderBottom: idx < osHoje.length - 1 ? `1px solid ${T.border}` : 'none',
-                  cursor: 'pointer',
-                  transition: 'background .1s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = dark ? 'rgba(255,255,255,0.04)' : '#F7F8F9'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'transparent'
-                }}>
-                <span style={{
-                  fontVariantNumeric: 'tabular-nums', fontWeight: 700,
-                  fontSize: 13, color: azul,
-                  minWidth: 40, flexShrink: 0,
-                }}>{hora || '--:--'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 12, fontWeight: 600,
-                    color: T.textPrimary, lineHeight: 1.3,
-                  }}>#{os.numero} · {os.cliente_nome}</div>
-                  {os.endereco && (
-                    <div style={{
-                      fontSize: 11, color: T.textDim,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>{os.endereco}</div>
-                  )}
-                </div>
-                <span style={{
-                  background: chip.bg, color: chip.text,
-                  borderRadius: 3, padding: '2px 7px',
-                  fontSize: 10.5, fontWeight: 600, flexShrink: 0,
-                }}>{os.etapa_label}</span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
   )
 }
 
