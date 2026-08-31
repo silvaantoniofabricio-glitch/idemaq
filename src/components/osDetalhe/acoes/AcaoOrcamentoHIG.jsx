@@ -2432,7 +2432,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS, onOrcamentoEnviado }) {
   const { T, dark } = useTheme()
   const notify = useToast()
-  const { itens, addItem, updateItem, removeItem } = useOSItens(os?.id)
+  const { itens, addItem, updateItem, removeItem, loading: itensLoading } = useOSItens(os?.id)
   const [docSheet, setDocSheet] = useState(null) // null | 'pdf' | 'whats'
   // Bump após gravar uma baixa pra a lista "Recebimentos lançados" recarregar
   // SÓ depois do insert terminar (senão busca antes do lançamento existir).
@@ -2465,6 +2465,17 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS, onOrcament
   const [descontoRS, setDescontoRS] = useState(() => Number(os?.desconto || 0))
   useEffect(() => { setDescontoRS(Number(os?.desconto || 0)) }, [os?.desconto])
   const total = Math.max(0, subtotalBruto - descontoRS)
+
+  // Mantém os.valor_total em dia com a soma real dos itens. Antes disso o
+  // valor só era gravado nas ações de pagamento, então editar o orçamento
+  // deixava o card do Kanban (e a soma do topo da coluna) com valor velho.
+  // Guarda: só sincroniza depois que os itens carregaram e se existe item —
+  // OS antiga sem itens não pode ter o valor zerado.
+  useEffect(() => {
+    if (itensLoading || !os?.numero || itens.length === 0) return
+    if (Math.abs(Number(os?.valor || 0) - subtotalBruto) < 0.01) return
+    onUpdateOS?.(os.numero, { valor: subtotalBruto })
+  }, [itensLoading, itens.length, subtotalBruto, os?.numero, os?.valor])
 
   // Mensagem pré-pronta pro WhatsApp do cliente (conserto + oferta de higienização).
   const mensagemOrcamento = useMemo(
