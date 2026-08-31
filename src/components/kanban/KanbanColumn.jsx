@@ -5,6 +5,7 @@
 import React from 'react'
 import { P } from '../../theme'
 import { corEtapa, bgEtapa } from '../../utils/colors'
+import { fmtBRL } from '../../utils/fmt'
 import KanbanCard from './KanbanCard'
 import KanbanSkeleton from './KanbanSkeleton'
 
@@ -39,6 +40,9 @@ export default function KanbanColumn({
   // do drag e fazia o card cair na coluna errada. O filete continua aceitando
   // drop (tem data-etapa).
   const vazia     = !loading && osList.length === 0
+
+  // Soma dos orçamentos da coluna (valor líquido = valor - desconto)
+  const totalColuna = osList.reduce((acc, os) => acc + ((os.valor || 0) - (os.desconto || 0)), 0)
   const colapsada = vazia
 
   // Cores da coluna — estilo Atlassian: fundo sólido neutro
@@ -138,8 +142,9 @@ export default function KanbanColumn({
         padding: '9px 11px 8px',
         borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e4e5e9'}`,
         flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+        display: 'flex', flexDirection: 'column', gap: 3,
       }}>
+       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           {/* Dot de cor da etapa */}
           <div style={{
@@ -180,6 +185,20 @@ export default function KanbanColumn({
           minWidth: 20, textAlign: 'center',
           fontVariantNumeric: 'tabular-nums', flexShrink: 0,
         }}>{osList.length}</span>
+       </div>
+
+        {/* Soma dos orçamentos dos cards da coluna */}
+        {totalColuna > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 12, fontWeight: 700,
+            color: dark ? T.textPrimary : '#000',
+            fontVariantNumeric: 'tabular-nums',
+          }} title="Soma dos orçamentos desta coluna">
+            <i className="ti ti-cash" style={{ fontSize: 12, color: T.textDim }} aria-hidden="true" />
+            {fmtBRL(totalColuna)}
+          </div>
+        )}
       </div>
 
       {/* Body — lista de cards */}
