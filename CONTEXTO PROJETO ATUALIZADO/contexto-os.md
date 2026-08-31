@@ -685,3 +685,16 @@ A coluna `roteiro_item.urgente` (sql/83) já existia e já tinha tratamento visu
 **Implementado**: botão "Prioridade" no popover "Mandar pro roteiro" (`Header.jsx`, desktop), logo abaixo de Hoje/Amanhã — `roteiroEnvio.js` passou a aceitar `urgente` no insert. `Kanban.jsx` já carregava `roteiroItens` (do dia de hoje) pro avatar do card; virou também a fonte de um `prioridadeHojeSet` que marca `_prioridadeHoje` em qualquer card cuja OS esteja marcada urgente no roteiro de hoje. `KanbanCard.jsx` mostra ícone de bandeira vermelha ao lado do número quando ativo.
 
 **Escopo**: só desktop — `HeaderMobile.jsx` ainda não tem "Mandar pro roteiro" (só existe no `Header.jsx` desktop), então não dava pra replicar lá.
+
+---
+
+## 31/08/2026 — Soma de orçamentos no topo da coluna do Kanban + sync do valor_total
+
+**Pedido**: mostrar no header de cada coluna do Kanban a soma dos orçamentos dos cards.
+
+**Implementado** (`KanbanColumn.jsx`): `totalColuna = Σ (valor - desconto)` na mesma linha do header, à esquerda do badge de contagem, `fmtBRL(..., { fr: true })` (com centavos) + `tabular-nums`. Some quando o total é 0.
+
+**Bug de origem encontrado**: `os.valor_total` só era gravado nas ações de pagamento — editar itens do orçamento (add/remover) não sincronizava. Resultado: card do Kanban e soma da coluna mostravam valor velho (ex.: OS com R$ 410 em itens exibindo R$ 330).
+
+- `AcaoOrcamentoHIG.jsx`: `useEffect` sincroniza `valor` com `subtotalBruto` (soma dos itens) quando diverge. Guarda: só depois de `itensLoading` falso e com `itens.length > 0`, pra não zerar OS antiga sem itens.
+- `sql/179-sincronizar-valor-total-com-itens.sql`: backfill (conferência + UPDATE) das OS já defasadas. **Falta Toni rodar no Supabase.**
