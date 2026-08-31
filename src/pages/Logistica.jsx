@@ -13,7 +13,6 @@ import LogisticaMobile, {
   ETAPAS_DEFAULT_LOGISTICA, tipoUiPorEtapa,
   CardFlutuanteOS, RotaAccordion, DiagnosticoMapa,
   OSDisponiveisList,
-  filtrarPorAgenda,
 } from './LogisticaMobile'
 import { useToast, ModuleHeader } from '../components/ui'
 import { useRotas } from '../hooks/useRotas'
@@ -54,7 +53,9 @@ function LogisticaDesktop({ T, dark }) {
 
   // ─── Estado ──────────────────────────────────────────────────────────────
   const [etapasAtivas, setEtapasAtivas] = useState(ETAPAS_DEFAULT_LOGISTICA)
-  const [filtroAgenda, setFiltroAgenda] = useState('hoje')
+  // Filtro por rota no mapa — vazio (padrão) = mostra tudo. Selecionando uma
+  // ou mais rotas, o mapa e a lista de disponíveis mostram só as OS dela(s).
+  const [filtroRotas, setFiltroRotas] = useState(() => new Set())
   const [rotaExpandida, setRotaExpandida] = useState('A')
   const [osPopup, setOsPopup] = useState(null)
   const [arrastando, setArrastando] = useState(null)
@@ -70,10 +71,27 @@ function LogisticaDesktop({ T, dark }) {
   const incluirPagamento = etapasAtivas.has('pagamento')
   const { osList } = useOSLogistica({ incluirPagamento })
 
+  // OS de cada rota A/B/C hoje — usado pro filtro por rota (independe de
+  // slotsRotas, que só existe mais abaixo, pra não precisar reordenar).
+  const osIdsPorRotaLetra = useMemo(() => {
+    const map = { A: new Set(), B: new Set(), C: new Set() }
+    if (!dataAtiva) return map
+    for (const r of rotas) {
+      if (r.data !== dataAtiva) continue
+      const letra = LETRA_POR_SLOT[r.nome]
+      if (!letra) continue
+      for (const p of (r.paradas || [])) {
+        if (p.os_id) map[letra].add(p.os_id)
+      }
+    }
+    return map
+  }, [rotas, dataAtiva])
+
   const osFiltradas = useMemo(() => {
     const porEtapa = osList.filter(o => etapasAtivas.has(o.etapa_db))
-    return filtrarPorAgenda(porEtapa, filtroAgenda)
-  }, [osList, etapasAtivas, filtroAgenda])
+    if (filtroRotas.size === 0) return porEtapa
+    return porEtapa.filter(o => [...filtroRotas].some(letra => osIdsPorRotaLetra[letra]?.has(o.id)))
+  }, [osList, etapasAtivas, filtroRotas, osIdsPorRotaLetra])
 
   const enderecos = useMemo(
     () => osFiltradas.map(o => o.endereco).filter(Boolean),
@@ -156,6 +174,7 @@ function LogisticaDesktop({ T, dark }) {
     for (const s of slotsRotas) {
       if (!s.rota) continue
       const letra = LETRA_POR_SLOT[s.nome]
+      if (filtroRotas.size > 0 && !filtroRotas.has(letra)) continue
       const paradas = s.rota.paradas || []
       paradas.forEach((p, idx) => {
         if (p.lat == null || p.lng == null) return
@@ -183,7 +202,7 @@ function LogisticaDesktop({ T, dark }) {
       })
     }
     return lista
-  }, [slotsRotas, osFiltradas, coordsPorEndereco, osIdsEmRota])
+  }, [slotsRotas, osFiltradas, coordsPorEndereco, osIdsEmRota, filtroRotas])
 
   const diagnostico = useMemo(() => {
     let comCoord = 0, semEndereco = 0, geocodificando = 0
@@ -215,6 +234,15 @@ function LogisticaDesktop({ T, dark }) {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      return next
+    })
+  }
+
+  function toggleFiltroRota(letra) {
+    setFiltroRotas(prev => {
+      const next = new Set(prev)
+      if (next.has(letra)) next.delete(letra)
+      else next.add(letra)
       return next
     })
   }
@@ -344,14 +372,13 @@ function LogisticaDesktop({ T, dark }) {
             )
           })}
           <HdrDivider T={T} dark={dark} />
-          {[
-            { id: 'hoje',   label: 'Hoje / Atrasadas', icon: 'ti-calendar-event' },
-            { id: 'amanha', label: 'Amanhã',           icon: 'ti-calendar-plus' },
-            { id: 'semana', label: 'Semana',           icon: 'ti-calendar-week' },
-          ].map(op => {
-            const sel = filtroAgenda === op.id
+          {NOMES_SLOT.map(nome => {
+            const letra = LETRA_POR_SLOT[nome]
+            const sel = filtroRotas.has(letra)
+            const n = osIdsPorRotaLetra[letra]?.size || 0
             return (
-              <button key={op.id} onClick={() => setFiltroAgenda(op.id)}
+              <button key={letra} onClick={() => toggleFiltroRota(letra)}
+                title={`Mostrar só a Rota ${letra} no mapa`}
                 style={{
                   padding: '2px 9px', borderRadius: 4,
                   border: `1px solid ${sel ? azul : T.border}`,
@@ -362,8 +389,16 @@ function LogisticaDesktop({ T, dark }) {
                   display: 'inline-flex', alignItems: 'center', gap: 5,
                   whiteSpace: 'nowrap',
                 }}>
-                <i className={`ti ${op.icon}`} style={{ fontSize: 12 }} aria-hidden="true" />
-                {op.label}
+                <i className="ti ti-route" style={{ fontSize: 12 }} aria-hidden="true" />
+                Rota {letra}
+                {n > 0 && (
+                  <span style={{
+                    padding: '0 5px', borderRadius: 8,
+                    background: sel ? `${azul}25` : (dark ? '#1e1e24' : T.cardAlt || '#f0f0f5'),
+                    color: sel ? azul : T.textMuted,
+                    fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  }}>{n}</span>
+                )}
               </button>
             )
           })}
