@@ -142,9 +142,8 @@ export default function KanbanColumn({
         padding: '9px 11px 8px',
         borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.06)' : '#e4e5e9'}`,
         flexShrink: 0,
-        display: 'flex', flexDirection: 'column', gap: 3,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
       }}>
-       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           {/* Dot de cor da etapa */}
           <div style={{
@@ -176,6 +175,17 @@ export default function KanbanColumn({
           )}
         </div>
 
+        {/* Soma dos orçamentos dos cards da coluna */}
+        {totalColuna > 0 && (
+          <span style={{
+            marginLeft: 'auto',
+            fontSize: 11.5, fontWeight: 700,
+            color: dark ? T.textPrimary : '#000',
+            fontVariantNumeric: 'tabular-nums',
+            whiteSpace: 'nowrap', flexShrink: 0,
+          }} title="Soma dos orçamentos desta coluna">{fmtBRL(totalColuna)}</span>
+        )}
+
         {/* Badge de contagem */}
         <span style={{
           fontSize: 11, fontWeight: 700,
@@ -185,20 +195,6 @@ export default function KanbanColumn({
           minWidth: 20, textAlign: 'center',
           fontVariantNumeric: 'tabular-nums', flexShrink: 0,
         }}>{osList.length}</span>
-       </div>
-
-        {/* Soma dos orçamentos dos cards da coluna */}
-        {totalColuna > 0 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 4,
-            fontSize: 12, fontWeight: 700,
-            color: dark ? T.textPrimary : '#000',
-            fontVariantNumeric: 'tabular-nums',
-          }} title="Soma dos orçamentos desta coluna">
-            <i className="ti ti-cash" style={{ fontSize: 12, color: T.textDim }} aria-hidden="true" />
-            {fmtBRL(totalColuna)}
-          </div>
-        )}
       </div>
 
       {/* Body — lista de cards */}
