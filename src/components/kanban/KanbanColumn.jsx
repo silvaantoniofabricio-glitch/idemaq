@@ -183,7 +183,7 @@ export default function KanbanColumn({
             color: dark ? T.textPrimary : '#000',
             fontVariantNumeric: 'tabular-nums',
             whiteSpace: 'nowrap', flexShrink: 0,
-          }} title="Soma dos orçamentos desta coluna">{fmtBRL(totalColuna)}</span>
+          }} title="Soma dos orçamentos desta coluna">{fmtBRL(totalColuna, { fr: true })}</span>
         )}
 
         {/* Badge de contagem */}
