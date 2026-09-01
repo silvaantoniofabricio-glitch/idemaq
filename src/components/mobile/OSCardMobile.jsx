@@ -22,7 +22,11 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
   const corLinha = corEtapa(tipoCfg.cor || 'blue', dark)
   const pagoTotal = estaPagaTotal(os)
   const pagoParcial = !pagoTotal && estaPagaParcial(os)
-  const mostrarValor = os.valor > 0
+  // Só mostra o valor depois que o orçamento foi CONFIRMADO pelo cliente —
+  // antes disso é só um rascunho (os.valor já vai sendo preenchido enquanto
+  // o orçamento é montado, mesmo sem confirmação ainda).
+  const orcamentoStatus = os.pre_diagnostico?.orcamento_status || os.orcamento_status || 'idle'
+  const mostrarValor = os.valor > 0 && orcamentoStatus === 'confirmado'
   const semPrazo = os.etapa === 'concluido' || os.etapa === 'recusado' || !os.prazo
 
   const azul = corEtapa('blue', dark)
