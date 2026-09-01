@@ -71,6 +71,11 @@ export default function AcaoRecusada({ T, dark, os, onMoverOS, onUpdateOS }) {
         if (errItens) console.warn('[converterFabricacao] itens não copiados:', errItens)
       }
 
+      // Destino já decidido — some do Kanban (continua existindo, visível via
+      // busca/Vendas/relatórios), igual às outras 3 opções que tiram a OS da
+      // etapa Recusado.
+      await onUpdateOS(os.numero, { oculta_no_kanban: true })
+
       notify('ok', `OS #${numero} (Fabricação) criada no Conserto com ${itensOrigem?.length || 0} iten(s) copiado(s)`)
     } catch (e) {
       notify('erro', `Erro ao converter: ${e?.message || 'desconhecido'}`)
