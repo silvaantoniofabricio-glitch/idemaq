@@ -642,6 +642,7 @@ export default function Vendas({ T, dark, user }) {
                   <HeaderCell T={T} col="numero"   label="Nº"      curr={ordemCol} dir={ordemDir} onClick={ordenarPor} align="right" />
                   <HeaderCell T={T} col="abertura"  label="Data"    curr={ordemCol} dir={ordemDir} onClick={ordenarPor} />
                   <HeaderCell T={T} col="cliente"   label="Cliente" curr={ordemCol} dir={ordemDir} onClick={ordenarPor} />
+                  <HeaderCell T={T} col="fone"      label="Telefone" curr={ordemCol} dir={ordemDir} onClick={ordenarPor} />
                   <HeaderCell T={T} col="tipo"      label="Tipo"    curr={ordemCol} dir={ordemDir} onClick={ordenarPor} />
                   <HeaderCell T={T} col="etapa"     label="Etapa"   curr={ordemCol} dir={ordemDir} onClick={ordenarPor} />
                   <HeaderCell T={T} col="valor"     label="Valor"   curr={ordemCol} dir={ordemDir} onClick={ordenarPor} align="right" />
@@ -721,6 +722,9 @@ function LinhaOS({ os, T, dark, onClick }) {
       </td>
       <td style={{ ...tdStyle(T), color: corHero(dark), fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>
         {os.cliente || (os.tipo === 'fabricacao' ? 'Fabricação' : '—')}
+      </td>
+      <td style={{ ...tdStyle(T), color: T.textMuted, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+        {os.fone || '—'}
       </td>
       <td style={tdStyle(T)}>
         <Badge dark={dark} color={corTipo} bg={`${corTipo}22`}>{configTipo?.label || os.tipo}</Badge>
