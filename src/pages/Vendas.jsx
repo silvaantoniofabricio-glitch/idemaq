@@ -3,6 +3,7 @@
 // Filtros: dropdown multi-select com checkbox visual — neutro = sem filtro, ativo = azul + ×.
 
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import { P } from '../theme'
 import { corEtapa, corHero } from '../utils/colors'
 import { fmtBRL, semAcento } from '../utils/fmt'
 import { TIPOS_OS, ETAPAS_TODOS } from '../utils/osData'
@@ -453,7 +454,12 @@ export default function Vendas({ T, dark, user }) {
   const filtradas = useMemo(() => {
     let r = osList
 
-    if (range.ini || range.fim) {
+    // Busca por texto ignora o período: procurar um cliente pelo nome tem que varrer
+    // o histórico inteiro, senão não dá pra saber se ele já refez o serviço em outro mês.
+    // Os demais filtros (Serviço, Tipo, Status...) continuam valendo.
+    const termoBusca = semAcento((busca || '').trim())
+
+    if (!termoBusca && (range.ini || range.fim)) {
       r = r.filter(os => {
         const refIso = dataCompetenciaIso(os)
         if (!refIso) return false
@@ -485,14 +491,13 @@ export default function Vendas({ T, dark, user }) {
 
     if (equipSel.size > 0) r = r.filter(os => equipSel.has(os.tipoEquipamento || 'lavadora'))
 
-    const termo = semAcento((busca || '').trim())
-    if (termo) {
+    if (termoBusca) {
       r = r.filter(os =>
-        String(os.numero || '').includes(termo) ||
-        semAcento(os.cliente).includes(termo) ||
-        semAcento(os.fone).includes(termo) ||
-        semAcento(os.marca).includes(termo) ||
-        semAcento(os.modelo).includes(termo)
+        String(os.numero || '').includes(termoBusca) ||
+        semAcento(os.cliente).includes(termoBusca) ||
+        semAcento(os.fone).includes(termoBusca) ||
+        semAcento(os.marca).includes(termoBusca) ||
+        semAcento(os.modelo).includes(termoBusca)
       )
     }
 
@@ -665,6 +670,11 @@ export default function Vendas({ T, dark, user }) {
             }}>
               {filtradas.length} OS exibidas
               {filtradas.length !== osList.length && ` · ${osList.length} no total`}
+              {busca.trim() && (range.ini || range.fim) && (
+                <span style={{ color: P.yellow, fontWeight: 600 }}>
+                  {' · '}<i className="ti ti-search" style={{ fontSize: 11 }} aria-hidden="true" /> busca em todo o histórico (período ignorado)
+                </span>
+              )}
             </div>
           </div>
         )}
