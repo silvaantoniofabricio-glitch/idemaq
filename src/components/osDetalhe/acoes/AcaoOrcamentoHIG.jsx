@@ -1862,6 +1862,7 @@ function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsA
   const statusSalvo = os?.pre_diagnostico?.orcamento_status || os?.orcamento_status || 'idle'
   const [status, setStatus] = useState(statusSalvo)
   const [fase, setFase] = useState('normal') // 'normal' | 'confirmar' | 'desfazer'
+  const notify = useToast()
   const azul = corEtapa('blue', dark)
   const verde = corEtapa('green', dark)
   const vermelho = corEtapa('red', dark)
@@ -1879,6 +1880,13 @@ function AtlStatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark, mensagemWhatsA
 
   function resolver(novo) {
     setStatus(novo); setFase('normal'); persistir(novo)
+    // Só move de etapa se a OS ainda estiver no Orçamento — confirmar/recusar
+    // um orçamento esquecido numa OS que já avançou (ex: já está em A
+    // receber) não pode jogá-la de volta pro Conserto.
+    if (os?.etapa !== 'orcamento') {
+      notify?.('ok', 'Status do orçamento atualizado — a OS não foi movida porque já avançou além do Orçamento')
+      return
+    }
     if (novo === 'confirmado') onMoverOS?.(os.numero, 'oficina')
     else if (novo === 'recusado') onMoverOS?.(os.numero, 'recusado')
   }
@@ -2308,6 +2316,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 
   function resolver(novo) {
     setStatus(novo); setFase('normal'); persistir(novo)
+    if (os?.etapa !== 'orcamento') return
     if (novo === 'confirmado') onMoverOS?.(os.numero, 'oficina')
     else if (novo === 'recusado') onMoverOS?.(os.numero, 'recusado')
   }
