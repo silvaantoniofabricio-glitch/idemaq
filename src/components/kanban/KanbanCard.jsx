@@ -9,6 +9,24 @@ import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar
 import { corEtapa } from '../../utils/colors'
 import SubStatus from './SubStatus'
 
+// data_agendamento é reaproveitado em várias etapas (Agenda, Coleta, Entrega
+// via "Agendar entrega" no menu ⋮) pra guardar a próxima data marcada com o
+// cliente — mostra isso no card sempre que estiver preenchido.
+function agendamentoInfo(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d)) return null
+  const tz = 'America/Cuiaba'
+  const opts = { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }
+  const hojeStr = new Date().toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
+  const dataStr = d.toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
+  const diffDias = Math.round((new Date(dataStr) - new Date(hojeStr)) / 86400000)
+  const hora = d.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
+  const dataCurta = d.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' })
+  const status = diffDias < 0 ? 'atrasado' : diffDias === 0 ? 'hoje' : diffDias === 1 ? 'amanha' : 'futuro'
+  return { status, hora, dataCurta }
+}
+
 export default function KanbanCard({
   os, T, dark,
   tipoCor,
@@ -47,6 +65,7 @@ export default function KanbanCard({
 
   const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
   const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento
+  const agendamento = agendamentoInfo(os.data_agendamento)
 
   // Prazo pill
   let prazoPillText = null
@@ -230,6 +249,23 @@ export default function KanbanCard({
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{endResumido}</div>
         )}
+
+        {/* Linha: agendamento (Entrega/Coleta/Cobrança marcada com o cliente) */}
+        {agendamento && (() => {
+          const cfg = {
+            atrasado: { bg: cor('#3a0e0e', '#fff0f0'), fg: cor('#ff7070', P.redDark), texto: `${agendamento.dataCurta} atrasado` },
+            hoje:     { bg: cor('#2e2204', '#fff8d8'), fg: cor(P.yellow, P.yellowDark), texto: `Hoje ${agendamento.hora}` },
+            amanha:   { bg: cor('#2e2204', '#fff8d8'), fg: cor(P.yellow, P.yellowDark), texto: `Amanhã ${agendamento.hora}` },
+            futuro:   { bg: cor('#0d2035', '#e6f1fb'), fg: cor(P.blue, P.blueDark), texto: `${agendamento.dataCurta} ${agendamento.hora}` },
+          }[agendamento.status]
+          return (
+            <div style={{ gridColumn: '1 / -1', marginTop: 2 }}>
+              <span style={pill(cfg.bg, cfg.fg)}>
+                <i className="ti ti-calendar-event" style={{ fontSize: 10 }} aria-hidden="true" />{cfg.texto}
+              </span>
+            </div>
+          )
+        })()}
 
         {/* Linha 5: dual status oficina (Limp./Manut.). Visibilidade vem da
             DETECÇÃO REAL de serviços/peças (os._temLimp/_temManut, enriquecido no
