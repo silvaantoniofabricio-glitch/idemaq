@@ -14,6 +14,14 @@ import { AtlPanel, ATL_FONT } from './acoes/_AtlassianUI'
 import { corEtapa } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
 
+// Impostos fixos (sempre cobrados, independente da forma de pagamento).
+const IMPOSTO_PECAS_PCT = 4
+const IMPOSTO_SERVICOS_PCT = 6
+// Taxa padrão assumida quando ainda não há pagamento registrado — crédito
+// 3x é a forma mais comum. Some pra dentro quando o recebimento real (com
+// outra forma/taxa) já foi lançado (ver taxaJuros abaixo).
+const TAXA_CARTAO_3X_PCT = 6.11
+
 export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   const azul = corEtapa('blue', dark)
   const verde = corEtapa('green', dark)
@@ -121,7 +129,24 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
   const totalDeslocamento = deslocamentos.reduce((s, r) => s + (Number(r.quantidade) || 0) * (Number(r.valor_unitario) || 0), 0)
   const desconto = Number(os?.desconto || 0)
   const subtotalOS = totalServicos + totalDeslocamento + totalMargem
-  const margemTotalOS = subtotalOS - desconto - taxaJuros
+
+  // Impostos fixos — sempre cobrados, sobre a receita bruta de cada frente
+  // (peças = venda cheia, não só a margem; serviços = mão de obra).
+  const impostoPecas = totalVenda * (IMPOSTO_PECAS_PCT / 100)
+  const impostoServicos = totalServicos * (IMPOSTO_SERVICOS_PCT / 100)
+
+  // Taxa do cartão: usa a taxa REAL já lançada no recebimento, se existir.
+  // Sem pagamento registrado ainda, projeta 3x (taxa padrão) sobre o valor
+  // bruto a receber, pra a margem já vir realista.
+  const receitaBrutaAReceber = totalServicos + totalDeslocamento + totalVenda - desconto
+  const taxaCartaoProjetada = receitaBrutaAReceber * (TAXA_CARTAO_3X_PCT / 100)
+  const usaTaxaReal = taxaJuros > 0
+  const taxaCartao = usaTaxaReal ? taxaJuros : taxaCartaoProjetada
+  const taxaCartaoLabel = usaTaxaReal
+    ? (taxaPct != null ? `Taxa da maquininha (${taxaPct.toFixed(1)}%)` : 'Taxa da maquininha')
+    : `Taxa cartão 3x — projetada (${TAXA_CARTAO_3X_PCT}%)`
+
+  const margemTotalOS = subtotalOS - impostoPecas - impostoServicos - desconto - taxaCartao
   const margemTotalPct = subtotalOS > 0 ? (margemTotalOS / subtotalOS) * 100 : 0
 
   return (
@@ -220,16 +245,12 @@ export default function CustoMargemModal({ T, dark, mobile, os, onClose }) {
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               <Linha T={T} label="Subtotal" valor={fmtBRL(subtotalOS)} cor={T.textPrimary} />
+              <Linha T={T} label={`Imposto peças (${IMPOSTO_PECAS_PCT}%)`} valor={`− ${fmtBRL(impostoPecas)}`} cor={vermelho} />
+              <Linha T={T} label={`Imposto serviços (${IMPOSTO_SERVICOS_PCT}%)`} valor={`− ${fmtBRL(impostoServicos)}`} cor={vermelho} />
               {desconto > 0 && (
                 <Linha T={T} label="Desconto" valor={`− ${fmtBRL(desconto)}`} cor={vermelho} />
               )}
-              {taxaJuros > 0 && (
-                <Linha T={T}
-                  label={taxaPct != null ? `Taxa da maquininha (${taxaPct.toFixed(1)}%)` : 'Taxa da maquininha'}
-                  valor={`− ${fmtBRL(taxaJuros)}`}
-                  cor={vermelho}
-                />
-              )}
+              <Linha T={T} label={taxaCartaoLabel} valor={`− ${fmtBRL(taxaCartao)}`} cor={vermelho} />
               <div style={{ height: 1, background: T.border, margin: '2px 0' }} />
               <Linha T={T}
                 label="Margem total"
