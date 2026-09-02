@@ -30,6 +30,9 @@ export default function OSAcoesMenu({
   const notify = useToast()
   const btnRef = useRef(null)
   const menuRef = useRef(null)
+  // Em "A receber" o mesmo campo (data_agendamento) vira data de cobrança,
+  // não de entrega — só muda o rótulo/ícone do menu.
+  const ehPagamento = os?.etapa === 'pagamento'
 
   const [menuAberto, setMenuAberto] = useState(false)
   const [pos, setPos] = useState(null)
@@ -146,7 +149,7 @@ export default function OSAcoesMenu({
     const iso = `${entregaData}T${hora}:00.000Z`
     try {
       await onUpdateOS?.(os.numero, { data_agendamento: iso })
-      notify('ok', 'Entrega agendada')
+      notify('ok', ehPagamento ? 'Cobrança agendada' : 'Entrega agendada')
       setEntregaModo(false)
       fecharMenu()
     } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
@@ -304,7 +307,7 @@ export default function OSAcoesMenu({
               <div style={{
                 fontSize: 10.5, fontWeight: 700, color: T.textMuted,
                 textTransform: 'uppercase', letterSpacing: '.05em', padding: '0 2px 6px',
-              }}>Agendar entrega</div>
+              }}>{ehPagamento ? 'Agendar cobrança' : 'Agendar entrega'}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input
                   type="date"
@@ -428,8 +431,10 @@ export default function OSAcoesMenu({
                 </MenuItem>
               )}
               {onUpdateOS && (
-                <MenuItem T={T} icon="ti-truck-delivery" onClick={abrirEntrega}>
-                  {os.data_agendamento ? 'Reagendar entrega' : 'Agendar entrega'}
+                <MenuItem T={T} icon={ehPagamento ? 'ti-calendar-dollar' : 'ti-truck-delivery'} onClick={abrirEntrega}>
+                  {os.data_agendamento
+                    ? (ehPagamento ? 'Reagendar cobrança' : 'Reagendar entrega')
+                    : (ehPagamento ? 'Agendar cobrança' : 'Agendar entrega')}
                 </MenuItem>
               )}
               {onDuplicar && (
