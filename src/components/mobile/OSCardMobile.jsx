@@ -21,6 +21,8 @@ const MONO_FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
 // dedicado de agendar/reagendar entrega, com o countdown do OSDetalhe).
 // Mesmo formato do OSDetalhe: contagem regressiva + data + horário.
 function agendamentoInfo(os) {
+  // Concluído/Recusado já fecharam o ciclo — prazo/agendamento não importa mais.
+  if (os?.etapa === 'concluido' || os?.etapa === 'recusado') return null
   const iso = os?.pre_diagnostico?.entrega?.data || os?.data_agendamento
   if (!iso) return null
   const alvo = new Date(iso)
