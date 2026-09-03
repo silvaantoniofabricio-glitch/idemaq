@@ -15,22 +15,27 @@ import SubStatus from '../kanban/SubStatus'
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const MONO_FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
 
-// data_agendamento é reaproveitado em várias etapas (Agenda, Coleta, Entrega
-// via "Agendar entrega" no menu ⋮) pra guardar a próxima data marcada com o
-// cliente — mostra isso no card sempre que estiver preenchido.
-function agendamentoInfo(iso) {
+// A data marcada com o cliente mora em 2 lugares diferentes conforme a
+// etapa: Coleta/A receber gravam em os.data_agendamento (genérico, setado
+// pelo menu ⋮), mas Entrega grava em os.pre_diagnostico.entrega.data (fluxo
+// dedicado de agendar/reagendar entrega, com o countdown do OSDetalhe).
+// Mesmo formato do OSDetalhe: contagem regressiva + data + horário.
+function agendamentoInfo(os) {
+  const iso = os?.pre_diagnostico?.entrega?.data || os?.data_agendamento
   if (!iso) return null
-  const d = new Date(iso)
-  if (isNaN(d)) return null
+  const alvo = new Date(iso)
+  if (isNaN(alvo)) return null
   const tz = 'America/Cuiaba'
-  const opts = { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }
-  const hojeStr = new Date().toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
-  const dataStr = d.toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
-  const diffDias = Math.round((new Date(dataStr) - new Date(hojeStr)) / 86400000)
-  const hora = d.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
-  const dataCurta = d.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' })
-  const status = diffDias < 0 ? 'atrasado' : diffDias === 0 ? 'hoje' : diffDias === 1 ? 'amanha' : 'futuro'
-  return { status, hora, dataCurta }
+  const dataCurta = alvo.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' })
+  const hora = alvo.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
+  const deltaMs = alvo.getTime() - Date.now()
+  const atrasado = deltaMs <= 0
+  const min = Math.floor(Math.abs(deltaMs) / 60_000)
+  const h = Math.floor(min / 60), m = min % 60
+  const contagem = h >= 1 ? `${h}h ${m}min` : `${m}min`
+  const status = atrasado ? 'atrasado' : h < 24 ? 'proximo' : 'futuro'
+  const texto = `${atrasado ? `${contagem} atrás` : contagem} · ${dataCurta} ${hora}`
+  return { status, texto }
 }
 
 export default function OSCardMobile({ T, dark, os, onClick, compact = false }) {
@@ -54,7 +59,7 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
 
   const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
   const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento
-  const agendamento = agendamentoInfo(os.data_agendamento)
+  const agendamento = agendamentoInfo(os)
 
   // Pill do prazo
   let prazoPillText = null
@@ -222,18 +227,14 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
           }}>{endResumido}</div>
         )}
 
-        {/* Linha: agendamento (Entrega/Coleta/Cobrança marcada com o cliente) */}
+        {/* Linha: agendamento (Entrega/Coleta/Cobrança marcada com o cliente) —
+            mesmo formato do OSDetalhe: contagem regressiva + data + horário. */}
         {agendamento && (() => {
-          const cfg = {
-            atrasado: { cor: vermelho, texto: `${agendamento.dataCurta} atrasado` },
-            hoje:     { cor: amarelo, texto: `Hoje ${agendamento.hora}` },
-            amanha:   { cor: amarelo, texto: `Amanhã ${agendamento.hora}` },
-            futuro:   { cor: azul, texto: `${agendamento.dataCurta} ${agendamento.hora}` },
-          }[agendamento.status]
+          const cor = { atrasado: vermelho, proximo: amarelo, futuro: azul }[agendamento.status]
           return (
             <div style={{ gridColumn: '1 / -1', marginTop: 2 }}>
-              <span style={tagStyle(cfg.cor)}>
-                <i className="ti ti-calendar-event" style={{ fontSize: 10 }} aria-hidden="true" />{cfg.texto}
+              <span style={tagStyle(cor)}>
+                <i className="ti ti-calendar-event" style={{ fontSize: 10 }} aria-hidden="true" />{agendamento.texto}
               </span>
             </div>
           )
