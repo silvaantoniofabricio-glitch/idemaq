@@ -9,19 +9,23 @@ import { calcStatusPrazo, diasPrazo, estaPagaTotal, estaPagaParcial, totalAPagar
 import { corEtapa } from '../../utils/colors'
 import SubStatus from './SubStatus'
 
-// A data marcada com o cliente mora em lugares diferentes conforme a etapa:
-// Coleta grava em os.data_agendamento (genérico, setado pelo menu ⋮),
-// Entrega grava em os.pre_diagnostico.entrega.data (fluxo dedicado com o
-// countdown do OSDetalhe) — mas A receber NÃO é nem um nem outro: o prazo
-// combinado de verdade é o vencimento do recebimento em aberto lançado
-// (lancamento_financeiro), não uma data de "agendamento". Por isso recebe
-// vencimentoPorOS (Map os_id → vencimento) calculado 1x pro board inteiro.
+// A data marcada com o cliente mora em lugares diferentes conforme a etapa,
+// e cada campo só é válido ENQUANTO a OS está naquela etapa específica —
+// nenhum deles é limpo automaticamente ao avançar, então uma OS que já
+// passou da Coleta ainda carrega o data_agendamento antigo (mostraria o
+// horário da coleta já feita pra sempre se não filtrar por etapa atual):
+//   · Agenda/Coleta → os.data_agendamento (genérico, setado pelo menu ⋮)
+//   · Entrega       → os.pre_diagnostico.entrega.data (fluxo dedicado, com
+//                      o countdown do OSDetalhe)
+//   · A receber     → vencimento do recebimento em aberto lançado
+//                      (lancamento_financeiro) — não é "agendamento" nenhum,
+//                      por isso vem à parte via vencimentoPorOS (Map
+//                      os_id → vencimento, calculado 1x pro board inteiro).
 function agendamentoInfo(os, vencimentoPorOS) {
-  // Concluído/Recusado já fecharam o ciclo — prazo/agendamento não importa mais.
-  if (os?.etapa === 'concluido' || os?.etapa === 'recusado') return null
+  const etapa = os?.etapa
   const tz = 'America/Cuiaba'
 
-  if (os?.etapa === 'pagamento') {
+  if (etapa === 'pagamento') {
     const vencIso = vencimentoPorOS?.get?.(os.id)
     if (!vencIso) return null
     // vencimento é DATE puro (sem hora) — compara por string, não por Date()
@@ -39,8 +43,11 @@ function agendamentoInfo(os, vencimentoPorOS) {
     return { status, texto }
   }
 
-  const iso = os?.pre_diagnostico?.entrega?.data || os?.data_agendamento
+  let iso = null
+  if (etapa === 'entrega') iso = os?.pre_diagnostico?.entrega?.data
+  else if (etapa === 'ag_agendamento' || etapa === 'agendado') iso = os?.data_agendamento
   if (!iso) return null
+
   const alvo = new Date(iso)
   if (isNaN(alvo)) return null
   const dataCurta = alvo.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' })
