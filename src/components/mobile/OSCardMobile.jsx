@@ -30,6 +30,23 @@ function agendamentoInfo(os) {
   const hora = alvo.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
   const deltaMs = alvo.getTime() - Date.now()
   const atrasado = deltaMs <= 0
+
+  // A receber: é o PRAZO COMBINADO de pagamento com o cliente, não uma
+  // entrega — pode ficar dias/semanas atrasado, então granularidade em
+  // horas ("524h atrás") não é legível. Usa dias, igual ao pill de prazo.
+  if (os?.etapa === 'pagamento') {
+    const opts = { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }
+    const hojeStr = new Date().toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
+    const dataStr = alvo.toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
+    const diffDias = Math.round((new Date(dataStr) - new Date(hojeStr)) / 86400000)
+    const status = diffDias < 0 ? 'atrasado' : diffDias <= 1 ? 'proximo' : 'futuro'
+    const texto = diffDias < 0 ? `${Math.abs(diffDias)}d atrasado · ${dataCurta} ${hora}`
+      : diffDias === 0 ? `Hoje ${hora}`
+      : diffDias === 1 ? `Amanhã ${hora}`
+      : `${dataCurta} ${hora}`
+    return { status, texto }
+  }
+
   const min = Math.floor(Math.abs(deltaMs) / 60_000)
   const h = Math.floor(min / 60), m = min % 60
   const contagem = h >= 1 ? `${h}h ${m}min` : `${m}min`
