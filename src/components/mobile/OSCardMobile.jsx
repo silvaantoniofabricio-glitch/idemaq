@@ -15,40 +15,44 @@ import SubStatus from '../kanban/SubStatus'
 const ATL_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif'
 const MONO_FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace'
 
-// A data marcada com o cliente mora em 2 lugares diferentes conforme a
-// etapa: Coleta/A receber gravam em os.data_agendamento (genérico, setado
-// pelo menu ⋮), mas Entrega grava em os.pre_diagnostico.entrega.data (fluxo
-// dedicado de agendar/reagendar entrega, com o countdown do OSDetalhe).
-// Mesmo formato do OSDetalhe: contagem regressiva + data + horário.
-function agendamentoInfo(os) {
+// A data marcada com o cliente mora em lugares diferentes conforme a etapa:
+// Coleta grava em os.data_agendamento (genérico, setado pelo menu ⋮),
+// Entrega grava em os.pre_diagnostico.entrega.data (fluxo dedicado com o
+// countdown do OSDetalhe) — mas A receber NÃO é nem um nem outro: o prazo
+// combinado de verdade é o vencimento do recebimento em aberto lançado
+// (lancamento_financeiro), não uma data de "agendamento". Por isso recebe
+// vencimentoPorOS (Map os_id → vencimento) calculado 1x pra lista inteira.
+function agendamentoInfo(os, vencimentoPorOS) {
   // Concluído/Recusado já fecharam o ciclo — prazo/agendamento não importa mais.
   if (os?.etapa === 'concluido' || os?.etapa === 'recusado') return null
+  const tz = 'America/Cuiaba'
+
+  if (os?.etapa === 'pagamento') {
+    const vencIso = vencimentoPorOS?.get?.(os.id)
+    if (!vencIso) return null
+    // vencimento é DATE puro (sem hora) — compara por string, não por Date()
+    // direto (evita off-by-one de fuso ao converter meia-noite UTC).
+    const vencStr = vencIso.slice(0, 10)
+    const [ano, mes, dia] = vencStr.split('-')
+    const dataCurta = `${dia}/${mes}`
+    const hojeStr = new Date().toLocaleDateString('pt-BR', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-')
+    const diffDias = Math.round((new Date(vencStr) - new Date(hojeStr)) / 86400000)
+    const status = diffDias < 0 ? 'atrasado' : diffDias <= 1 ? 'proximo' : 'futuro'
+    const texto = diffDias < 0 ? `${Math.abs(diffDias)}d atrasado · vence ${dataCurta}`
+      : diffDias === 0 ? 'Vence hoje'
+      : diffDias === 1 ? 'Vence amanhã'
+      : `Vence ${dataCurta}`
+    return { status, texto }
+  }
+
   const iso = os?.pre_diagnostico?.entrega?.data || os?.data_agendamento
   if (!iso) return null
   const alvo = new Date(iso)
   if (isNaN(alvo)) return null
-  const tz = 'America/Cuiaba'
   const dataCurta = alvo.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' })
   const hora = alvo.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
   const deltaMs = alvo.getTime() - Date.now()
   const atrasado = deltaMs <= 0
-
-  // A receber: é o PRAZO COMBINADO de pagamento com o cliente, não uma
-  // entrega — pode ficar dias/semanas atrasado, então granularidade em
-  // horas ("524h atrás") não é legível. Usa dias, igual ao pill de prazo.
-  if (os?.etapa === 'pagamento') {
-    const opts = { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }
-    const hojeStr = new Date().toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
-    const dataStr = alvo.toLocaleDateString('pt-BR', opts).split('/').reverse().join('-')
-    const diffDias = Math.round((new Date(dataStr) - new Date(hojeStr)) / 86400000)
-    const status = diffDias < 0 ? 'atrasado' : diffDias <= 1 ? 'proximo' : 'futuro'
-    const texto = diffDias < 0 ? `${Math.abs(diffDias)}d atrasado · ${dataCurta} ${hora}`
-      : diffDias === 0 ? `Hoje ${hora}`
-      : diffDias === 1 ? `Amanhã ${hora}`
-      : `${dataCurta} ${hora}`
-    return { status, texto }
-  }
-
   const min = Math.floor(Math.abs(deltaMs) / 60_000)
   const h = Math.floor(min / 60), m = min % 60
   const contagem = h >= 1 ? `${h}h ${m}min` : `${m}min`
@@ -57,7 +61,7 @@ function agendamentoInfo(os) {
   return { status, texto }
 }
 
-export default function OSCardMobile({ T, dark, os, onClick, compact = false }) {
+export default function OSCardMobile({ T, dark, os, onClick, compact = false, vencimentoPorOS }) {
   const status = calcStatusPrazo(os.prazo, os.etapa)
   const dias = diasPrazo(os.prazo)
   const tipoCfg = TIPOS_OS[os.tipo] || {}
@@ -78,7 +82,7 @@ export default function OSCardMobile({ T, dark, os, onClick, compact = false }) 
 
   const endResumido = os.endereco ? os.endereco.split('—')[0].trim() : null
   const linhaEquip = [os.marca, os.modelo].filter(Boolean).join(' ') || os.equipamento
-  const agendamento = agendamentoInfo(os)
+  const agendamento = agendamentoInfo(os, vencimentoPorOS)
 
   // Pill do prazo
   let prazoPillText = null

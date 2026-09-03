@@ -29,6 +29,7 @@ export default function KanbanColumn({
   onCardMouseDown,
   concluidoMesAtual, loading, shakingNum,
   admin = false, funcionarios = [], onMandarRoteiro, roteiroPorOS,
+  vencimentoPorOS,
   onUpdateOS, onExcluir, onDuplicar,
 }) {
   const c  = corEtapa(etapa.cor, dark)
@@ -236,6 +237,7 @@ export default function KanbanColumn({
             shaking={shakingNum === os.numero}
             admin={admin} funcionarios={funcionarios} onMandarRoteiro={onMandarRoteiro}
             roteiroPorOS={roteiroPorOS}
+            vencimentoPorOS={vencimentoPorOS}
             onUpdateOS={onUpdateOS} onExcluir={onExcluir} onDuplicar={onDuplicar}
             onClick={() => onCardClick?.(os)}
             onCardMouseDown={(osArg, e) => onCardMouseDown?.(osArg, etapa.id, e)} />

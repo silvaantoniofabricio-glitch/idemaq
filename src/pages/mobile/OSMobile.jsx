@@ -93,6 +93,37 @@ export default function OSMobile({ T, dark, user }) {
     return () => { cancel = true }
   }, [osList.length, compraPecasKey])
 
+  // Prazo combinado de pagamento (A receber) — vem do vencimento do
+  // recebimento EM ABERTO lançado (lancamento_financeiro), não de
+  // data_agendamento (usado por Coleta/Entrega, outra coisa).
+  const [vencimentoPorOS, setVencimentoPorOS] = useState(() => new Map())
+  const osIdsAReceberKey = useMemo(
+    () => osList.filter(o => o.etapa === 'pagamento').map(o => o.id).join(','),
+    [osList]
+  )
+  useEffect(() => {
+    let cancel = false
+    const ids = osIdsAReceberKey ? osIdsAReceberKey.split(',') : []
+    if (ids.length === 0) { setVencimentoPorOS(new Map()); return }
+    ;(async () => {
+      const { data } = await supabase
+        .from('lancamento_financeiro')
+        .select('os_id, vencimento')
+        .in('os_id', ids)
+        .eq('tipo', 'receita')
+        .is('pago_em', null)
+        .is('deleted_at', null)
+        .order('vencimento', { ascending: true })
+      if (cancel || !data) return
+      const m = new Map()
+      for (const row of data) {
+        if (!m.has(row.os_id)) m.set(row.os_id, row.vencimento)
+      }
+      setVencimentoPorOS(m)
+    })()
+    return () => { cancel = true }
+  }, [osIdsAReceberKey])
+
   const VIEW_STORAGE_KEY = 'idemaq.osmobile.view'
   const [viewMode, setViewMode] = useState(() => {
     try { return localStorage.getItem(VIEW_STORAGE_KEY) === 'compact' ? 'compact' : 'normal' }
@@ -393,6 +424,7 @@ export default function OSMobile({ T, dark, user }) {
                       </div>
                     ) : col.cards.map(os => (
                       <OSCardMobile key={os.numero} T={T} dark={dark} os={os}
+                        vencimentoPorOS={vencimentoPorOS}
                         compact={viewMode === 'compact'} onClick={() => setOsAberta(os)} />
                     ))}
                   </div>

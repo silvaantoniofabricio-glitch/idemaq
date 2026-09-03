@@ -77,6 +77,7 @@ export default function Kanban({ T, dark, user }) {
   // Falta de peças (alocação global do estoque entre OS de conserto) pro chip Manut.
   const [faltaSet, setFaltaSet]     = useState(() => new Set())
   const [pecasPorOS, setPecasPorOS] = useState(() => new Map())
+  const [vencimentoPorOS, setVencimentoPorOS] = useState(() => new Map())
   const [modalNova, setModalNova]   = useState(false)
   const [detalhe, setDetalhe]       = useState(null)
   const [menuAberto, setMenuAberto] = useState(null)
@@ -181,6 +182,37 @@ export default function Kanban({ T, dark, user }) {
     })()
     return () => { cancel = true }
   }, [osList.length])
+
+  // Prazo combinado de pagamento (A receber) — vem do vencimento do
+  // recebimento EM ABERTO lançado (lancamento_financeiro), não de
+  // data_agendamento (que é usado por Coleta/Entrega, outra coisa). Pega o
+  // vencimento mais próximo por OS pro pill do card.
+  const osIdsAReceberKey = useMemo(
+    () => osList.filter(o => o.etapa === 'pagamento').map(o => o.id).join(','),
+    [osList]
+  )
+  useEffect(() => {
+    let cancel = false
+    const ids = osIdsAReceberKey ? osIdsAReceberKey.split(',') : []
+    if (ids.length === 0) { setVencimentoPorOS(new Map()); return }
+    ;(async () => {
+      const { data } = await supabase
+        .from('lancamento_financeiro')
+        .select('os_id, vencimento')
+        .in('os_id', ids)
+        .eq('tipo', 'receita')
+        .is('pago_em', null)
+        .is('deleted_at', null)
+        .order('vencimento', { ascending: true })
+      if (cancel || !data) return
+      const m = new Map()
+      for (const row of data) {
+        if (!m.has(row.os_id)) m.set(row.os_id, row.vencimento)
+      }
+      setVencimentoPorOS(m)
+    })()
+    return () => { cancel = true }
+  }, [osIdsAReceberKey])
 
   // Alocação global do estoque entre as OS de conserto (pro chip Manut.).
   // Refaz quando a lista de OS muda OU quando algum status de compra muda.
@@ -610,6 +642,7 @@ export default function Kanban({ T, dark, user }) {
               onCardMouseDown={onCardPointerDown}
               admin={admin} funcionarios={funcionariosRoteiro} onMandarRoteiro={mandarOSparaRoteiro}
               roteiroPorOS={roteiroPorOS}
+              vencimentoPorOS={vencimentoPorOS}
               onUpdateOS={updateOS} onExcluir={excluirOS} onDuplicar={handleDuplicarOS}
               concluidoMesAtual={etapa.id === 'concluido' && !buscando}
             />
