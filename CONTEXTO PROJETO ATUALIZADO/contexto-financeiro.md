@@ -534,6 +534,8 @@ das duas — o líquido é zero. Caso real: `sql/183`, ML FrioLar R$ 202,89.
 | Elo Grafite (3558/5900/0615) | 11/08 | R$ 4.698,00 | R$ 3.988,77 (60) | R$ 709,23 (10) | ✅ conferida item a item contra o `.xls`, 70/70 batem |
 | Mercado Pago (Visa 5566) | 20/08 | R$ 3.089,70 | R$ 224,97 (7) | R$ 2.661,84 (46) | ✅ `sql/183` aplicado 20/08 |
 | eSocial competência 07/2026 | 20/08 | R$ 599,76 | — | R$ 599,76 | ✅ `sql/178` aplicado, PIX Cresol |
+| Inter (9106 + 3338) | 25/08 | R$ 3.258,16 | R$ 2.914,54 (59) | R$ 343,62 (1) | ✅ `sql/185` aplicado 20/08 |
+| Bradesco NEO (Visa) | 20/08 | R$ 88,70 | R$ 88,70 (5) | — | ✅ tudo PF, sem SQL |
 
 Fonte: `REVISAO FECHAMENTO 2026/AGOSTO/FATURAS/`.
 
@@ -548,3 +550,13 @@ mesmo; Meli+ e PF (saiu do PJ no `sql/184`, entrou no array de agosto como
 `Assinatura`). Sobrou uma ponta: o mesmo Meli+ esta em maio como PJ
 (`FAT-BRAD-PJ-ELO-MAIO:MP MeliMais 08/04`) e nao foi mexido — maio esta
 fechado, depende de autorizacao.
+
+**O PDF do Inter veio corrompido.** 450.517 bytes nulos na frente do arquivo
+(download interrompido). O PDF inteiro estava intacto logo depois — recuperado
+cortando os nulos, salvo como `FATURA INTER AGOSTO 2026 (recuperado).pdf`.
+O `pdftotext` daqui e do Xpdf (sem `-bbox`); `-layout` desalinha as colunas do
+Inter, mas **`-table` alinha certo**. O PDF tambem embaralha letras
+("MLP* Ai qf ome-R ESTAUR ANT") — comparar sempre com o texto sem espacos.
+
+Pendente: `MP *MAICONDOUGLAS 08/08 1/3 R$ 129,77` (Inter) ficou em PF/Diverso
+porque nao consegui identificar o que e. Toni precisa confirmar.
