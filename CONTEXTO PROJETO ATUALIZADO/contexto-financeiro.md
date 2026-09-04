@@ -543,4 +543,8 @@ em 11/08 está como `FAT-ELO-GRAFITE-JUL:`, enquanto a do Mercado Pago que vence
 
 Pendente de confirmação do Toni (classifiquei como PJ/Peças pelo padrão dos meses
 anteriores, mas sem comprovação): ML RankRank R$ 223,00, ML FilipeFlop R$ 78,00 e
-MP MeliMais R$ 74,90 (essa em Software, por ser assinatura).
+MP MeliMais R$ 74,90 — RESOLVIDO em 20/08: RankRank e FilipeFlop sao PJ/Pecas
+mesmo; Meli+ e PF (saiu do PJ no `sql/184`, entrou no array de agosto como
+`Assinatura`). Sobrou uma ponta: o mesmo Meli+ esta em maio como PJ
+(`FAT-BRAD-PJ-ELO-MAIO:MP MeliMais 08/04`) e nao foi mexido — maio esta
+fechado, depende de autorizacao.

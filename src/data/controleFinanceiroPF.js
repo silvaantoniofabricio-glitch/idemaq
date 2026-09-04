@@ -755,6 +755,9 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   // Na fatura aparece como "MERCADOLIVRE*CONSULTOR" — e o tenis New Balance
   // parcelado em 8x que ja foi lancado em julho como 1/8 (R$ 43,51).
   { data: '20/08/2026', origem: 'MP Cartao', descricao: 'Tenis New Balance 480 08/07 2/8',         valor: 43.49,  categoria: 'Vestuario' },
+  // Meli+ (assinatura do Mercado Livre). Estava no PJ como Software ate o Toni
+  // confirmar que e pessoal — tirado de la no sql/184.
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: 'Meli+ 09/08',                             valor: 74.90,  categoria: 'Assinatura' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
