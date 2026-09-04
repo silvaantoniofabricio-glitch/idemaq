@@ -184,8 +184,12 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '20/05/2026', origem: 'MP Cartao',        descricao: 'ML Barbearia 3/4',                                     valor: 13.68,   categoria: 'Cuidados pessoais' },
   { data: '20/05/2026', origem: 'MP Cartao',        descricao: 'ML MercadoLivre 3/10',                                 valor: 44.81,   categoria: 'Compras pessoais' },
   { data: '10/05/2026', origem: 'Bradesco PJ ELO',  descricao: 'Supermercado Chama (PF no cartao PJ)',                 valor: 23.83,   categoria: 'Supermercado' },
-  { data: '10/05/2026', origem: 'Bradesco PJ ELO',  descricao: 'Pronto Paulo Cesar AD 27/02 2/10 (Focus)',              valor: 107.40,  categoria: 'Veiculo PF' },
-  { data: '10/05/2026', origem: 'Bradesco PJ ELO',  descricao: 'Pronto Paulo Cesar AD 30/03 1/2 (Focus)',               valor: 106.00,  categoria: 'Veiculo PF' },
+  // 'Pronto Paulo Cesar AD 27/02' (10x R$107,40) e '30/03' (2x R$106,00) SAIRAM
+  // daqui em 20/08 — Toni confirmou que sao pecas da Montana, nao o Focus.
+  // Estavam duplicadas: essas mesmas 2 parcelas ja estavam certas no PJ
+  // (FAT-BRAD-PJ-ELO-MAIO), so aqui no PF que a classificacao era invertida.
+  // Serie completa (2/10 a 5/10) agora vive so no PJ, ver sql/186.
+  { data: '11/05/2026', origem: 'Elo Grafite',      descricao: 'JIM Wellynton 06/11 6/10 (Focus)',                     valor: 94.44,   categoria: 'Veiculo PF' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Supermercado Chama (03/04)',                           valor: 39.64,   categoria: 'Supermercado' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Supermercado Chama (01/04)',                           valor: 12.64,   categoria: 'Supermercado' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Garcias Grill',                                        valor: 19.00,   categoria: 'Alimentacao' },
@@ -351,11 +355,11 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   // --- Cresol PJ (138286-1) — debitos junho ---
   // PJ excluidos (sql/94). Parcela Civic e PF da Rafa (em DESPESAS_PF_RAFA_JUNHO_2026).
   // --- Bradesco PJ Elo Mais 3914 — venc. 10/06/2026 ---
-  // Todos os itens sao PF (Focus + MeliMais + anuidade). Sem SQL PJ.
-  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 27/02 3/10 (Focus)', valor: 107.40, categoria: 'Veiculo PF' },
-  { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Pronto Paulo Cesar AD 30/03 2/2 (Focus)',  valor: 106.00, categoria: 'Veiculo PF' },
+  // 'Pronto Paulo Cesar AD' (27/02 e 30/03) SAIU daqui em 20/08 — e peca da
+  // Montana (PJ), nao Focus. Ver sql/186. MeliMais e anuidade continuam PF.
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'MP MeliMais 06/05',                       valor: 74.90,  categoria: 'Lazer' },
   { data: '10/06/2026', origem: 'Bradesco PJ ELO', descricao: 'Anuidade Bradesco Elo Mais 06/12 27/05',  valor: 22.00,  categoria: 'Tarifa cartao' },
+  { data: '11/06/2026', origem: 'Elo Grafite',     descricao: 'JIM Wellynton 06/11 7/10 (Focus)',        valor: 94.44,  categoria: 'Veiculo PF' },
   // --- Extratos PF Toni (conta corrente/Nubank - sem data exata, agrupados 30/06) ---
   { data: '30/06/2026', origem: 'Nubank', descricao: 'Sarah Regina - joias/presente',  valor: 75.00,  categoria: 'Compras pessoais' },
   { data: '30/06/2026', origem: 'Nubank', descricao: 'Mercado Kraus',                  valor: 18.00,  categoria: 'Supermercado' },
@@ -523,6 +527,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   // --- Bradesco NEO VISA PLATINUM (cartao ****6669) — venc. 20/07/2026 ---
   { data: '20/07/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada (08/07)', valor:  33.00, categoria: 'Tarifa cartao' },
   // --- Elo Grafite 3558 — venc. 11/07/2026 (PAGA 13/07) ---
+  { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'JIM Wellynton 06/11 8/10 (Focus)',              valor: 94.44,  categoria: 'Veiculo PF' },
   // Compras de junho
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Portal Conveniencia 23/06',                    valor: 29.99,  categoria: 'Supermercado' },
   { data: '11/07/2026', origem: 'Elo Grafite', descricao: 'Pit Stop Conveniencia 23/06',                  valor: 138.50, categoria: 'Supermercado' },
@@ -680,6 +685,7 @@ export const DESPESAS_PF_RAFA_JULHO_2026 = [
 // Regra: fatura conta no mes do VENCIMENTO (11/08/2026), nao no mes da compra.
 export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   // --- Elo Grafite 3558/5900 — venc. 11/08/2026 ---
+  { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'JIM Wellynton 06/11 9/10 (Focus)',              valor: 94.44,  categoria: 'Veiculo PF' },
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'Anuidade Diferenciada Elo Grafite 29/07 7/12', valor: 56.00,  categoria: 'Tarifa cartao' },
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 28/07',                       valor: 61.00,  categoria: 'Alimentacao' },
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'Auto Posto Imaculada C 27/07',                  valor: 100.00, categoria: 'Combustivel' },

@@ -561,3 +561,32 @@ Inter, mas **`-table` alinha certo**. O PDF tambem embaralha letras
 O `MP *MAICONDOUGLAS 08/08 1/3 R$ 129,77` (Inter) e um tenis — PF/Vestuario,
 confirmado pelo Toni em 20/08. Compra de R$ 389,31 em 3x feita em 08/08 via link
 de pagamento do Mercado Pago; as parcelas 2/3 e 3/3 caem em set e out.
+
+## 22. Reclassificacao Pronto Paulo Cesar / JIM Wellynton (20/08/2026)
+
+Duas series do cartao **Bradesco PJ Elo Mais (final 3914)** estavam trocadas
+desde maio — confirmado pelo Toni em 20/08:
+
+- **"Pronto Paulo Cesar AD"** (27/02, 10x R$107,40 · 30/03, 2x R$106,00) — e
+  peca da **Montana (PJ)**, nao o Focus como o array PF tinha. Estava
+  duplicada: as mesmas 2 parcelas de maio ja existiam certas no PJ desde o
+  inicio (`FAT-BRAD-PJ-ELO-MAIO`) — so o PF que classificava errado.
+  Corrigido: removido do PF, serie completa (2/10 a 5/10) fica so no PJ —
+  `sql/186`.
+- **"JIM Wellynton (embreagem Montana)"** R$94,44 x10, no Elo Grafite — e o
+  **Focus (PF)**, nao peca da Montana como o PJ tinha lancado desde maio (4
+  parcelas, 6/10 a 9/10). Corrigido: sai do PJ (`sql/187`), entra no PF.
+
+O cartao "Bradesco PJ Elo Mais 3914" tinha sumido do controle em julho — a
+fatura nunca chegou/foi conferida. Reapareceu em agosto
+(`Fatura Bradesco Empresas Agosto.xlsx`, R$ 129,40: parcela 5/10 + anuidade),
+e foi ai que a confusao apareceu (Toni: "ja e a quinta parcela, oq e essa
+parcela?").
+
+**sql/186 e sql/187 preparados mas NAO CONFIRMADOS como rodados** — a extensao
+Claude em Chrome ficou instavel na sessao (timeouts de screenshot/injection
+recorrentes) e nao foi possivel confirmar a execucao nem o nome exato da conta
+`Bradesco PJ` usada nos lancamentos antigos desse cartao. Os dois SQL tem trava
+de seguranca (`RAISE EXCEPTION` se a conta nao existir) — nao ha risco de
+gravar com conta_id errado, mas **precisam ser rodados e a Verificacao de cada
+um conferida** antes de considerar o mes fechado outra vez.
