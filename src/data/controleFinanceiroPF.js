@@ -742,6 +742,19 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/07 (cartao 5900)',       valor: 139.90, categoria: 'Saude/Academia' },
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/06 (cartao 5900)',       valor: 139.90, categoria: 'Saude/Academia' },
   { data: '11/08/2026', origem: 'Elo Grafite', descricao: 'FED SNT Sara Nossa Terra 12/05 3/3 (cartao 5900, evento)', valor: 126.66, categoria: 'Lazer' },
+
+  // --- MP Cartao (Visa 5566) — venc. 20/08/2026 ---
+  // Fatura toda: R$ 3.089,70. O resto (R$ 2.864,73) e PJ e esta no sql/183.
+  // Sao as mesmas 7 series PF que vem se repetindo desde maio.
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: 'EBazarComBrl 01/09 12/18',                valor: 50.07,  categoria: 'Compras pessoais' },
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: 'Gaya 08/09 12/12 (ultima)',               valor: 35.83,  categoria: 'Compras pessoais' },
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 26/01 7/8',                  valor: 27.37,  categoria: 'Compras pessoais' },
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: 'JoyBasico 25/02 6/12',                    valor: 10.97,  categoria: 'Compras pessoais' },
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: '2Produtos 25/02 6/12',                    valor: 12.43,  categoria: 'Compras pessoais' },
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 09/03 6/10',                 valor: 44.81,  categoria: 'Compras pessoais' },
+  // Na fatura aparece como "MERCADOLIVRE*CONSULTOR" — e o tenis New Balance
+  // parcelado em 8x que ja foi lancado em julho como 1/8 (R$ 43,51).
+  { data: '20/08/2026', origem: 'MP Cartao', descricao: 'Tenis New Balance 480 08/07 2/8',         valor: 43.49,  categoria: 'Vestuario' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
