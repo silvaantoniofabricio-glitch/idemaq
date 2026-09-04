@@ -558,5 +558,6 @@ O `pdftotext` daqui e do Xpdf (sem `-bbox`); `-layout` desalinha as colunas do
 Inter, mas **`-table` alinha certo**. O PDF tambem embaralha letras
 ("MLP* Ai qf ome-R ESTAUR ANT") — comparar sempre com o texto sem espacos.
 
-Pendente: `MP *MAICONDOUGLAS 08/08 1/3 R$ 129,77` (Inter) ficou em PF/Diverso
-porque nao consegui identificar o que e. Toni precisa confirmar.
+O `MP *MAICONDOUGLAS 08/08 1/3 R$ 129,77` (Inter) e um tenis — PF/Vestuario,
+confirmado pelo Toni em 20/08. Compra de R$ 389,31 em 3x feita em 08/08 via link
+de pagamento do Mercado Pago; as parcelas 2/3 e 3/3 caem em set e out.

@@ -791,7 +791,7 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '25/08/2026', origem: 'Inter',         descricao: 'Cor Dil 08/08',                                     valor: 16.50,   categoria: 'Supermercado' },
   { data: '25/08/2026', origem: 'Inter',         descricao: 'Master Pizza 08/08',                                valor: 57.50,   categoria: 'Alimentacao' },
   { data: '25/08/2026', origem: 'Inter',         descricao: 'Auto Posto Faleiros 08/08',                         valor: 50.36,   categoria: 'Combustivel' },
-  { data: '25/08/2026', origem: 'Inter',         descricao: 'MP MaiconDouglas 08/08 1/3 (NAO IDENTIFICADO)',     valor: 129.77,  categoria: 'Diverso' },
+  { data: '25/08/2026', origem: 'Inter',         descricao: 'Tenis (MP MaiconDouglas) 08/08 1/3',               valor: 129.77,  categoria: 'Vestuario' },
   { data: '25/08/2026', origem: 'Inter',         descricao: 'Drogasil 3697 09/08',                               valor: 49.23,   categoria: 'Farmacia' },
   { data: '25/08/2026', origem: 'Inter',         descricao: 'Mercado Kraus 12/08',                               valor: 3.19,    categoria: 'Supermercado' },
   { data: '25/08/2026', origem: 'Inter',         descricao: 'Cor Dil 15/08',                                     valor: 13.00,   categoria: 'Supermercado' },
