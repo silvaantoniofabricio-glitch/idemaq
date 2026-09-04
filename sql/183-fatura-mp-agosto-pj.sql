@@ -4,16 +4,18 @@
 -- Conferencia da fatura (ciclo 16/07 a 15/08):
 --   Consumos ...................................... R$ 3.089,70  (54 itens)
 --   (-) PF (7 itens, vao no controleFinanceiroPF) . R$   224,97
---   (=) PJ bruto .................................. R$ 2.864,73  (47 itens abaixo)
---   (-) Credito concedido 31/07 (estorno FrioLar) . R$   202,89
---   (=) PJ liquido ................................ R$ 2.661,84
---   PJ liquido + PF = R$ 2.886,81 = "Total a pagar" da fatura. Fecha exato.
+--   (-) ML FrioLar 16/07, comprado e devolvido .... R$   202,89
+--   (=) PJ .......................................  R$ 2.661,84  (46 itens abaixo)
+--   PJ + PF = R$ 2.886,81 = "Total a pagar" da fatura. Fecha exato.
 --
--- Estorno: a compra ML FrioLar de 16/07 (R$ 202,89) foi devolvida e o credito
--- caiu em 31/07, dentro da MESMA fatura. Lanco a compra E o estorno pra fatura
--- bater linha a linha; o efeito liquido no mes e zero. E o primeiro valor
--- negativo do PJ — o padrao veio do PF, que ja usa categoria 'Estorno'
--- (ver 'Estorno Taxa emissao NuTag' em controleFinanceiroPF.js).
+-- Devolucao do FrioLar: a compra de 16/07 (R$ 202,89) foi devolvida e o credito
+-- caiu em 31/07, dentro da MESMA fatura — as duas linhas se anulam.
+-- A primeira versao deste arquivo lancava a compra E um estorno de -202,89,
+-- mas o banco recusou: lancamento_financeiro tem CHECK (valor >= 0), entao
+-- valor negativo nao entra (por isso o PJ nunca teve um). Como o efeito
+-- liquido e zero, a solucao e simplesmente nao lancar nenhuma das duas.
+-- Se algum dia a devolucao cair numa fatura POSTERIOR a compra, ai vai
+-- precisar de outra saida — os meses seriam diferentes e nao se anulariam.
 --
 -- Classificacao PF x PJ: herdada das parcelas da fatura anterior (FAT-MP-JUL).
 -- As 7 series PF sao as mesmas de maio/junho/julho — EBazarComBrl, Gaya,
@@ -53,7 +55,6 @@ FROM (VALUES
   ('ML MercadoLivre 30/06 2/6 (b)',   24.31, 'Pecas',        'credito_parcelado'),
   ('ML MercadoLi 09/07 2/8',          22.87, 'Pecas',        'credito_parcelado'),
   -- ---- compras novas do ciclo ----
-  ('ML FrioLar 16/07',               202.89, 'Pecas',        'credito_1x'),
   ('ML SelecaoDePec 16/07',          124.00, 'Pecas',        'credito_1x'),
   ('ML MercadoLi 18/07',              35.96, 'Pecas',        'credito_1x'),
   ('ML ARA 20/07 1/5',                15.63, 'Pecas',        'credito_parcelado'),
@@ -76,9 +77,7 @@ FROM (VALUES
   ('ML MercadoLi 11/08',              92.00, 'Pecas',        'credito_1x'),
   ('ML Leao 12/08',                   40.48, 'Pecas',        'credito_1x'),
   ('ML MercadoLivre 12/08',           18.85, 'Pecas',        'credito_1x'),
-  ('ML MercadoLivre 13/08',           70.95, 'Pecas',        'credito_1x'),
-  -- ---- credito concedido 31/07: devolucao da compra ML FrioLar de 16/07 ----
-  ('Estorno ML FrioLar 16/07 (credito 31/07)', -202.89, 'Estorno', 'credito_1x')
+  ('ML MercadoLivre 13/08',           70.95, 'Pecas',        'credito_1x')
 ) AS v(item, valor, categoria, forma)
 WHERE NOT EXISTS (
   SELECT 1 FROM lancamento_financeiro
@@ -87,11 +86,10 @@ WHERE NOT EXISTS (
 
 COMMIT;
 
--- Verificacao 1: esperado 48 itens, bruto R$ 2.864,73, estorno -202,89, liquido R$ 2.661,84
-SELECT COUNT(*) AS qtd,
-       SUM(valor) AS liquido,
-       SUM(valor) FILTER (WHERE valor > 0) AS bruto,
-       SUM(valor) FILTER (WHERE valor < 0) AS estornos
+-- APLICADO em 20/08/2026 — resultado: 46 itens / R$ 2.661,84 (confere).
+
+-- Verificacao 1: esperado 46 itens / R$ 2.661,84
+SELECT COUNT(*) AS qtd, SUM(valor) AS total
 FROM lancamento_financeiro
 WHERE deleted_at IS NULL AND descricao LIKE 'FAT-MP-AGO:%';
 
@@ -101,7 +99,7 @@ FROM lancamento_financeiro
 WHERE deleted_at IS NULL AND descricao LIKE 'FAT-MP-AGO:%'
 GROUP BY categoria ORDER BY total DESC;
 
--- Verificacao 3: caiu na conta certa (tem que ser 'Mercado Pago Cartão', 48 itens)
+-- Verificacao 3: caiu na conta certa (tem que ser 'Mercado Pago Cartão', 46 itens)
 SELECT cb.nome AS conta, COUNT(*) AS qtd
 FROM lancamento_financeiro lf
 JOIN conta_bancaria cb ON cb.id = lf.conta_id
