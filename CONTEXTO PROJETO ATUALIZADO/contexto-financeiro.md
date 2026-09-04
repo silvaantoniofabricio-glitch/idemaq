@@ -519,3 +519,28 @@ FleetNet são PJ mas passaram no cartão pessoal.
 Visa', 'Bradesco PJ ELO' × 'Bradesco PJ'). `ROTULO_ORIGEM` em
 `ControleFinanceiroPF.jsx` unifica na exibição — a lista de origens agrupa pelo
 rótulo, senão o mesmo cartão aparece duas vezes.
+
+**Valor negativo não entra no PJ.** `lancamento_financeiro` tem
+`CHECK (valor >= 0)` — estorno/crédito de fatura não pode ser lançado como
+negativo (o INSERT falha com 23514 e derruba a transação toda). Isso vale só pro
+PJ: o PF é array JS estático e já usa `categoria: 'Estorno'` com valor negativo.
+Quando compra e devolução caem na **mesma** fatura, a saída é não lançar nenhuma
+das duas — o líquido é zero. Caso real: `sql/183`, ML FrioLar R$ 202,89.
+
+## 21. Fechamento de agosto/2026 — andamento
+
+| Fatura | Venc. | Total | PF | PJ | Status |
+|---|---|---|---|---|---|
+| Elo Grafite (3558/5900/0615) | 11/08 | R$ 4.698,00 | R$ 3.988,77 (60) | R$ 709,23 (10) | ✅ conferida item a item contra o `.xls`, 70/70 batem |
+| Mercado Pago (Visa 5566) | 20/08 | R$ 3.089,70 | R$ 224,97 (7) | R$ 2.661,84 (46) | ✅ `sql/183` aplicado 20/08 |
+| eSocial competência 07/2026 | 20/08 | R$ 599,76 | — | R$ 599,76 | ✅ `sql/178` aplicado, PIX Cresol |
+
+Fonte: `REVISAO FECHAMENTO 2026/AGOSTO/FATURAS/`.
+
+Prefixo do PJ segue o do cartão, não o mês do vencimento: a Elo Grafite que vence
+em 11/08 está como `FAT-ELO-GRAFITE-JUL:`, enquanto a do Mercado Pago que vence em
+20/08 está como `FAT-MP-AGO:`. Conferir o `vencimento` antes de assumir pelo nome.
+
+Pendente de confirmação do Toni (classifiquei como PJ/Peças pelo padrão dos meses
+anteriores, mas sem comprovação): ML RankRank R$ 223,00, ML FilipeFlop R$ 78,00 e
+MP MeliMais R$ 74,90 (essa em Software, por ser assinatura).
