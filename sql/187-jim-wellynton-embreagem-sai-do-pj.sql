@@ -13,9 +13,10 @@
 -- categoria Veiculo PF, "(Focus)"), uma por mes de maio a agosto. Aqui so
 -- sai do PJ, via soft-delete.
 --
--- Efeito: reduz o PJ de peças em R$94,44 em cada um dos 4 meses (maio a
--- agosto). Maio, junho e julho ja estao fechados/reportados — mexendo neles
--- porque o Toni autorizou explicitamente ("Pode corrigir tudo").
+-- APLICADO em 20/08/2026. Novos totais das 4 faturas (R$94,44 a menos em
+-- cada uma): maio 13/R$937,72 · junho 11/R$627,72 · julho 13/R$744,24 ·
+-- agosto 9/R$614,79. Maio, junho e julho ja estavam fechados/reportados —
+-- mexidos porque o Toni autorizou explicitamente ("Pode corrigir tudo").
 
 BEGIN;
 

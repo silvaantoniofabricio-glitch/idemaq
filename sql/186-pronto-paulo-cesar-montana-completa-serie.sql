@@ -19,13 +19,9 @@
 -- Empresas Agosto.xlsx — cartao "EMPRESARIAL ELO MAIS" final 3914,
 -- venc. dia 10, total R$ 129,40 (107,40 + 22,00 anuidade).
 --
--- ATENCAO: nao consegui confirmar pelo Chrome (extensao instavel) o nome
--- exato da conta_bancaria usada nos lancamentos de maio deste cartao. Uso
--- 'Bradesco PJ' por ser o mais provavel (bate com o prefixo FAT-BRAD-PJ-ELO
--- e é o unico cartao 'PJ genérico' cadastrado) — mas o bloco abaixo trava
--- com RAISE EXCEPTION se esse nome nao existir, entao nao ha risco de cair
--- com conta_id errado ou NULL silenciosamente. Se falhar, rode a Verificacao
--- 0 pra ver os nomes reais e ajuste antes de tentar de novo.
+-- APLICADO em 20/08/2026 pelo Chrome — a conta e mesmo 'Bradesco PJ',
+-- confirmado antes de rodar. Serie 27/02 completa 2/10 a 5/10, serie 30/03
+-- fechada em 2/2. Resultado: 6 linhas na Verificacao 1.
 
 -- Verificacao 0 (rode antes se o BEGIN abaixo falhar): nomes de conta reais
 -- SELECT nome, tipo FROM conta_bancaria WHERE deleted_at IS NULL ORDER BY nome;

@@ -583,10 +583,8 @@ fatura nunca chegou/foi conferida. Reapareceu em agosto
 e foi ai que a confusao apareceu (Toni: "ja e a quinta parcela, oq e essa
 parcela?").
 
-**sql/186 e sql/187 preparados mas NAO CONFIRMADOS como rodados** — a extensao
-Claude em Chrome ficou instavel na sessao (timeouts de screenshot/injection
-recorrentes) e nao foi possivel confirmar a execucao nem o nome exato da conta
-`Bradesco PJ` usada nos lancamentos antigos desse cartao. Os dois SQL tem trava
-de seguranca (`RAISE EXCEPTION` se a conta nao existir) — nao ha risco de
-gravar com conta_id errado, mas **precisam ser rodados e a Verificacao de cada
-um conferida** antes de considerar o mes fechado outra vez.
+**sql/186 e sql/187 APLICADOS em 20/08/2026** (Chrome normalizou numa sessao
+nova). Conta confirmada como `Bradesco PJ` antes de rodar. Resultado:
+- Serie Pronto Paulo Cesar AD 27/02 completa 2/10→5/10, serie 30/03 fechada em 2/2.
+- As 4 faturas Elo Grafite cairam R$94,44 cada: maio 13/R$937,72 · junho
+  11/R$627,72 · julho 13/R$744,24 · agosto 9/R$614,79.
