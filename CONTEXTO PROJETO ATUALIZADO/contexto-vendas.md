@@ -218,3 +218,11 @@ padrão do item de orçamento).
   essa opção). O filtro trata os dois nomes como equivalentes.
 - Mesma correção replicada em `Kanban.jsx` e `OSMobile.jsx` (mesma query
   de detecção existia duplicada nos três lugares).
+
+## 11. Filtro "Garantia" (12/09/2026)
+
+Adicionado `FilterDropdown` de Garantia na barra de filtros (mesmo padrão
+Jira dos outros: Set vazio = sem filtro). Como `os.garantia` é booleano,
+`OPTS_GARANTIA` tem 1 opção só (`{id:'sim', label:'Garantia'}`) — selecionar
+filtra `os.garantia === true`; "Todos" no dropdown limpa. Incluído também
+nos dois botões "Limpar filtros" da página.
