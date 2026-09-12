@@ -222,7 +222,8 @@ padrão do item de orçamento).
 ## 11. Filtro "Garantia" (12/09/2026)
 
 Adicionado `FilterDropdown` de Garantia na barra de filtros (mesmo padrão
-Jira dos outros: Set vazio = sem filtro). Como `os.garantia` é booleano,
-`OPTS_GARANTIA` tem 1 opção só (`{id:'sim', label:'Garantia'}`) — selecionar
-filtra `os.garantia === true`; "Todos" no dropdown limpa. Incluído também
-nos dois botões "Limpar filtros" da página.
+Jira dos outros: Set vazio = sem filtro). `OPTS_GARANTIA` tem 2 opções —
+"Só garantia" (`sim`) e "Sem garantia" (`nao`) — pra dar pra tanto isolar
+quanto excluir as OS de garantia da lista (pedido do Toni logo depois da
+1ª versão, que só tinha a opção de incluir). Incluído também nos dois
+botões "Limpar filtros" da página.

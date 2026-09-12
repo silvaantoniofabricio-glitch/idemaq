@@ -71,7 +71,8 @@ const OPTS_SERVICO = [
   { id: 'manutencao', label: 'Manutenção'   },
 ]
 const OPTS_GARANTIA = [
-  { id: 'sim', label: 'Garantia' },
+  { id: 'sim', label: 'Só garantia'  },
+  { id: 'nao', label: 'Sem garantia' },
 ]
 // Mesmo conjunto usado em FormEquipamentoEdit.jsx.
 const OPTS_EQUIPAMENTO = [
@@ -495,7 +496,7 @@ export default function Vendas({ T, dark, user }) {
 
     if (equipSel.size > 0) r = r.filter(os => equipSel.has(os.tipoEquipamento || 'lavadora'))
 
-    if (garantiaSel.size > 0) r = r.filter(os => !!os.garantia)
+    if (garantiaSel.size > 0) r = r.filter(os => garantiaSel.has(os.garantia ? 'sim' : 'nao'))
 
     if (termoBusca) {
       r = r.filter(os =>
