@@ -43,6 +43,15 @@ const TAXAS_BANDEIRA = {
 TAXAS_BANDEIRA.visa = TAXAS_BANDEIRA.master // Visa = mesma tabela da Mastercard
 TAXAS_BANDEIRA.amex = TAXAS_BANDEIRA.elo    // American Express = mesma tabela do Elo
 
+// Taxas do Link Nubank (parcelamento sem juros, "você recebe na hora") —
+// tabela própria, não depende de bandeira, só vai até 12x. Conferido no
+// app Nubank em 14/09/2026.
+const TAXAS_LINK_NUBANK = {
+  1: 3.99, 2: 5.99, 3: 6.99, 4: 7.89, 5: 8.79, 6: 9.59,
+  7: 10.49, 8: 11.49, 9: 13.99, 10: 14.99, 11: 15.79, 12: 16.49,
+}
+const MAX_PARCELAS_LINK_NUBANK = 12
+
 const MAX_PARCELAS = 21
 
 const BANDEIRAS = [
@@ -62,16 +71,22 @@ function taxaCredito(bandeira, parcelas) {
   return (TAXAS_BANDEIRA[bandeira] || TAXAS_BANDEIRA.master).credito[parcelas] || 0
 }
 function taxaSub(subId, bandeira, parcelas) {
-  if (subId === 'debito')  return taxaDebito(bandeira)
-  if (subId === 'credito') return taxaCredito(bandeira, parcelas)
-  if (subId === 'link')    return taxaCredito(bandeira, parcelas) + LINK_ACRESCIMO
+  if (subId === 'debito')     return taxaDebito(bandeira)
+  if (subId === 'credito')    return taxaCredito(bandeira, parcelas)
+  if (subId === 'link')       return taxaCredito(bandeira, parcelas) + LINK_ACRESCIMO
+  if (subId === 'linknubank') return TAXAS_LINK_NUBANK[parcelas] || 0
   return 0
+}
+// Nº máximo de parcelas por sub-opção — Nubank só vai até 12x, Ton/InfinitePay até 21x.
+function maxParcelasSub(subId) {
+  return subId === 'linknubank' ? MAX_PARCELAS_LINK_NUBANK : MAX_PARCELAS
 }
 
 const SUB_CARTAO = [
-  { id: 'debito',  label: 'Débito (Ton)',     icon: 'ti-credit-card' },
-  { id: 'credito', label: 'Crédito (Ton)',    parcelado: true, icon: 'ti-credit-card', desc: '1x a 21x' },
-  { id: 'link',    label: 'Link InfinitePay', parcelado: true, icon: 'ti-link',        desc: '1x a 21x' },
+  { id: 'debito',     label: 'Débito (Ton)',     icon: 'ti-credit-card' },
+  { id: 'credito',    label: 'Crédito (Ton)',    parcelado: true, icon: 'ti-credit-card', desc: '1x a 21x' },
+  { id: 'link',       label: 'Link InfinitePay', parcelado: true, icon: 'ti-link',        desc: '1x a 21x · cai em D+1' },
+  { id: 'linknubank', label: 'Link Nubank',      parcelado: true, icon: 'ti-link',        desc: '1x a 12x · cai na hora' },
 ]
 
 // Converte o ID interno num label legível pro display em outras telas.
@@ -81,9 +96,11 @@ export function formaIdToLabel(id) {
   if (id === 'dinheiro') return 'Dinheiro'
   if (id === 'debito') return 'Débito'
   if (id === 'aprazo') return 'A prazo'
-  // Novos IDs: credito_Nx, link_Nx
+  // Novos IDs: credito_Nx, link_Nx, linknubank_Nx
   let m = id.match?.(/^credito_(\d+)x$/)
   if (m) return `Crédito ${m[1]}x`
+  m = id.match?.(/^linknubank_(\d+)x$/)
+  if (m) return `Link Nubank ${m[1]}x`
   m = id.match?.(/^link_(\d+)x$/)
   if (m) return `Link ${m[1]}x`
   // Legacy: credito1x, parcelado_Nx, link
@@ -127,6 +144,13 @@ export default function FormRecebimento({
   useEffect(() => {
     if (forma === 'cartao' && !subCartao) setSubCartao('debito')
   }, [forma, subCartao])
+
+  // Link Nubank só vai até 12x — se o nº de parcelas ficou de um sub-tipo
+  // com faixa maior (Ton/InfinitePay vão até 21x), reduz ao trocar.
+  useEffect(() => {
+    const max = maxParcelasSub(subCartao)
+    if (parcelas > max) setParcelas(max)
+  }, [subCartao])
 
   // Quando troca pra "A prazo" pela primeira vez, cria 1 parcela default (+30d com o valor total)
   useEffect(() => {
@@ -393,6 +417,7 @@ export default function FormRecebimento({
               parcelas={parcelas}
               setParcelas={setParcelas}
               taxaAtual={taxaSub(s.id, bandeira, parcelas)}
+              maxParcelas={maxParcelasSub(s.id)}
             />
           ))}
         </div>
@@ -775,7 +800,7 @@ function FormaTopBtn({ T, dark, ativo, onClick, icon, label, sublabel }) {
   )
 }
 
-function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, taxaAtual }) {
+function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, taxaAtual, maxParcelas = MAX_PARCELAS }) {
   const cor = (d, c) => dark ? d : c
   const azul = cor(P.blue, P.blueDark)
   return (
@@ -830,7 +855,7 @@ function SubCartaoBtn({ T, dark, sub, ativo, onClick, parcelas, setParcelas, tax
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4,
           }}>
-            {Array.from({ length: MAX_PARCELAS }, (_, i) => i + 1).map(p => {
+            {Array.from({ length: maxParcelas }, (_, i) => i + 1).map(p => {
               const ativoP = parcelas === p
               return (
                 <button

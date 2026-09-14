@@ -18,20 +18,26 @@ import { hojeISO } from './fmt'
 // Mapeamento forma → nome da conta bancária (sql/01 seedou 12 contas).
 // Lookup roda no insert; se a conta não existir, lança com conta_id=null.
 const FORMA_TO_CONTA_NOME = {
-  pix:      'Mercado Pago',
-  dinheiro: 'Cresol',
-  debito:   'Ton Black',
-  credito:  'Ton Black',
-  link:     'InfinitePay', // só link de pagamento usa InfinitePay — maquininha física é Ton
-  aprazo:   null, // a prazo não tem conta definida no recebimento
+  pix:        'Mercado Pago',
+  dinheiro:   'Cresol',
+  debito:     'Ton Black',
+  credito:    'Ton Black',
+  link:       'InfinitePay', // só link de pagamento usa InfinitePay — maquininha física é Ton
+  linknubank: 'Nubank',      // Link Nubank — cai na hora (D+0), diferente do InfinitePay (D+1)
+  aprazo:     null, // a prazo não tem conta definida no recebimento
 }
+
+// Formas cujo dinheiro cai na hora (D+0) em vez do padrão D+1 útil da
+// maquininha — a despesa da taxa é lançada no mesmo dia do recebimento.
+const FORMAS_D0 = new Set(['linknubank'])
 
 // Classifica o ID de forma do FormRecebimento ('credito_3x' → 'credito').
 function classificarForma(forma) {
   if (!forma) return 'pix'
-  if (forma.startsWith('credito_')) return 'credito'
-  if (forma.startsWith('link_'))    return 'link'
-  if (forma.startsWith('aprazo_'))  return 'aprazo'
+  if (forma.startsWith('credito_'))    return 'credito'
+  if (forma.startsWith('linknubank_')) return 'linknubank'
+  if (forma.startsWith('link_'))       return 'link'
+  if (forma.startsWith('aprazo_'))     return 'aprazo'
   return forma
 }
 
@@ -127,17 +133,19 @@ export async function montarLancamentosDoPagamento(os, { valor, forma, taxa_pct 
     os_id: os.id,
   })
 
-  // 2. Despesa de taxa da maquininha em D+1 útil (só se taxa > 0)
+  // 2. Despesa de taxa da maquininha — D+1 útil por padrão (Ton/InfinitePay),
+  // exceto formas D+0 (Link Nubank cai na hora, taxa sai no mesmo dia).
   if (Number(taxa_pct) > 0) {
     const valorTaxa = (Number(valor) * Number(taxa_pct)) / 100
+    const dataTaxa = FORMAS_D0.has(classe) ? hoje : calcularD1UtilISO(hoje)
     payloads.push({
       tipo: 'despesa',
       valor: valorTaxa,
       conta_id: contaReceita, // mesma conta da receita (sai dela)
       categoria: 'Taxa maquininha',
       descricao: descricaoOS(os, `taxa ${taxa_pct.toFixed(2).replace('.', ',')}%`),
-      vencimento: calcularD1UtilISO(hoje),
-      pago_em: calcularD1UtilISO(hoje),
+      vencimento: dataTaxa,
+      pago_em: dataTaxa,
       taxa_pct: 0,
       forma_pagamento: null,
       os_id: os.id,

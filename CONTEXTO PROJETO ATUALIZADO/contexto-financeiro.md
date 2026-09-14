@@ -588,3 +588,21 @@ nova). Conta confirmada como `Bradesco PJ` antes de rodar. Resultado:
 - Serie Pronto Paulo Cesar AD 27/02 completa 2/10→5/10, serie 30/03 fechada em 2/2.
 - As 4 faturas Elo Grafite cairam R$94,44 cada: maio 13/R$937,72 · junho
   11/R$627,72 · julho 13/R$744,24 · agosto 9/R$614,79.
+
+## 23. Novo sub-tipo de pagamento: Link Nubank (14/09/2026)
+
+`FormRecebimento.jsx` ganhou um 4º sub-tipo em Cartão, ao lado de Débito/
+Crédito (Ton) e Link InfinitePay: **Link Nubank** — "parcelamento sem
+juros" do Nubank, tabela própria de taxa (`TAXAS_LINK_NUBANK`, 1x a 12x,
+não depende de bandeira, ~2 a 4pp mais barata que o Link InfinitePay na
+maioria das faixas). Conferido no app Nubank em 14/09/2026.
+
+Diferença de negócio importante: cai **na hora (D+0)**, diferente de Ton/
+InfinitePay que caem em D+1 útil. `osToFinanceiro.js` tem o Set
+`FORMAS_D0` — a despesa "Taxa maquininha" dessas formas é lançada no
+mesmo dia do recebimento, não em `calcularD1UtilISO`. Conta bancária:
+`Nubank` (já existia, seedada por `sql/59`).
+
+ID interno: `linknubank_Nx` (ex: `linknubank_3x`) — `classificarForma()`
+e `formaIdToLabel()` em `osToFinanceiro.js`/`FormRecebimento.jsx`
+reconhecem o prefixo antes do `link_` genérico (evita colisão).
