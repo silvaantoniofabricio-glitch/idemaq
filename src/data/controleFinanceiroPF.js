@@ -839,11 +839,14 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '20/08/2026', origem: 'Bradesco NEO',  descricao: 'Apple.com/Bill 09/08',                              valor: 19.90,   categoria: 'Assinatura' },
   { data: '20/08/2026', origem: 'Bradesco NEO',  descricao: 'iFood 09/08',                                       valor: 7.95,    categoria: 'Alimentacao' },
   { data: '20/08/2026', origem: 'Bradesco NEO',  descricao: 'Apple.com/Bill 09/07',                              valor: 19.90,   categoria: 'Assinatura' },
-  { data: '20/08/2026', origem: 'Bradesco NEO',  descricao: 'iFood 09/07',                                       valor: 7.95,    categoria: 'Alimentacao' },  // --- Nubank PF (cartao final 5876/4378) — venc. 02/08/2026 ---
+  { data: '20/08/2026', origem: 'Bradesco NEO',  descricao: 'iFood 09/07',                                       valor: 7.95,    categoria: 'Alimentacao' },
+
+  // --- Nubank PF (cartao final 5876/4378) — venc. 02/08/2026 ---
   // Fatura toda R$ 790,13. Anthropic+IOF+Casa dos Parafusos (2/2) sao PJ,
-  // ver sql/188. "Mercadolivre*Felipeal" R$263,58 fica de fora por ora —
-  // sem precedente, precisa confirmar com o Toni (PF ou PJ?).
+  // ver sql/188.
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Taxa de emissao NuTag',             valor: 10.00,   categoria: 'Tarifa cartao' },
+  // Compras pra festa de aniversario do filho do Toni — 24/07.
+  { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Mercadolivre Felipeal (festa aniversario filho) 24/07', valor: 263.58, categoria: 'Lazer' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (R B Repres) 24/07',        valor: 16.90,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Tempero Di) 24/07',        valor: 19.90,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Tempero Di) 23/07',        valor: 19.90,   categoria: 'Alimentacao' },

@@ -600,9 +600,8 @@ No PJ, ignorados de proposito: "Valor pendente do mes anterior" R$328,36 e
 "Pagamento recebido" -R$328,36 — o mesmo valor se cancelando (rotativo da
 fatura de julho quitado dentro do proprio ciclo, nao e despesa nova).
 
-**Pendente de confirmacao do Toni**: `Mercadolivre*Felipeal` R$263,58 (Nubank
-PF, 24/07) — sem precedente no historico, nao lancado em lugar nenhum ainda.
-Maior item sem classificar da fatura.
+`Mercadolivre*Felipeal` R$263,58 (Nubank PF, 24/07) — RESOLVIDO: compras pra
+festa de aniversario do filho do Toni. PF, categoria Lazer.
 
 ## 24. Fatura Cresol Mastercard agosto/2026 (sql/189, APLICADO)
 
