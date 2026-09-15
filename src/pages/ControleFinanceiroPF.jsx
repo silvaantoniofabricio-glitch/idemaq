@@ -4,7 +4,7 @@
 // futuramente sera tabela propria (sistema isolado).
 
 import React, { useMemo, useState, useRef, useEffect } from 'react'
-import { Bar } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2'
 import { Chart as ChartJS, registerables } from 'chart.js'
 import { useIsMobile, P } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
@@ -1196,30 +1196,29 @@ function GraficoComparativo({ T, dark, comparativo }) {
 
   const data = {
     labels: comparativo.meses.map(mesLabelCurto),
-    datasets: [
-      ...series.map((linha, i) => {
-        const [clara, escura] = CICLO_CORES[i % CICLO_CORES.length]
-        return {
-          label: linha.categoria,
-          data: linha.valores,
-          backgroundColor: cor(P[clara], P[escura]),
-          borderRadius: 3,
-          stack: 's',
-        }
-      }),
-      {
-        type: 'line', label: 'Total', data: comparativo.totalPorMes,
-        borderColor: cor(P.blueLight, P.blueLightDark), borderWidth: 1.5,
-        pointBackgroundColor: cor(P.blueLight, P.blueLightDark), pointRadius: 3,
-        tension: 0.3, fill: false, order: 0,
-      },
-    ],
+    datasets: series.map((linha, i) => {
+      const [clara, escura] = CICLO_CORES[i % CICLO_CORES.length]
+      const corLinha = cor(P[clara], P[escura])
+      return {
+        label: linha.categoria,
+        data: linha.valores,
+        borderColor: corLinha,
+        backgroundColor: corLinha,
+        pointBackgroundColor: corLinha,
+        pointBorderColor: corLinha,
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.3,
+        fill: false,
+      }
+    }),
   }
 
   const options = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'bottom', labels: { color: tickColor, font: { size: 10.5 }, boxWidth: 10, padding: 10 } },
+      legend: { position: 'top', labels: { color: tickColor, font: { size: 11, weight: 600 }, boxWidth: 10, padding: 14 } },
       tooltip: {
         backgroundColor: T.card, titleColor: T.textPrimary, bodyColor: T.textSecondary,
         borderColor: T.border, borderWidth: 1, padding: 9,
@@ -1227,15 +1226,15 @@ function GraficoComparativo({ T, dark, comparativo }) {
       },
     },
     scales: {
-      x: { stacked: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } }, border: { color: 'transparent' } },
-      y: { stacked: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => 'R$' + Math.round(v / 1000) + 'k' }, border: { color: 'transparent' } },
+      x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } }, border: { color: 'transparent' } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => 'R$' + Math.round(v / 1000) + 'k' }, border: { color: 'transparent' } },
     },
   }
 
   return (
     <Card T={T} dark={dark}>
-      <div style={{ position: 'relative', width: '100%', height: 260 }}>
-        <Bar data={data} options={options} />
+      <div style={{ position: 'relative', width: '100%', height: 280 }}>
+        <Line data={data} options={options} />
       </div>
     </Card>
   )
