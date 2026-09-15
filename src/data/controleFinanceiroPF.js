@@ -722,7 +722,9 @@ export const DESPESAS_PF_RAFA_AGOSTO_2026 = [
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)',                       valor: 168.47,   categoria: 'Diverso' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)',                                               valor: 85.78,    categoria: 'Educacao' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'CeA Pay',                                                     valor: 123.20,   categoria: 'Vestuario' },
-  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Banco Votorantim (Carro)',                                    valor: 1183.10,  categoria: 'Financiamento' },
+  // 'Banco Votorantim (Carro)' 07/08 R$1.183,10 SAIU daqui — Toni confirmou
+  // que e o mesmo Pagamento Carro BV ja visto em julho (RAFA-JUL): o carro
+  // e da empresa, entra como emprestimo PJ. Ver sql/193.
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Casa)',                         valor: 790.00,   categoria: 'Financiamento' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)',                                           valor: 39.91,    categoria: 'Diverso' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Sarah Regina (Semi Joia)',                                    valor: 48.00,    categoria: 'Compras pessoais' },

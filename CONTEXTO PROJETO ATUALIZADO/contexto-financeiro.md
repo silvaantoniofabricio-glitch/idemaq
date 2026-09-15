@@ -736,3 +736,14 @@ periodo inteiro (soma de todos os meses do comparativo, mesmo top 6 +
 "Outras" e mesmo ciclo de cores do grafico de linha). Layout em grid
 1.6fr/1fr no desktop, empilhado no mobile. Legenda a direita no desktop,
 embaixo no mobile (mais espaco horizontal apertado).
+
+## 31. Correcao: Banco Votorantim (Carro) agosto era PJ, nao PF (20/08/2026)
+
+'Banco Votorantim (Carro)' 07/08 R$1.183,10, no extrato BB da Rafa, tinha
+sido lancado errado como PF/Financiamento na secao 27. Toni corrigiu: e o
+mesmo 'Pagamento Carro BV' ja visto em julho (RAFA-JUL, sql/157) — carro e
+da empresa, emprestimo PJ mesmo saindo da conta pessoal dela.
+
+Removido de DESPESAS_PF_RAFA_AGOSTO_2026, lancado no PJ via sql/193
+(categoria Emprestimo, conta_id NULL — conta BB da Rafa nao e rastreada).
+Rafa agosto caiu de 47 pra 46 itens (R$10.964,40 -> R$9.781,30).
