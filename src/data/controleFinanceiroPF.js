@@ -764,6 +764,12 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   // Meli+ (assinatura do Mercado Livre). Estava no PJ como Software ate o Toni
   // confirmar que e pessoal — tirado de la no sql/184.
   { data: '20/08/2026', origem: 'MP Cartao', descricao: 'Meli+ 09/08',                             valor: 74.90,  categoria: 'Assinatura' },
+
+  // --- Cresol Mastercard — venc. 20/08/2026 ---
+  // Fatura toda R$ 1.210,50. So esse item e PF, o resto (R$1.088,75) e PJ,
+  // ver sql/189.
+  { data: '20/08/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 5/6', valor: 121.75, categoria: 'Servicos' },
+
   // --- Inter (2306 9106 + 3338) — venc. 25/08/2026 ---
   // Fatura toda R$ 3.258,16. O unico item PJ e o Magalu-Carrefour (maquina
   // dada ao cliente em garantia, R$ 343,62) — esse esta no sql/185.

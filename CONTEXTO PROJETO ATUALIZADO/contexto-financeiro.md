@@ -604,6 +604,21 @@ fatura de julho quitado dentro do proprio ciclo, nao e despesa nova).
 PF, 24/07) — sem precedente no historico, nao lancado em lugar nenhum ainda.
 Maior item sem classificar da fatura.
 
+## 24. Fatura Cresol Mastercard agosto/2026 (sql/189, APLICADO)
+
+Venc. 20/08, R$1.210,50 — 15 itens, recebida por prints do app Cresol (2
+telas, sobreposicao parcial, soma bate exata com o total mostrado). 14
+itens PJ (R$1.088,75, quase todos series continuando de maio/junho/julho:
+Ton.com.br maquininha 4/12, ML Assiste 4/4, Mercado Refripecas 4/5, Deposito
+ST Catarina 5/10, Limpeel Casa Carro fecha 3/3 nas duas parcelas). 1 item PF
+— "JIM.COM Thiago Dos 13/03 5/6" R$121,75, Servicos (nao confundir com "JIM
+COM Thiago dos Santos 20/07" do Elo Grafite — series diferentes, mesma pessoa).
+
+Com essa fatura, todos os cartoes de agosto/2026 estao fechados: Elo Grafite,
+Bradesco NEO, Bradesco PJ Elo Mais, Mercado Pago, Inter, Nubank PF, Nubank
+PJ, Cresol Mastercard. Falta so o extrato bancario da Cresol (conta corrente,
+PIX/debito/boleto) e a confirmacao do Felipeal acima.
+
 ## 23. Novo sub-tipo de pagamento: Link Nubank (14/09/2026)
 
 `FormRecebimento.jsx` ganhou um 4º sub-tipo em Cartão, ao lado de Débito/
