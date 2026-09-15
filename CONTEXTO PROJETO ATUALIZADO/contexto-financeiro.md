@@ -747,3 +747,21 @@ da empresa, emprestimo PJ mesmo saindo da conta pessoal dela.
 Removido de DESPESAS_PF_RAFA_AGOSTO_2026, lancado no PJ via sql/193
 (categoria Emprestimo, conta_id NULL — conta BB da Rafa nao e rastreada).
 Rafa agosto caiu de 47 pra 46 itens (R$10.964,40 -> R$9.781,30).
+
+## 32. Correcao: faltou a parcela do emprestimo Cresol PJ de agosto (20/08/2026)
+
+A parcela mensal do emprestimo Cresol PJ (contrato 372388, R$1.421,71,
+serie mai/jun/jul) ESTAVA no extrato de agosto ("20/08 PGTO PARCELA
+EMPRESTIMO... 500100320260372388-5") mas ficou de fora do sql/190 por
+descuido — o extrato tinha 3 linhas de "PGTO PARCELA EMPRESTIMO" quase
+juntas (essa + as 2 do contrato 531371, que era a Parcela Civic) e essa
+foi esquecida na hora de montar o SQL. Toni percebeu que a serie tinha
+um buraco no mes de agosto.
+
+Corrigido via sql/194 — mesmo nome/padrao (CRESOL-AGO:Parcela emprestimo
+Cresol PJ 20/08). Serie agora completa: mai/jun/jul/ago, sempre R$1.421,71.
+
+**Licao**: quando o extrato tem varias linhas "PGTO PARCELA EMPRESTIMO"
+juntas, conferir CADA UMA pelo numero do contrato antes de assumir que sao
+a mesma coisa ou que so uma e nova — nesse caso eram 2 emprestimos
+diferentes (372388 recorrente + 531371 novo/Civic) e um confundiu o outro.
