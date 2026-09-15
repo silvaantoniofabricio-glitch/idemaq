@@ -589,6 +589,21 @@ nova). Conta confirmada como `Bradesco PJ` antes de rodar. Resultado:
 - As 4 faturas Elo Grafite cairam R$94,44 cada: maio 13/R$937,72 · junho
   11/R$627,72 · julho 13/R$744,24 · agosto 9/R$614,79.
 
+## 23. Faturas Nubank agosto/2026 (sql/188, APLICADO)
+
+Nubank PF venc. 02/08 (R$790,13, 22 itens) e Nubank PJ venc. 23/08 (R$123,34
+liquido, 6 itens novos). 18 itens PF ficaram no array, 3 foram pro PJ —
+Anthropic Claude Sub + IOF (mesma assinatura recorrente ja vista em julho) e
+a parcela 2/2 de "Casa dos Parafusos 16/06" (1/2 ja estava em julho).
+
+No PJ, ignorados de proposito: "Valor pendente do mes anterior" R$328,36 e
+"Pagamento recebido" -R$328,36 — o mesmo valor se cancelando (rotativo da
+fatura de julho quitado dentro do proprio ciclo, nao e despesa nova).
+
+**Pendente de confirmacao do Toni**: `Mercadolivre*Felipeal` R$263,58 (Nubank
+PF, 24/07) — sem precedente no historico, nao lancado em lugar nenhum ainda.
+Maior item sem classificar da fatura.
+
 ## 23. Novo sub-tipo de pagamento: Link Nubank (14/09/2026)
 
 `FormRecebimento.jsx` ganhou um 4º sub-tipo em Cartão, ao lado de Débito/
