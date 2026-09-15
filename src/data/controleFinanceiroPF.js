@@ -688,7 +688,62 @@ export const DESPESAS_PF_RAFA_AGOSTO_2026 = [
   // confirmou que sao a mesma parcela do Civic vindo em duas partes.
   // Valor subiu de R$1.526,48 (mai/jun/jul) pra R$1.562,08 — reajuste.
   { data: '17/08/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 17/08 (1/2)', valor: 84.19,   categoria: 'Financiamento' },
-  { data: '18/08/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 18/08 (2/2)', valor: 1477.89, categoria: 'Financiamento' },
+  { data: '18/08/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 18/08 (2/2)', valor: 1477.89, categoria: 'Financiamento' },  // --- Banco do Brasil (extrato ag/conta 600954400029554) — ago/2026 ---
+  // Extrato completo do mes: 41 saidas R$9.264,42, entradas R$9.255,93
+  // (salario 06/08 + ferias 14/08), fecha em -R$8,49 (bate com saldo
+  // anterior 14/07). As 5 linhas 'Transferencia' sao PIX da Rafa pra ela
+  // mesma (Nubank) ou pro Toni — fluxo interno, nao gasto real.
+  { data: '05/08/2026', origem: 'Banco do Brasil',  descricao: 'Tarifa Pacote de Servicos 05/08',                             valor: 8.49,     categoria: 'Tarifa banco' },
+  { data: '06/08/2026', origem: 'Banco do Brasil',  descricao: 'Tarifa Pacote de Servicos 06/08',                             valor: 7.41,     categoria: 'Tarifa banco' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Poliani Lopes (So Frutas)',                                   valor: 13.90,    categoria: 'Alimentacao' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)',                       valor: 168.47,   categoria: 'Diverso' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)',                                               valor: 85.78,    categoria: 'Educacao' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'CeA Pay',                                                     valor: 123.20,   categoria: 'Vestuario' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Banco Votorantim (Carro)',                                    valor: 1183.10,  categoria: 'Financiamento' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Casa)',                         valor: 790.00,   categoria: 'Financiamento' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)',                                           valor: 39.91,    categoria: 'Diverso' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Sarah Regina (Semi Joia)',                                    valor: 48.00,    categoria: 'Compras pessoais' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Elisangela Aparecida (Trabalho)',                             valor: 2.55,     categoria: 'Diverso' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Mikaela Carvalho Viana (Trabalho)',                           valor: 15.33,    categoria: 'Diverso' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pedro Henrique Rodrigues (Trabalho)',                         valor: 30.00,    categoria: 'Diverso' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 940.74,   categoria: 'Transferencia' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Antonio Fabricio da Silva (Toni)',                        valor: 1500.00,  categoria: 'Transferencia' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 32.49,    categoria: 'Transferencia' },
+  { data: '10/08/2026', origem: 'Banco do Brasil',  descricao: 'Fed Nacional Comunidade (Dizimo)',                            valor: 580.00,   categoria: 'Dizimo' },
+  { data: '10/08/2026', origem: 'Banco do Brasil',  descricao: 'Carolina Aparecida Garcia (Bolsa)',                           valor: 104.00,   categoria: 'Diverso' },
+  { data: '10/08/2026', origem: 'Banco do Brasil',  descricao: 'Otaviano Gomes da Rocha (Pao)',                               valor: 15.00,    categoria: 'Alimentacao' },
+  { data: '10/08/2026', origem: 'Banco do Brasil',  descricao: 'Fies (amortizacao)',                                          valor: 106.42,   categoria: 'Educacao' },
+  { data: '12/08/2026', origem: 'Banco do Brasil',  descricao: 'Rosineli Bertozzi Vessoni (Almoco)',                          valor: 31.92,    categoria: 'Alimentacao' },
+  { data: '14/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 2000.00,  categoria: 'Transferencia' },
+  { data: '17/08/2026', origem: 'Banco do Brasil',  descricao: 'Beta Campo Grande',                                           valor: 20.00,    categoria: 'Alimentacao' },
+  { data: '17/08/2026', origem: 'Banco do Brasil',  descricao: 'Carrefour (Campo Grande)',                                    valor: 54.71,    categoria: 'Supermercado' },
+  { data: '17/08/2026', origem: 'Banco do Brasil',  descricao: 'D Alimentos (Campo Grande)',                                  valor: 21.00,    categoria: 'Alimentacao' },
+  { data: '18/08/2026', origem: 'Banco do Brasil',  descricao: 'Hiper Festa (aniversario Arthur)',                            valor: 100.92,   categoria: 'Lazer' },
+  { data: '18/08/2026', origem: 'Banco do Brasil',  descricao: 'O Point Do Espeto',                                           valor: 17.00,    categoria: 'Alimentacao' },
+  { data: '19/08/2026', origem: 'Banco do Brasil',  descricao: 'Edene Aparecida Primo (aniversario Arthur)',                  valor: 44.98,    categoria: 'Lazer' },
+  { data: '19/08/2026', origem: 'Banco do Brasil',  descricao: 'Hiper Festa (aniversario Arthur)',                            valor: 85.00,    categoria: 'Lazer' },
+  { data: '19/08/2026', origem: 'Banco do Brasil',  descricao: 'Panificadora e Confeitaria',                                  valor: 9.94,     categoria: 'Alimentacao' },
+  { data: '19/08/2026', origem: 'Banco do Brasil',  descricao: 'Giselle Duarte dos Santos (aniversario Arthur)',              valor: 45.00,    categoria: 'Lazer' },
+  { data: '19/08/2026', origem: 'Banco do Brasil',  descricao: 'Companhia Sulamericana (Amigao)',                             valor: 84.55,    categoria: 'Supermercado' },
+  { data: '19/08/2026', origem: 'Banco do Brasil',  descricao: 'Moacir Rower LTDA (aniversario Arthur)',                      valor: 101.87,   categoria: 'Lazer' },
+  { data: '19/08/2026', origem: 'Banco do Brasil',  descricao: 'Point da Garapa (aniversario Arthur)',                        valor: 40.00,    categoria: 'Lazer' },
+  { data: '20/08/2026', origem: 'Banco do Brasil',  descricao: 'Minamis (planta)',                                            valor: 122.00,   categoria: 'Compras pessoais' },
+  { data: '24/08/2026', origem: 'Banco do Brasil',  descricao: 'Companhia Sulamericana (Amigao)',                             valor: 80.30,    categoria: 'Supermercado' },
+  { data: '24/08/2026', origem: 'Banco do Brasil',  descricao: 'Maria Aparecida (bolo aniversario Arthur)',                   valor: 150.00,   categoria: 'Lazer' },
+  { data: '24/08/2026', origem: 'Banco do Brasil',  descricao: 'Otaviano Gomes da Rocha (Pao)',                               valor: 15.00,    categoria: 'Alimentacao' },
+  { data: '24/08/2026', origem: 'Banco do Brasil',  descricao: 'Mercado Kraus',                                               valor: 6.99,     categoria: 'Supermercado' },
+  { data: '25/08/2026', origem: 'Banco do Brasil',  descricao: 'O Point Do Espeto',                                           valor: 34.50,    categoria: 'Alimentacao' },
+  { data: '25/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 403.95,   categoria: 'Transferencia' },
+
+  // --- Nubank (Rafa) — ago/2026 ---
+  // So temos esses 4 itens (recorte de foto, sem data/total visivel). As 5
+  // linhas 'Transferencia' acima (Banco do Brasil -> Nubank dela) somam
+  // R$3.377,18 no mes — MUITO mais do que os R$137,90 aqui, entao falta a
+  // maior parte do extrato/fatura Nubank dela. Nao inventar o resto.
+  { data: '31/08/2026', origem: 'Nubank (Rafa)', descricao: 'Pao',         valor: 15.00, categoria: 'Alimentacao' },
+  { data: '31/08/2026', origem: 'Nubank (Rafa)', descricao: 'Restaurante', valor: 20.00, categoria: 'Alimentacao' },
+  { data: '31/08/2026', origem: 'Nubank (Rafa)', descricao: 'Suco',        valor: 13.90, categoria: 'Alimentacao' },
+  { data: '31/08/2026', origem: 'Nubank (Rafa)', descricao: 'Lingerie',    valor: 89.00, categoria: 'Vestuario' },
 ]
 
 // Despesas PF agosto/2026 — TONI

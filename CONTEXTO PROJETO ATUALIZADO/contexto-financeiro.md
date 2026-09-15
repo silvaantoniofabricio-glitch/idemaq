@@ -673,3 +673,24 @@ mesmo dia do recebimento, não em `calcularD1UtilISO`. Conta bancária:
 ID interno: `linknubank_Nx` (ex: `linknubank_3x`) — `classificarForma()`
 e `formaIdToLabel()` em `osToFinanceiro.js`/`FormRecebimento.jsx`
 reconhecem o prefixo antes do `link_` genérico (evita colisão).
+
+## 27. Extrato Banco do Brasil (Rafa) agosto/2026
+
+DESPESAS_PF_RAFA_AGOSTO_2026 criado do zero (agosto so tinha TONI antes).
+Extrato completo do BB (ag/conta 600954400029554): 41 saidas R$9.264,42,
+entradas R$9.255,93 (salario 06/08 + ferias 14/08), fecha em -R$8,49 —
+bate com o saldo anterior de 14/07. Mais a Parcela Civic (R$1.562,08, ver
+secao 26) = 43 itens BB+Civic, R$10.826,50.
+
+5 linhas sao categoria 'Transferencia' (fluxo interno, nao gasto real):
+4x Rafa->ela mesma no Nubank (R$3.377,18 total) + 1x Rafa->Toni (R$1.500).
+
+Muitos itens "Niver Arthur"/"Bolo Arthur" (18-24/08, ~R$567,77) — festa de
+aniversario do filho, mesma festa cujas compras antecipadas o Toni fez no
+Nubank PF em 24/07 (Mercadolivre Felipeal R$263,58, ver secao 23 antiga).
+
+**Nubank da Rafa — SO PARCIAL.** Ela transferiu R$3.377,18 pro Nubank dela
+em agosto (as 4 linhas de transferencia acima), mas so temos 4 itens de
+gasto de la (Pao/Restaurante/Suco/Lingerie, R$137,90 total, sem data exata
+— foto cortada). Falta a MAIOR parte do extrato/fatura Nubank dela. Nao
+inventar o resto quando ele chegar.
