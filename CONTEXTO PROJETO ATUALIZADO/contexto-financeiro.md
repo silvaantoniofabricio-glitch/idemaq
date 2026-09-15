@@ -641,6 +641,19 @@ Servicos Cresol, Zion Contabilidade, FleetNet, Luciano Aparecido Lima Cri
 - Varios "PIX CREDITO DE: IDEMAQ" (repasse de outra conta/maquininha) —
   receita, fora do escopo.
 
+## 26. Agua (Sanesul) — cuidado pra nao duplicar em setembro
+
+`CRESOL-AGO:Sanesul agua ago/2026`, R$164,47, venc. 02/08/2026 — lançada via
+sql/191 em 20/08/2026, mas o Toni so PAGOU em 15/09/2026 (esqueceu). Pediu
+pra lançar no vencimento mesmo, igual ja fizemos com a de maio (venc 04/05,
+paga so em 01/06 — ver `AGUA-MAIO:...` no historico).
+
+**Isso significa que o extrato Cresol de SETEMBRO vai ter uma linha SANESUL
+datada de 15/09 — essa linha e so a QUITACAO da agua de agosto que ja esta
+lançada aqui, NAO e a agua de setembro.** Nao lançar de novo so porque
+aparece no extrato de setembro. A agua de setembro (proximo vencimento,
+normalmente entre dia 4 e 13) e que sera a despesa nova daquele mes.
+
 ## 23. Novo sub-tipo de pagamento: Link Nubank (14/09/2026)
 
 `FormRecebimento.jsx` ganhou um 4º sub-tipo em Cartão, ao lado de Débito/
