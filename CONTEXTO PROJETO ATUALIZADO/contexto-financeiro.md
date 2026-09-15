@@ -765,3 +765,27 @@ Cresol PJ 20/08). Serie agora completa: mai/jun/jul/ago, sempre R$1.421,71.
 juntas, conferir CADA UMA pelo numero do contrato antes de assumir que sao
 a mesma coisa ou que so uma e nova — nesse caso eram 2 emprestimos
 diferentes (372388 recorrente + 531371 novo/Civic) e um confundiu o outro.
+
+## 33. Auditoria completa dos extratos de agosto (20/08/2026)
+
+Toni pediu conferencia linha a linha nos 3 extratos (Cresol, Nubank, Bradesco
+PF) contra o que ja tinha sido lançado — nao so o que eu tinha achado antes.
+Resultado: 25 dos 26 debitos da Cresol batiam certo (ou eram quitacao de
+fatura ja detalhada, ou retirada/fluxo interno pro proprio Toni). Nubank e
+Bradesco PF (contas pessoais nao rastreadas) tambem batiam quase tudo —
+varios PIX eram so Toni movendo dinheiro entre as proprias contas
+(Nubank->Bradesco PF), confirmados batendo valor+data nos dois extratos.
+
+Sobrou o array `DESPESAS_PF_TONI_AGOSTO_2026`, origem 'Bradesco PF':
+- Encargos limite credito R$24,85 + IOF utilizacao limite R$17,60 —
+  taxa de uso do cheque especial, PF (mesmo padrao ja usado em maio)
+- 3 PIX enviados sem nome do destinatario no extrato (17/08 R$1.600,
+  25/08 R$1.000, 31/08 R$200) — Toni confirmou que sao transferencias
+  internas dele mesmo, categoria Transferencia (fluxo interno)
+
+**Nao lançado, por decisao do Toni**: PIX de R$25,00 (13/08, Nubank) pra
+"CAKTO PAY LTDA" — nao soube identificar, pediu pra deixar de fora.
+
+**Ainda pendente**: a fatura Cresol Mastercard (R$1.210,50 lançado, sql/189)
+nao bate com o debito automatico no extrato Cresol (R$1.230,40, 11/08) —
+diferenca de R$19,90. Nao resolvido ainda.

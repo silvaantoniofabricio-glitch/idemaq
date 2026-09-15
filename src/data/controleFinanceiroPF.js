@@ -955,6 +955,15 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome NuPay 07/07',               valor: 19.90,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Aiqfome) 07/07',           valor: 24.90,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Nubank+',                           valor: 29.00,   categoria: 'Assinatura' },
+
+  // --- Bradesco PF (conta 358510-7, nao rastreada) — extrato ago/2026 ---
+  { data: '04/08/2026', origem: 'Bradesco PF', descricao: 'Encargos limite credito',                 valor: 24.85,   categoria: 'Tarifa banco' },
+  { data: '04/08/2026', origem: 'Bradesco PF', descricao: 'IOF utilizacao limite',                   valor: 17.60,   categoria: 'IOF' },
+  // 3 PIX enviados sem nome do destinatario no extrato — Toni confirmou que
+  // sao transferencias internas (pra outra conta propria), nao gasto real.
+  { data: '17/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 17/08',                       valor: 1600.00, categoria: 'Transferencia' },
+  { data: '25/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 25/08',                       valor: 1000.00, categoria: 'Transferencia' },
+  { data: '31/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 31/08',                       valor: 200.00,  categoria: 'Transferencia' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)
