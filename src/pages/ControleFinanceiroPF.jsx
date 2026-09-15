@@ -4,7 +4,7 @@
 // futuramente sera tabela propria (sistema isolado).
 
 import React, { useMemo, useState, useRef, useEffect } from 'react'
-import { useIsMobile } from '../theme'
+import { useIsMobile, P } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
 import {
@@ -109,6 +109,13 @@ function isoParaBR(iso) {
   return `${d}/${m}/${y}`
 }
 
+// 'DD/MM/YYYY' -> 'YYYY-MM', pra agrupar um lancamento no mes certo
+// (o mesmo mes usado como chave em DESPESAS_PF_POR_MES).
+function mesKeyDeDataBR(dataBR) {
+  const [, m, y] = String(dataBR).split('/')
+  return `${y}-${m}`
+}
+
 function adaptarEmpresaParaPF(lancs) {
   return (lancs || []).map(l => ({
     data: isoParaBR(l.vencimento || l.pago_em),
@@ -140,9 +147,10 @@ const PESSOAS = [
 ]
 
 const SECOES = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'tabela',    label: 'Planilha' },
-  { id: 'conselhos', label: 'Análise' },
+  { id: 'dashboard',    label: 'Dashboard' },
+  { id: 'tabela',       label: 'Planilha' },
+  { id: 'conselhos',    label: 'Análise' },
+  { id: 'comparativo',  label: 'Comparativo' },
 ]
 
 // ─── Preferencias de tela (sobrevivem ao F5) ────────────────────────────────
@@ -364,6 +372,62 @@ export default function ControleFinanceiroPF({ T, dark }) {
 
   const analise = useMemo(() => analisarDespesas(despesas), [despesas])
 
+  // ─── Comparativo mensal (aba "Comparativo") ────────────────────────────
+  // Precisa dos dados de TODOS os meses de uma vez, nao so do periodo
+  // selecionado no topo — por isso busca a empresa (PJ) numa faixa larga,
+  // separada da busca principal.
+  const mesesDisponiveis = useMemo(
+    () => Object.keys(DESPESAS_PF_POR_MES).sort(),
+    [],
+  )
+  const filtroComparativo = useMemo(() => {
+    if (!mesesDisponiveis.length) return { tipo: 'despesa', status: 'pago' }
+    const ultimo = mesesDisponiveis[mesesDisponiveis.length - 1]
+    const [anoFim, mesFim] = ultimo.split('-').map(Number)
+    const ultimoDia = new Date(anoFim, mesFim, 0).getDate()
+    return {
+      tipo: 'despesa', status: 'pago',
+      dataInicio: `${mesesDisponiveis[0]}-01`,
+      dataFim: `${ultimo}-${String(ultimoDia).padStart(2, '0')}`,
+    }
+  }, [mesesDisponiveis])
+  const { lancamentos: lancsEmpresaTodos } = useFinanceiro(filtroComparativo)
+  const despesasEmpresaTodos = useMemo(() => adaptarEmpresaParaPF(lancsEmpresaTodos), [lancsEmpresaTodos])
+
+  const comparativo = useMemo(() => {
+    if (!mesesDisponiveis.length) return null
+    const porMes = {}
+    for (const mes of mesesDisponiveis) {
+      const doMes = DESPESAS_PF_POR_MES[mes] || {}
+      let lista
+      if (pessoaAtiva === 'empresa') {
+        lista = despesasEmpresaTodos.filter(d => mesKeyDeDataBR(d.data) === mes)
+      } else if (pessoaAtiva === 'tudo') {
+        lista = [...(doMes.total || []), ...despesasEmpresaTodos.filter(d => mesKeyDeDataBR(d.data) === mes)]
+      } else {
+        lista = doMes[pessoaAtiva] || []
+      }
+      porMes[mes] = analisarDespesas(lista).porCategoriaMae
+    }
+
+    const categoriasSet = new Set()
+    for (const mes of mesesDisponiveis) porMes[mes].forEach(c => categoriasSet.add(c.label))
+
+    const valorDe = (mes, cat) => porMes[mes].find(c => c.label === cat)?.valor || 0
+    const linhas = [...categoriasSet]
+      .map(categoria => {
+        const valores = mesesDisponiveis.map(m => valorDe(m, categoria))
+        return { categoria, valores, total: valores.reduce((a, b) => a + b, 0) }
+      })
+      .sort((a, b) => b.total - a.total)
+
+    const totalPorMes = mesesDisponiveis.map((_, i) => linhas.reduce((s, l) => s + l.valores[i], 0))
+    const totalGeral = totalPorMes.reduce((a, b) => a + b, 0)
+    const maxCelula = Math.max(1, ...linhas.flatMap(l => l.valores))
+
+    return { meses: mesesDisponiveis, linhas, totalPorMes, totalGeral, maxCelula }
+  }, [mesesDisponiveis, pessoaAtiva, despesasEmpresaTodos])
+
   const mesLabel    = labelPeriodoPF(periodo)
   const pessoaLabel = PESSOAS.find(p => p.id === pessoaAtiva)?.label || pessoaAtiva
 
@@ -423,6 +487,7 @@ export default function ControleFinanceiroPF({ T, dark }) {
           {verSecao === 'dashboard' && <Dashboard T={T} dark={dark} analise={analise} isMobile={isMobile} />}
           {verSecao === 'tabela'    && <PlanilhaCompleta T={T} dark={dark} despesas={despesas} isMobile={isMobile} />}
           {verSecao === 'conselhos' && <ConselhosFinanceiros T={T} dark={dark} analise={analise} />}
+          {verSecao === 'comparativo' && <SecaoComparativo T={T} dark={dark} comparativo={comparativo} pessoaLabel={pessoaLabel} isMobile={isMobile} />}
         </div>
       </div>
     </div>
@@ -1080,6 +1145,133 @@ function ConselhosFinanceiros({ T, dark, analise }) {
         </ul>
       </Card>
     </div>
+  )
+}
+
+// =====================================================================
+// Comparativo mensal — categorias (linhas) x meses (colunas), celula
+// colorida por intensidade de gasto. O seletor de pessoa fica no topo da
+// pagina (mesmo de sempre), essa secao so muda o que mostra.
+// =====================================================================
+function hexParaRgba(hex, alpha) {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function mesLabelCurto(mesKey) {
+  const [ano, mes] = mesKey.split('-')
+  return `${MESES_NOME[Number(mes) - 1]}/${ano.slice(2)}`
+}
+
+function SecaoComparativo({ T, dark, comparativo, pessoaLabel, isMobile }) {
+  const azul = corEtapa('blue', dark)
+
+  if (!comparativo || !comparativo.meses.length) {
+    return (
+      <EmptyState T={T} icon="ti-chart-histogram" title="Sem meses pra comparar"
+        description="Ainda não há dados suficientes pra montar o comparativo." />
+    )
+  }
+  if (!comparativo.linhas.length) {
+    return (
+      <EmptyState T={T} icon="ti-chart-histogram" title={`Sem gastos em nenhum mês — ${pessoaLabel}`}
+        description="Troque o filtro de pessoa no topo da página pra ver outro recorte." />
+    )
+  }
+
+  const celStyle = {
+    padding: '8px 10px', textAlign: 'right', fontSize: 12.5,
+    fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+  }
+
+  return (
+    <Card T={T} dark={dark} padding={0} style={{ overflow: 'hidden' }}>
+      <div style={{
+        padding: '12px 16px', borderBottom: `1px solid ${T.border}`,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <i className="ti ti-chart-histogram" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+        <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
+          Comparativo mensal por categoria
+        </span>
+        <Badge variant="azul" dark={dark} sm>{pessoaLabel}</Badge>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 560 : undefined }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+              <th style={{
+                padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.03em',
+                position: 'sticky', left: 0, background: T.card, zIndex: 1,
+              }}>
+                Categoria
+              </th>
+              {comparativo.meses.map(m => (
+                <th key={m} style={{
+                  ...celStyle, fontSize: 11, fontWeight: 700, color: T.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '.03em',
+                }}>
+                  {mesLabelCurto(m)}
+                </th>
+              ))}
+              <th style={{
+                ...celStyle, fontSize: 11, fontWeight: 700, color: T.textPrimary,
+                textTransform: 'uppercase', letterSpacing: '.03em',
+              }}>
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparativo.linhas.map((linha, i) => (
+              <tr key={linha.categoria} style={{ borderBottom: `1px solid ${T.border}` }}>
+                <td style={{
+                  padding: '8px 10px', fontSize: 12.5, color: T.textPrimary, whiteSpace: 'nowrap',
+                  position: 'sticky', left: 0, background: i % 2 ? (dark ? '#1a1a1e' : '#fafafa') : T.card, zIndex: 1,
+                }}>
+                  {linha.categoria}
+                </td>
+                {linha.valores.map((v, j) => (
+                  <td key={j} style={{
+                    ...celStyle,
+                    color: v ? T.textPrimary : T.textMuted,
+                    background: v ? hexParaRgba(P.blue, 0.06 + 0.5 * (v / comparativo.maxCelula)) : 'transparent',
+                  }}>
+                    {v ? fmtBRL(v) : '—'}
+                  </td>
+                ))}
+                <td style={{ ...celStyle, fontWeight: 700, color: T.textPrimary }}>
+                  {fmtBRL(linha.total)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ borderTop: `2px solid ${T.border}` }}>
+              <td style={{
+                padding: '10px', fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+                position: 'sticky', left: 0, background: T.card,
+              }}>
+                Total
+              </td>
+              {comparativo.totalPorMes.map((v, i) => (
+                <td key={i} style={{ ...celStyle, fontWeight: 700, color: T.textPrimary }}>
+                  {fmtBRL(v)}
+                </td>
+              ))}
+              <td style={{ ...celStyle, fontWeight: 700, color: azul, fontSize: 13.5 }}>
+                {fmtBRL(comparativo.totalGeral)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </Card>
   )
 }
 

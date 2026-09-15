@@ -42,6 +42,29 @@ export const CATEGORIA_MAE = {
   'PIX terceiros': 'Outros',
   'Diverso': 'Outros',
   'Transferencia': 'Transferências (PF→PF)',
+  // Categorias que so existem no PJ (lancamento_financeiro) — adicionadas
+  // pro comparativo mensal por categoria enxergar tudo, sem cair em "Outros".
+  'Salario': 'Folha de Pagamento',
+  'Funcionarios': 'Folha de Pagamento',
+  'Terceiros': 'Folha de Pagamento',
+  'Contabilidade': 'Serviços Profissionais',
+  'Servicos': 'Serviços Profissionais',
+  'Servicos/Manutencao': 'Negócios (PJ)',
+  'Materiais de limpeza': 'Negócios (PJ)',
+  'Equipamentos': 'Negócios (PJ)',
+  'Ferramentas': 'Negócios (PJ)',
+  'Frete': 'Negócios (PJ)',
+  'Garantia/Reposicao': 'Negócios (PJ)',
+  'Compra de maquina': 'Negócios (PJ)',
+  'Publicidade': 'Negócios (PJ)',
+  'Taxa maquininha': 'Tarifas & Encargos',
+  'Taxas': 'Tarifas & Encargos',
+  'Taxas pagas': 'Tarifas & Encargos',
+  'Multa/Juros cartao': 'Tarifas & Encargos',
+  'Energia eletrica': 'Utilidades (Água/Luz/Internet)',
+  'Agua': 'Utilidades (Água/Luz/Internet)',
+  'Agua/Luz/Fone': 'Utilidades (Água/Luz/Internet)',
+  'Internet': 'Utilidades (Água/Luz/Internet)',
 }
 
 export function maeDe(categoria) {

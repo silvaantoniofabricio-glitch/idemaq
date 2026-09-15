@@ -694,3 +694,27 @@ em agosto (as 4 linhas de transferencia acima), mas so temos 4 itens de
 gasto de la (Pao/Restaurante/Suco/Lingerie, R$137,90 total, sem data exata
 — foto cortada). Falta a MAIOR parte do extrato/fatura Nubank dela. Nao
 inventar o resto quando ele chegar.
+
+## 28. Aba "Comparativo" na Financeiro PF (20/08/2026)
+
+Nova secao em ControleFinanceiroPF.jsx (SECOES ganhou 'comparativo') —
+tabela de calor: categoria-mae nas linhas, mes nas colunas, celula colorida
+por intensidade (P.blue com alpha variavel). Reusa o MESMO seletor de
+pessoa do topo da pagina (Total/Toni/Rafa/Empresa/Tudo), nao criou um novo.
+
+Como funciona: pra 'empresa'/'tudo' precisa de dados de TODOS os meses de
+uma vez (nao so o periodo selecionado no topo), entao faz uma busca extra
+no useFinanceiro com range largo (do primeiro ao ultimo mes que existe em
+DESPESAS_PF_POR_MES), agrupando client-side por vencimento. Pra 'total'/
+'toni'/'rafa' usa direto DESPESAS_PF_POR_MES[mes][pessoa], sem query nova.
+
+`maeDe()`/`CATEGORIA_MAE` (controleFinanceiroPF.js) ganhou ~20 categorias
+que so existem no PJ (Salario, Contabilidade, Energia eletrica, Agua,
+Internet, Publicidade, Equipamentos, etc.) — antes caiam todas em "Outros"
+quando misturadas com PF. Validado contra a base real: nenhuma categoria
+cai em "Outros" sem querer (rodei a mesma logica do componente num script
+Node puxando os 4 meses reais antes de considerar pronto).
+
+Cada mes/pessoa usa `analisarDespesas().porCategoriaMae`, que ja exclui
+Transferencia/Cartao/Dizimo/Doacao (mesmo criterio do "gasto real efetivo"
+usado no Dashboard) — o comparativo fica consistente com o resto da pagina.
