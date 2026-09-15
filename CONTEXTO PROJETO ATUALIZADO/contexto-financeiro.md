@@ -786,6 +786,7 @@ Sobrou o array `DESPESAS_PF_TONI_AGOSTO_2026`, origem 'Bradesco PF':
 **Nao lançado, por decisao do Toni**: PIX de R$25,00 (13/08, Nubank) pra
 "CAKTO PAY LTDA" — nao soube identificar, pediu pra deixar de fora.
 
-**Ainda pendente**: a fatura Cresol Mastercard (R$1.210,50 lançado, sql/189)
-nao bate com o debito automatico no extrato Cresol (R$1.230,40, 11/08) —
-diferenca de R$19,90. Nao resolvido ainda.
+**RESOLVIDO** (sql/195): a diferenca de R$19,90 entre a fatura Cresol
+Mastercard (R$1.210,50) e o debito automatico (R$1.230,40, 11/08) e juros
+por atraso — Toni confirmou. Lançado como PJ/Tarifa banco, conta Cresol.
+Fatura (1088,75 PJ + 121,75 PF) + juros (19,90) = R$1.230,40, bate exato.
