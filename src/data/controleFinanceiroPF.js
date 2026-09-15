@@ -680,6 +680,17 @@ export const DESPESAS_PF_RAFA_JULHO_2026 = [
   { data: '16/07/2026', origem: 'Cresol',          descricao: 'Parcela Civic (emprestimo PF) 16/07', valor: 1526.48, categoria: 'Financiamento' },
 ]
 
+// Despesas PF agosto/2026 — RAFA
+// So temos a Parcela Civic por enquanto (extrato Cresol) — falta o extrato
+// dela (Banco do Brasil/Nubank/Caixa) pra completar o mes, igual maio/jun/jul.
+export const DESPESAS_PF_RAFA_AGOSTO_2026 = [
+  // Duas cobranças no extrato (17/08 R$84,19 + 18/08 R$1.477,89), Toni
+  // confirmou que sao a mesma parcela do Civic vindo em duas partes.
+  // Valor subiu de R$1.526,48 (mai/jun/jul) pra R$1.562,08 — reajuste.
+  { data: '17/08/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 17/08 (1/2)', valor: 84.19,   categoria: 'Financiamento' },
+  { data: '18/08/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 18/08 (2/2)', valor: 1477.89, categoria: 'Financiamento' },
+]
+
 // Despesas PF agosto/2026 — TONI
 // Fonte: REVISAO FECHAMENTO 2026/JULHO/FATURAS/Bradesco_31072026_142327.xls
 // Regra: fatura conta no mes do VENCIMENTO (11/08/2026), nao no mes da compra.
@@ -876,6 +887,7 @@ const RAFA_JUNHO  = marcarPessoa(DESPESAS_PF_RAFA_JUNHO_2026,   'rafa')
 const TONI_JULHO  = marcarPessoa(DESPESAS_PF_TONI_JULHO_2026,   'toni')
 const TONI_AGOSTO = marcarPessoa(DESPESAS_PF_TONI_AGOSTO_2026,  'toni')
 const RAFA_JULHO  = marcarPessoa(DESPESAS_PF_RAFA_JULHO_2026,   'rafa')
+const RAFA_AGOSTO = marcarPessoa(DESPESAS_PF_RAFA_AGOSTO_2026,  'rafa')
 
 // Indice: mes -> pessoa -> lista
 // 'total' = uniao Toni + Rafa (NAO descontamos transferencias Rafa->Toni aqui,
@@ -899,8 +911,8 @@ export const DESPESAS_PF_POR_MES = {
   },
   '2026-08': {
     toni:  TONI_AGOSTO,
-    rafa:  [],
-    total: [...TONI_AGOSTO],
+    rafa:  RAFA_AGOSTO,
+    total: [...TONI_AGOSTO, ...RAFA_AGOSTO],
   },
 }
 

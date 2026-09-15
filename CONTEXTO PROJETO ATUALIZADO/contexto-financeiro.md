@@ -634,9 +634,12 @@ Servicos Cresol, Zion Contabilidade, FleetNet, Luciano Aparecido Lima Cri
 **Nao lancado, fora do escopo deste SQL:**
 - PIX pro proprio Antonio Fabricio da Silva somando R$7.300,00 no mes —
   retirada/pro-labore, fluxo interno.
-- Emprestimo desconhecido, contrato 500100320260531371-4: R$84,19 (17/08) +
-  R$1.477,89 (18/08), mais Seguro Prestamista R$25,20 (18/08). Pendente —
-  Toni ainda nao confirmou o que e.
+- Emprestimo 500100320260531371-4 (R$84,19 + R$1.477,89 = R$1.562,08) —
+  RESOLVIDO: e a Parcela Civic, PF, mesma serie de maio/junho/julho
+  (valor subiu de R$1.526,48 pra R$1.562,08). Foi pra
+  DESPESAS_PF_RAFA_AGOSTO_2026 (array novo, so tinha TONI_AGOSTO antes).
+  Seguro Prestamista R$25,20 e coisa DIFERENTE — contratacao do cheque
+  especial da conta Cresol, PJ, sql/192.
 - Varios "PIX CREDITO DE: IDEMAQ" (repasse de outra conta/maquininha) —
   receita, fora do escopo.
 
