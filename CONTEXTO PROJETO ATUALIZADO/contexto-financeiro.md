@@ -616,8 +616,30 @@ COM Thiago dos Santos 20/07" do Elo Grafite — series diferentes, mesma pessoa)
 
 Com essa fatura, todos os cartoes de agosto/2026 estao fechados: Elo Grafite,
 Bradesco NEO, Bradesco PJ Elo Mais, Mercado Pago, Inter, Nubank PF, Nubank
-PJ, Cresol Mastercard. Falta so o extrato bancario da Cresol (conta corrente,
-PIX/debito/boleto) e a confirmacao do Felipeal acima.
+PJ, Cresol Mastercard. Falta so a confirmacao do Felipeal acima.
+
+## 25. Extrato Cresol (conta corrente) agosto/2026 (sql/190, APLICADO)
+
+12 itens, R$4.903,11, tudo PJ: Salario Alessandro+Guilherme (2 parcelas cada,
+01/08+05/08, R$1.650 cada — mesmo total dos meses anteriores), Pacote
+Servicos Cresol, Zion Contabilidade, FleetNet, Luciano Aparecido Lima Cri
+(pecas), Viacao Cruzeiro do Sul (frete) — todos series ja conhecidas.
+
+3 nomes sem precedente, confirmados pelo Toni:
+- GESIEL CARLOS VISU R$150 (01/08) — compra de maquina
+- CLEIDE MASSON R$20 (19/08) — troco
+- MARCIA DE FATIMA X R$361,64 (31/08) — conta de luz da empresa (Energisa),
+  paga pela mae do Toni e reembolsada. Categoria Energia eletrica, PJ (nao
+  PF — o titular e diferente mas a natureza do gasto e da empresa).
+
+**Nao lancado, fora do escopo deste SQL:**
+- PIX pro proprio Antonio Fabricio da Silva somando R$7.300,00 no mes —
+  retirada/pro-labore, fluxo interno.
+- Emprestimo desconhecido, contrato 500100320260531371-4: R$84,19 (17/08) +
+  R$1.477,89 (18/08), mais Seguro Prestamista R$25,20 (18/08). Pendente —
+  Toni ainda nao confirmou o que e.
+- Varios "PIX CREDITO DE: IDEMAQ" (repasse de outra conta/maquininha) —
+  receita, fora do escopo.
 
 ## 23. Novo sub-tipo de pagamento: Link Nubank (14/09/2026)
 
