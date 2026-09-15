@@ -727,3 +727,12 @@ linha de total, mesmo padrao ja usado no Painel (`chart.js`/
 Top 6 categorias por total viram series empilhadas; o resto agrupa em
 "Outras" pra nao lotar a legenda. Cores cicladas na paleta Deutan
 (P.blue/yellow/red/green/orange/blueLight, variante dark automatica).
+
+## 30. Grafico de rosca (fatias) no Comparativo (20/08/2026)
+
+Ao lado do grafico de linha (secao 29), grafico de rosca (Doughnut,
+react-chartjs-2) mostrando a participacao % de cada categoria no total do
+periodo inteiro (soma de todos os meses do comparativo, mesmo top 6 +
+"Outras" e mesmo ciclo de cores do grafico de linha). Layout em grid
+1.6fr/1fr no desktop, empilhado no mobile. Legenda a direita no desktop,
+embaixo no mobile (mais espaco horizontal apertado).

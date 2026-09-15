@@ -4,7 +4,7 @@
 // futuramente sera tabela propria (sistema isolado).
 
 import React, { useMemo, useState, useRef, useEffect } from 'react'
-import { Line } from 'react-chartjs-2'
+import { Line, Doughnut } from 'react-chartjs-2'
 import { Chart as ChartJS, registerables } from 'chart.js'
 import { useIsMobile, P } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
@@ -1240,6 +1240,63 @@ function GraficoComparativo({ T, dark, comparativo }) {
   )
 }
 
+// Fatia = participacao de cada categoria no total do periodo (soma de todos
+// os meses do comparativo) — mesmo top N + "Outras" do grafico de linha.
+function GraficoPizza({ T, dark, comparativo, isMobile }) {
+  const tickColor = T.textDim
+  const cor = (d, c) => dark ? d : c
+
+  const linhasChart = comparativo.linhas.slice(0, MAX_CATEGORIAS_GRAFICO)
+  const resto = comparativo.linhas.slice(MAX_CATEGORIAS_GRAFICO)
+  const linhaOutras = resto.length
+    ? { categoria: 'Outras', total: resto.reduce((s, l) => s + l.total, 0) }
+    : null
+  const series = linhaOutras ? [...linhasChart, linhaOutras] : linhasChart
+  const cores = series.map((_, i) => {
+    const [clara, escura] = CICLO_CORES[i % CICLO_CORES.length]
+    return cor(P[clara], P[escura])
+  })
+
+  const data = {
+    labels: series.map(l => l.categoria),
+    datasets: [{
+      data: series.map(l => l.total),
+      backgroundColor: cores,
+      borderColor: T.card,
+      borderWidth: 2,
+    }],
+  }
+
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: isMobile ? 'bottom' : 'right',
+        labels: { color: tickColor, font: { size: 10.5 }, boxWidth: 10, padding: 10 },
+      },
+      tooltip: {
+        backgroundColor: T.card, titleColor: T.textPrimary, bodyColor: T.textSecondary,
+        borderColor: T.border, borderWidth: 1, padding: 9,
+        callbacks: {
+          label: ctx => {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0)
+            const pct = total > 0 ? Math.round((ctx.parsed / total) * 100) : 0
+            return `${ctx.label}: ${fmtBRL(ctx.parsed)} (${pct}%)`
+          },
+        },
+      },
+    },
+  }
+
+  return (
+    <Card T={T} dark={dark}>
+      <div style={{ position: 'relative', width: '100%', height: 280 }}>
+        <Doughnut data={data} options={options} />
+      </div>
+    </Card>
+  )
+}
+
 function SecaoComparativo({ T, dark, comparativo, pessoaLabel, isMobile }) {
   const azul = corEtapa('blue', dark)
 
@@ -1263,7 +1320,14 @@ function SecaoComparativo({ T, dark, comparativo, pessoaLabel, isMobile }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <GraficoComparativo T={T} dark={dark} comparativo={comparativo} />
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '1.6fr 1fr',
+        gap: 14,
+      }}>
+        <GraficoComparativo T={T} dark={dark} comparativo={comparativo} />
+        <GraficoPizza T={T} dark={dark} comparativo={comparativo} isMobile={isMobile} />
+      </div>
 
       <Card T={T} dark={dark} padding={0} style={{ overflow: 'hidden' }}>
         <div style={{
