@@ -718,3 +718,12 @@ Node puxando os 4 meses reais antes de considerar pronto).
 Cada mes/pessoa usa `analisarDespesas().porCategoriaMae`, que ja exclui
 Transferencia/Cartao/Dizimo/Doacao (mesmo criterio do "gasto real efetivo"
 usado no Dashboard) — o comparativo fica consistente com o resto da pagina.
+
+## 29. Grafico na aba Comparativo (20/08/2026)
+
+Acima da tabela de calor (secao 28), grafico de barras empilhadas +
+linha de total, mesmo padrao ja usado no Painel (`chart.js`/
+`react-chartjs-2`, ja instalados — nao precisou de dependencia nova).
+Top 6 categorias por total viram series empilhadas; o resto agrupa em
+"Outras" pra nao lotar a legenda. Cores cicladas na paleta Deutan
+(P.blue/yellow/red/green/orange/blueLight, variante dark automatica).

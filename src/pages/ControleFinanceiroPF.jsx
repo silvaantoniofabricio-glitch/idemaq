@@ -4,6 +4,8 @@
 // futuramente sera tabela propria (sistema isolado).
 
 import React, { useMemo, useState, useRef, useEffect } from 'react'
+import { Bar } from 'react-chartjs-2'
+import { Chart as ChartJS, registerables } from 'chart.js'
 import { useIsMobile, P } from '../theme'
 import { corEtapa, bgEtapa, corHero } from '../utils/colors'
 import { fmtBRL } from '../utils/fmt'
@@ -18,6 +20,8 @@ import {
 import { useFinanceiro } from '../hooks/useFinanceiro'
 
 const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
+ChartJS.register(...registerables)
 
 // Origens que sao cartoes de credito — itens listados individualmente, nao sao Pix/Dinheiro
 const ORIGENS_CARTAO = new Set(['Elo Grafite', 'Inter', 'MP Cartao', 'Bradesco PJ ELO', 'Visa Bradesco', 'Cresol Mastercard'])
@@ -1166,6 +1170,77 @@ function mesLabelCurto(mesKey) {
   return `${MESES_NOME[Number(mes) - 1]}/${ano.slice(2)}`
 }
 
+// Ciclo de cores da paleta Deutan pras series do grafico — cada categoria
+// pega a proxima cor da lista, clara no light / escura no dark.
+const CICLO_CORES = [
+  ['blue', 'blueDark'], ['yellow', 'yellowDark'], ['red', 'redDark'],
+  ['green', 'greenDark'], ['orange', 'orangeDark'], ['blueLight', 'blueLightDark'],
+]
+const MAX_CATEGORIAS_GRAFICO = 6
+
+function GraficoComparativo({ T, dark, comparativo }) {
+  const gridColor = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'
+  const tickColor = T.textDim
+  const cor = (d, c) => dark ? d : c
+
+  // Top N categorias por total; o resto agrupa em "Outras" pra nao lotar a legenda.
+  const linhasChart = comparativo.linhas.slice(0, MAX_CATEGORIAS_GRAFICO)
+  const resto = comparativo.linhas.slice(MAX_CATEGORIAS_GRAFICO)
+  const linhaOutras = resto.length
+    ? {
+        categoria: 'Outras',
+        valores: comparativo.meses.map((_, i) => resto.reduce((s, l) => s + l.valores[i], 0)),
+      }
+    : null
+  const series = linhaOutras ? [...linhasChart, linhaOutras] : linhasChart
+
+  const data = {
+    labels: comparativo.meses.map(mesLabelCurto),
+    datasets: [
+      ...series.map((linha, i) => {
+        const [clara, escura] = CICLO_CORES[i % CICLO_CORES.length]
+        return {
+          label: linha.categoria,
+          data: linha.valores,
+          backgroundColor: cor(P[clara], P[escura]),
+          borderRadius: 3,
+          stack: 's',
+        }
+      }),
+      {
+        type: 'line', label: 'Total', data: comparativo.totalPorMes,
+        borderColor: cor(P.blueLight, P.blueLightDark), borderWidth: 1.5,
+        pointBackgroundColor: cor(P.blueLight, P.blueLightDark), pointRadius: 3,
+        tension: 0.3, fill: false, order: 0,
+      },
+    ],
+  }
+
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { color: tickColor, font: { size: 10.5 }, boxWidth: 10, padding: 10 } },
+      tooltip: {
+        backgroundColor: T.card, titleColor: T.textPrimary, bodyColor: T.textSecondary,
+        borderColor: T.border, borderWidth: 1, padding: 9,
+        callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y || 0)}` },
+      },
+    },
+    scales: {
+      x: { stacked: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } }, border: { color: 'transparent' } },
+      y: { stacked: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => 'R$' + Math.round(v / 1000) + 'k' }, border: { color: 'transparent' } },
+    },
+  }
+
+  return (
+    <Card T={T} dark={dark}>
+      <div style={{ position: 'relative', width: '100%', height: 260 }}>
+        <Bar data={data} options={options} />
+      </div>
+    </Card>
+  )
+}
+
 function SecaoComparativo({ T, dark, comparativo, pessoaLabel, isMobile }) {
   const azul = corEtapa('blue', dark)
 
@@ -1188,90 +1263,94 @@ function SecaoComparativo({ T, dark, comparativo, pessoaLabel, isMobile }) {
   }
 
   return (
-    <Card T={T} dark={dark} padding={0} style={{ overflow: 'hidden' }}>
-      <div style={{
-        padding: '12px 16px', borderBottom: `1px solid ${T.border}`,
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <i className="ti ti-chart-histogram" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
-        <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
-          Comparativo mensal por categoria
-        </span>
-        <Badge variant="azul" dark={dark} sm>{pessoaLabel}</Badge>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <GraficoComparativo T={T} dark={dark} comparativo={comparativo} />
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 560 : undefined }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${T.border}` }}>
-              <th style={{
-                padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-                color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.03em',
-                position: 'sticky', left: 0, background: T.card, zIndex: 1,
-              }}>
-                Categoria
-              </th>
-              {comparativo.meses.map(m => (
-                <th key={m} style={{
-                  ...celStyle, fontSize: 11, fontWeight: 700, color: T.textMuted,
+      <Card T={T} dark={dark} padding={0} style={{ overflow: 'hidden' }}>
+        <div style={{
+          padding: '12px 16px', borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <i className="ti ti-chart-histogram" style={{ fontSize: 15, color: azul }} aria-hidden="true" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>
+            Comparativo mensal por categoria
+          </span>
+          <Badge variant="azul" dark={dark} sm>{pessoaLabel}</Badge>
+        </div>
+  
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 560 : undefined }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${T.border}` }}>
+                <th style={{
+                  padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                  color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.03em',
+                  position: 'sticky', left: 0, background: T.card, zIndex: 1,
+                }}>
+                  Categoria
+                </th>
+                {comparativo.meses.map(m => (
+                  <th key={m} style={{
+                    ...celStyle, fontSize: 11, fontWeight: 700, color: T.textMuted,
+                    textTransform: 'uppercase', letterSpacing: '.03em',
+                  }}>
+                    {mesLabelCurto(m)}
+                  </th>
+                ))}
+                <th style={{
+                  ...celStyle, fontSize: 11, fontWeight: 700, color: T.textPrimary,
                   textTransform: 'uppercase', letterSpacing: '.03em',
                 }}>
-                  {mesLabelCurto(m)}
+                  Total
                 </th>
-              ))}
-              <th style={{
-                ...celStyle, fontSize: 11, fontWeight: 700, color: T.textPrimary,
-                textTransform: 'uppercase', letterSpacing: '.03em',
-              }}>
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {comparativo.linhas.map((linha, i) => (
-              <tr key={linha.categoria} style={{ borderBottom: `1px solid ${T.border}` }}>
-                <td style={{
-                  padding: '8px 10px', fontSize: 12.5, color: T.textPrimary, whiteSpace: 'nowrap',
-                  position: 'sticky', left: 0, background: i % 2 ? (dark ? '#1a1a1e' : '#fafafa') : T.card, zIndex: 1,
-                }}>
-                  {linha.categoria}
-                </td>
-                {linha.valores.map((v, j) => (
-                  <td key={j} style={{
-                    ...celStyle,
-                    color: v ? T.textPrimary : T.textMuted,
-                    background: v ? hexParaRgba(P.blue, 0.06 + 0.5 * (v / comparativo.maxCelula)) : 'transparent',
+              </tr>
+            </thead>
+            <tbody>
+              {comparativo.linhas.map((linha, i) => (
+                <tr key={linha.categoria} style={{ borderBottom: `1px solid ${T.border}` }}>
+                  <td style={{
+                    padding: '8px 10px', fontSize: 12.5, color: T.textPrimary, whiteSpace: 'nowrap',
+                    position: 'sticky', left: 0, background: i % 2 ? (dark ? '#1a1a1e' : '#fafafa') : T.card, zIndex: 1,
                   }}>
-                    {v ? fmtBRL(v) : '—'}
+                    {linha.categoria}
+                  </td>
+                  {linha.valores.map((v, j) => (
+                    <td key={j} style={{
+                      ...celStyle,
+                      color: v ? T.textPrimary : T.textMuted,
+                      background: v ? hexParaRgba(P.blue, 0.06 + 0.5 * (v / comparativo.maxCelula)) : 'transparent',
+                    }}>
+                      {v ? fmtBRL(v) : '—'}
+                    </td>
+                  ))}
+                  <td style={{ ...celStyle, fontWeight: 700, color: T.textPrimary }}>
+                    {fmtBRL(linha.total)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ borderTop: `2px solid ${T.border}` }}>
+                <td style={{
+                  padding: '10px', fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
+                  position: 'sticky', left: 0, background: T.card,
+                }}>
+                  Total
+                </td>
+                {comparativo.totalPorMes.map((v, i) => (
+                  <td key={i} style={{ ...celStyle, fontWeight: 700, color: T.textPrimary }}>
+                    {fmtBRL(v)}
                   </td>
                 ))}
-                <td style={{ ...celStyle, fontWeight: 700, color: T.textPrimary }}>
-                  {fmtBRL(linha.total)}
+                <td style={{ ...celStyle, fontWeight: 700, color: azul, fontSize: 13.5 }}>
+                  {fmtBRL(comparativo.totalGeral)}
                 </td>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ borderTop: `2px solid ${T.border}` }}>
-              <td style={{
-                padding: '10px', fontSize: 12.5, fontWeight: 700, color: T.textPrimary,
-                position: 'sticky', left: 0, background: T.card,
-              }}>
-                Total
-              </td>
-              {comparativo.totalPorMes.map((v, i) => (
-                <td key={i} style={{ ...celStyle, fontWeight: 700, color: T.textPrimary }}>
-                  {fmtBRL(v)}
-                </td>
-              ))}
-              <td style={{ ...celStyle, fontWeight: 700, color: azul, fontSize: 13.5 }}>
-                {fmtBRL(comparativo.totalGeral)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </Card>
+            </tfoot>
+          </table>
+        </div>
+      </Card>
+    </div>
   )
 }
 
