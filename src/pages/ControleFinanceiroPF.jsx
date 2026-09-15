@@ -488,7 +488,7 @@ export default function ControleFinanceiroPF({ T, dark }) {
       {/* ══ CONTENT ══════════════════════════════════════════════════════════ */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         <div style={{ padding: isMobile ? '14px 14px 28px' : '16px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {verSecao === 'dashboard' && <Dashboard T={T} dark={dark} analise={analise} isMobile={isMobile} />}
+          {verSecao === 'dashboard' && <Dashboard T={T} dark={dark} analise={analise} isMobile={isMobile} comparativo={comparativo} mesKey={mesKey} />}
           {verSecao === 'tabela'    && <PlanilhaCompleta T={T} dark={dark} despesas={despesas} isMobile={isMobile} />}
           {verSecao === 'conselhos' && <ConselhosFinanceiros T={T} dark={dark} analise={analise} />}
           {verSecao === 'comparativo' && <SecaoComparativo T={T} dark={dark} comparativo={comparativo} pessoaLabel={pessoaLabel} isMobile={isMobile} />}
@@ -778,11 +778,28 @@ function semanaDoMes(ddmmyyyy) {
 // =====================================================================
 // Dashboard
 // =====================================================================
-function Dashboard({ T, dark, analise, isMobile }) {
+// Variacao do total do mes selecionado vs o mes imediatamente anterior,
+// usando o mesmo `comparativo` (todos os meses) ja calculado pro Comparativo
+// — evita nova query so pra isso.
+function deltaMes(comparativo, mesKey) {
+  if (!comparativo || !comparativo.meses.length) return null
+  const i = comparativo.meses.indexOf(mesKey)
+  if (i < 1) return null // primeiro mes disponivel, ou mesKey fora do range: sem "mes anterior" pra comparar
+  const atual = comparativo.totalPorMes[i]
+  const anterior = comparativo.totalPorMes[i - 1]
+  if (!anterior) return null
+  const pct = Math.round(((atual - anterior) / anterior) * 100)
+  return { pct, subiu: atual >= anterior }
+}
+
+function Dashboard({ T, dark, analise, isMobile, comparativo, mesKey }) {
   const azul = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
+  const verde = corEtapa('green', dark)
+
+  const delta = useMemo(() => deltaMes(comparativo, mesKey), [comparativo, mesKey])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -792,7 +809,7 @@ function Dashboard({ T, dark, analise, isMobile }) {
         gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
       }}>
         <KPI T={T} dark={dark} label="Gasto real efetivo" valor={fmtBRL(analise.totalReal)} cor={amarelo}
-          icon="ti-shopping-cart"
+          icon="ti-shopping-cart" delta={delta} corDeltaSobe={vermelho} corDeltaDesce={verde}
           detalhe="Já desconta transferências internas e boletos de fatura" />
         <KPI T={T} dark={dark} label="Pagamentos Pix/Dinheiro" valor={fmtBRL(analise.totalPixDinheiro)} cor={azulClaro}
           icon="ti-cash" detalhe="Exceto boletos de fatura e transferências" />
@@ -804,28 +821,34 @@ function Dashboard({ T, dark, analise, isMobile }) {
           icon="ti-list-numbers" detalhe={`em ${analise.porOrigem.length} origens`} />
       </div>
 
-      {/* Por categoria-mãe (macro) */}
-      <Card T={T} dark={dark}>
-        <SecHeader T={T} icon="ti-chart-pie" cor={amarelo}>
-          Gastos por grande categoria
-        </SecHeader>
-        <Barras T={T} dark={dark} itens={analise.porCategoriaMae} total={analise.totalReal} cor={amarelo} />
-      </Card>
+      {/* Grande categoria (rosca) + detalhado por categoria (lista), lado a
+          lado — as duas mostram a mesma informacao em granularidades
+          diferentes, entao ficam juntas em vez de duas secoes empilhadas. */}
+      <div style={{
+        display: 'grid', gap: 14,
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 1.3fr',
+      }}>
+        <Card T={T} dark={dark}>
+          <SecHeader T={T} icon="ti-chart-pie" cor={amarelo}>
+            Gastos por grande categoria
+          </SecHeader>
+          <RoscaCategoriaMae T={T} dark={dark} itens={analise.porCategoriaMae} isMobile={isMobile} />
+        </Card>
 
-      {/* Por categoria específica */}
-      <Card T={T} dark={dark}>
-        <SecHeader T={T} icon="ti-tags" cor={azul}>
-          Detalhado por categoria
-        </SecHeader>
-        <Barras T={T} dark={dark} itens={analise.porCategoria} total={analise.totalReal} cor={azul} />
-      </Card>
+        <Card T={T} dark={dark}>
+          <SecHeader T={T} icon="ti-tags" cor={azul}>
+            Detalhado por categoria
+          </SecHeader>
+          <Barras T={T} dark={dark} itens={analise.porCategoria} total={analise.totalReal} cor={azul} compacto />
+        </Card>
+      </div>
 
       {/* Por origem (cartão / conta) */}
       <Card T={T} dark={dark}>
         <SecHeader T={T} icon="ti-credit-card" cor={azulClaro}>
           Por cartão / conta de origem
         </SecHeader>
-        <Barras T={T} dark={dark} itens={analise.porOrigem} total={analise.totalReal} cor={azulClaro} />
+        <Barras T={T} dark={dark} itens={analise.porOrigem} total={analise.totalReal} cor={azulClaro} compacto />
       </Card>
 
       {/* Top 15 maiores */}
@@ -835,6 +858,51 @@ function Dashboard({ T, dark, analise, isMobile }) {
         </SecHeader>
         <ListaMaiores T={T} dark={dark} itens={analise.maiores} isMobile={isMobile} />
       </Card>
+    </div>
+  )
+}
+
+function RoscaCategoriaMae({ T, dark, itens, isMobile }) {
+  if (!itens || itens.length === 0) {
+    return <EmptyState T={T} compact icon="ti-chart-pie" title="Sem dados" description="" />
+  }
+  const cor = (d, c) => dark ? d : c
+  const linhasChart = itens.slice(0, MAX_CATEGORIAS_GRAFICO)
+  const resto = itens.slice(MAX_CATEGORIAS_GRAFICO)
+  const linhaOutras = resto.length ? { label: 'Outras', valor: resto.reduce((s, l) => s + l.valor, 0) } : null
+  const series = linhaOutras ? [...linhasChart, linhaOutras] : linhasChart
+  const cores = series.map((_, i) => {
+    const [clara, escura] = CICLO_CORES[i % CICLO_CORES.length]
+    return cor(P[clara], P[escura])
+  })
+  const total = series.reduce((s, l) => s + l.valor, 0)
+
+  const data = {
+    labels: series.map(l => l.label),
+    datasets: [{ data: series.map(l => l.valor), backgroundColor: cores, borderColor: T.card, borderWidth: 2 }],
+  }
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: isMobile ? 'bottom' : 'right',
+        labels: { color: T.textDim, font: { size: 10.5 }, boxWidth: 10, padding: 8 },
+      },
+      tooltip: {
+        backgroundColor: T.card, titleColor: T.textPrimary, bodyColor: T.textSecondary,
+        borderColor: T.border, borderWidth: 1, padding: 9,
+        callbacks: {
+          label: ctx => {
+            const pct = total > 0 ? Math.round((ctx.parsed / total) * 100) : 0
+            return `${ctx.label}: ${fmtBRL(ctx.parsed)} (${pct}%)`
+          },
+        },
+      },
+    },
+  }
+  return (
+    <div style={{ position: 'relative', width: '100%', height: 220 }}>
+      <Doughnut data={data} options={options} />
     </div>
   )
 }
@@ -1519,7 +1587,8 @@ function gerarConselhos(analise) {
 // =====================================================================
 // Auxiliares de UI
 // =====================================================================
-function KPI({ T, dark, label, valor, detalhe, cor, icon }) {
+function KPI({ T, dark, label, valor, detalhe, cor, icon, delta, corDeltaSobe, corDeltaDesce }) {
+  const corDelta = delta ? (delta.subiu ? corDeltaSobe : corDeltaDesce) : null
   return (
     <Card T={T} dark={dark}>
       <div style={{
@@ -1530,34 +1599,45 @@ function KPI({ T, dark, label, valor, detalhe, cor, icon }) {
         {icon && <i className={`ti ${icon}`} style={{ fontSize: 14, color: cor }} aria-hidden="true" />}
         {label}
       </div>
-      <div style={{
-        fontSize: 22, fontWeight: 800, color: cor,
-        fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
-      }}>
-        {valor}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{
+          fontSize: 22, fontWeight: 800, color: cor,
+          fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em',
+        }}>
+          {valor}
+        </span>
+        {delta && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 2,
+            fontSize: 11.5, fontWeight: 700, color: corDelta,
+          }}>
+            <i className={`ti ti-arrow-${delta.subiu ? 'up' : 'down'}-right`} style={{ fontSize: 12 }} aria-hidden="true" />
+            {Math.abs(delta.pct)}%
+          </span>
+        )}
       </div>
       {detalhe && (
         <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>
-          {detalhe}
+          {detalhe}{delta && <span style={{ opacity: .75 }}> · vs. mês anterior</span>}
         </div>
       )}
     </Card>
   )
 }
 
-function Barras({ T, dark, itens, total, cor }) {
+function Barras({ T, dark, itens, total, cor, compacto = false }) {
   if (!itens || itens.length === 0) {
     return <EmptyState T={T} compact icon="ti-chart-bar" title="Sem dados" description="" />
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compacto ? 7 : 10 }}>
       {itens.map(i => {
         const pct = total > 0 ? Math.round((i.valor / total) * 100) : 0
         return (
           <div key={i.label}>
             <div style={{
               display: 'flex', justifyContent: 'space-between',
-              fontSize: 12.5, marginBottom: 4,
+              fontSize: compacto ? 11.5 : 12.5, marginBottom: compacto ? 3 : 4,
             }}>
               <span style={{ color: T.textSecondary }}>{i.label}</span>
               <span style={{
@@ -1571,7 +1651,7 @@ function Barras({ T, dark, itens, total, cor }) {
               </span>
             </div>
             <div style={{
-              width: '100%', height: 8, borderRadius: 5,
+              width: '100%', height: compacto ? 6 : 8, borderRadius: 5,
               background: T.cardAlt, overflow: 'hidden',
             }}>
               <div style={{

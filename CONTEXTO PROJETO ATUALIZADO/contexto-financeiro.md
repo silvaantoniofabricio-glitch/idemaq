@@ -790,3 +790,24 @@ Sobrou o array `DESPESAS_PF_TONI_AGOSTO_2026`, origem 'Bradesco PF':
 Mastercard (R$1.210,50) e o debito automatico (R$1.230,40, 11/08) e juros
 por atraso — Toni confirmou. Lançado como PJ/Tarifa banco, conta Cresol.
 Fatura (1088,75 PJ + 121,75 PF) + juros (19,90) = R$1.230,40, bate exato.
+
+## 34. Dashboard da Financeiro PF redesenhado (20/08/2026)
+
+Toni: "tudo mt esticado, com vazios" — as 3 secoes (grande categoria,
+detalhado por categoria, cartao/conta) usavam o MESMO widget de barra
+horizontal em sequencia, e as 2 primeiras mostravam quase a mesma coisa
+(Financiamentos liderando nas duas).
+
+Mudancas:
+- "Gastos por grande categoria" virou grafico de rosca (reusa CICLO_CORES/
+  MAX_CATEGORIAS_GRAFICO ja criados pro Comparativo), lado a lado com
+  "Detalhado por categoria" (que continua lista, mas em modo `compacto`)
+  — grid 1fr/1.3fr no desktop, empilhado no mobile.
+- `Barras` ganhou prop `compacto` (gap/fonte/altura menores) — usada em
+  "Detalhado por categoria" e "Por cartao/conta de origem".
+- KPI "Gasto real efetivo" ganhou badge de variacao vs mes anterior
+  (▲/▼ X%, verde se caiu / vermelho se subiu) — calculado a partir do
+  `comparativo` que ja e montado pra aba Comparativo (sem query nova),
+  via helper `deltaMes(comparativo, mesKey)`. Se o mes selecionado for o
+  primeiro disponivel (sem anterior pra comparar) ou fora do range, a
+  funcao retorna null e o badge simplesmente nao aparece.
