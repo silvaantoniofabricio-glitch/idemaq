@@ -433,6 +433,11 @@ export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Gasolina 11/06',                     valor: 100.00,  categoria: 'Combustivel' },
   { data: '15/06/2026', origem: 'Bradesco CC', descricao: 'Livraria Progresso 15/06',           valor: 43.00,   categoria: 'Educacao' },
   { data: '16/06/2026', origem: 'Cresol',     descricao: 'Parcela Civic (emprestimo PF) 16/06', valor: 1526.48, categoria: 'Financiamento' },
+  // Estava no PJ como 'Emprestimo PJ jun/2026 (pago conta Rafa)' — Toni
+  // confirmou em 22/09 que e o mesmo Pagamento Carro BV de jul/ago, so com
+  // nome diferente nos meses mais antigos. Passou pra PF (decisao dele,
+  // reverte a classificacao anterior de "carro e da empresa").
+  { data: '30/06/2026', origem: 'Cresol',     descricao: 'Pagamento Carro BV 30/06',             valor: 1198.00, categoria: 'Financiamento' },
   // Aba 2 — despesas manuais (poupanca/dinheiro, sem data exata — agrupadas em 30/06)
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Almoco pesque e pague',            valor: 43.25,   categoria: 'Alimentacao' },
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Bobs',                             valor: 10.00,   categoria: 'Alimentacao' },
@@ -504,6 +509,11 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   // Plano de saude (mensalidade + co-participacao)
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Plano de saude',                              valor: 250.00,   categoria: 'Saude/Plano' },
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Co-participacao plano de saude',              valor: 140.00,   categoria: 'Saude/Plano' },
+
+  // Estava no PJ como 'Emprestimo PJ mai/2026 (pago conta Rafa)' — mesma
+  // serie Pagamento Carro BV, so com nome diferente. Ver comentario em
+  // DESPESAS_PF_RAFA_JUNHO_2026.
+  { data: '20/05/2026', origem: 'Cresol',     descricao: 'Pagamento Carro BV 20/05',             valor: 1198.00, categoria: 'Financiamento' },
 ]
 
 // Despesas PF julho/2026 — TONI
@@ -680,8 +690,6 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
 
 // Despesas PF julho/2026 — RAFA (esposa)
 // Fonte: planilha manual (Banco do Brasil, Nubank, Caixa) enviada por Toni.
-// "Pagamento Carro BV" (05/07, R$1.182,12) NAO entra aqui — carro e da empresa,
-// entra como emprestimo PJ (ver sql correspondente).
 export const DESPESAS_PF_RAFA_JULHO_2026 = [
   { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Telefone Vivo 05/07',       valor: 39.94,   categoria: 'Diverso' },
   { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Pix para Pra. Sarah 05/07', valor: 48.00,   categoria: 'PIX terceiros' },
@@ -701,6 +709,9 @@ export const DESPESAS_PF_RAFA_JULHO_2026 = [
   { data: '31/07/2026', origem: 'Caixa',           descricao: 'Espetinho 31/07',            valor: 24.00,   categoria: 'Alimentacao' },
   // --- Financiamento (Civic) — extrato Cresol ---
   { data: '16/07/2026', origem: 'Cresol',          descricao: 'Parcela Civic (emprestimo PF) 16/07', valor: 1526.48, categoria: 'Financiamento' },
+  // Estava no PJ — Toni confirmou em 22/09 que e PF (carro pessoal, nao da
+  // empresa). Ver comentario em DESPESAS_PF_RAFA_JUNHO_2026.
+  { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Carro BV 05/07',       valor: 1182.12, categoria: 'Financiamento' },
 ]
 
 // Despesas PF agosto/2026 — RAFA
@@ -722,9 +733,10 @@ export const DESPESAS_PF_RAFA_AGOSTO_2026 = [
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)',                       valor: 168.47,   categoria: 'Diverso' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)',                                               valor: 85.78,    categoria: 'Educacao' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'CeA Pay',                                                     valor: 123.20,   categoria: 'Vestuario' },
-  // 'Banco Votorantim (Carro)' 07/08 R$1.183,10 SAIU daqui — Toni confirmou
-  // que e o mesmo Pagamento Carro BV ja visto em julho (RAFA-JUL): o carro
-  // e da empresa, entra como emprestimo PJ. Ver sql/193.
+  // Voltou pra PF em 22/09 — Toni reverteu a decisao anterior (sql/193):
+  // o carro nao e da empresa, e pessoal mesmo. Mesma serie Pagamento Carro
+  // BV de maio a agosto, ver comentario em DESPESAS_PF_RAFA_JUNHO_2026.
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pagamento Carro BV 07/08',                                     valor: 1183.10,  categoria: 'Financiamento' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Casa)',                         valor: 790.00,   categoria: 'Financiamento' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)',                                           valor: 39.91,    categoria: 'Diverso' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Sarah Regina (Semi Joia)',                                    valor: 48.00,    categoria: 'Compras pessoais' },

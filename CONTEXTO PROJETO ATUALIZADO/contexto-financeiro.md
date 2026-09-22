@@ -811,3 +811,36 @@ Mudancas:
   via helper `deltaMes(comparativo, mesKey)`. Se o mes selecionado for o
   primeiro disponivel (sem anterior pra comparar) ou fora do range, a
   funcao retorna null e o badge simplesmente nao aparece.
+
+## 35. Mudanca de classificacao: Pagamento Carro BV vira PF (22/09/2026)
+
+Toni pediu pra mudar 2 dos 3 emprestimos PJ pra PF. Levantamento mostrou 3
+series categoria 'Emprestimo' em PJ:
+  A — Emprestimo Cresol PJ (contrato 372388), R$1.421,71/mes — CONTINUA PJ
+  B — "Emprestimo PJ (pago conta Rafa)", R$1.198,00/mes, mai+jun
+  C — "Pagamento Carro BV" (Banco Votorantim), ~R$1.182-1.183/mes, jul+ago
+
+Toni confirmou: B e C sao a MESMA coisa (nome mudou no meio do caminho),
+e essa serie unificada (nao a A) e a que ele quer em PF.
+
+**Isso reverte uma decisao anterior** — antes tinha sido confirmado 2x
+(sql/157, sql/193) que "o carro e da empresa, entra como emprestimo PJ".
+Agora e o oposto: e PF, carro pessoal. Aplicado retroativo aos 4 meses
+(nao so daqui pra frente).
+
+sql/196: soft-delete das 4 linhas no PJ (RAFA-MAI, RAFA-JUN "Emprestimo
+PJ pago conta Rafa", RAFA-JUL/AGO "Pagamento Carro BV"). Entram nos 4
+arrays DESPESAS_PF_RAFA_<MES>_2026, categoria Financiamento, nome
+unificado "Pagamento Carro BV DD/MM":
+  maio  20/05  R$1.198,00 (origem Cresol — unica pista de banco que tinha)
+  junho 30/06  R$1.198,00 (origem Cresol)
+  julho 05/07  R$1.182,12 (origem Banco do Brasil)
+  agosto 07/08 R$1.183,10 (origem Banco do Brasil)
+
+A serie A (Cresol 372388) NAO foi tocada — continua PJ, confirmado intacto
+nos 4 meses apos a mudanca.
+
+**Atencao pra quem for gerar o relatorio do contador de novo**: os meses
+maio-agosto ja foram entregues com esses 2 lancamentos como despesa PJ —
+agora que sao PF, os arquivos ja entregues ficam desatualizados (a base
+fiscal/receita nao muda, so a despesa cai ~R$1.180-1.420/mes).
