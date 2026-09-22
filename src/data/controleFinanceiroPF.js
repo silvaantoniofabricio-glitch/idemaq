@@ -437,7 +437,7 @@ export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   // confirmou em 22/09 que e o mesmo Pagamento Carro BV de jul/ago, so com
   // nome diferente nos meses mais antigos. Passou pra PF (decisao dele,
   // reverte a classificacao anterior de "carro e da empresa").
-  { data: '30/06/2026', origem: 'Cresol',     descricao: 'Pagamento Carro BV 30/06',             valor: 1198.00, categoria: 'Financiamento' },
+  { data: '30/06/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Carro BV 30/06',         valor: 1198.00, categoria: 'Financiamento' },
   // Aba 2 — despesas manuais (poupanca/dinheiro, sem data exata — agrupadas em 30/06)
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Almoco pesque e pague',            valor: 43.25,   categoria: 'Alimentacao' },
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Bobs',                             valor: 10.00,   categoria: 'Alimentacao' },
@@ -513,7 +513,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   // Estava no PJ como 'Emprestimo PJ mai/2026 (pago conta Rafa)' — mesma
   // serie Pagamento Carro BV, so com nome diferente. Ver comentario em
   // DESPESAS_PF_RAFA_JUNHO_2026.
-  { data: '20/05/2026', origem: 'Cresol',     descricao: 'Pagamento Carro BV 20/05',             valor: 1198.00, categoria: 'Financiamento' },
+  { data: '20/05/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Carro BV 20/05',         valor: 1198.00, categoria: 'Financiamento' },
 ]
 
 // Despesas PF julho/2026 — TONI

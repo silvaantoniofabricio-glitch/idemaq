@@ -832,8 +832,8 @@ sql/196: soft-delete das 4 linhas no PJ (RAFA-MAI, RAFA-JUN "Emprestimo
 PJ pago conta Rafa", RAFA-JUL/AGO "Pagamento Carro BV"). Entram nos 4
 arrays DESPESAS_PF_RAFA_<MES>_2026, categoria Financiamento, nome
 unificado "Pagamento Carro BV DD/MM":
-  maio  20/05  R$1.198,00 (origem Cresol — unica pista de banco que tinha)
-  junho 30/06  R$1.198,00 (origem Cresol)
+  maio  20/05  R$1.198,00 (origem Banco do Brasil)
+  junho 30/06  R$1.198,00 (origem Banco do Brasil)
   julho 05/07  R$1.182,12 (origem Banco do Brasil)
   agosto 07/08 R$1.183,10 (origem Banco do Brasil)
 
