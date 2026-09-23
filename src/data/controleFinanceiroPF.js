@@ -221,6 +221,8 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Boi Na Brasa A Arte de',                               valor: 78.60,   categoria: 'Cultura/Lazer' },
   // Estava como PJ (sql/67, rotulado "linha PJ") — Toni confirmou que e PF. Ver sql/174.
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Plano NuCel 19/04',                                    valor: 10.00,   categoria: 'Diverso' },
+  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
+  { data: '20/05/2026', origem: 'Cresol',           descricao: 'Parcela Emprestimo Cresol 20/05',                      valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Despesas PF junho/2026 — TONI
@@ -415,6 +417,8 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   // Igreja
   { data: '07/06/2026', origem: 'Cresol', descricao: 'Dizimo jun/2026',   valor: 200.00, categoria: 'Dizimo' },
   { data: '07/06/2026', origem: 'Cresol', descricao: 'Oferta jun/2026',   valor: 120.00, categoria: 'Doacao/Igreja' },
+  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
+  { data: '22/06/2026', origem: 'Cresol', descricao: 'Parcela Emprestimo Cresol 22/06', valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Despesas PF junho/2026 — RAFA (esposa)
@@ -686,6 +690,8 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (a)',  valor: 21.90, categoria: 'Alimentacao' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (b)',  valor: 16.90, categoria: 'Alimentacao' },
   { data: '12/07/2026', origem: 'Nubank PF',      descricao: 'Dizimo jul/2026 (PIX)',        valor: 320.00, categoria: 'Dizimo' },
+  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
+  { data: '20/07/2026', origem: 'Cresol',         descricao: 'Parcela Emprestimo Cresol 20/07', valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Despesas PF julho/2026 — RAFA (esposa)
@@ -976,6 +982,8 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '17/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 17/08',                       valor: 1600.00, categoria: 'Transferencia' },
   { data: '25/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 25/08',                       valor: 1000.00, categoria: 'Transferencia' },
   { data: '31/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 31/08',                       valor: 200.00,  categoria: 'Transferencia' },
+  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
+  { data: '20/08/2026', origem: 'Cresol',      descricao: 'Parcela Emprestimo Cresol 20/08',         valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)

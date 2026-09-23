@@ -844,3 +844,22 @@ nos 4 meses apos a mudanca.
 maio-agosto ja foram entregues com esses 2 lancamentos como despesa PJ —
 agora que sao PF, os arquivos ja entregues ficam desatualizados (a base
 fiscal/receita nao muda, so a despesa cai ~R$1.180-1.420/mes).
+
+## 36. Emprestimo Cresol (372388) tambem vira PF (23/09/2026)
+
+Depois da mudanca da secao 35, Toni notou que o outro emprestimo
+(R$1.421,71, contrato 372388 — que ele mesmo tinha confirmado como
+"correto" ficando PJ) ainda aparecia na PJ. Perguntei se era pra mudar
+tambem e ele confirmou: sim, os "meus dois emprestimos" eram esse + o
+Carro BV — os dois viram PF.
+
+sql/197: soft-delete das 4 linhas no PJ (CRESOL-MAIO/JUN/JUL/AGO). Entram
+em DESPESAS_PF_TONI_<MES>_2026 (nao Rafa — esse e do Toni), categoria
+Financiamento, nome unificado "Parcela Emprestimo Cresol DD/MM", origem
+Cresol, sempre R$1.421,71:
+  maio  20/05 | junho 22/06 | julho 20/07 | agosto 20/08
+
+Verificacao apos aplicar: 0 linhas com categoria 'Emprestimo' sobrando no
+PJ — os dois emprestimos que existiam la (esse + Carro BV) saíram por
+completo. **Mesmo aviso da secao 35 vale aqui**: os relatorios do
+contador ja entregues (mai-ago) ficam desatualizados nas saidas.
