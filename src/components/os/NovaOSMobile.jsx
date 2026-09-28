@@ -30,7 +30,17 @@ import NovoClienteModal from '../clientes/NovoClienteModal'
 import { AtlPanel, ATL_FONT, atlSurfaceSunken, atlHover, AtlButton, ATL_RADIUS } from '../osDetalhe/acoes/_AtlassianUI'
 import { Input, Select, Textarea } from '../ui'
 
-const TIPOS_EQUIPAMENTO = ['Máquina de Lavar', 'Lava e Seca', 'Tanquinho', 'Micro-ondas']
+const TIPOS_EQUIPAMENTO = ['Máquina de Lavar', 'Lava e Seca', 'Tanquinho', 'Micro-ondas', 'Máquina de Alta Pressão', 'Forno Elétrico']
+// Mesmos ids usados em FormEquipamentoEdit.jsx / Vendas.jsx / checklists —
+// o label acima é só de exibição, o que persiste em os.tipo_equipamento é o id.
+const LABEL_TIPO_EQUIP_TO_ID = {
+  'Máquina de Lavar':        'lavadora',
+  'Lava e Seca':             'lava_seca',
+  'Tanquinho':               'tanquinho',
+  'Micro-ondas':             'microondas',
+  'Máquina de Alta Pressão': 'alta_pressao',
+  'Forno Elétrico':          'forno_eletrico',
+}
 const MARCAS_EQUIPAMENTO = ['Brastemp', 'Electrolux', 'Consul', 'LG', 'Samsung', 'Outros']
 const TIPOS_ORDEM = ['atendimento', 'visita', 'venda', 'fabricacao']
 
@@ -167,6 +177,7 @@ export default function NovaOSMobile({
         etapa: etapaInicial,
         cliente_id: form.clienteId || null,
         marca_equipamento: marcaFinal || null,
+        tipo_equipamento: LABEL_TIPO_EQUIP_TO_ID[form.equipamentoTipo] || null,
         modelo_equipamento: form.equipamentoModelo?.trim() || null,
         numero_serie: form.equipamentoSerie?.trim() || null,
         defeito_relatado: form.defeito?.trim() || null,
