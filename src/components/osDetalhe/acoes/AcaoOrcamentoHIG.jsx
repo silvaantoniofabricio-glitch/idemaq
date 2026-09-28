@@ -1548,6 +1548,49 @@ function NovaItemRow({ tipo, T, dark, onAdd }) {
 // Mostra o defeito RELATADO PELO CLIENTE (os.defeito) — não confundir com
 // os.observacoes, que é a anotação interna livre (editável em toda etapa por
 // qualquer técnico, ex: "cliente vai buscar amanhã"). Já apareceu trocado.
+// ─── Garantia — decide se o retorno é o mesmo defeito ou problema novo ───
+// Só o dono vê (é ele quem decide se cobra ou não). Clicar em "problema
+// novo" vira os.garantia=false — isso sozinho já libera cobrança normal
+// (nada bloqueava o valor antes, só ninguém cobrava por hábito), tira o
+// fator de 50% da pontuação (pontuacao.js) e para de contar como
+// retrabalho no relatório de qualidade (useRelatorioQualidade.js), porque
+// os dois já leem o mesmo campo os.garantia.
+function AtlGarantiaCard({ T, dark, os, onUpdateOS }) {
+  if (!os?.garantia) return null
+  const vermelho = corEtapa('red', dark)
+  function marcarProblemaNovo() {
+    const ok = window.confirm(
+      'Confirma que esse defeito NÃO tem relação com o serviço anterior?\n\n' +
+      'A OS deixa de ser garantia: passa a cobrar valor normal e pontuar 100% (em vez de metade).'
+    )
+    if (!ok) return
+    onUpdateOS?.(os.numero, { garantia: false })
+  }
+  return (
+    <AtlPanel T={T} dark={dark} title="Garantia" accent={vermelho}>
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <p style={{ fontSize: 12.5, color: T.textSecondary, margin: 0, lineHeight: 1.5 }}>
+          Essa OS foi aberta como retorno de garantia — não cobra e pontua pela metade.
+          Se ao diagnosticar você ver que o defeito é <strong>diferente</strong> do serviço
+          anterior, marque abaixo pra virar um atendimento novo.
+        </p>
+        <button type="button" onClick={marcarProblemaNovo} style={{
+          alignSelf: 'flex-start',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', borderRadius: 4,
+          border: `1px solid ${vermelho}55`,
+          background: dark ? 'rgba(255,107,107,0.1)' : '#FEF0EF',
+          color: vermelho, fontSize: 12.5, fontWeight: 600,
+          cursor: 'pointer', fontFamily: ATL_FONT,
+        }}>
+          <i className="ti ti-alert-triangle" style={{ fontSize: 14 }} aria-hidden="true" />
+          Não é o mesmo problema — cobrar como novo
+        </button>
+      </div>
+    </AtlPanel>
+  )
+}
+
 function AtlDiagnosticoCard({ T, dark, os }) {
   const relato = (os?.defeito || '').trim()
   if (!relato) return null
@@ -2438,7 +2481,7 @@ function StatusOrcamento({ os, onUpdateOS, onMoverOS, T, dark }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Componente principal
 // ═══════════════════════════════════════════════════════════════════════════
-export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS, onOrcamentoEnviado }) {
+export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS, onOrcamentoEnviado, admin }) {
   const { T, dark } = useTheme()
   const notify = useToast()
   const { itens, addItem, updateItem, removeItem, loading: itensLoading } = useOSItens(os?.id)
@@ -2531,6 +2574,10 @@ export default function AcaoOrcamentoHIG({ os, onUpdateOS, onMoverOS, onOrcament
       padding: `0 0 ${HIG_SPACE.md}px`,
       minWidth: 0, // evita overflow
     }}>
+
+      {/* 0. Garantia — só o dono vê; decide se o retorno é o mesmo defeito
+            ou problema novo (afeta cobrança + pontuação + qualidade). */}
+      {admin && <AtlGarantiaCard T={T} dark={dark} os={os} onUpdateOS={onUpdateOS} />}
 
       {/* 1. Diagnostico — card no topo em largura total, orienta a
             construcao do orcamento sem espremer os itens. */}
