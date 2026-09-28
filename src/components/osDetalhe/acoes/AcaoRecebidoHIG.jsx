@@ -53,6 +53,11 @@ const TESTES_POR_EQUIP = {
     { id: 'sem_barulho', label: 'Sem barulho',      icon: 'volume-off' },
     { id: 'visual',      label: 'Aparência geral',  icon: 'eye' },
   ],
+  // Tanquinho: só agitação e escoamento de água (sem entrada automática nem centrifugação).
+  tanquinho: [
+    { id: 'agitacao',   label: 'Agitação',           icon: 'refresh' },
+    { id: 'saida_agua', label: 'Escoamento de água', icon: 'droplet-off' },
+  ],
 }
 
 // Vazamentos: só lavadora e lava-louças têm água externa
@@ -69,6 +74,7 @@ const VAZAMENTOS_POR_EQUIP = {
     { id: 'mangueira', label: 'Mangueiras', icon: 'ripple' },
   ],
   outros: [],
+  tanquinho: [],
 }
 
 // Atlassian usa nomes neutros — mapeamento de cores via corEtapa do projeto

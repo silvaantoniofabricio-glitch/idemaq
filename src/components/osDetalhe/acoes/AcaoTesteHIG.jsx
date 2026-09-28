@@ -52,6 +52,11 @@ const TESTES_POR_EQUIP = {
     { id: 'sem_barulho', label: 'Sem barulho',      icon: 'volume-off' },
     { id: 'visual',      label: 'Aparência geral',  icon: 'eye' },
   ],
+  // Tanquinho: só agitação e escoamento de água (sem entrada automática nem centrifugação).
+  tanquinho: [
+    { id: 'agitacao',   label: 'Agitação',           icon: 'refresh' },
+    { id: 'saida_agua', label: 'Escoamento de água', icon: 'droplet-off' },
+  ],
 }
 // Lava e seca usa os mesmos testes da lavadora + secagem (mais um mecanismo)
 TESTES_POR_EQUIP.lava_seca = [
