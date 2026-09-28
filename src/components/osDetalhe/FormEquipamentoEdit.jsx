@@ -28,9 +28,11 @@ export default function FormEquipamentoEdit({
     { id: 'lavadora',    label: 'Lavadora',    icon: 'ti-device-washing-machine' },
     { id: 'tanquinho',   label: 'Tanquinho',   icon: 'ti-device-washing-machine' },
     { id: 'lava_seca',   label: 'Lava e seca', icon: 'ti-wind' },
-    { id: 'lava_loucas', label: 'Lava-louças', icon: 'ti-tool' },
-    { id: 'microondas',  label: 'Microondas',  icon: 'ti-microwave' },
-    { id: 'outros',      label: 'Outros',      icon: 'ti-cpu' },
+    { id: 'lava_loucas',   label: 'Lava-louças',           icon: 'ti-tool' },
+    { id: 'microondas',    label: 'Microondas',            icon: 'ti-microwave' },
+    { id: 'alta_pressao',  label: 'Máquina de Alta Pressão', icon: 'ti-droplet' },
+    { id: 'forno_eletrico', label: 'Forno Elétrico',        icon: 'ti-toaster' },
+    { id: 'outros',        label: 'Outros',                 icon: 'ti-cpu' },
   ]
 
   const [form, setForm] = useState({

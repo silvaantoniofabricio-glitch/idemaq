@@ -63,6 +63,10 @@ TESTES_POR_EQUIP.lava_seca = [
   ...TESTES_POR_EQUIP.lavadora,
   { id: 'secagem', label: 'Secagem', icon: 'wind' },
 ]
+// Alta pressão e forno elétrico: sem checklist específico definido ainda —
+// usa os testes genéricos de 'outros' até Toni definir os checks próprios.
+TESTES_POR_EQUIP.alta_pressao = TESTES_POR_EQUIP.outros
+TESTES_POR_EQUIP.forno_eletrico = TESTES_POR_EQUIP.outros
 
 const ACABAMENTO_POR_EQUIP = {
   lavadora: [
@@ -85,6 +89,10 @@ const ACABAMENTO_POR_EQUIP = {
   ],
 }
 ACABAMENTO_POR_EQUIP.lava_seca = ACABAMENTO_POR_EQUIP.lavadora
+// Alta pressão e forno elétrico: acabamento genérico igual 'outros' até
+// Toni definir algo próprio (Tanquinho fica no fallback pra lavadora).
+ACABAMENTO_POR_EQUIP.alta_pressao = ACABAMENTO_POR_EQUIP.outros
+ACABAMENTO_POR_EQUIP.forno_eletrico = ACABAMENTO_POR_EQUIP.outros
 
 const OPCOES = [
   { id: 'ok',      label: 'OK',       icon: 'check',          corKey: 'green'  },

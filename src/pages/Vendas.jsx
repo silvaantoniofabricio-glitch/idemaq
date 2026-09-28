@@ -76,12 +76,14 @@ const OPTS_GARANTIA = [
 ]
 // Mesmo conjunto usado em FormEquipamentoEdit.jsx.
 const OPTS_EQUIPAMENTO = [
-  { id: 'lavadora',    label: 'Lavadora'    },
-  { id: 'tanquinho',   label: 'Tanquinho'   },
-  { id: 'lava_seca',   label: 'Lava e seca' },
-  { id: 'lava_loucas', label: 'Lava-louças' },
-  { id: 'microondas',  label: 'Microondas'  },
-  { id: 'outros',      label: 'Outros'      },
+  { id: 'lavadora',       label: 'Lavadora'    },
+  { id: 'tanquinho',      label: 'Tanquinho'   },
+  { id: 'lava_seca',      label: 'Lava e seca' },
+  { id: 'lava_loucas',    label: 'Lava-louças' },
+  { id: 'microondas',     label: 'Microondas'  },
+  { id: 'alta_pressao',   label: 'Máquina de Alta Pressão' },
+  { id: 'forno_eletrico', label: 'Forno Elétrico'          },
+  { id: 'outros',         label: 'Outros'      },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

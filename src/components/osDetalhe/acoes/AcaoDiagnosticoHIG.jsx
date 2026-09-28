@@ -74,6 +74,10 @@ TESTES_POR_EQUIP.lava_seca = [
   ...TESTES_POR_EQUIP.lavadora,
   { id: 'secagem', label: 'Secagem', icon: 'wind' },
 ]
+// Alta pressão e forno elétrico: sem checklist específico definido ainda —
+// usa os testes genéricos de 'outros' até Toni definir os checks próprios.
+TESTES_POR_EQUIP.alta_pressao = TESTES_POR_EQUIP.outros
+TESTES_POR_EQUIP.forno_eletrico = TESTES_POR_EQUIP.outros
 
 // Vazamentos: só lavadora, lava-louças e lava-e-seca têm água externa
 const VAZAMENTOS_POR_EQUIP = {

@@ -59,6 +59,10 @@ const TESTES_POR_EQUIP = {
     { id: 'saida_agua', label: 'Escoamento de água', icon: 'droplet-off' },
   ],
 }
+// Alta pressão e forno elétrico: sem checklist específico definido ainda —
+// usa os testes genéricos de 'outros' até Toni definir os checks próprios.
+TESTES_POR_EQUIP.alta_pressao = TESTES_POR_EQUIP.outros
+TESTES_POR_EQUIP.forno_eletrico = TESTES_POR_EQUIP.outros
 
 // Vazamentos: só lavadora e lava-louças têm água externa
 const VAZAMENTOS_POR_EQUIP = {
