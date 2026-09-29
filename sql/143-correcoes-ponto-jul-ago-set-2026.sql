@@ -139,12 +139,14 @@ BEGIN
   RAISE NOTICE '[Ale-1] 11/09: entrada duplicada 13:00 deletada (#24d03708)';
 
   -- [Ale-2] 07/09 — feriado (Independência)
-  --   Sem batidas existentes. Inserir entrada+saida no mesmo instante →
-  --   0 min trabalhado, impede que o dia conte como falta
+  --   Inserir dia completo no horário padrão → não conta como falta nem mexe no banco de horas
+  --   08:00=12h UTC · 11:00=15h UTC · 13:00=17h UTC · 18:00=22h UTC
   INSERT INTO ponto_registro (funcionario_id, tipo, bateu_em)
-  VALUES (ale_id, 'entrada', '2026-09-07 12:00:00+00'),
-         (ale_id, 'saida',   '2026-09-07 12:00:00+00');
-  RAISE NOTICE '[Ale-2] 07/09: feriado marcado (entrada+saida às 08:00 local)';
+  VALUES (ale_id, 'entrada',      '2026-09-07 12:00:00+00'),
+         (ale_id, 'saida_almoco', '2026-09-07 15:00:00+00'),
+         (ale_id, 'volta_almoco', '2026-09-07 17:00:00+00'),
+         (ale_id, 'saida',        '2026-09-07 22:00:00+00');
+  RAISE NOTICE '[Ale-2] 07/09: feriado marcado (dia completo 08:00–18:00 local)';
 
   -- [Ale-3] 27/08 — saida não batida
   v_ts := '2026-08-27 04:00:00+00'::timestamptz + (ale_ago_saida_min * INTERVAL '1 minute');
