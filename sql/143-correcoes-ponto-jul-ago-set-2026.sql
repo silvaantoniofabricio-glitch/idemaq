@@ -1,6 +1,6 @@
 -- sql/143-correcoes-ponto-jul-ago-set-2026.sql
 -- Correções de ponto: Alessandro (4 itens) + Guilherme (9 dias)
--- Regra: média real do mês/tipo com tolerância de até 10min
+-- Regra: média real do mês/tipo (sem cap)
 -- Timezone: bateu_em - INTERVAL '4 hours' = hora local (UTC-4 fixo, sem DST)
 -- Construção UTC: 'YYYY-MM-DD 00:00:00+00'::timestamptz + INTERVAL '4 hours' + avg_min * INTERVAL '1 minute'
 
@@ -20,12 +20,7 @@ DECLARE
 
   v_ts timestamptz;
 
-  -- Bases (min) e cap
-  B_ENTRADA   int := 480;   -- 08:00
-  B_SAIDA_ALM int := 660;   -- 11:00
-  B_VOLTA_ALM int := 780;   -- 13:00
-  B_SAIDA     int := 1080;  -- 18:00
-  CAP         int := 10;
+  -- (sem cap — usa média bruta)
 
 BEGIN
   SELECT id INTO ale_id FROM usuarios WHERE papel = 'logistica' LIMIT 1;
@@ -36,7 +31,7 @@ BEGIN
   -- 1. CALCULAR MÉDIAS (excluindo os próprios dias a corrigir)
   -- ═══════════════════════════════════════════════════════════════════════════
 
-  -- Alessandro · julho · saida  (exclui 21/07)
+  -- Alessandro · julho · saida  (exclui 21/07 + sábados)
   SELECT ROUND(AVG(
     EXTRACT(HOUR   FROM (bateu_em - INTERVAL '4 hours')::time)::numeric * 60 +
     EXTRACT(MINUTE FROM (bateu_em - INTERVAL '4 hours')::time)::numeric
@@ -45,11 +40,12 @@ BEGIN
   WHERE funcionario_id = ale_id AND tipo = 'saida' AND deleted_at IS NULL
     AND date(bateu_em - INTERVAL '4 hours') >= '2026-07-01'
     AND date(bateu_em - INTERVAL '4 hours') <  '2026-08-01'
+    AND EXTRACT(DOW FROM date(bateu_em - INTERVAL '4 hours')) BETWEEN 1 AND 5
     AND date(bateu_em - INTERVAL '4 hours') <> '2026-07-21';
-  ale_jul_saida_min := LEAST(GREATEST(COALESCE(ale_jul_saida_min, B_SAIDA), B_SAIDA - CAP), B_SAIDA + CAP);
-  RAISE NOTICE 'Ale Jul saida avg capped: %min  (= %h%m)', ale_jul_saida_min, ale_jul_saida_min/60, ale_jul_saida_min%60;
+  ale_jul_saida_min := COALESCE(ale_jul_saida_min, 1080);
+  RAISE NOTICE 'Ale Jul saida avg: %min  (= %h%m)', ale_jul_saida_min, ale_jul_saida_min/60, ale_jul_saida_min%60;
 
-  -- Alessandro · agosto · saida  (exclui 27/08)
+  -- Alessandro · agosto · saida  (exclui 27/08 + sábados)
   SELECT ROUND(AVG(
     EXTRACT(HOUR   FROM (bateu_em - INTERVAL '4 hours')::time)::numeric * 60 +
     EXTRACT(MINUTE FROM (bateu_em - INTERVAL '4 hours')::time)::numeric
@@ -58,11 +54,12 @@ BEGIN
   WHERE funcionario_id = ale_id AND tipo = 'saida' AND deleted_at IS NULL
     AND date(bateu_em - INTERVAL '4 hours') >= '2026-08-01'
     AND date(bateu_em - INTERVAL '4 hours') <  '2026-09-01'
+    AND EXTRACT(DOW FROM date(bateu_em - INTERVAL '4 hours')) BETWEEN 1 AND 5
     AND date(bateu_em - INTERVAL '4 hours') <> '2026-08-27';
-  ale_ago_saida_min := LEAST(GREATEST(COALESCE(ale_ago_saida_min, B_SAIDA), B_SAIDA - CAP), B_SAIDA + CAP);
-  RAISE NOTICE 'Ale Ago saida avg capped: %min  (= %h%m)', ale_ago_saida_min, ale_ago_saida_min/60, ale_ago_saida_min%60;
+  ale_ago_saida_min := COALESCE(ale_ago_saida_min, 1080);
+  RAISE NOTICE 'Ale Ago saida avg: %min  (= %h%m)', ale_ago_saida_min, ale_ago_saida_min/60, ale_ago_saida_min%60;
 
-  -- Guilherme · setembro · entrada  (exclui os 9 dias problemáticos)
+  -- Guilherme · setembro · entrada  (exclui os 9 dias problemáticos + sábados)
   SELECT ROUND(AVG(
     EXTRACT(HOUR   FROM (bateu_em - INTERVAL '4 hours')::time)::numeric * 60 +
     EXTRACT(MINUTE FROM (bateu_em - INTERVAL '4 hours')::time)::numeric
@@ -71,14 +68,15 @@ BEGIN
   WHERE funcionario_id = gui_id AND tipo = 'entrada' AND deleted_at IS NULL
     AND date(bateu_em - INTERVAL '4 hours') >= '2026-09-01'
     AND date(bateu_em - INTERVAL '4 hours') <  '2026-10-01'
+    AND EXTRACT(DOW FROM date(bateu_em - INTERVAL '4 hours')) BETWEEN 1 AND 5
     AND date(bateu_em - INTERVAL '4 hours') NOT IN (
       '2026-09-04','2026-09-09','2026-09-12','2026-09-16','2026-09-18',
       '2026-09-23','2026-09-24','2026-09-25','2026-09-28'
     );
-  gui_set_entrada_min := LEAST(GREATEST(COALESCE(gui_set_entrada_min, B_ENTRADA), B_ENTRADA - CAP), B_ENTRADA + CAP);
-  RAISE NOTICE 'Gui Set entrada avg capped: %min  (= %h%m)', gui_set_entrada_min, gui_set_entrada_min/60, gui_set_entrada_min%60;
+  gui_set_entrada_min := COALESCE(gui_set_entrada_min, 480);
+  RAISE NOTICE 'Gui Set entrada avg: %min  (= %h%m)', gui_set_entrada_min, gui_set_entrada_min/60, gui_set_entrada_min%60;
 
-  -- Guilherme · setembro · saida_almoco
+  -- Guilherme · setembro · saida_almoco  (exclui problemáticos + sábados)
   SELECT ROUND(AVG(
     EXTRACT(HOUR   FROM (bateu_em - INTERVAL '4 hours')::time)::numeric * 60 +
     EXTRACT(MINUTE FROM (bateu_em - INTERVAL '4 hours')::time)::numeric
@@ -87,14 +85,15 @@ BEGIN
   WHERE funcionario_id = gui_id AND tipo = 'saida_almoco' AND deleted_at IS NULL
     AND date(bateu_em - INTERVAL '4 hours') >= '2026-09-01'
     AND date(bateu_em - INTERVAL '4 hours') <  '2026-10-01'
+    AND EXTRACT(DOW FROM date(bateu_em - INTERVAL '4 hours')) BETWEEN 1 AND 5
     AND date(bateu_em - INTERVAL '4 hours') NOT IN (
       '2026-09-04','2026-09-09','2026-09-12','2026-09-16','2026-09-18',
       '2026-09-23','2026-09-24','2026-09-25','2026-09-28'
     );
-  gui_set_saida_alm_min := LEAST(GREATEST(COALESCE(gui_set_saida_alm_min, B_SAIDA_ALM), B_SAIDA_ALM - CAP), B_SAIDA_ALM + CAP);
-  RAISE NOTICE 'Gui Set saida_almoco avg capped: %min  (= %h%m)', gui_set_saida_alm_min, gui_set_saida_alm_min/60, gui_set_saida_alm_min%60;
+  gui_set_saida_alm_min := COALESCE(gui_set_saida_alm_min, 660);
+  RAISE NOTICE 'Gui Set saida_almoco avg: %min  (= %h%m)', gui_set_saida_alm_min, gui_set_saida_alm_min/60, gui_set_saida_alm_min%60;
 
-  -- Guilherme · setembro · volta_almoco
+  -- Guilherme · setembro · volta_almoco  (exclui problemáticos + sábados)
   SELECT ROUND(AVG(
     EXTRACT(HOUR   FROM (bateu_em - INTERVAL '4 hours')::time)::numeric * 60 +
     EXTRACT(MINUTE FROM (bateu_em - INTERVAL '4 hours')::time)::numeric
@@ -103,6 +102,7 @@ BEGIN
   WHERE funcionario_id = gui_id AND tipo = 'volta_almoco' AND deleted_at IS NULL
     AND date(bateu_em - INTERVAL '4 hours') >= '2026-09-01'
     AND date(bateu_em - INTERVAL '4 hours') <  '2026-10-01'
+    AND EXTRACT(DOW FROM date(bateu_em - INTERVAL '4 hours')) BETWEEN 1 AND 5
     AND date(bateu_em - INTERVAL '4 hours') NOT IN (
       '2026-09-04','2026-09-09','2026-09-12','2026-09-16','2026-09-18',
       '2026-09-23','2026-09-24','2026-09-25','2026-09-28'
@@ -110,7 +110,7 @@ BEGIN
   gui_set_volta_alm_min := LEAST(GREATEST(COALESCE(gui_set_volta_alm_min, B_VOLTA_ALM), B_VOLTA_ALM - CAP), B_VOLTA_ALM + CAP);
   RAISE NOTICE 'Gui Set volta_almoco avg capped: %min  (= %h%m)', gui_set_volta_alm_min, gui_set_volta_alm_min/60, gui_set_volta_alm_min%60;
 
-  -- Guilherme · setembro · saida
+  -- Guilherme · setembro · saida  (exclui problemáticos + sábados)
   SELECT ROUND(AVG(
     EXTRACT(HOUR   FROM (bateu_em - INTERVAL '4 hours')::time)::numeric * 60 +
     EXTRACT(MINUTE FROM (bateu_em - INTERVAL '4 hours')::time)::numeric
@@ -119,6 +119,7 @@ BEGIN
   WHERE funcionario_id = gui_id AND tipo = 'saida' AND deleted_at IS NULL
     AND date(bateu_em - INTERVAL '4 hours') >= '2026-09-01'
     AND date(bateu_em - INTERVAL '4 hours') <  '2026-10-01'
+    AND EXTRACT(DOW FROM date(bateu_em - INTERVAL '4 hours')) BETWEEN 1 AND 5
     AND date(bateu_em - INTERVAL '4 hours') NOT IN (
       '2026-09-04','2026-09-09','2026-09-12','2026-09-16','2026-09-18',
       '2026-09-23','2026-09-24','2026-09-25','2026-09-28'
