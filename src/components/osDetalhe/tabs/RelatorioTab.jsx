@@ -855,6 +855,40 @@ export default function RelatorioTab({ T, dark, os, osBase, usuarios, admin, onA
           onClick={() => onAbrirOS?.(osOrigem.numero)}
         />
       )}
+      {os.garantia && admin && (
+        <div style={{
+          padding: 12,
+          background: vermelho + '0d',
+          border: `1px solid ${vermelho}33`,
+          borderRadius: 6,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.5 }}>
+            Essa OS não cobra e pontua pela metade (é retorno de garantia). Se o defeito for
+            <strong> diferente</strong> do serviço anterior, marque abaixo pra virar um
+            atendimento novo — cobrança e pontuação normais.
+          </div>
+          <button type="button" onClick={() => {
+            const ok = window.confirm(
+              'Confirma que esse defeito NÃO tem relação com o serviço anterior?\n\n' +
+              'A OS deixa de ser garantia: passa a cobrar valor normal e pontuar 100% (em vez de metade).'
+            )
+            if (!ok) return
+            onUpdateOS?.(os.numero, { garantia: false })
+          }} style={{
+            alignSelf: 'flex-start',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', borderRadius: 4,
+            border: `1px solid ${vermelho}55`,
+            background: dark ? 'rgba(255,107,107,0.1)' : '#FEF0EF',
+            color: vermelho, fontSize: 12.5, fontWeight: 600,
+            cursor: 'pointer', fontFamily: ATL_FONT,
+          }}>
+            <i className="ti ti-alert-triangle" style={{ fontSize: 14 }} aria-hidden="true" />
+            Não é o mesmo problema — cobrar como novo
+          </button>
+        </div>
+      )}
       {garantiaAtiva && !os.garantia && (
         <Banner T={T} dark={dark}
           cor={verde} icon="shield-check"
