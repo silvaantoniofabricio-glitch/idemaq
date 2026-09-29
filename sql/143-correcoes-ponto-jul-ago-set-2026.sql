@@ -107,8 +107,8 @@ BEGIN
       '2026-09-04','2026-09-09','2026-09-12','2026-09-16','2026-09-18',
       '2026-09-23','2026-09-24','2026-09-25','2026-09-28'
     );
-  gui_set_volta_alm_min := LEAST(GREATEST(COALESCE(gui_set_volta_alm_min, B_VOLTA_ALM), B_VOLTA_ALM - CAP), B_VOLTA_ALM + CAP);
-  RAISE NOTICE 'Gui Set volta_almoco avg capped: %min  (= %h%m)', gui_set_volta_alm_min, gui_set_volta_alm_min/60, gui_set_volta_alm_min%60;
+  gui_set_volta_alm_min := COALESCE(gui_set_volta_alm_min, 780);
+  RAISE NOTICE 'Gui Set volta_almoco avg: %min  (= %h%m)', gui_set_volta_alm_min, gui_set_volta_alm_min/60, gui_set_volta_alm_min%60;
 
   -- Guilherme · setembro · saida  (exclui problemáticos + sábados)
   SELECT ROUND(AVG(
@@ -124,8 +124,8 @@ BEGIN
       '2026-09-04','2026-09-09','2026-09-12','2026-09-16','2026-09-18',
       '2026-09-23','2026-09-24','2026-09-25','2026-09-28'
     );
-  gui_set_saida_min := LEAST(GREATEST(COALESCE(gui_set_saida_min, B_SAIDA), B_SAIDA - CAP), B_SAIDA + CAP);
-  RAISE NOTICE 'Gui Set saida avg capped: %min  (= %h%m)', gui_set_saida_min, gui_set_saida_min/60, gui_set_saida_min%60;
+  gui_set_saida_min := COALESCE(gui_set_saida_min, 1080);
+  RAISE NOTICE 'Gui Set saida avg: %min  (= %h%m)', gui_set_saida_min, gui_set_saida_min/60, gui_set_saida_min%60;
 
   -- ═══════════════════════════════════════════════════════════════════════════
   -- 2. CORREÇÕES ALESSANDRO
