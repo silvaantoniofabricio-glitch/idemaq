@@ -1214,9 +1214,15 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
 
         if (funcionarioId) query = query.eq('funcionario_id', funcionarioId)
 
-        const { data: batidas, error: errB } = await query
+        const [{ data: batidas, error: errB }, { data: feriadosRows, error: errF }] = await Promise.all([
+          query,
+          supabase.from('feriado').select('data').gte('data', iniIso.slice(0, 10)).lte('data', fimIso.slice(0, 10)),
+        ])
         if (errB) throw errB
+        if (errF) throw errF
         if (cancelado) return
+
+        const feriadosSet = new Set((feriadosRows || []).map(f => f.data))
 
         // Agrupa batidas por funcionário → por dia ISO
         const porFunc = {}
@@ -1243,12 +1249,19 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
           let totalHorasMin = 0
           let totalJornadaMin = 0
           let faltas = 0
+          let numFeriados = 0
           let diasAtraso = 0
           let diasExtras = 0
           const diasDetalhados = []
           const horaEntradaSab = f.papel === 'logistica' ? 8 : 7
 
           for (const { iso, diaSemana } of diasUteis) {
+            if (feriadosSet.has(iso)) {
+              numFeriados++
+              diasDetalhados.push({ iso, diaSemana, status: 'feriado', totalMin: 0, entrada: null, saida: null })
+              continue
+            }
+
             const batidasDia = f.porDia[iso] || []
             const teveBatida = batidasDia.length > 0
             const carga = diaSemana === 6 ? JORNADA_SAB_MIN : JORNADA_DIA_MIN
@@ -1293,8 +1306,9 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
               : 'trabalhando'
           }
 
-          const diasPresentes = diasUteis.length - faltas
-          const taxaPresenca  = diasUteis.length > 0 ? Math.round((diasPresentes / diasUteis.length) * 100) : 0
+          const diasTrabalhaveis = diasUteis.length - numFeriados
+          const diasPresentes = diasTrabalhaveis - faltas
+          const taxaPresenca  = diasTrabalhaveis > 0 ? Math.round((diasPresentes / diasTrabalhaveis) * 100) : 0
           const mediaHorasDia = diasPresentes > 0 ? fmtHorasMin(Math.round(totalHorasMin / diasPresentes)) : '—'
           const saldoHorasMin = totalHorasMin - totalJornadaMin
 
@@ -1303,9 +1317,9 @@ export function useRelatorioPonto({ iniIso, fimIso, funcionarioId }) {
             totalHorasMin, totalHoras: fmtHorasMin(totalHorasMin),
             faltas, faltasJustificadas: 0,
             saldoHorasMin, saldoHoras: fmtHorasMin(saldoHorasMin),
-            diasComputados: diasUteis.length,
+            diasComputados: diasTrabalhaveis,
             taxaPresenca, mediaHorasDia,
-            diasAtraso, diasExtras,
+            diasAtraso, diasExtras, numFeriados,
             statusHoje, diasDetalhados,
           }
         })

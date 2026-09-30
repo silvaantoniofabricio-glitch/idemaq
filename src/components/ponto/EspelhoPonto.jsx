@@ -3,10 +3,11 @@
 // Desktop (≥680px): 2 colunas — esq: calendário + progresso / dir: tabela detalhada
 // Mobile: stack vertical
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 import { usePonto } from '../../hooks/usePonto'
 import { fmtHora, fmtDuracao, fmtBancoHoras } from './_mocks'
+import { supabase } from '../../supabase'
 
 const MESES = [
   'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -26,7 +27,7 @@ function horaEntradaSabPorPapel(papel) {
 }
 
 // ─── Agregar batidas em linhas por dia ───────────────────────────────────────
-function agregarMes(batidas, ano, mes, sabHoraEntrada = 7) {
+function agregarMes(batidas, ano, mes, sabHoraEntrada = 7, feriadosSet = new Set()) {
   const doMes = batidas.filter(b => {
     const d = new Date(b.bateu_em)
     return d.getFullYear() === ano && d.getMonth() === mes
@@ -71,8 +72,12 @@ function agregarMes(batidas, ano, mes, sabHoraEntrada = 7) {
 
     const cargaDia = ehSabado ? JORNADA_SAB_MIN : JORNADA_DIA_MIN
 
+    const diaIso = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+    const ehFeriado = !ehFds && feriadosSet.has(diaIso)
+
     let status = 'normal'
     if (ehFds)                          status = 'fds'
+    else if (ehFeriado)                 status = 'feriado'
     else if (ehFuturo)                  status = 'futuro'
     else if (ehSabado && !teveBatida)   status = 'fds'
     else if (!teveBatida && ehHoje)     status = 'pendente'
@@ -86,7 +91,7 @@ function agregarMes(batidas, ano, mes, sabHoraEntrada = 7) {
     }
 
     linhas.push({
-      dia, diaSemana, ehFds, ehHoje, ehFuturo, ehSabado,
+      dia, diaSemana, ehFds, ehHoje, ehFuturo, ehSabado, ehFeriado,
       entrada:     batidasDia.entrada      || null,
       saidaAlmoco: batidasDia.saida_almoco || null,
       voltaAlmoco: batidasDia.volta_almoco || null,
@@ -102,16 +107,17 @@ function corStatus(status, { azul, amarelo, vermelho, T }) {
   if (status === 'normal' || status === 'extra') return azul
   if (status === 'atraso' || status === 'pendente') return amarelo
   if (status === 'falta') return vermelho
+  if (status === 'feriado') return '#7B8FA8'
   return T.textDim
 }
 function labelStatus(status) {
   const MAP = { normal:'OK', extra:'Extra', atraso:'Atraso', falta:'Falta',
-    pendente:'Pendente', fds:'Folga', futuro:'—' }
+    pendente:'Pendente', fds:'Folga', futuro:'—', feriado:'Feriado' }
   return MAP[status] || '—'
 }
 function iconStatus(status) {
   const MAP = { normal:'ti-check', extra:'ti-clock-plus', atraso:'ti-alert-triangle',
-    falta:'ti-x', pendente:'ti-clock-hour-8', fds:'ti-sun' }
+    falta:'ti-x', pendente:'ti-clock-hour-8', fds:'ti-sun', feriado:'ti-calendar-event' }
   return MAP[status] || 'ti-minus'
 }
 
@@ -134,14 +140,22 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
     escopo: 'mes', ano, mes,
   })
 
+  const [feriadosSet, setFeriadosSet] = useState(new Set())
+  useEffect(() => {
+    const ini = `${ano}-${String(mes + 1).padStart(2, '0')}-01`
+    const fim = `${ano}-${String(mes + 1).padStart(2, '0')}-31`
+    supabase.from('feriado').select('data').gte('data', ini).lte('data', fim)
+      .then(({ data }) => setFeriadosSet(new Set((data || []).map(f => f.data))))
+  }, [ano, mes])
+
   const linhas = useMemo(
-    () => agregarMes(batidas, ano, mes, sabHoraEntrada),
-    [batidas, ano, mes, sabHoraEntrada],
+    () => agregarMes(batidas, ano, mes, sabHoraEntrada, feriadosSet),
+    [batidas, ano, mes, sabHoraEntrada, feriadosSet],
   )
 
   const stats = useMemo(() => {
-    const diasUteisPassados = linhas.filter(l => !l.ehFds && !l.ehFuturo)
-    const todosUteisDoMes   = linhas.filter(l => !l.ehFds)
+    const diasUteisPassados = linhas.filter(l => !l.ehFds && !l.ehFuturo && !l.ehFeriado)
+    const todosUteisDoMes   = linhas.filter(l => !l.ehFds && !l.ehFeriado)
     const diasTrabalhados   = linhas.filter(l => l.entrada).length
     const faltas   = linhas.filter(l => l.status === 'falta').length
     const atrasos  = linhas.filter(l => l.status === 'atraso').length

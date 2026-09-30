@@ -3,7 +3,7 @@
 // Seções: Equipe agora · KPIs · Heatmap de presença · Tabela expandível
 
 import React, { useState } from 'react'
-import { P } from '../../theme'
+import { P, useIsMobile } from '../../theme'
 import { corEtapa, corHero } from '../../utils/colors'
 import { Card, Badge, EmptyState } from '../../components/ui'
 import { useRelatorioPonto } from '../../hooks/useRelatorios'
@@ -21,17 +21,19 @@ const STATUS_HOJE = {
 }
 
 const STATUS_DIA_COR = {
-  ok:    '#5B9BD5',
-  extra: '#B8CCE4',
-  atraso:'#FFD966',
-  falta: '#FF6B6B',
+  ok:      '#5B9BD5',
+  extra:   '#B8CCE4',
+  atraso:  '#FFD966',
+  falta:   '#FF6B6B',
+  feriado: '#7B8FA8',
 }
 
 const STATUS_DIA_LABEL = {
-  ok:    'Presente',
-  extra: 'Hora extra',
-  atraso:'Atraso',
-  falta: 'Falta',
+  ok:      'Presente',
+  extra:   'Hora extra',
+  atraso:  'Atraso',
+  falta:   'Falta',
+  feriado: 'Feriado',
 }
 
 function fmtHoraCurta(iso) {
@@ -50,6 +52,7 @@ function fmtData(iso) {
 
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
+  const isMobile = useIsMobile()
   const { data, loading, error } = useRelatorioPonto({ iniIso, fimIso })
   const [espelhoAberto, setEspelhoAberto] = useState(null)
 
@@ -83,7 +86,7 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
       <SecLabel T={T} icon="ti-users" label="Equipe agora" />
       <div style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${data.porFuncionario.length}, 1fr)`,
+        gridTemplateColumns: isMobile ? '1fr' : `repeat(${data.porFuncionario.length}, 1fr)`,
         gap: 12,
       }}>
         {data.porFuncionario.map((f, i) => (
@@ -97,7 +100,7 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
           SEÇÃO 2 — KPIs DO PERÍODO
       ═══════════════════════════════════════════════════════════════════ */}
       <SecLabel T={T} icon="ti-chart-bar" label={`Resumo do período · ${fmtData(iniIso)} – ${fmtData(fimIso)}`} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: 10 }}>
         <KPITile T={T} dark={dark} icon="ti-clock-hour-4" label="Total horas"
           valor={data.totalHoras} cor={azul} />
         <KPITile T={T} dark={dark} icon="ti-calendar-check" label="Taxa presença"
@@ -144,22 +147,24 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
       ═══════════════════════════════════════════════════════════════════ */}
       <SecLabel T={T} icon="ti-table" label="Detalhamento — clique numa linha para o espelho dia a dia" />
       <Card T={T} dark={dark} padding={0}>
-        {/* Cabeçalho tabela */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 110px 80px 80px 80px 120px 32px',
-          gap: 8, padding: '8px 16px',
-          background: T.cardAlt, borderBottom: `1px solid ${T.border}`,
-          fontSize: 10.5, color: T.textMuted, fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: '.05em',
-        }}>
-          <div>Funcionário</div>
-          <div style={{ textAlign: 'right' }}>Horas totais</div>
-          <div style={{ textAlign: 'right' }}>Presença</div>
-          <div style={{ textAlign: 'right' }}>Faltas</div>
-          <div style={{ textAlign: 'right' }}>Atrasos</div>
-          <div style={{ textAlign: 'right' }}>Banco de horas</div>
-          <div />
-        </div>
+        {/* Cabeçalho tabela — só desktop, no mobile cada linha já se explica */}
+        {!isMobile && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 110px 80px 80px 80px 120px 32px',
+            gap: 8, padding: '8px 16px',
+            background: T.cardAlt, borderBottom: `1px solid ${T.border}`,
+            fontSize: 10.5, color: T.textMuted, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '.05em',
+          }}>
+            <div>Funcionário</div>
+            <div style={{ textAlign: 'right' }}>Horas totais</div>
+            <div style={{ textAlign: 'right' }}>Presença</div>
+            <div style={{ textAlign: 'right' }}>Faltas</div>
+            <div style={{ textAlign: 'right' }}>Atrasos</div>
+            <div style={{ textAlign: 'right' }}>Banco de horas</div>
+            <div />
+          </div>
+        )}
 
         {data.porFuncionario.map((f, i) => {
           const saldoPos  = f.saldoHorasMin >= 0
@@ -172,7 +177,13 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
               {/* Linha da tabela */}
               <div
                 onClick={() => setEspelhoAberto(aberto ? null : f.id)}
-                style={{
+                style={isMobile ? {
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                  padding: '13px 16px',
+                  borderTop: `1px solid ${T.border}`,
+                  cursor: 'pointer',
+                  background: aberto ? (dark ? '#1a2235' : '#EEF3FF') : 'transparent',
+                } : {
                   display: 'grid', gridTemplateColumns: '1fr 110px 80px 80px 80px 120px 32px',
                   gap: 8, alignItems: 'center',
                   padding: '13px 16px',
@@ -184,44 +195,80 @@ export default function RelatorioPonto({ T, dark, iniIso, fimIso }) {
                 {/* Col: nome */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Avatar nome={f.nome} cor={AVATAR_CORES[i % AVATAR_CORES.length]} size={30} />
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: corHero(dark) }}>{f.nome}</div>
                     <div style={{ fontSize: 11, color: T.textMuted }}>{LABEL_PAPEL[f.papel] || f.papel}</div>
                   </div>
+                  {isMobile && (
+                    <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
+                       style={{ fontSize: 15, color: T.textDim }} aria-hidden="true" />
+                  )}
                 </div>
-                {/* Col: horas */}
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
-                  {f.totalHoras}
-                  <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 500 }}>média {f.mediaHorasDia}/dia</div>
-                </div>
-                {/* Col: presença % */}
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: f.taxaPresenca >= 90 ? azul : f.taxaPresenca >= 70 ? amarelo : vermelho, fontVariantNumeric: 'tabular-nums' }}>
-                    {f.taxaPresenca}%
+
+                {isMobile ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>Horas</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>{f.totalHoras}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>Presença</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: f.taxaPresenca >= 90 ? azul : f.taxaPresenca >= 70 ? amarelo : vermelho, fontVariantNumeric: 'tabular-nums' }}>{f.taxaPresenca}%</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>Faltas</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: f.faltas > 0 ? amarelo : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{f.faltas}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>Atrasos</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: f.diasAtraso > 0 ? amarelo : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>{f.diasAtraso}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '.04em' }}>Banco de horas</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <i className={`ti ${saldoPos ? 'ti-trending-up' : 'ti-trending-down'}`}
+                           style={{ fontSize: 13, color: corSaldo }} aria-hidden="true" />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: corSaldo, fontVariantNumeric: 'tabular-nums' }}>{f.saldoHoras}</span>
+                      </div>
+                    </div>
                   </div>
-                  <BarraProgresso pct={f.taxaPresenca} cor={f.taxaPresenca >= 90 ? azul : f.taxaPresenca >= 70 ? amarelo : vermelho} T={T} />
-                </div>
-                {/* Col: faltas */}
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: f.faltas > 0 ? amarelo : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                  {f.faltas}
-                </div>
-                {/* Col: atrasos */}
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: f.diasAtraso > 0 ? amarelo : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-                  {f.diasAtraso}
-                </div>
-                {/* Col: banco horas */}
-                <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                  <i className={`ti ${saldoPos ? 'ti-trending-up' : 'ti-trending-down'}`}
-                     style={{ fontSize: 13, color: corSaldo }} aria-hidden="true" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: corSaldo, fontVariantNumeric: 'tabular-nums' }}>
-                    {f.saldoHoras}
-                  </span>
-                </div>
-                {/* Col: chevron */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
-                     style={{ fontSize: 13, color: T.textDim }} aria-hidden="true" />
-                </div>
+                ) : (
+                  <>
+                    {/* Col: horas */}
+                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: corHero(dark), fontVariantNumeric: 'tabular-nums' }}>
+                      {f.totalHoras}
+                      <div style={{ fontSize: 10, color: T.textMuted, fontWeight: 500 }}>média {f.mediaHorasDia}/dia</div>
+                    </div>
+                    {/* Col: presença % */}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: f.taxaPresenca >= 90 ? azul : f.taxaPresenca >= 70 ? amarelo : vermelho, fontVariantNumeric: 'tabular-nums' }}>
+                        {f.taxaPresenca}%
+                      </div>
+                      <BarraProgresso pct={f.taxaPresenca} cor={f.taxaPresenca >= 90 ? azul : f.taxaPresenca >= 70 ? amarelo : vermelho} T={T} />
+                    </div>
+                    {/* Col: faltas */}
+                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: f.faltas > 0 ? amarelo : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                      {f.faltas}
+                    </div>
+                    {/* Col: atrasos */}
+                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: f.diasAtraso > 0 ? amarelo : T.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+                      {f.diasAtraso}
+                    </div>
+                    {/* Col: banco horas */}
+                    <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                      <i className={`ti ${saldoPos ? 'ti-trending-up' : 'ti-trending-down'}`}
+                         style={{ fontSize: 13, color: corSaldo }} aria-hidden="true" />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: corSaldo, fontVariantNumeric: 'tabular-nums' }}>
+                        {f.saldoHoras}
+                      </span>
+                    </div>
+                    {/* Col: chevron */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className={`ti ${aberto ? 'ti-chevron-up' : 'ti-chevron-down'}`}
+                         style={{ fontSize: 13, color: T.textDim }} aria-hidden="true" />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Espelho expansível */}
@@ -383,10 +430,11 @@ function HeatmapFuncionario({ T, dark, f, avatarCor, ultimo }) {
         {/* Resumo compacto */}
         <div style={{ display: 'flex', gap: 14, marginTop: 7, flexWrap: 'wrap' }}>
           {[
-            { k: 'ok',    label: `${dias.filter(d=>d.status==='ok').length} OK` },
-            { k: 'extra', label: `${dias.filter(d=>d.status==='extra').length} extras` },
-            { k: 'atraso',label: `${dias.filter(d=>d.status==='atraso').length} atrasos` },
-            { k: 'falta', label: `${dias.filter(d=>d.status==='falta').length} faltas` },
+            { k: 'ok',      label: `${dias.filter(d=>d.status==='ok').length} OK` },
+            { k: 'extra',   label: `${dias.filter(d=>d.status==='extra').length} extras` },
+            { k: 'atraso',  label: `${dias.filter(d=>d.status==='atraso').length} atrasos` },
+            { k: 'falta',   label: `${dias.filter(d=>d.status==='falta').length} faltas` },
+            { k: 'feriado', label: `${dias.filter(d=>d.status==='feriado').length} feriados` },
           ].filter(x => parseInt(x.label) > 0).map(x => (
             <div key={x.k} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ width: 7, height: 7, borderRadius: 1, background: STATUS_DIA_COR[x.k], display: 'inline-block' }} />
