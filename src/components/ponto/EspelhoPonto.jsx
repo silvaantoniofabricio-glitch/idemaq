@@ -143,8 +143,9 @@ export default function EspelhoPonto({ T, dark, funcionario }) {
   const [feriadosSet, setFeriadosSet] = useState(new Set())
   useEffect(() => {
     const ini = `${ano}-${String(mes + 1).padStart(2, '0')}-01`
-    const fim = `${ano}-${String(mes + 1).padStart(2, '0')}-31`
-    supabase.from('feriado').select('data').gte('data', ini).lte('data', fim)
+    const proximoMes = new Date(ano, mes + 1, 1)
+    const fim = `${proximoMes.getFullYear()}-${String(proximoMes.getMonth() + 1).padStart(2, '0')}-01`
+    supabase.from('feriado').select('data').gte('data', ini).lt('data', fim)
       .then(({ data }) => setFeriadosSet(new Set((data || []).map(f => f.data))))
   }, [ano, mes])
 
