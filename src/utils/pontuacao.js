@@ -18,15 +18,19 @@
 // Desmontagem/Montagem contam 1x por OS (compartilhadas entre Limpeza e
 // Manutenção — ver AcaoOficinaHIG.jsx).
 
+// Reajuste 08/10/2026, baseado numa pesquisa com os 2 funcionários (ordem do
+// que "deveria valer mais" considerando gosto, tempo e dificuldade): Higienização
+// 16→10, Desmontagem 4→6, Montagem 4→5, Acabamento 2→5, Diagnóstico 4→3,
+// Teste final 1→2. Pontuação é calculada ao vivo, então vale pra todos os meses.
 export const PONTOS = {
   coleta: 6,
-  diagnostico: 4,
-  desmontagem: 4,
-  limpeza: 16,
+  diagnostico: 3,
+  desmontagem: 6,
+  limpeza: 10,
   manutencao: 3, // por peça/componente
-  montagem: 4,
-  teste_final: 1,
-  acabamento: 2,
+  montagem: 5,
+  teste_final: 2,
+  acabamento: 5,
   entrega: 6,
 }
 
@@ -35,13 +39,13 @@ export const PONTOS = {
 // extra de secagem torna essas duas etapas mais trabalhosas).
 export const PONTOS_LAVA_SECA = {
   coleta: 6,
-  diagnostico: 4,
-  desmontagem: 7,
-  limpeza: 20,
+  diagnostico: 3,
+  desmontagem: 9,
+  limpeza: 14,
   manutencao: 4,
-  montagem: 8,
-  teste_final: 1,
-  acabamento: 2,
+  montagem: 9,
+  teste_final: 2,
+  acabamento: 5,
   entrega: 6,
 }
 

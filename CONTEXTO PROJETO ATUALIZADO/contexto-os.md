@@ -706,3 +706,9 @@ A coluna `roteiro_item.urgente` (sql/83) já existia e já tinha tratamento visu
 **Solução**: reaproveitar o próprio campo `os.garantia` (já está no whitelist de update do `osPatch.js`, `pontuacao.js` e `useRelatorioQualidade.js` já leem ele) — sem coluna nova. Botão "Não é o mesmo problema — cobrar como novo" (com confirm) chama `onUpdateOS(os.numero, { garantia: false })` — sozinho isso já libera cobrança normal, tira o fator de 50% da pontuação e para de contar como retrabalho, porque os 3 sistemas leem o mesmo campo.
 
 **Onde**: primeira tentativa foi um card em `AcaoOrcamentoHIG.jsx` (etapa Orçamento) — o Toni reportou que numa OS já em "A receber" (etapa adiante) o card tinha sumido, porque a aba Etapa só renderiza a ação da etapa ATUAL. Corrigido: movido pra `RelatorioTab.jsx` (aba **Resumo**, fixa em qualquer etapa — já tinha o banner "OS em garantia" ali), junto do banner existente, só admin. Lição: qualquer decisão que pode ser tomada em momento variável do fluxo (não amarrada a uma etapa específica) vai na aba Resumo, não numa Acao*HIG de etapa.
+
+## 08/10/2026 — Reajuste dos pesos por pesquisa com os funcionários
+
+Toni pesquisou os 2 funcionários (ordem do que deveria valer mais: gosto + tempo + dificuldade). Pesos novos em `pontuacao.js`: Higienização 16→10, Desmontagem 4→6, Montagem 4→5, Acabamento 2→5, Diagnóstico 4→3, Teste final 1→2 (Coleta 6, Entrega 6, Manutenção 3 por peça iguais). Lava e seca recebeu os mesmos deltas (limpeza 20→14, desm 7→9, mont 8→9, acab 2→5, diag 4→3, teste 1→2). OS completa com 1 manutenção: 36 pts sem higienização, 46 com.
+
+Pontuação é calculada ao vivo (`calcularPontosOS`), então todos os meses passados já saem recalculados sozinhos. Exceção: `BONUS_GAP_JULHO` (233 pts) é fixo e não foi recalculado. Nenhuma tabela guarda pontos, nada a migrar. Prêmios já pagos com a régua antiga não mudam sozinhos — conferir mês a mês se necessário.
