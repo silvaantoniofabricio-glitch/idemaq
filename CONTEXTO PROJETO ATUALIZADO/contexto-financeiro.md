@@ -863,3 +863,18 @@ Verificacao apos aplicar: 0 linhas com categoria 'Emprestimo' sobrando no
 PJ — os dois emprestimos que existiam la (esse + Carro BV) saíram por
 completo. **Mesmo aviso da secao 35 vale aqui**: os relatorios do
 contador ja entregues (mai-ago) ficam desatualizados nas saidas.
+
+---
+
+## 37. Fechamento SETEMBRO/2026 (lançado 08/10/2026)
+
+Regra do Toni: tudo entra em setembro = extratos de setembro + faturas que **venceram** em setembro.
+
+- **PJ**: `sql/203-fechamento-setembro-pj.sql` — 99 itens, R$ 10.030,66 (aplicado). Prefixos: `FAT-ELO-GRAFITE-AGO:` (ciclo, venc 11/09), `FAT-MP-SET:`, `FAT-INTER-SET:`, `FAT-NUBANK-PF-SET:`, `FAT-NUBANK-PJ-SET:`, `FAT-CRESOL-MASTER-SET:` (data 11/09 = débito), `FAT-BRAD-PJ-ELO-SET:`, `CRESOL-SET:`, `NUBANK-CONTA-SET:`.
+- **PF**: `DESPESAS_PF_TONI_SETEMBRO_2026` e `DESPESAS_PF_RAFA_SETEMBRO_2026` (só a Parcela Civic R$1.526,48) + entrada `'2026-09'` em `DESPESAS_PF_POR_MES`.
+- Totais batem exato: Elo 4.701,36 (PJ 433,95) · MP 3.910,86 (PJ 3.494,72) · Inter 1.872,98 (PJ 343,62) · Neo 33,00 · Nubank PF 199,78 (PJ 119,42) · Nubank PJ 175,57 · Mastercard 1.297,81 (PJ 1.098,87; R Silva 29,99 fora) · Bradesco Elo Mais 129,40.
+- **Salários** 1.550 cada: Alessandro PIX 300+700+6 + dinheiro 544; Guilherme PIX 700+300 + dinheiro 550 (forma `dinheiro`, conta Cresol).
+- Cresol extrato: Tiago Fernandes 150 (compra de lavadora), Energisa via Marcia 454,95, Zion 250, pacote 51,99, juros cheque especial 72,41 + IOF 15,87, R$19,90 extra no débito da Mastercard (mesmo valor de agosto, natureza ainda não confirmada). FleetNet 119,99 (Nubank conta) = PJ Internet.
+- Igreja (Nubank conta): Luan 35, Maykon 100, Rosilene 50 → `Doacao/Igreja`; Davi 15 → Alimentacao; Garzon 5, Débito em conta 25, Pay2All 53,90 → Diverso.
+- **Não lançado**: quitações de fatura, retiradas/PIX internos, água 15/09 R$164,47 (é a de AGOSTO, sql/191).
+- **PENDENTES / palpites a confirmar**: R Silva Representações R$29,99 (1/12, 21/08, Cresol Mastercard) fora de tudo; Rabacow e Rabacow R$256,13 (Elo, PF Diverso); Brechó da Fadi R$227 (MP, PF Vestuário); Mercado Kraus R$16,98 (Mastercard, PF); JIM COM Ana Paula Maluf R$5 (Elo, PF); Amazon Music R$13,90 (Elo, PJ Software por precedente); PIX R$6 do Alessandro; Rafa (extratos BB/Nubank + Carro BV de setembro) o Toni vai lançar.

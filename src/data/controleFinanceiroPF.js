@@ -986,6 +986,146 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '20/08/2026', origem: 'Cresol',      descricao: 'Parcela Emprestimo Cresol 20/08',         valor: 1421.71, categoria: 'Financiamento' },
 ]
 
+export const DESPESAS_PF_RAFA_SETEMBRO_2026 = [
+  // So a parcela do Civic (extrato Cresol). Falta o extrato do Banco do Brasil/Nubank da Rafa — o Toni vai lancar.
+  { data: '16/09/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 16/09', valor: 1526.48, categoria: 'Financiamento' },
+]
+
+export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
+  // --- Elo Grafite 3558/5900 — venc. 11/09/2026 (fatura R$4.701,36; PJ R$433,95 no sql/203) ---
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Multa contratual 28/08', valor: 93.96, categoria: 'Multa/Juros cartao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Encargos de atraso 28/08', valor: 23.18, categoria: 'Multa/Juros cartao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Encargos de mora 28/08', valor: 1.53, categoria: 'Multa/Juros cartao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 27/08', valor: 37.46, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Anuidade Diferenciada Elo Grafite 27/08 8/12', valor: 56.00, categoria: 'Tarifa cartao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'IFD 65 388 402 Ornei A 26/08', valor: 31.99, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 25/08', valor: 40.83, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Armazem 1 99 24/08 1/3', valor: 57.96, categoria: 'Compras pessoais' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 24/08', valor: 49.30, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Mano Auto Posto 24/08', valor: 100.00, categoria: 'Combustivel' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 23/08 (a)', valor: 12.50, categoria: 'Pedagio' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 23/08 (b)', valor: 12.50, categoria: 'Pedagio' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Poliani Lopes Alves Ko 22/08', valor: 35.70, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Farmacia Hiper Popular 22/08', valor: 97.98, categoria: 'Farmacia' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Cordil 22/08', valor: 16.50, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Mano Auto Posto 21/08', valor: 100.00, categoria: 'Combustivel' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Top Churros 21/08', valor: 24.00, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 20/08', valor: 13.98, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 19/08', valor: 40.50, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Auto Posto Faleiros 18/08', valor: 13.25, categoria: 'Combustivel' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'DL Google YouTube 18/08', valor: 26.90, categoria: 'Lazer' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Supermercado Chama 18/08', valor: 18.74, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Brayan Beef 18/08', valor: 26.39, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'CEA CGE 225 ECPC 17/08 1/2', valor: 64.99, categoria: 'Vestuario' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Youcom 17/08 1/5', valor: 43.94, categoria: 'Vestuario' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'JIM COM Ana Paula Maluf R 17/08', valor: 5.00, categoria: 'Servicos' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Campo Grande Parking 17/08 (a)', valor: 27.00, categoria: 'Diverso' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Campo Grande Parking 17/08 (b)', valor: 21.00, categoria: 'Diverso' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Posto Seara 17/08', valor: 200.00, categoria: 'Combustivel' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 17/08 (a)', valor: 14.10, categoria: 'Pedagio' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Saborelli 17/08', valor: 65.71, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 17/08 (b)', valor: 12.70, categoria: 'Pedagio' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 16/08', valor: 52.04, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Rabacow e Rabacow Ltda 16/08', valor: 256.13, categoria: 'Diverso' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Mano Auto Posto 16/08', valor: 189.02, categoria: 'Combustivel' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Cinemark Campo Grande 16/08', valor: 88.00, categoria: 'Lazer' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 16/08 (a)', valor: 12.70, categoria: 'Pedagio' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 16/08 (b)', valor: 14.10, categoria: 'Pedagio' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Divino Fogao 16/08 (a)', valor: 44.70, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Divino Fogao 16/08 (b)', valor: 48.89, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Poliani Lopes Alves Ko 14/08', valor: 36.70, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Supermercado Chama 14/08', valor: 30.61, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Supermercado Chama 12/08', valor: 23.97, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 11/08', valor: 20.00, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'IFD 53 671 339 Edinalv 10/08', valor: 20.62, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Navirai Calcados 10/08', valor: 179.90, categoria: 'Vestuario' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Auto Posto Imaculada C 10/08', valor: 100.00, categoria: 'Combustivel' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'J C Construcoes (cabeleireiro) 07/08', valor: 36.00, categoria: 'Cuidados pessoais' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Top Churros 06/08', valor: 24.00, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 05/08', valor: 119.90, categoria: 'Saude/Academia' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 05/08', valor: 22.00, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'O Point do Espeto 04/08', valor: 22.00, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Drogasil 3697 02/08 1/3', valor: 51.63, categoria: 'Farmacia' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 02/08', valor: 80.40, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Carlao Lanches 01/08', valor: 32.00, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 30/07', valor: 100.84, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Espetinho do Tiao 30/07', valor: 36.00, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 26/07 2/3', valor: 49.90, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Auto Posto Antonini 17/07 2/3', valor: 81.16, categoria: 'Combustivel' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Soneda Perfumaria 01/07 2/2', valor: 65.74, categoria: 'Compras pessoais' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Wilson de O Pereira 30/06 2/2 (PF, confirmado por Toni)', valor: 64.99, categoria: 'Servicos' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Drogasil 3697 22/06 3/3', valor: 57.59, categoria: 'Farmacia' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Kenia Parreira Barbagl 14/06 3/3', valor: 79.06, categoria: 'Cuidados pessoais' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Beni Netto Aguiar Salao 13/06 3/3', valor: 300.00, categoria: 'Cuidados pessoais' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Fiorelli 23/05 4/6', valor: 68.33, categoria: 'Vestuario' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Lojas Florai 16/05 4/4', valor: 44.95, categoria: 'Casa' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'JIM COM Wellynton 22/04 5/12 (Focus)', valor: 190.25, categoria: 'Veiculo PF' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'ANI Store 04/04 5/6', valor: 49.99, categoria: 'Vestuario' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'MP Marineshop 18/03 6/10', valor: 93.27, categoria: 'Compras pessoais' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'JIM Wellynton 06/11 10/10 (Focus)', valor: 94.44, categoria: 'Veiculo PF' },
+  // --- MP Cartao (Visa 5566) — venc. 21/09/2026 (fatura R$3.910,86; PJ R$3.494,72 no sql/203) ---
+  { data: '21/09/2026', origem: 'MP Cartao', descricao: 'EBazarComBrl 01/09 13/18', valor: 50.07, categoria: 'Compras pessoais' },
+  { data: '21/09/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 26/01 8/8', valor: 27.37, categoria: 'Compras pessoais' },
+  { data: '21/09/2026', origem: 'MP Cartao', descricao: 'JoyBasico 25/02 7/12', valor: 10.97, categoria: 'Compras pessoais' },
+  { data: '21/09/2026', origem: 'MP Cartao', descricao: '2Produtos 25/02 7/12', valor: 12.43, categoria: 'Compras pessoais' },
+  { data: '21/09/2026', origem: 'MP Cartao', descricao: 'MercadoLivre 09/03 7/10', valor: 44.81, categoria: 'Compras pessoais' },
+  { data: '21/09/2026', origem: 'MP Cartao', descricao: 'Tenis New Balance 480 08/07 3/8', valor: 43.49, categoria: 'Vestuario' },
+  { data: '21/09/2026', origem: 'MP Cartao', descricao: 'Brecho da Fadi 27/08', valor: 227.00, categoria: 'Vestuario' },
+  // --- Inter — venc. 25/09/2026 (fatura R$1.872,98; PJ so o Magalu-Carrefour, sql/203) ---
+  { data: '25/09/2026', origem: 'Inter', descricao: 'EBN Canva 03/10 12/12', valor: 24.16, categoria: 'Software/Lazer' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'JIM.COM Cop Centro D 30/05 4/5 (dentista)', valor: 200.00, categoria: 'Saude/Dentista' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Magalu-Magazine Lu 28/06 3/5', valor: 46.29, categoria: 'Compras pessoais' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Drogasil 3697 19/07 2/3', valor: 43.40, categoria: 'Farmacia' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Dino Brinquedos 24/07 2/2', valor: 81.71, categoria: 'Compras pessoais' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'ANI Store 25/07 2/2', valor: 59.99, categoria: 'Vestuario' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Drogasil 3697 29/07 2/3', valor: 46.96, categoria: 'Farmacia' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Tenis (MP MaiconDouglas) 08/08 2/3', valor: 129.77, categoria: 'Vestuario' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Drogasil 3697 09/08 2/3', valor: 49.21, categoria: 'Farmacia' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Auto Pecas Navirai 29/04 5/6 (Focus)', valor: 279.66, categoria: 'Veiculo PF' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'JIM.COM 5997 ROS 30/04 5/6 (vistoria Civic)', valor: 93.01, categoria: 'Veiculo PF' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Pronto Paulo Cesar AD 04/05 5/10 (Focus)', valor: 89.00, categoria: 'Veiculo PF' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Retifica Navirai 04/05 5/10 (Focus)', valor: 129.50, categoria: 'Veiculo PF' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome R B Repres 18/08', valor: 16.90, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome R B Repres 20/08 (a)', valor: 21.00, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome R B Repres 20/08 (b)', valor: 21.00, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome 62742258 G 22/08', valor: 45.00, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 27/08', valor: 21.90, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome 52544337 J 27/08', valor: 30.20, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome Restaurante 28/08', valor: 16.00, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome Parada Das 01/09', valor: 18.00, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 02/09', valor: 21.90, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 03/09', valor: 19.90, categoria: 'Alimentacao' },
+  { data: '25/09/2026', origem: 'Inter', descricao: 'Aiqfome Aiqfome LT 13/09', valor: 24.90, categoria: 'Alimentacao' },
+  // --- Bradesco NEO (Visa) — venc. 20/09/2026 (fatura R$33,00, anuidade) ---
+  { data: '20/09/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada 09/09', valor: 33.00, categoria: 'Tarifa cartao' },
+  // --- Nubank PF (cartao) — venc. 02/09/2026 (fatura R$199,78; Anthropic+IOF sao PJ, sql/203) ---
+  { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Plano NuCel 19/08', valor: 10.00, categoria: 'Diverso' },
+  { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Ebn Epicgames 17/08', valor: 4.97, categoria: 'Lazer' },
+  { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Mercado Kraus 11/08', valor: 11.49, categoria: 'Supermercado' },
+  { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Aiqfome) 07/08', valor: 24.90, categoria: 'Alimentacao' },
+  { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Nubank+ 04/08', valor: 29.00, categoria: 'Assinatura' },
+  // --- Cresol Mastercard — debito 11/09/2026 (fatura R$1.297,81; PJ R$1.098,87 no sql/203; R Silva R$29,99 12x em investigacao, fora) ---
+  { data: '11/09/2026', origem: 'Cresol Mastercard', descricao: 'Brayan Beef 21/08', valor: 30.23, categoria: 'Alimentacao' },
+  { data: '11/09/2026', origem: 'Cresol Mastercard', descricao: 'Mercado Kraus 03/08', valor: 16.98, categoria: 'Supermercado' },
+  { data: '11/09/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 6/6', valor: 121.74, categoria: 'Servicos' },
+  // --- Nubank conta (Toni) — extrato set/2026 ---
+  { data: '11/09/2026', origem: 'Nubank', descricao: 'Garzon Informatica', valor: 5.00, categoria: 'Diverso' },
+  { data: '11/09/2026', origem: 'Nubank', descricao: 'Luan Rogerio Gomes Fruto (pizza promocional da igreja)', valor: 35.00, categoria: 'Doacao/Igreja' },
+  { data: '12/09/2026', origem: 'Nubank', descricao: 'Debito em conta 12/09', valor: 25.00, categoria: 'Diverso' },
+  { data: '13/09/2026', origem: 'Nubank', descricao: 'Maykon Antonio de Oliveira (oferta missionaria)', valor: 100.00, categoria: 'Doacao/Igreja' },
+  { data: '19/09/2026', origem: 'Nubank', descricao: 'Rosilene da Silva Pereira (churrasco da igreja)', valor: 50.00, categoria: 'Doacao/Igreja' },
+  { data: '25/09/2026', origem: 'Nubank', descricao: 'Pay2All 25/09', valor: 53.90, categoria: 'Diverso' },
+  { data: '25/09/2026', origem: 'Nubank', descricao: 'Davi Pereira Giusfredi (pix pra completar compra de pasteis entre amigos)', valor: 15.00, categoria: 'Alimentacao' },
+  { data: '27/09/2026', origem: 'Nubank', descricao: 'Dizimo Sara Nossa Terra 27/09', valor: 350.00, categoria: 'Dizimo' },
+  // --- Bradesco PF (conta 358510-7, nao rastreada) — extrato set/2026 ---
+  { data: '02/09/2026', origem: 'Bradesco PF', descricao: 'Encargos limite credito 02/09', valor: 86.75, categoria: 'Tarifa banco' },
+  { data: '02/09/2026', origem: 'Bradesco PF', descricao: 'IOF utilizacao limite 02/09', valor: 30.81, categoria: 'IOF' },
+  { data: '22/09/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 22/09 (610)', valor: 610.00, categoria: 'Transferencia' },
+  { data: '22/09/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 22/09 (4.700)', valor: 4700.00, categoria: 'Transferencia' },
+  // --- Cresol (emprestimo Toni, PF desde 23/09) ---
+  { data: '21/09/2026', origem: 'Cresol', descricao: 'Parcela Emprestimo Cresol 21/09', valor: 1421.71, categoria: 'Financiamento' },
+]
+
 // Marca a pessoa em cada item (pra agregacao no total)
 const marcarPessoa = (lista, pessoa) => lista.map(d => ({ ...d, pessoa }))
 
@@ -997,6 +1137,8 @@ const TONI_JULHO  = marcarPessoa(DESPESAS_PF_TONI_JULHO_2026,   'toni')
 const TONI_AGOSTO = marcarPessoa(DESPESAS_PF_TONI_AGOSTO_2026,  'toni')
 const RAFA_JULHO  = marcarPessoa(DESPESAS_PF_RAFA_JULHO_2026,   'rafa')
 const RAFA_AGOSTO = marcarPessoa(DESPESAS_PF_RAFA_AGOSTO_2026,  'rafa')
+const TONI_SETEMBRO = marcarPessoa(DESPESAS_PF_TONI_SETEMBRO_2026, 'toni')
+const RAFA_SETEMBRO = marcarPessoa(DESPESAS_PF_RAFA_SETEMBRO_2026, 'rafa')
 
 // Indice: mes -> pessoa -> lista
 // 'total' = uniao Toni + Rafa (NAO descontamos transferencias Rafa->Toni aqui,
@@ -1022,6 +1164,11 @@ export const DESPESAS_PF_POR_MES = {
     toni:  TONI_AGOSTO,
     rafa:  RAFA_AGOSTO,
     total: [...TONI_AGOSTO, ...RAFA_AGOSTO],
+  },
+  '2026-09': {
+    toni:  TONI_SETEMBRO,
+    rafa:  RAFA_SETEMBRO,
+    total: [...TONI_SETEMBRO, ...RAFA_SETEMBRO],
   },
 }
 
