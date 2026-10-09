@@ -878,3 +878,5 @@ Regra do Toni: tudo entra em setembro = extratos de setembro + faturas que **ven
 - Igreja (Nubank conta): Luan 35, Maykon 100, Rosilene 50 → `Doacao/Igreja`; Davi 15 → Alimentacao; Garzon 5, Débito em conta 25, Pay2All 53,90 → Diverso.
 - **Não lançado**: quitações de fatura, retiradas/PIX internos, água 15/09 R$164,47 (é a de AGOSTO, sql/191).
 - **PENDENTES / palpites a confirmar**: R Silva Representações R$29,99 (1/12, 21/08, Cresol Mastercard) fora de tudo; Rabacow e Rabacow R$256,13 (Elo, PF Diverso); Brechó da Fadi R$227 (MP, PF Vestuário); Mercado Kraus R$16,98 (Mastercard, PF); JIM COM Ana Paula Maluf R$5 (Elo, PF); Amazon Music R$13,90 (Elo, PJ Software por precedente); PIX R$6 do Alessandro; Rafa (extratos BB/Nubank + Carro BV de setembro) o Toni vai lançar.
+
+- **Resolvido em 09/10/2026**: R Silva Representações R$29,99 (12x) = curso já estornado (fatura de outubro vem com -359 R Silva) → **NUNCA lançar** nem a compra nem o estorno. Rabacow e Rabacow R$256,13 = hospedagem em hotel (PF, Lazer). Demais palpites da lista acima confirmados pelo Toni ("resto está ok").

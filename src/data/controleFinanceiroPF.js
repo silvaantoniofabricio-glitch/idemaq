@@ -1026,7 +1026,7 @@ export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Saborelli 17/08', valor: 65.71, categoria: 'Alimentacao' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 17/08 (b)', valor: 12.70, categoria: 'Pedagio' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Amigao Navirai 16/08', valor: 52.04, categoria: 'Supermercado' },
-  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Rabacow e Rabacow Ltda 16/08', valor: 256.13, categoria: 'Diverso' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Rabacow e Rabacow Ltda (hotel) 16/08', valor: 256.13, categoria: 'Lazer' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Mano Auto Posto 16/08', valor: 189.02, categoria: 'Combustivel' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Cinemark Campo Grande 16/08', valor: 88.00, categoria: 'Lazer' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 16/08 (a)', valor: 12.70, categoria: 'Pedagio' },
