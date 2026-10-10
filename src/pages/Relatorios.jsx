@@ -33,7 +33,7 @@ import { useRelatorioIA } from '../hooks/useRelatorioIA'
 import { usePontuacao } from '../hooks/usePontuacao'
 import { useRelatorioQualidade } from '../hooks/useRelatorioQualidade'
 import { useAlertasPontuacao } from '../hooks/useAlertasPontuacao'
-import { LABEL_SERVICO, calcularNivelPremio } from '../utils/pontuacao'
+import { LABEL_SERVICO, PONTOS_POR_NIVEL, PREMIO_POR_NIVEL, calcularNivelAcumulado, niveisGanhosNoPeriodo } from '../utils/pontuacao'
 import { AtlPanel, ATL_FONT } from '../components/osDetalhe/acoes/_AtlassianUI'
 
 // === Catálogo dos relatórios ===
@@ -998,6 +998,8 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
   }, [iniIso, fimIso])
   const { data: dataAnt } = useRelatorioFuncionarios({ iniIso: iniAntIso, fimIso: fimAntIso })
   const { data: pontosAnt } = usePontuacao({ iniIso: iniAntIso, fimIso: fimAntIso })
+  // Acumulado desde o início até o fim do período (nível acumulado de cada pessoa).
+  const { data: pontosAcum } = usePontuacao({ fimIso })
 
   const loadingGeral = loading || loadingPontos || loadingQualidade
   if (loadingGeral && !data) return <RelatorioLoading T={T} />
@@ -1012,6 +1014,7 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
   const antPorId = Object.fromEntries((dataAnt?.equipe || []).map(f => [f.id, f]))
   const pontosPorId = Object.fromEntries((pontosData?.equipe || []).map(f => [f.funcionario_id, f]))
   const pontosAntPorId = Object.fromEntries((pontosAnt?.equipe || []).map(f => [f.funcionario_id, f]))
+  const acumPorId = Object.fromEntries((pontosAcum?.equipe || []).map(f => [f.funcionario_id, f.total]))
   const qualidadePorId = Object.fromEntries((qualidadeData?.equipe || []).map(f => [f.id, f]))
 
   const totalPontos = pontosData?.totalPontos || 0
@@ -1079,6 +1082,7 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
               ant={antPorId[f.id]}
               pontos={pontosPorId[f.id]}
               pontosAnt={pontosAntPorId[f.id]}
+              acumulado={acumPorId[f.id] ?? null}
               qualidade={qualidadePorId[f.id]}
               labelPapel={labelPapel}
               lider={liderId === f.id && (pontosPorId[f.id]?.total || 0) > 0}
@@ -1277,7 +1281,7 @@ function StatMini({ T, label, valor, dark, diff }) {
 }
 
 // ─── Card completo por pessoa — performance + pontos + qualidade ─────────
-function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel, lider }) {
+function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, acumulado, qualidade, labelPapel, lider }) {
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
@@ -1364,32 +1368,30 @@ function PessoaCard({ T, dark, f, ant, pontos, pontosAnt, qualidade, labelPapel,
             )
           })()}
 
-          {/* Nível de prêmio */}
-          {(() => {
-            const { nivelAtingido, proximoNivel, pct, faltam } = calcularNivelPremio(totalPontos)
+          {/* Nível acumulado — 400 pts = 1 nível = R$ 50 */}
+          {acumulado != null && (() => {
+            const { nivel, faltam, pct } = calcularNivelAcumulado(acumulado)
+            const { niveis, premio } = niveisGanhosNoPeriodo(acumulado, totalPontos)
             return (
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700,
-                    color: nivelAtingido ? verde : T.textMuted,
-                  }}>
-                    {nivelAtingido
-                      ? `🏆 ${nivelAtingido.label} · R$ ${nivelAtingido.premio}`
-                      : 'Sem nível ainda'}
+                  <span style={{ fontSize: 11, fontWeight: 700, color: nivel > 0 ? verde : T.textMuted }}>
+                    Nível {nivel} · {Math.round(acumulado)} pts acumulados
                   </span>
-                  {proximoNivel && (
-                    <span style={{ fontSize: 10, color: T.textMuted }}>
-                      faltam {faltam} pra {proximoNivel.label.split(' · ')[0]}
-                    </span>
-                  )}
+                  <span style={{ fontSize: 10, color: T.textMuted }}>
+                    faltam {Math.ceil(faltam)} pro nível {nivel + 1}
+                  </span>
                 </div>
                 <div style={{ width: '100%', height: 5, borderRadius: 3, background: T.cardAlt, overflow: 'hidden' }}>
                   <div style={{
                     width: `${pct}%`, height: '100%',
-                    background: nivelAtingido ? verde : azul,
-                    borderRadius: 3, transition: 'width .3s',
+                    background: verde, borderRadius: 3, transition: 'width .3s',
                   }} />
+                </div>
+                <div style={{ fontSize: 11, color: niveis > 0 ? verde : T.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+                  {niveis > 0
+                    ? `+${niveis} nível${niveis > 1 ? 's' : ''} no período · R$ ${premio} a receber`
+                    : `Nenhum nível novo no período (cada ${PONTOS_POR_NIVEL} pts = R$ ${PREMIO_POR_NIVEL})`}
                 </div>
               </div>
             )

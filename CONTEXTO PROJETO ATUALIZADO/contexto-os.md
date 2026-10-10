@@ -712,3 +712,13 @@ A coluna `roteiro_item.urgente` (sql/83) já existia e já tinha tratamento visu
 Toni pesquisou os 2 funcionários (ordem do que deveria valer mais: gosto + tempo + dificuldade). Pesos novos em `pontuacao.js`: Higienização 16→10, Desmontagem 4→6, Montagem 4→5, Acabamento 2→5, Diagnóstico 4→3, Teste final 1→2 (Coleta 6, Entrega 6, Manutenção 3 por peça iguais). Lava e seca (definido pelo Toni): Desmontagem, Montagem e Higienização valem o DOBRO da normal (12, 10, 20); resto igual à normal. OS completa com 1 manutenção: 36 pts sem higienização, 46 com.
 
 Pontuação é calculada ao vivo (`calcularPontosOS`), então todos os meses passados já saem recalculados sozinhos. Exceção: `BONUS_GAP_JULHO` (233 pts) é fixo e não foi recalculado. Nenhuma tabela guarda pontos, nada a migrar. Prêmios já pagos com a régua antiga não mudam sozinhos — conferir mês a mês se necessário.
+
+## 08/10/2026 — Prêmio por nível acumulado (substitui as metas mensais)
+
+Ideia de um funcionário, aprovada pelo Toni: os pontos **não zeram por mês**. Somam desde o início (06/07/2026, inclui o bônus do gap) e **a cada 400 pontos = 1 nível = R$ 50** no dia do pagamento. Meta igual pros dois, sem teto, garantia continua valendo 50%.
+
+- `pontuacao.js`: `METAS`/`calcularNivelPremio` removidos; entram `PONTOS_POR_NIVEL=400`, `PREMIO_POR_NIVEL=50`, `calcularNivelAcumulado(total)` e `niveisGanhosNoPeriodo(acumuladoAteFim, pontosDoPeriodo)`.
+- R$ a pagar num período = (nível no fim − nível no início) × 50. Sem tabela nova: o nível no início = acumulado do fim − pontos do período.
+- `Relatorios.jsx` (PessoaCard) e `PainelFuncionario.jsx` (CardPontos): mostram "Nível N · X pts acumulados", quanto falta pro próximo e "+k níveis no período · R$ y a receber". Acumulado vem de `usePontuacao({ fimIso })` (sem `iniIso`).
+- Os níveis já alcançados até hoje contam pro nível mostrado; o R$ só aparece como "a receber" pelos níveis ganhos dentro do período selecionado (meses passados foram pagos pelo sistema antigo).
+- Base da conta: R$ 16,5 mil de faturamento ≈ 51 OS ≈ 1.570 pts da equipe ≈ 785 por pessoa ≈ ~2 níveis/mês (≈ R$ 100 por pessoa).
