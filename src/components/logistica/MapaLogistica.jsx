@@ -1,16 +1,18 @@
 // src/components/logistica/MapaLogistica.jsx
-// Mapa Google Maps real, centrado em Naviraí-MS por default.
-// Reusa `loadMapsScript` exportado do AddressInput (singleton da chave).
+// Mapa OpenStreetMap (Leaflet), centrado em Naviraí-MS por default.
+// Gratuito e sem chave — trocou o Google Maps em 13/10/2026 (faturamento
+// do Google Cloud negado).
 //
 // Estados:
-//   - loading: script carregando
-//   - erro:    chave ausente / API bloqueada / erro de network
+//   - loading: montando
+//   - erro:    falha ao criar o mapa
 //   - ok:      mapa montado
 //
-// Quando paradas com lat/lng forem passadas (futuro), desenha marcadores.
+// Quando paradas com lat/lng forem passadas, desenha marcadores.
 
 import React, { useEffect, useRef, useState } from 'react'
-import { loadMapsScript, MAPS_KEY_DISPONIVEL } from './AddressInput'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { corEtapa, bgEtapa, corHero } from '../../utils/colors'
 
 // Centro default: Oficina Idemaq · Alameda Londrina, 438 · Naviraí/MS
@@ -42,7 +44,7 @@ const TIPO_VISUAL = {
 }
 
 // Pinos ~22% menores no display que o SVG nativo (pedido 21/05/2026 noite).
-// Aplicado via Marker.icon.scaledSize, evitando reescrever o path do SVG.
+// Aplicado no tamanho do ícone, evitando reescrever o path do SVG.
 const PIN_DISPLAY_SCALE = 0.78
 
 // Gera data URL SVG dum pin colorido com texto dentro — sem dependência externa.
@@ -76,6 +78,13 @@ function svgPin(cor, texto, tracejado = false, agendamento = false) {
   return { url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg), w, h, cx, anchorY: agendamento ? 45 : 42 }
 }
 
+const sz = (n) => Math.round(n * PIN_DISPLAY_SCALE)
+const iconeDoPin = (pin) => L.icon({
+  iconUrl: pin.url,
+  iconSize: [sz(pin.w), sz(pin.h)],
+  iconAnchor: [sz(pin.cx), sz(pin.anchorY)],
+})
+
 export default function MapaLogistica({
   T, dark,
   height = 460,
@@ -89,108 +98,56 @@ export default function MapaLogistica({
   const containerRef = useRef(null)
   const mapaRef = useRef(null)
   const markersRef = useRef([])
-  const googleRef = useRef(null)
-  const MarkerRef = useRef(null)
   const [status, setStatus] = useState('loading') // 'loading' | 'ok' | 'erro'
   const [erroMsg, setErroMsg] = useState(null)
   const azul = corEtapa('blue', dark)
   const amarelo = corEtapa('yellow', dark)
 
   useEffect(() => {
-    let cancelado = false
+    if (!containerRef.current) return
+    try {
+      const mapa = L.map(containerRef.current, {
+        center: [center.lat, center.lng],
+        zoom,
+        zoomControl: true,
+      })
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(mapa)
 
-    async function montar() {
-      if (!MAPS_KEY_DISPONIVEL) {
-        if (!cancelado) {
-          setStatus('erro')
-          setErroMsg('VITE_GOOGLE_MAPS_KEY não está setada')
-        }
-        return
-      }
-      try {
-        const google = await loadMapsScript()
-        if (cancelado || !containerRef.current) return
+      // Marcador fixo da oficina (sempre visível) — pin laranja com "O"
+      L.marker([NAVIRAI_CENTER.lat, NAVIRAI_CENTER.lng], {
+        icon: iconeDoPin(svgPin('#FF9800', 'O')),
+        title: 'Oficina Idemaq · Alameda Londrina, 438 · Naviraí/MS',
+        zIndexOffset: 9999,
+      }).addTo(mapa)
 
-        // Com loading=async, o script.onload pode disparar antes do
-        // google.maps.Map estar disponível. importLibrary garante que a
-        // lib específica está carregada antes de instanciar.
-        const { Map } = await google.maps.importLibrary('maps')
-        const { Marker } = await google.maps.importLibrary('marker')
-        if (cancelado || !containerRef.current) return
-
-        googleRef.current = google
-        MarkerRef.current = Marker
-
-        mapaRef.current = new Map(containerRef.current, {
-          center,
-          zoom,
-          disableDefaultUI: false,
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: true,
-          zoomControl: true,
-          clickableIcons: false, // POIs não clicáveis (evita popup ao errar)
-          styles: [
-            // Esconde restaurantes, hotéis, postos, comércio, parques, etc
-            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-            // Esconde paradas de ônibus, estações de metrô, etc
-            { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-            // Esconde escolas/hospitais/governo (ainda dentro de poi mas separado)
-            { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
-            { featureType: 'poi.medical', stylers: [{ visibility: 'off' }] },
-            { featureType: 'poi.school', stylers: [{ visibility: 'off' }] },
-            { featureType: 'poi.government', stylers: [{ visibility: 'off' }] },
-            { featureType: 'poi.attraction', stylers: [{ visibility: 'off' }] },
-            { featureType: 'poi.place_of_worship', stylers: [{ visibility: 'off' }] },
-            { featureType: 'poi.sports_complex', stylers: [{ visibility: 'off' }] },
-            // Mantém parques visíveis (verde do mapa) mas sem ícones
-            { featureType: 'poi.park', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-          ],
-        })
-
-        // Marcador fixo da oficina (sempre visível) — pin laranja com "O"
-        const pinOficina = svgPin('#FF9800', 'O')
-        const sz = (n) => Math.round(n * PIN_DISPLAY_SCALE)
-        new Marker({
-          position: NAVIRAI_CENTER,
-          map: mapaRef.current,
-          title: 'Oficina Idemaq · Alameda Londrina, 438 · Naviraí/MS',
-          icon: {
-            url: pinOficina.url,
-            scaledSize: new google.maps.Size(sz(pinOficina.w), sz(pinOficina.h)),
-            anchor: new google.maps.Point(sz(pinOficina.cx), sz(pinOficina.anchorY)),
-          },
-          zIndex: 9999,
-        })
-
-        setStatus('ok')
-      } catch (e) {
-        if (cancelado) return
-        console.warn('[MapaLogistica] falhou:', e.message)
-        setStatus('erro')
-        setErroMsg(e.message)
-      }
+      mapaRef.current = mapa
+      setStatus('ok')
+    } catch (e) {
+      console.warn('[MapaLogistica] falhou:', e.message)
+      setStatus('erro')
+      setErroMsg(e.message)
     }
-
-    montar()
-    return () => { cancelado = true }
+    return () => {
+      markersRef.current = []
+      mapaRef.current?.remove()
+      mapaRef.current = null
+    }
   }, [center.lat, center.lng, zoom])
 
   // Renderiza marcadores das paradas quando lista mudar
   useEffect(() => {
-    if (status !== 'ok' || !mapaRef.current) return
-    const google = googleRef.current
-    const Marker = MarkerRef.current
-    if (!google || !Marker) return
+    const mapa = mapaRef.current
+    if (status !== 'ok' || !mapa) return
 
-    // Limpa marcadores antigos
-    for (const m of markersRef.current) m.setMap(null)
+    for (const m of markersRef.current) m.remove()
     markersRef.current = []
 
     if (!paradas || paradas.length === 0) return
 
-    const bounds = new google.maps.LatLngBounds()
-    bounds.extend(NAVIRAI_CENTER)
+    const pontos = [[NAVIRAI_CENTER.lat, NAVIRAI_CENTER.lng]]
 
     for (const p of paradas) {
       if (p.lat == null || p.lng == null) continue
@@ -207,33 +164,23 @@ export default function MapaLogistica({
       // ainda mostrarem borda tracejada por não estarem em rota ainda.
       const tracejadoFinal = p.tracejado != null ? p.tracejado : visual.tracejado
       const pin = svgPin(visual.cor, texto, tracejadoFinal, !!p.agendamento)
-      const sz = (n) => Math.round(n * PIN_DISPLAY_SCALE)
-      const m = new Marker({
-        position: { lat: Number(p.lat), lng: Number(p.lng) },
-        map: mapaRef.current,
+      const lat = Number(p.lat), lng = Number(p.lng)
+      const m = L.marker([lat, lng], {
+        icon: iconeDoPin(pin),
         title: p.label || p.tipo,
-        icon: {
-          url: pin.url,
-          scaledSize: new google.maps.Size(sz(pin.w), sz(pin.h)),
-          anchor: new google.maps.Point(sz(pin.cx), sz(pin.anchorY)),
-        },
-      })
-      if (p.onClick) m.addListener('click', () => p.onClick(p))
+      }).addTo(mapa)
+      if (p.onClick) m.on('click', () => p.onClick(p))
       markersRef.current.push(m)
-      bounds.extend(m.getPosition())
+      pontos.push([lat, lng])
     }
 
-    // Re-enquadra se tiver paradas válidas
+    // maxZoom evita zoom absurdo quando há 1 ou 2 paradas perto
     if (markersRef.current.length > 0) {
-      mapaRef.current.fitBounds(bounds, 80)
-      // Limita zoom in absurdo quando há 1 ou 2 paradas perto
-      const listener = google.maps.event.addListenerOnce(mapaRef.current, 'idle', () => {
-        if (mapaRef.current.getZoom() > 16) mapaRef.current.setZoom(15)
-      })
+      mapa.fitBounds(L.latLngBounds(pontos), { padding: [80, 80], maxZoom: 15 })
     }
   }, [paradas, status])
 
-  // Container sempre presente (pra google.maps.Map ter onde montar).
+  // Container sempre presente (pro Leaflet ter onde montar).
   // Overlays de loading/erro ficam por cima.
   return (
     <div style={{ position: 'relative', minHeight: height }}>
@@ -270,7 +217,7 @@ export default function MapaLogistica({
             Mapa indisponível
           </div>
           <div style={{ fontSize: 11.5, color: T?.textMuted, maxWidth: 380, textAlign: 'center', lineHeight: 1.45 }}>
-            {erroMsg || 'Não foi possível carregar o Google Maps.'}
+            {erroMsg || 'Não foi possível carregar o mapa.'}
           </div>
         </Overlay>
       )}

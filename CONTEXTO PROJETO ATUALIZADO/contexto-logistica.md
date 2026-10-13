@@ -295,3 +295,9 @@ Sem restrição de menu.
 - **Clientes**: endereço do cliente é fonte da parada. Maps Places valida ao cadastrar. Ver `contexto-clientes.md`
 - **Painel Funcionários**: Alessandro vê paradas do dia. Ver `contexto-painel-func.md`
 - **Geral / cross-area**: schema parte 2 (tabela `rota`). Ver `contexto-geral.md`
+
+---
+
+## 10. Mapa trocado: Google Maps -> OpenStreetMap/Leaflet (13/10/2026)
+
+O Google Cloud negou o cadastro de faturamento (antifraude, e-mail "signup was denied"), então o Google Maps ficou sem cobrança e o mapa quebrou. `MapaLogistica.jsx` agora usa **Leaflet + tiles do OpenStreetMap** (gratuito, sem chave; dependência `leaflet` adicionada). Mesmas props, mesmos pinos SVG, mesmo `fitBounds`. Geocoding e busca de endereço já caíam pro Photon/Nominatim (ver `useGeocodeEnderecos.js` / `AddressInput.jsx`), então não mudaram. Perdas: sem rota com trânsito nem Street View. `VITE_GOOGLE_MAPS_KEY` não é mais necessária pro mapa.
