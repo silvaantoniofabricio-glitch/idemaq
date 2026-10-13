@@ -98,6 +98,7 @@ export default function MapaLogistica({
   const containerRef = useRef(null)
   const mapaRef = useRef(null)
   const markersRef = useRef([])
+  const enquadrouRef = useRef(false)
   const [status, setStatus] = useState('loading') // 'loading' | 'ok' | 'erro'
   const [erroMsg, setErroMsg] = useState(null)
   const azul = corEtapa('blue', dark)
@@ -124,6 +125,10 @@ export default function MapaLogistica({
       }).addTo(mapa)
 
       mapaRef.current = mapa
+      enquadrouRef.current = false
+      const usuarioMexeu = () => { enquadrouRef.current = true }
+      containerRef.current.addEventListener('pointerdown', usuarioMexeu)
+      containerRef.current.addEventListener('wheel', usuarioMexeu, { passive: true })
       setStatus('ok')
     } catch (e) {
       console.warn('[MapaLogistica] falhou:', e.message)
@@ -141,7 +146,12 @@ export default function MapaLogistica({
   useEffect(() => {
     const mapa = mapaRef.current
     if (status !== 'ok' || !mapa) return
+    // Debounce: o geocoding entrega um endereço por vez e cada mudança recriava
+    // todos os pinos — o clique caía num pino já removido.
+    const timer = setTimeout(() => desenhar(mapa), 400)
+    return () => clearTimeout(timer)
 
+    function desenhar(mapa) {
     for (const m of markersRef.current) m.remove()
     markersRef.current = []
 
@@ -185,9 +195,12 @@ export default function MapaLogistica({
       pontos.push([lat, lng])
     }
 
-    // maxZoom evita zoom absurdo quando há 1 ou 2 paradas perto
-    if (markersRef.current.length > 0) {
+    // Enquadra enquanto o usuário ainda não mexeu no mapa; depois que ele
+    // arrasta/dá zoom/clica, para de reenquadrar (movia o mapa debaixo do mouse).
+    // maxZoom evita zoom absurdo quando há 1 ou 2 paradas perto.
+    if (markersRef.current.length > 0 && !enquadrouRef.current) {
       mapa.fitBounds(L.latLngBounds(pontos), { padding: [80, 80], maxZoom: 15 })
+    }
     }
   }, [paradas, status])
 
