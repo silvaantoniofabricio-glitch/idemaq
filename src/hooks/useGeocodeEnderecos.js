@@ -120,19 +120,45 @@ async function viaGoogle(google, endereco) {
 // `lat`/`lon` no params funciona como bias (não restriction) — resultados
 // próximos a Naviraí vêm primeiro, mas o serviço ainda aceita endereços fora
 // do raio se forem o melhor match.
-async function photonFetch(query) {
+// Normaliza nome de rua pra comparar (sem acento, sem "Rua/Av.", sem número).
+function nomeRua(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\b(rua|avenida|av|alameda|al|travessa|tv|praca|pca|estrada|rodovia|r)\b\.?/g, ' ')
+    .replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+function ruaDoEndereco(end) {
+  const primeiro = normalizarEndereco(end).split(',')[0] || ''
+  return nomeRua(primeiro)
+}
+
+async function photonFetch(query, rua) {
   const params = new URLSearchParams({
     q: query,
-    limit: '1',
+    limit: '8',
     lat: String(NAVIRAI_LAT),
     lon: String(NAVIRAI_LON),
+    // Só resultados dentro de Naviraí (minLon,minLat,maxLon,maxLat) — evita
+    // rua homônima de outra cidade (o `lat`/`lon` acima é só viés).
+    bbox: '-54.28,-23.14,-54.10,-22.99',
   })
   const url = `https://photon.komoot.io/api/?${params.toString()}`
   try {
     const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
     if (!r.ok) return { httpErro: r.status }
     const data = await r.json()
-    const feat = Array.isArray(data?.features) ? data.features[0] : null
+    // Mantém a ordem de relevância do Photon, mas descarta cidade/estado/país
+    // (cairia no centro da cidade, longe do endereço real).
+    // Só aceita se a RUA do resultado bater com a do endereço — o Photon
+    // devolve "o mais parecido" mesmo quando a rua não existe no OSM (ex.:
+    // caiu numa piscina de outra rua), e pino no lugar errado é pior que sem pino.
+    const feat = (Array.isArray(data?.features) ? data.features : []).find(f => {
+      const pr = f?.properties
+      if (pr?.type !== 'house' && pr?.type !== 'street') return false
+      if (!rua) return true
+      const ruaFeat = nomeRua(pr.type === 'street' ? pr.name : pr.street)
+      return ruaFeat && (ruaFeat === rua || ruaFeat.includes(rua) || rua.includes(ruaFeat))
+    }) || null
     const coords = feat?.geometry?.coordinates
     if (coords && coords.length === 2 && coords[0] != null && coords[1] != null) {
       // Photon retorna [lon, lat] (GeoJSON), oposto do Nominatim
@@ -149,14 +175,15 @@ async function photonFetch(query) {
 // (só "Rua X, Naviraí, MS"). Sem retry por timeout pq Photon raramente falha.
 async function viaPhoton(endereco) {
   const queryCompleta = comContexto(endereco)
-  const r1 = await photonFetch(queryCompleta)
+  const rua = ruaDoEndereco(endereco)
+  const r1 = await photonFetch(queryCompleta, rua)
   if (r1.coords) return r1.coords
   if (r1.httpErro) console.warn('[geocode] Photon HTTP', r1.httpErro, endereco)
 
   if (r1.vazio) {
     const simplificado = versaoSimplificada(normalizarEndereco(endereco))
     if (simplificado && simplificado !== queryCompleta) {
-      const r2 = await photonFetch(simplificado)
+      const r2 = await photonFetch(simplificado, rua)
       if (r2.coords) return r2.coords
     }
     console.warn('[geocode] Photon sem resultado', endereco)

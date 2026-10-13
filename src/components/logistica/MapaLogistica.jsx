@@ -169,7 +169,18 @@ export default function MapaLogistica({
         icon: iconeDoPin(pin),
         title: p.label || p.tipo,
       }).addTo(mapa)
-      if (p.onClick) m.on('click', () => p.onClick(p))
+      // Clique nativo no ícone: o 'click' do Leaflet era descartado em cliques
+      // reais de mouse (testado em prod), então ouvimos o DOM direto. Ignora
+      // quando o mouse andou >5px (era arrasto do mapa, não clique no pino).
+      const el = m.getElement()
+      if (p.onClick && el) {
+        let inicio = null
+        el.addEventListener('pointerdown', (e) => { inicio = [e.clientX, e.clientY] })
+        el.addEventListener('click', (e) => {
+          if (inicio && Math.hypot(e.clientX - inicio[0], e.clientY - inicio[1]) > 5) return
+          p.onClick(p)
+        })
+      }
       markersRef.current.push(m)
       pontos.push([lat, lng])
     }
