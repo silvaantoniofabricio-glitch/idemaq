@@ -778,6 +778,16 @@ export function OSDisponiveisList({ T, dark, osList, arrastando, onDragStart, on
                   </>
                 )}
               </div>
+              {os.equipamento && (
+                <div style={{
+                  fontSize: 11.5, color: T.textMuted, marginTop: 2,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  <i className="ti ti-device-washing-machine" style={{ fontSize: 12, flexShrink: 0 }} aria-hidden="true" />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{os.equipamento}</span>
+                </div>
+              )}
             </div>
 
             <i className="ti ti-grip-vertical" style={{

@@ -161,3 +161,16 @@ export const ESTOQUE_MAQUINAS_MOCK = [
   { id:'M-203', descricao:'Lavadora reformada LG 11kg',      valor:650 },
   { id:'M-204', descricao:'Lavadora reformada Brastemp 9kg', valor:650 },
 ]
+
+// Rótulos dos tipos de equipamento (os.tipo_equipamento) — mesmos ids de
+// FormEquipamentoEdit.jsx / filtro de Vendas.
+export const TIPO_EQUIPAMENTO_LABEL = {
+  lavadora:       'Lavadora',
+  tanquinho:      'Tanquinho',
+  lava_seca:      'Lava e seca',
+  lava_loucas:    'Lava-louças',
+  microondas:     'Microondas',
+  alta_pressao:   'Máquina de Alta Pressão',
+  forno_eletrico: 'Forno Elétrico',
+  outros:         'Outros',
+}

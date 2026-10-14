@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { TIPO_EQUIPAMENTO_LABEL } from '../utils/osData'
 
 // Etapas no schema do banco (não as labels da UI)
 // Todas as etapas do fluxo de trabalho ficam disponíveis no filtro. Concluído
@@ -66,6 +67,7 @@ export function labelEtapa(etapaDb) {
  * Cada OS no retorno tem:
  *   id, numero, tipo, etapa_db, etapa_label,
  *   cliente_nome, cliente_telefone,
+ *   equipamento (texto "Tipo · Marca Modelo"),
  *   endereco, lat, lng,
  *   prazo, data_agendamento,
  *   tipoParadaSugerido
@@ -88,6 +90,7 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
         .select(`
           id, numero, tipo, etapa,
           prazo, data_agendamento, endereco,
+          tipo_equipamento, marca_equipamento, modelo_equipamento,
           cliente:cliente_id(id, nome, telefone, endereco)
         `)
         .is('deleted_at', null)
@@ -109,6 +112,10 @@ export function useOSLogistica({ incluirPagamento = false } = {}) {
         etapa_label: labelEtapa(os.etapa),
         cliente_nome: os.cliente?.nome || (os.tipo === 'fabricacao' ? 'Fabricação' : 'Sem cliente'),
         cliente_telefone: os.cliente?.telefone || '',
+        equipamento: [
+          TIPO_EQUIPAMENTO_LABEL[os.tipo_equipamento],
+          [os.marca_equipamento, os.modelo_equipamento].filter(Boolean).join(' '),
+        ].filter(Boolean).join(' · '),
         endereco: os.endereco || os.cliente?.endereco || '',
         lat: null,
         lng: null,
