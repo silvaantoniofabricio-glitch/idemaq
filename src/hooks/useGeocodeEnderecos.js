@@ -20,7 +20,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { loadMapsScript, MAPS_KEY_DISPONIVEL } from '../components/logistica/AddressInput'
 
-const STORAGE_KEY = 'idemaq.geocode.cache.v2'
+const STORAGE_KEY = 'idemaq.geocode.cache.v3'
 
 const QUOTA_POR_SESSAO = 60
 const THROTTLE_GOOGLE_MS = 120
