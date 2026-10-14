@@ -245,9 +245,13 @@ export default function LogisticaMobile({ T, dark }) {
       const letra = LETRA_POR_SLOT[s.nome]
       const paradas = s.rota.paradas || []
       paradas.forEach((p, idx) => {
-        if (p.lat == null || p.lng == null) return
+        // Parada sem lat/lng salva (OS arrastada pra rota): usa o geocode do endereço.
+        const c = (p.lat != null && p.lng != null)
+          ? { lat: Number(p.lat), lng: Number(p.lng) }
+          : (p.endereco ? coordsPorEndereco[p.endereco] : null)
+        if (!c) return
         lista.push({
-          lat: Number(p.lat), lng: Number(p.lng),
+          lat: c.lat, lng: c.lng,
           tipo: p.tipo,
           codigo: `${letra}${idx + 1}`,
           label: `${letra}${idx + 1} · ${p.cliente_nome || 'Sem cliente'}`,
@@ -302,7 +306,8 @@ export default function LogisticaMobile({ T, dark }) {
       cliente_nome: os.cliente_nome,
       cliente_fone: os.cliente_telefone || null,
       endereco: os.endereco || null,
-      lat: os.lat || null, lng: os.lng || null,
+      lat: os.lat || coordsPorEndereco[os.endereco]?.lat || null,
+      lng: os.lng || coordsPorEndereco[os.endereco]?.lng || null,
       horario_previsto: null, horario_chegada: null,
       status: 'pendente', foto_url: null, observacoes: null,
     }
