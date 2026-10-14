@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabase'
-import { useOS, uiEtapaToDb } from './useOS'
+import { useOS, uiEtapaToDb, baixarEstoqueAoConcluir, criarMaquinaAoConcluir } from './useOS'
 import { useUsuarios } from './useUsuarios'
 import { podeMoverOS } from '../utils/osHelpers'
 import { ETAPAS_TODOS, TIPOS_OS } from '../utils/osData'
@@ -70,8 +70,10 @@ export function useOSDetalheModal({ notify, buscando = false } = {}) {
 
     const dbEtapa = uiEtapaToDb(os.tipo, etapaFinal)
     const patch = { etapa: dbEtapa }
-    if (etapaFinal === 'concluido') patch.data_conclusao = new Date().toISOString()
-    else if (os.etapa === 'concluido') patch.data_conclusao = null
+    if (etapaFinal === 'concluido' || etapaFinal === 'recusado') patch.data_conclusao = new Date().toISOString()
+    else if (os.etapa === 'concluido' || os.etapa === 'recusado') patch.data_conclusao = null
+    if (etapaFinal === 'recusado') patch.recusada = true
+    else if (os.etapa === 'recusado') patch.recusada = false
 
     const { error: errUp } = await supabase.from('os').update(patch).eq('id', os.id)
     if (errUp) {
@@ -84,6 +86,16 @@ export function useOSDetalheModal({ notify, buscando = false } = {}) {
     // calcula duracao_segundos. Inserir aqui manualmente duplicava a linha.
     const labelFinal = TIPOS_OS[os.tipo].etapas.find(e => e.id === etapaFinal)?.label || etapaFinal
     notify?.('ok', `OS #${numero} movida para ${labelFinal}`)
+
+    // Baixa de estoque + criação de máquina (Fabricação) ao concluir — essa
+    // função escreve direto no banco (não passa pelo updateOS do useOS.js),
+    // então precisa disparar aqui manualmente (mesmo fix já feito no
+    // moverOS local do Kanban.jsx em 12/08/2026 — faltava aqui, que é o
+    // moverOS usado por Vendas/Logística/Financeiro/Clientes/Estoque).
+    if (etapaFinal === 'concluido' && os.etapa !== 'concluido') {
+      baixarEstoqueAoConcluir(os.id, os.numero)
+      if (os.tipo === 'fabricacao') criarMaquinaAoConcluir(os.id, os.numero)
+    }
   }, [osList, setOsList, notify])
 
   const updateOS = useCallback(async (numero, patch) => {
