@@ -23,6 +23,7 @@ import { corEtapa, bgEtapa } from '../utils/colors'
 import { fetchFaltaPecas, calcManutPecaStatus } from '../utils/pecasStatus'
 import KanbanColumn from '../components/kanban/KanbanColumn'
 import RoteiroDia from '../components/roteiro/RoteiroDia'
+import AvisoRoteiroPendente from '../components/roteiro/AvisoRoteiroPendente'
 import { useRoteiro } from '../hooks/useRoteiro'
 import { enviarOSParaRoteiro, diaRelativo } from '../utils/roteiroEnvio'
 import { NovaOSModal } from '../_legacy/desktopKanbanModals'
@@ -620,6 +621,10 @@ export default function Kanban({ T, dark, user }) {
             )}
           </>}
         />
+
+        {/* Aviso: OS do Roteiro de hoje ainda em aberto (só funcionário) */}
+        <AvisoRoteiroPendente T={T} dark={dark} user={user} itens={roteiroItens} osList={osList}
+          onAbrirRoteiro={() => setNotasAbertas(true)} onAbrirOS={(os) => setDetalhe(os)} />
 
         {/* ═══════════════════════════════════════════════════════
             BOARD — colunas kanban

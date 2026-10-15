@@ -28,11 +28,14 @@ import OSCardMobile from '../../components/mobile/OSCardMobile'
 import OSDetalhe from '../../components/osDetalhe/OSDetalhe'
 import NovaOSMobile from '../../components/os/NovaOSMobile'
 import RoteiroDia from '../../components/roteiro/RoteiroDia'
+import AvisoRoteiroPendente from '../../components/roteiro/AvisoRoteiroPendente'
+import { useRoteiro } from '../../hooks/useRoteiro'
 
 // ─── Componente principal ───────────────────────────────────────────────────
 export default function OSMobile({ T, dark, user }) {
   const { osList, setOsList, loading, refetch } = useOS(false)
   const { usuarios } = useUsuarios()
+  const { itens: roteiroItens } = useRoteiro({})
   const notify = useToast()
   const admin = isAdmin(user)
 
@@ -335,6 +338,10 @@ export default function OSMobile({ T, dark, user }) {
           onNova={() => setModalNova(true)}
         />
       </div>
+
+      {/* Aviso: OS do Roteiro de hoje ainda em aberto (só funcionário) */}
+      <AvisoRoteiroPendente T={T} dark={dark} user={user} itens={roteiroItens} osList={osList} compact
+        onAbrirRoteiro={() => setNotasAbertas(true)} onAbrirOS={(os) => setOsAberta(os)} />
 
       {/* ── Kanban horizontal scroll-snap ── */}
       {loading ? (
