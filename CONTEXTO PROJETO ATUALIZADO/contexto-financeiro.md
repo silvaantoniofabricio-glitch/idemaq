@@ -894,3 +894,4 @@ Gerado `Arquivos Contador/IDEMAQ - Movimentacao Setembro-2026.xlsx` (pasta gitig
 - PostgREST corta em 1000 linhas: o fetch pagina com `.range()`.
 
 - **16/10/2026 (sql/204, aplicado)**: Água Sanesul set/2026 R$146,29 (paga 14/10, lançada no vencimento 02/09) e DAS/Simples set/2026 R$618,43 (lançado em 20/09, Impostos) — ambos em SETEMBRO, conta Cresol. NÃO duplicar com as saídas de outubro no extrato. eSocial de setembro ainda não pago: quando o Toni avisar, lançar em SETEMBRO (padrão: Impostos, ESOCIAL-<mes>:INSS+FGTS). Frete e mão de obra Flaviano: não houve em setembro. Energia: ver memória project_energia_paga_atrasada (paga sempre 1 conta atrasada; junho sem lançamento é normal).
+- **16/10/2026**: eSocial set/2026 R$661,28 lançado em SETEMBRO (20/09, ESOCIAL-SET:, Cresol, Impostos). Os R$618,43 são o Simples Nacional (DAS), guia separada — ambos já no PJ de setembro. Pendência de impostos de setembro: nenhuma.

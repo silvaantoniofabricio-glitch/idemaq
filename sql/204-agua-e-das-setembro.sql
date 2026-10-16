@@ -24,3 +24,12 @@ COMMIT;
 
 SELECT descricao, valor, categoria, pago_em FROM lancamento_financeiro
 WHERE deleted_at IS NULL AND (descricao LIKE 'CRESOL-SET:Sanesul%' OR descricao LIKE 'CRESOL-SET:Ministerio%');
+
+-- ACRESCENTADO em 16/10/2026 (aplicado): eSocial de setembro, R$661,28 (INSS+FGTS, competencia 09/2026),
+-- lançado em 20/09 na Cresol, categoria Impostos (padrao do sql/178). Toni confirmou que o eSocial
+-- e esse valor; os R$618,43 acima sao o Simples Nacional (DAS) — sao duas guias diferentes.
+INSERT INTO lancamento_financeiro (tipo, valor, categoria, descricao, conta_id, vencimento, pago_em, taxa_pct, forma_pagamento)
+SELECT 'despesa', 661.28, 'Impostos', 'ESOCIAL-SET:INSS+FGTS competencia 09/2026',
+  (SELECT id FROM conta_bancaria WHERE nome = 'Cresol' AND deleted_at IS NULL LIMIT 1),
+  '2026-09-20', '2026-09-20', 0, 'pix'
+WHERE NOT EXISTS (SELECT 1 FROM lancamento_financeiro WHERE descricao = 'ESOCIAL-SET:INSS+FGTS competencia 09/2026' AND deleted_at IS NULL);
