@@ -880,3 +880,15 @@ Regra do Toni: tudo entra em setembro = extratos de setembro + faturas que **ven
 - **PENDENTES / palpites a confirmar**: R Silva Representações R$29,99 (1/12, 21/08, Cresol Mastercard) fora de tudo; Rabacow e Rabacow R$256,13 (Elo, PF Diverso); Brechó da Fadi R$227 (MP, PF Vestuário); Mercado Kraus R$16,98 (Mastercard, PF); JIM COM Ana Paula Maluf R$5 (Elo, PF); Amazon Music R$13,90 (Elo, PJ Software por precedente); PIX R$6 do Alessandro; Rafa (extratos BB/Nubank + Carro BV de setembro) o Toni vai lançar.
 
 - **Resolvido em 09/10/2026**: R Silva Representações R$29,99 (12x) = curso já estornado (fatura de outubro vem com -359 R Silva) → **NUNCA lançar** nem a compra nem o estorno. Rabacow e Rabacow R$256,13 = hospedagem em hotel (PF, Lazer). Demais palpites da lista acima confirmados pelo Toni ("resto está ok").
+
+---
+
+## 18. Arquivo do contador — setembro/2026 (16/10/2026)
+
+Gerado `Arquivos Contador/IDEMAQ - Movimentacao Setembro-2026.xlsx` (pasta gitignored, tem PII). Mesmo formato de junho (§17: Resumo/Entradas/Saídas, regime de caixa, split Mercadoria × Serviço via `vw_lancamento_fiscal_split`, sem categoria "avulso"), com 2 acréscimos: colunas Mercadoria/Mão de obra/Deslocamento **por linha** na aba Entradas e bloco **DAS estimado** (4% mercadoria / 6% serviço, alíquotas que o Toni definiu) no Resumo.
+
+- Setembro: 59 entradas R$ 16.124,96 · 113 saídas R$ 10.185,59 · resultado R$ 5.939,37. Mercadoria R$ 6.009,73 · Serviço R$ 10.115,23 (mão de obra 9.199,41 + deslocamento 915,82) · DAS estimado R$ 847,30.
+- **Regime de caixa de verdade**: entra só o que tem `pago_em` no mês. Em aberto com vencimento no mês (2 recebimentos, R$ 735,00) ficam fora e aparecem numa observação no Resumo. (O arquivo de junho incluía em aberto pelo fallback `pago_em || vencimento`.)
+- Nenhum pagamento de DAS aparece nas saídas de setembro (categoria `Impostos` só tem um IOF de R$ 4,03).
+- **Ferramenta**: `xlsx` NÃO está no `package.json` nem em `node_modules` (some a cada reinstalação). Há uma cópia em `tmp/xlsx-tool/node_modules/xlsx`; o build ESM não grava arquivo sozinho → usar `writeFileSync(out, XLSX.write(wb, {type:'buffer', bookType:'xlsx'}))`. Script gerador é temporário (apagar depois, o dump tem nome/telefone de cliente).
+- PostgREST corta em 1000 linhas: o fetch pagina com `.range()`.
