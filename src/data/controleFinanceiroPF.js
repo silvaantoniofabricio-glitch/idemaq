@@ -987,8 +987,30 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
 ]
 
 export const DESPESAS_PF_RAFA_SETEMBRO_2026 = [
-  // So a parcela do Civic (extrato Cresol). Falta o extrato do Banco do Brasil/Nubank da Rafa — o Toni vai lancar.
+  // Civic (extrato Cresol) + extrato Banco do Brasil. Falta o Nubank dela.
   { data: '16/09/2026', origem: 'Cresol', descricao: 'Parcela Civic (emprestimo PF) 16/09', valor: 1526.48, categoria: 'Financiamento' },
+  // --- Banco do Brasil (Rafa, conta 600954400029554) — extrato set/2026 ---
+  // 20 saidas R$6.661,79 = entradas (4.822,14 + 550 ATM + 1.289,65); saldo final 0,00.
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Maelen Toral P', valor: 44.93, categoria: 'Diverso' },
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 693.00, categoria: 'Transferencia' },
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)', valor: 153.50, categoria: 'Diverso' },
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)', valor: 85.78, categoria: 'Educacao' },
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 1844.93, categoria: 'Transferencia' },
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pagamento Carro BV 04/09', valor: 1180.15, categoria: 'Financiamento' },
+  { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Ezequiel Bezerra da Cruz', valor: 25.00, categoria: 'Diverso' },
+  { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Natureza & Flores', valor: 65.00, categoria: 'Compras pessoais' },
+  { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)', valor: 39.91, categoria: 'Diverso' },
+  { data: '08/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Antonio Fabricio da Silva (Toni)', valor: 550.00, categoria: 'Transferencia' },
+  { data: '08/09/2026', origem: 'Banco do Brasil',  descricao: 'Tarifa Pacote de Servicos 08/09', valor: 15.90, categoria: 'Tarifa banco' },
+  { data: '09/09/2026', origem: 'Banco do Brasil',  descricao: 'Mooz Solucoes Financeiras', valor: 38.90, categoria: 'Diverso' },
+  { data: '09/09/2026', origem: 'Banco do Brasil',  descricao: 'Cacau Show', valor: 11.98, categoria: 'Alimentacao' },
+  { data: '09/09/2026', origem: 'Banco do Brasil',  descricao: 'CeA Pay', valor: 123.20, categoria: 'Vestuario' },
+  { data: '09/09/2026', origem: 'Banco do Brasil',  descricao: 'Marcia de Fatima Xaves', valor: 91.00, categoria: 'Diverso' },
+  { data: '09/09/2026', origem: 'Banco do Brasil',  descricao: 'Vanderleia Rodrigues de S', valor: 50.00, categoria: 'Diverso' },
+  { data: '10/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 835.77, categoria: 'Transferencia' },
+  { data: '10/09/2026', origem: 'Banco do Brasil',  descricao: 'Fies (amortizacao)', valor: 106.42, categoria: 'Educacao' },
+  { data: '13/09/2026', origem: 'Banco do Brasil',  descricao: 'Fed Nacional Comunidade (Dizimo)', valor: 600.00, categoria: 'Dizimo' },
+  { data: '18/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 106.42, categoria: 'Transferencia' },
 ]
 
 export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
