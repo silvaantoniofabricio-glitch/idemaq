@@ -892,3 +892,5 @@ Gerado `Arquivos Contador/IDEMAQ - Movimentacao Setembro-2026.xlsx` (pasta gitig
 - Nenhum pagamento de DAS aparece nas saídas de setembro (categoria `Impostos` só tem um IOF de R$ 4,03).
 - **Ferramenta**: `xlsx` NÃO está no `package.json` nem em `node_modules` (some a cada reinstalação). Há uma cópia em `tmp/xlsx-tool/node_modules/xlsx`; o build ESM não grava arquivo sozinho → usar `writeFileSync(out, XLSX.write(wb, {type:'buffer', bookType:'xlsx'}))`. Script gerador é temporário (apagar depois, o dump tem nome/telefone de cliente).
 - PostgREST corta em 1000 linhas: o fetch pagina com `.range()`.
+
+- **16/10/2026 (sql/204, aplicado)**: Água Sanesul set/2026 R$146,29 (paga 14/10, lançada no vencimento 02/09) e DAS/Simples set/2026 R$618,43 (lançado em 20/09, Impostos) — ambos em SETEMBRO, conta Cresol. NÃO duplicar com as saídas de outubro no extrato. eSocial de setembro ainda não pago: quando o Toni avisar, lançar em SETEMBRO (padrão: Impostos, ESOCIAL-<mes>:INSS+FGTS). Frete e mão de obra Flaviano: não houve em setembro. Energia: ver memória project_energia_paga_atrasada (paga sempre 1 conta atrasada; junho sem lançamento é normal).
