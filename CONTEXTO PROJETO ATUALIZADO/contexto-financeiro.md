@@ -889,9 +889,13 @@ Gerado `Arquivos Contador/IDEMAQ - Movimentacao Setembro-2026.xlsx` (pasta gitig
 
 - Setembro: 59 entradas R$ 16.124,96 · 113 saídas R$ 10.185,59 · resultado R$ 5.939,37. Mercadoria R$ 6.009,73 · Serviço R$ 10.115,23 (mão de obra 9.199,41 + deslocamento 915,82) · DAS estimado R$ 847,30.
 - **Regime de caixa de verdade**: entra só o que tem `pago_em` no mês. Em aberto com vencimento no mês (2 recebimentos, R$ 735,00) ficam fora e aparecem numa observação no Resumo. (O arquivo de junho incluía em aberto pelo fallback `pago_em || vencimento`.)
-- Nenhum pagamento de DAS aparece nas saídas de setembro (categoria `Impostos` só tem um IOF de R$ 4,03).
+- (1ª geração) sem DAS nas saídas; depois o Toni lançou DAS R$ 618,43 e INSS+FGTS R$ 661,28 (ambos 20/09) — ver regeração abaixo.
 - **Ferramenta**: `xlsx` NÃO está no `package.json` nem em `node_modules` (some a cada reinstalação). Há uma cópia em `tmp/xlsx-tool/node_modules/xlsx`; o build ESM não grava arquivo sozinho → usar `writeFileSync(out, XLSX.write(wb, {type:'buffer', bookType:'xlsx'}))`. Script gerador é temporário (apagar depois, o dump tem nome/telefone de cliente).
 - PostgREST corta em 1000 linhas: o fetch pagina com `.range()`.
 
 - **16/10/2026 (sql/204, aplicado)**: Água Sanesul set/2026 R$146,29 (paga 14/10, lançada no vencimento 02/09) e DAS/Simples set/2026 R$618,43 (lançado em 20/09, Impostos) — ambos em SETEMBRO, conta Cresol. NÃO duplicar com as saídas de outubro no extrato. eSocial de setembro ainda não pago: quando o Toni avisar, lançar em SETEMBRO (padrão: Impostos, ESOCIAL-<mes>:INSS+FGTS). Frete e mão de obra Flaviano: não houve em setembro. Energia: ver memória project_energia_paga_atrasada (paga sempre 1 conta atrasada; junho sem lançamento é normal).
 - **16/10/2026**: eSocial set/2026 R$661,28 lançado em SETEMBRO (20/09, ESOCIAL-SET:, Cresol, Impostos). Os R$618,43 são o Simples Nacional (DAS), guia separada — ambos já no PJ de setembro. Pendência de impostos de setembro: nenhuma.
+
+**Regerado em 16/10/2026** (Toni adicionou despesas): 59 entradas R$ 16.124,96 · 118 saídas R$ 14.559,78 · resultado R$ 1.565,18. Receita/split fiscal/DAS estimado (R$ 847,30) não mudaram.
+- **2 empréstimos/financiamentos do Cresol entram como despesa SÓ no arquivo do contador** (categoria `Emprestimo/Financiamento`, R$ 2.948,19): Parcela Civic 16/09 R$ 1.526,48 + Parcela Empréstimo Cresol (contrato 372388) 21/09 R$ 1.421,71. No sistema continuam no controle PF (sql/196-197, 22-23/09) — NÃO relançar no PJ. Valores vêm de `src/data/controleFinanceiroPF.js` (categoria Financiamento, origem Cresol); nos próximos meses buscar lá. O Civic é PF no sistema: o contador deve confirmar se deduz.
+- Resumo ganhou bloco OBSERVAÇÕES (empréstimos incluídos + recebimentos em aberto fora do caixa).
