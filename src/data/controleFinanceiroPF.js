@@ -992,7 +992,7 @@ export const DESPESAS_PF_RAFA_SETEMBRO_2026 = [
   // --- Banco do Brasil (Rafa, conta 600954400029554) — extrato set/2026 ---
   // 20 saidas R$6.661,79 = entradas (4.822,14 + 550 ATM + 1.289,65); saldo final 0,00.
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Maelen Toral P', valor: 44.93, categoria: 'Diverso' },
-  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 693.00, categoria: 'Transferencia' },
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Casa)', valor: 693.00, categoria: 'Financiamento' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)', valor: 153.50, categoria: 'Diverso' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)', valor: 85.78, categoria: 'Educacao' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 1844.93, categoria: 'Transferencia' },
