@@ -221,8 +221,6 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Boi Na Brasa A Arte de',                               valor: 78.60,   categoria: 'Cultura/Lazer' },
   // Estava como PJ (sql/67, rotulado "linha PJ") — Toni confirmou que e PF. Ver sql/174.
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Plano NuCel 19/04',                                    valor: 10.00,   categoria: 'Diverso' },
-  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
-  { data: '20/05/2026', origem: 'Cresol',           descricao: 'Parcela Emprestimo Cresol 20/05',                      valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Despesas PF junho/2026 — TONI
@@ -417,8 +415,6 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   // Igreja
   { data: '07/06/2026', origem: 'Cresol', descricao: 'Dizimo jun/2026',   valor: 200.00, categoria: 'Dizimo' },
   { data: '07/06/2026', origem: 'Cresol', descricao: 'Oferta jun/2026',   valor: 120.00, categoria: 'Doacao/Igreja' },
-  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
-  { data: '22/06/2026', origem: 'Cresol', descricao: 'Parcela Emprestimo Cresol 22/06', valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Despesas PF junho/2026 — RAFA (esposa)
@@ -437,11 +433,6 @@ export const DESPESAS_PF_RAFA_JUNHO_2026 = [
   { data: '11/06/2026', origem: 'Bradesco CC', descricao: 'Gasolina 11/06',                     valor: 100.00,  categoria: 'Combustivel' },
   { data: '15/06/2026', origem: 'Bradesco CC', descricao: 'Livraria Progresso 15/06',           valor: 43.00,   categoria: 'Educacao' },
   { data: '16/06/2026', origem: 'Cresol',     descricao: 'Parcela Civic (emprestimo PF) 16/06', valor: 1526.48, categoria: 'Financiamento' },
-  // Estava no PJ como 'Emprestimo PJ jun/2026 (pago conta Rafa)' — Toni
-  // confirmou em 22/09 que e o mesmo Pagamento Carro BV de jul/ago, so com
-  // nome diferente nos meses mais antigos. Passou pra PF (decisao dele,
-  // reverte a classificacao anterior de "carro e da empresa").
-  { data: '30/06/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Carro BV 30/06',         valor: 1198.00, categoria: 'Financiamento' },
   // Aba 2 — despesas manuais (poupanca/dinheiro, sem data exata — agrupadas em 30/06)
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Almoco pesque e pague',            valor: 43.25,   categoria: 'Alimentacao' },
   { data: '30/06/2026', origem: 'Bradesco Poup', descricao: 'Bobs',                             valor: 10.00,   categoria: 'Alimentacao' },
@@ -514,10 +505,6 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Plano de saude',                              valor: 250.00,   categoria: 'Saude/Plano' },
   { data: '31/05/2026', origem: 'Bradesco Poup', descricao: 'Co-participacao plano de saude',              valor: 140.00,   categoria: 'Saude/Plano' },
 
-  // Estava no PJ como 'Emprestimo PJ mai/2026 (pago conta Rafa)' — mesma
-  // serie Pagamento Carro BV, so com nome diferente. Ver comentario em
-  // DESPESAS_PF_RAFA_JUNHO_2026.
-  { data: '20/05/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Carro BV 20/05',         valor: 1198.00, categoria: 'Financiamento' },
 ]
 
 // Despesas PF julho/2026 — TONI
@@ -690,8 +677,6 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (a)',  valor: 21.90, categoria: 'Alimentacao' },
   { data: '10/07/2026', origem: 'Bradesco PF',    descricao: 'MagaluPay Aiqfome 10/07 (b)',  valor: 16.90, categoria: 'Alimentacao' },
   { data: '12/07/2026', origem: 'Nubank PF',      descricao: 'Dizimo jul/2026 (PIX)',        valor: 320.00, categoria: 'Dizimo' },
-  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
-  { data: '20/07/2026', origem: 'Cresol',         descricao: 'Parcela Emprestimo Cresol 20/07', valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Despesas PF julho/2026 — RAFA (esposa)
@@ -715,9 +700,6 @@ export const DESPESAS_PF_RAFA_JULHO_2026 = [
   { data: '31/07/2026', origem: 'Caixa',           descricao: 'Espetinho 31/07',            valor: 24.00,   categoria: 'Alimentacao' },
   // --- Financiamento (Civic) — extrato Cresol ---
   { data: '16/07/2026', origem: 'Cresol',          descricao: 'Parcela Civic (emprestimo PF) 16/07', valor: 1526.48, categoria: 'Financiamento' },
-  // Estava no PJ — Toni confirmou em 22/09 que e PF (carro pessoal, nao da
-  // empresa). Ver comentario em DESPESAS_PF_RAFA_JUNHO_2026.
-  { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Carro BV 05/07',       valor: 1182.12, categoria: 'Financiamento' },
 ]
 
 // Despesas PF agosto/2026 — RAFA
@@ -739,10 +721,6 @@ export const DESPESAS_PF_RAFA_AGOSTO_2026 = [
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)',                       valor: 168.47,   categoria: 'Diverso' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)',                                               valor: 85.78,    categoria: 'Educacao' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'CeA Pay',                                                     valor: 123.20,   categoria: 'Vestuario' },
-  // Voltou pra PF em 22/09 — Toni reverteu a decisao anterior (sql/193):
-  // o carro nao e da empresa, e pessoal mesmo. Mesma serie Pagamento Carro
-  // BV de maio a agosto, ver comentario em DESPESAS_PF_RAFA_JUNHO_2026.
-  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pagamento Carro BV 07/08',                                     valor: 1183.10,  categoria: 'Financiamento' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Casa)',                         valor: 790.00,   categoria: 'Financiamento' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)',                                           valor: 39.91,    categoria: 'Diverso' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Sarah Regina (Semi Joia)',                                    valor: 48.00,    categoria: 'Compras pessoais' },
@@ -982,8 +960,6 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '17/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 17/08',                       valor: 1600.00, categoria: 'Transferencia' },
   { data: '25/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 25/08',                       valor: 1000.00, categoria: 'Transferencia' },
   { data: '31/08/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 31/08',                       valor: 200.00,  categoria: 'Transferencia' },
-  // Estava no PJ (contrato Cresol 372388) — Toni confirmou em 23/09 que e PF.
-  { data: '20/08/2026', origem: 'Cresol',      descricao: 'Parcela Emprestimo Cresol 20/08',         valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 export const DESPESAS_PF_RAFA_SETEMBRO_2026 = [
@@ -996,7 +972,6 @@ export const DESPESAS_PF_RAFA_SETEMBRO_2026 = [
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)', valor: 153.50, categoria: 'Diverso' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)', valor: 85.78, categoria: 'Educacao' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 1844.93, categoria: 'Transferencia' },
-  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pagamento Carro BV 04/09', valor: 1180.15, categoria: 'Financiamento' },
   { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Ezequiel Bezerra da Cruz', valor: 25.00, categoria: 'Diverso' },
   { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Natureza & Flores', valor: 65.00, categoria: 'Compras pessoais' },
   { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)', valor: 39.91, categoria: 'Diverso' },
@@ -1144,8 +1119,6 @@ export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
   { data: '02/09/2026', origem: 'Bradesco PF', descricao: 'IOF utilizacao limite 02/09', valor: 30.81, categoria: 'IOF' },
   { data: '22/09/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 22/09 (610)', valor: 610.00, categoria: 'Transferencia' },
   { data: '22/09/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 22/09 (4.700)', valor: 4700.00, categoria: 'Transferencia' },
-  // --- Cresol (emprestimo Toni, PF desde 23/09) ---
-  { data: '21/09/2026', origem: 'Cresol', descricao: 'Parcela Emprestimo Cresol 21/09', valor: 1421.71, categoria: 'Financiamento' },
 ]
 
 // Marca a pessoa em cada item (pra agregacao no total)

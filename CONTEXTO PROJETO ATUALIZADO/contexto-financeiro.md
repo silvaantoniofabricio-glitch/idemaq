@@ -901,3 +901,7 @@ Gerado `Arquivos Contador/IDEMAQ - Movimentacao Setembro-2026.xlsx` (pasta gitig
 - Resumo ganhou bloco OBSERVAÇÕES (empréstimos incluídos + recebimentos em aberto fora do caixa).
 - **16/10/2026 — Rafa setembro (Banco do Brasil)**: extrato xlsx (Downloads/Extrato conta corrente - 092026.xlsx) lançado em DESPESAS_PF_RAFA_SETEMBRO_2026: 20 saídas R$6.661,79 = entradas, saldo final 0. Carro BV set = R$1.180,15 (04/09, Votorantim). Transferências próprias/Toni (R$693, 1.844,93, 835,77, 106,42, 550) = Transferencia. Dízimo Fed Nacional R$600. A conferir: Marcia de Fatima R$91 (Diverso), Maelen Toral P R$44,93, Mooz R$38,90, Vanderleia R$50, Ezequiel R$25 (todos Diverso). Falta o Nubank dela de setembro.
 - **17/10/2026**: PIX R$693,00 da Rafa (04/09) é a transferência pra caixa do financiamento da casa (recorrente; agosto R$790) → Financiamento "Pix Rafaela Garcia Centuriao (Casa)", não Transferencia.
+
+## 38. Empréstimos VOLTAM pra PJ (20/10/2026) — reverte seções 35/36
+
+Toni mandou voltar os dois empréstimos pra PJ (sql/205, aplicado): Carro BV (mai 1.198 · jun 1.198 · jul 1.182,12 · ago 1.183,10 · set 1.180,15; conta NULL, pago pelo BB da Rafa) e Empréstimo Cresol 372388 (R$1.421,71 mai→set). Restaurados os 8 lançamentos soft-deletados e inseridos os 2 de setembro (RAFA-SET:/CRESOL-SET:), categoria Emprestimo. Removidos de DESPESAS_PF_TONI_*/RAFA_* (mai→set). **Parcela Civic continua PF.** Relatórios do contador já entregues mai-ago voltam a estar corretos com os empréstimos nas saídas; o de setembro deve incluí-los.
