@@ -1,0 +1,66 @@
+// Dados classificados de setembro/2026. cat 'PJ:<categoria>' = vai pro Supabase; senao e PF.
+export const ELO = [
+ ['Multa contratual 28/08',93.96,'Multa/Juros cartao'],['Encargos de atraso 28/08',23.18,'Multa/Juros cartao'],['Encargos de mora 28/08',1.53,'Multa/Juros cartao'],
+ ['Mercado Kraus 27/08',37.46,'Supermercado'],['Anuidade Diferenciada Elo Grafite 27/08 8/12',56.00,'Tarifa cartao'],
+ ['Amazon Music 26/08',13.90,'PJ:Software'],['IFD 65 388 402 Ornei A 26/08',31.99,'Alimentacao'],['Mercado Kraus 25/08',40.83,'Supermercado'],
+ ['Armazem 1 99 24/08 1/3',57.96,'Compras pessoais'],['Amigao Navirai 24/08',49.30,'Supermercado'],['Mano Auto Posto 24/08',100.00,'Combustivel'],
+ ['Motiva Pantanal 23/08 (a)',12.50,'Pedagio'],['Motiva Pantanal 23/08 (b)',12.50,'Pedagio'],['Poliani Lopes Alves Ko 22/08',35.70,'Alimentacao'],
+ ['Farmacia Hiper Popular 22/08',97.98,'Farmacia'],['Cordil 22/08',16.50,'Supermercado'],['Mano Auto Posto 21/08',100.00,'Combustivel'],['Top Churros 21/08',24.00,'Alimentacao'],
+ ['Casa dos Parafusos 20/08 1/2',53.98,'PJ:Pecas'],['Mercado Kraus 20/08',13.98,'Supermercado'],['O Point do Espeto 19/08',40.50,'Alimentacao'],
+ ['Auto Posto Faleiros 18/08',13.25,'Combustivel'],['DL Google YouTube 18/08',26.90,'Lazer'],['Supermercado Chama 18/08',18.74,'Supermercado'],['Brayan Beef 18/08',26.39,'Alimentacao'],
+ ['CEA CGE 225 ECPC 17/08 1/2',64.99,'Vestuario'],['Youcom 17/08 1/5',43.94,'Vestuario'],['JIM COM Ana Paula Maluf R 17/08',5.00,'Servicos'],
+ ['Campo Grande Parking 17/08 (a)',27.00,'Diverso'],['Campo Grande Parking 17/08 (b)',21.00,'Diverso'],['Posto Seara 17/08',200.00,'Combustivel'],
+ ['Motiva Pantanal 17/08 (a)',14.10,'Pedagio'],['Saborelli 17/08',65.71,'Alimentacao'],['Motiva Pantanal 17/08 (b)',12.70,'Pedagio'],
+ ['Amigao Navirai 16/08',52.04,'Supermercado'],['Rabacow e Rabacow Ltda 16/08',256.13,'Diverso'],['Mano Auto Posto 16/08',189.02,'Combustivel'],['Cinemark Campo Grande 16/08',88.00,'Lazer'],
+ ['Motiva Pantanal 16/08 (a)',12.70,'Pedagio'],['Motiva Pantanal 16/08 (b)',14.10,'Pedagio'],['Divino Fogao 16/08 (a)',44.70,'Alimentacao'],['Divino Fogao 16/08 (b)',48.89,'Alimentacao'],
+ ['Poliani Lopes Alves Ko 14/08',36.70,'Alimentacao'],['Supermercado Chama 14/08',30.61,'Supermercado'],['Supermercado Chama 12/08',23.97,'Supermercado'],
+ ['O Point do Espeto 11/08',20.00,'Alimentacao'],['IFD 53 671 339 Edinalv 10/08',20.62,'Alimentacao'],['Navirai Calcados 10/08',179.90,'Vestuario'],
+ ['Auto Posto Imaculada C 10/08',100.00,'Combustivel'],['J C Construcoes (cabeleireiro) 07/08',36.00,'Cuidados pessoais'],['Top Churros 06/08',24.00,'Alimentacao'],
+ ['Panobianco Academia 05/08',119.90,'Saude/Academia'],['O Point do Espeto 05/08',22.00,'Alimentacao'],['O Point do Espeto 04/08',22.00,'Alimentacao'],
+ ['Drogasil 3697 02/08 1/3',51.63,'Farmacia'],['Amigao Navirai 02/08',80.40,'Supermercado'],['Carlao Lanches 01/08',32.00,'Alimentacao'],
+ ['Amigao Navirai 30/07',100.84,'Supermercado'],['Espetinho do Tiao 30/07',36.00,'Alimentacao'],['Amigao Navirai 26/07 2/3',49.90,'Supermercado'],
+ ['Auto Posto Antonini 17/07 2/3',81.16,'Combustivel'],['Soneda Perfumaria 01/07 2/2',65.74,'Compras pessoais'],['Wilson de O Pereira 30/06 2/2 (PF, confirmado por Toni)',64.99,'Servicos'],
+ ['Drogasil 3697 22/06 3/3',57.59,'Farmacia'],['Casa dos Parafusos 17/06 3/6',48.19,'PJ:Pecas'],['Limpeel Casa Carro 15/06 3/5',53.72,'PJ:Materiais de limpeza'],
+ ['Kenia Parreira Barbagl 14/06 3/3',79.06,'Cuidados pessoais'],['Beni Netto Aguiar Salao 13/06 3/3',300.00,'Cuidados pessoais'],['Fiorelli 23/05 4/6',68.33,'Vestuario'],
+ ['Lojas Florai 16/05 4/4',44.95,'Casa'],['JIM COM Wellynton 22/04 5/12 (Focus)',190.25,'Veiculo PF'],['ML Eletron 15/04 5/10',86.90,'PJ:Pecas'],
+ ['ANI Store 04/04 5/6',49.99,'Vestuario'],['MP Marineshop 18/03 6/10',93.27,'Compras pessoais'],['Deposito ST Catarina 27/01 7/10',124.30,'PJ:Materiais'],
+ ['JIM Wellynton 06/11 10/10 (Focus)',94.44,'Veiculo PF'],['ML Autochave 17/09 12/12',52.96,'PJ:Pecas'],
+]
+export const MP = [
+ ['ML SelecaoDePec 04/09',186.21,'PJ:Pecas'],['ML Samatec 08/09 1/4',23.73,'PJ:Pecas'],['ML MercadoLi 08/09',182.40,'PJ:Pecas'],['ML Geofrio 08/09',35.34,'PJ:Pecas'],['ML MercadoLivre 08/09 (a)',170.00,'PJ:Pecas'],
+ ['ML MercadoLivre 08/09 1/5',29.28,'PJ:Pecas'],['ML Gelmaq 09/09',57.00,'PJ:Pecas'],['ML MHMaquina 10/09',80.89,'PJ:Pecas'],['ML MercadoLivre 11/09',44.89,'PJ:Pecas'],['ML BCMPecasEAce 14/09 1/6',24.81,'PJ:Pecas'],
+ ['EBazarComBrl 01/09 13/18',50.07,'Compras pessoais'],['ML MercadoLi 04/11 11/11',32.85,'PJ:Pecas'],['ML LojaDoMecanico 01/12 10/18',78.64,'PJ:Pecas'],
+ ['MercadoLivre 26/01 8/8',27.37,'Compras pessoais'],['ML MercadoLi 04/02 8/8',27.48,'PJ:Pecas'],['ML MercadoLivre 05/02 8/11',40.90,'PJ:Pecas'],
+ ['JoyBasico 25/02 7/12',10.97,'Compras pessoais'],['2Produtos 25/02 7/12',12.43,'Compras pessoais'],['ML MercadoLivre 03/03 7/8',35.85,'PJ:Pecas'],
+ ['ML MercadoLi 06/03 7/8 (a)',25.24,'PJ:Pecas'],['ML MercadoLi 06/03 7/8 (b)',27.48,'PJ:Pecas'],['MercadoLivre 09/03 7/10',44.81,'Compras pessoais'],
+ ['ML MercadoLivre 31/03 6/8',30.50,'PJ:Pecas'],['ML MercadoLivre 02/04 6/8',23.67,'PJ:Pecas'],['ML PED 29/04 5/6',18.66,'PJ:Pecas'],['ML MercadoLivre 04/05 5/5',16.13,'PJ:Pecas'],
+ ['ML AqueceArP 19/05 4/7',25.07,'PJ:Pecas'],['ML MercadoLivre 02/06 4/8',34.11,'PJ:Pecas'],['ML MercadoLi 13/06 4/12',49.20,'PJ:Pecas'],['ML BMLDistribui 18/06 3/8',27.26,'PJ:Pecas'],
+ ['ML KalisFrio 22/06 3/7',23.84,'PJ:Pecas'],['ML IlhaDaEletro 30/06 3/6',21.00,'PJ:Pecas'],['ML MercadoLivre 30/06 3/6 (a)',18.33,'PJ:Pecas'],['ML MercadoLivre 30/06 3/6 (b)',24.31,'PJ:Pecas'],
+ ['Tenis New Balance 480 08/07 3/8',43.49,'Vestuario'],['ML MercadoLi 09/07 3/8',22.87,'PJ:Pecas'],['ML ARA 20/07 2/5',15.59,'PJ:Pecas'],['ML MercadoLivre 06/08 2/6',16.66,'PJ:Pecas'],
+ ['ML EletroComp 11/08 2/6',26.44,'PJ:Pecas'],['ML MercadoLi 15/08',79.86,'PJ:Pecas'],['ML MacEletro 20/08',26.21,'PJ:Pecas'],['ML MGParts 21/08',37.49,'PJ:Pecas'],['ML NautRefriger 22/08',77.52,'PJ:Pecas'],
+ ['ML RankRank 22/08',340.80,'PJ:Pecas'],['ML MercadoLivre 25/08 (a)',297.05,'PJ:Pecas'],['ML MercadoLivre 25/08 1/8',28.89,'PJ:Pecas'],['ML MercadoLivre 25/08 (b)',36.57,'PJ:Pecas'],
+ ['ML MercadoLivre 26/08',658.87,'PJ:Pecas'],['Brecho da Fadi 27/08',227.00,'Vestuario'],['ML MercadoLivre 31/08 (a)',62.13,'PJ:Pecas'],['ML BCMPecasEAce 31/08',145.00,'PJ:Pecas'],
+ ['ML MercadoLivre 01/09',155.70,'PJ:Pecas'],['ML Alkatec 01/09 1/15',52.00,'PJ:Pecas'],
+]
+export const INTER = [
+ ['EBN Canva 03/10 12/12',24.16,'Software/Lazer'],['JIM.COM Cop Centro D 30/05 4/5 (dentista)',200.00,'Saude/Dentista'],['Magalu-Magazine Lu 28/06 3/5',46.29,'Compras pessoais'],
+ ['Drogasil 3697 19/07 2/3',43.40,'Farmacia'],['Dino Brinquedos 24/07 2/2',81.71,'Compras pessoais'],['ANI Store 25/07 2/2',59.99,'Vestuario'],['Drogasil 3697 29/07 2/3',46.96,'Farmacia'],
+ ['Tenis (MP MaiconDouglas) 08/08 2/3',129.77,'Vestuario'],['Drogasil 3697 09/08 2/3',49.21,'Farmacia'],
+ ['Magalu-Carrefour 23/02 7/7 (maquina garantia cliente)',343.62,'PJ:Garantia/Reposicao'],['Auto Pecas Navirai 29/04 5/6 (Focus)',279.66,'Veiculo PF'],
+ ['JIM.COM 5997 ROS 30/04 5/6 (vistoria Civic)',93.01,'Veiculo PF'],['Pronto Paulo Cesar AD 04/05 5/10 (Focus)',89.00,'Veiculo PF'],['Retifica Navirai 04/05 5/10 (Focus)',129.50,'Veiculo PF'],
+ ['Aiqfome R B Repres 18/08',16.90,'Alimentacao'],['Aiqfome R B Repres 20/08 (a)',21.00,'Alimentacao'],['Aiqfome R B Repres 20/08 (b)',21.00,'Alimentacao'],['Aiqfome 62742258 G 22/08',45.00,'Alimentacao'],
+ ['Aiqfome Tempero Di 27/08',21.90,'Alimentacao'],['Aiqfome 52544337 J 27/08',30.20,'Alimentacao'],['Aiqfome Restaurante 28/08',16.00,'Alimentacao'],['Aiqfome Parada Das 01/09',18.00,'Alimentacao'],
+ ['Aiqfome Tempero Di 02/09',21.90,'Alimentacao'],['Aiqfome Tempero Di 03/09',19.90,'Alimentacao'],['Aiqfome Aiqfome LT 13/09',24.90,'Alimentacao'],
+]
+export const NEO = [['Anuidade diferenciada 09/09',33.00,'Tarifa cartao']]
+export const NUPF = [['Plano NuCel 19/08',10.00,'Diverso'],['Ebn Epicgames 17/08',4.97,'Lazer'],['Anthropic Claude Sub 15/08',115.39,'PJ:Software'],['IOF Anthropic Claude Sub 15/08',4.03,'PJ:Impostos'],
+ ['Mercado Kraus 11/08',11.49,'Supermercado'],['Aiqfome (Aiqfome) 07/08',24.90,'Alimentacao'],['Nubank+ 04/08',29.00,'Assinatura']]
+export const NUPJ = [['Facebook Ads Bnfs556cd4 02/09',16.97,'PJ:Trafego pago'],['Facebook Ads Nv2ty22cd4 06/09',34.57,'PJ:Trafego pago'],['Facebook Ads Yqbr53ecd4 06/09',15.10,'PJ:Trafego pago'],
+ ['Facebook Ads Ylbwd4jcd4 09/09',34.20,'PJ:Trafego pago'],['Facebook Ads Fypht4sbd4 11/09',34.23,'PJ:Trafego pago'],['Facebook Ads 67ezl66cd4 13/09',17.12,'PJ:Trafego pago'],
+ ['Facebook Ads 949bj5jcd4 14/09',17.24,'PJ:Trafego pago'],['Juros por fatura atrasada 29/08',3.19,'PJ:Tarifa banco'],['Multa por fatura atrasada 29/08',2.47,'PJ:Tarifa banco'],['IOF por fatura atrasada 29/08',0.48,'PJ:Tarifa banco']]
+export const MASTER = [['Casa dos Parafusos 28/08',5.55,'PJ:Pecas'],['Lumen Materiais 26/08',23.00,'PJ:Materiais'],['JIM.COM Maqsoldas 26/08',98.00,'PJ:Pecas'],['Mano Auto Posto 21/08',200.00,'PJ:Combustivel'],
+ ['Brayan Beef 21/08',30.23,'Alimentacao'],['Limpeel Casa Carro 20/08 1/3',59.97,'PJ:Materiais de limpeza'],['Mano Auto Posto 13/08',200.00,'PJ:Combustivel'],['Eletro Garrincha 13/08',6.00,'PJ:Pecas'],
+ ['Casa dos Parafusos 10/08',17.25,'PJ:Pecas'],['JIM.COM Maqsoldas 08/08',10.00,'PJ:Pecas'],['Mercado Kraus 03/08',16.98,'Supermercado'],['Mano Auto Posto 03/08',200.00,'PJ:Combustivel'],
+ ['Casa dos Parafusos 03/08',53.35,'PJ:Pecas'],['Eletro Garrincha 03/08',16.00,'PJ:Pecas'],['ML Mercado 15/04 5/6',40.50,'PJ:Pecas'],['Ton.com.br (maquininha) 14/04 5/12',14.96,'PJ:Equipamentos'],
+ ['Mercado Refripecas 02/04 5/5',34.30,'PJ:Pecas'],['JIM.COM Thiago Dos 13/03 6/6',121.74,'Servicos'],['Deposito ST Catarina 13/03 6/10',119.99,'PJ:Materiais']]
+export const BRAD = [['Pronto Paulo Cesar AD 27/02 6/10 (pecas Montana)',107.40,'PJ:Servicos/Manutencao'],['Anuidade 09/12',22.00,'PJ:Tarifa cartao']]

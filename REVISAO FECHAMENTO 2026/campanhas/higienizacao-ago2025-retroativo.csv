@@ -1,0 +1,33 @@
+# STATUS 29/09/2026 08:15 - Lista COMPLETA. Enviadas 21 de 23 (Andreia 1387 e-
+# duplicata de 1389, nao conta). 2 pendencias: Leila Sousa (1418) pulada - virou
+# cliente ativa (entrega em 21/07/2026, nao e caso de 1 ano parado); Dra. Rosangela
+# (1386) pulada - numero 67 8446-9839 esta salvo no WhatsApp do Toni como "Baixinho",
+# sem nenhuma conversa - nao bate com o nome esperado, avisar Toni antes de mandar.
+# Achado: Rosenilda Torres (1400) respondeu "Comprei maquina nova" - conferir se ainda
+# faz sentido oferecer higienizacao pra ela.
+os;data;cliente;telefone;valor;pagto;observacao
+1418;28/08/2025;(sem nome cadastrado);67 8441-0834;320;Pago;PULADA - Leia Sousa Cliente, teve entrega em 21/07/2026 (ativa, nao e caso de recontato)
+1416;27/08/2025;Crislaine Prates;67 9130-9898;345;Pago;enviada 04/09/2026
+1415;26/08/2025;Meire;67 9672-4117;185;Pago;enviada 28/09/2026
+1414;26/08/2025;Maria Dutra Santi;67 9913-2192;185;Pago;enviada 28/09/2026 (versao B por engano, ja corrigido) - respondeu "Deixa mais pra frente" (adiamento)
+1413;26/08/2025;Gatao Lopes;67 9308-9090;250;Pago;enviada 28/09/2026 - respondeu "Boa tarde" e "Obg!"
+1411;24/08/2025;Sueli Barbosa;67 9981-1732;185;Pago;enviada 28/09/2026 (versao B por engano, ja corrigido) - respondeu "Obrigada pelo contato"
+1410;24/08/2025;Alessandra;67 9614-9942;525;Pago;enviada 28/09/2026
+1409;24/08/2025;Nino Dos Santos;67 9173-3141;680;Pago;enviada 28/09/2026 - reagiu com joinha
+1408;23/08/2025;Lauriana Cardoso;67 9194-4141;530;Pago;enviada 28/09/2026
+1407;21/08/2025;Leile;67 8457-5526;510;Pago;DIGITADA, nao enviada - aguardando Toni revisar (versao B)
+1406;21/08/2025;Rodrigo Ortega;67 9674-6644;395;Pago;DIGITADA, nao enviada - comprou mangueira em 11/07/2026, mensagem adaptada reconhecendo isso, aguardando Toni revisar
+1403;19/08/2025;Eliane Marcia Da Silva;67 9693-5748;505;Pago;enviada 29/09/2026
+1402;18/08/2025;Maria Aparecida;67 9925-3238;425;Pago;enviada 29/09/2026
+1401;18/08/2025;Adriane;67 9698-7302;430;Pago;enviada 29/09/2026
+1400;18/08/2025;Rosenilda Torres;67 9696-2802;490;Pago;enviada 29/09/2026 - respondeu "Comprei maquina nova", conferir se ainda oferece
+1399;18/08/2025;Maria;67 8435-7253;350;Pago;enviada 29/09/2026
+1397;14/08/2025;Mery Cristina;67 9880-3099;345;Pago;enviada 29/09/2026
+1396;14/08/2025;Veronice;67 9681-0802;250;Pago;enviada 29/09/2026
+1395;13/08/2025;Genilda Vanzella;67 9968-2249;345;Pago;enviada 29/09/2026
+1393;11/08/2025;(sem nome cadastrado);67 9159-7824;410;Pago;enviada 29/09/2026
+1392;11/08/2025;(sem nome cadastrado);45 9954-0136;525;Pago;enviada 29/09/2026
+1389;07/08/2025;Andreia;67 9286-1618;320;Pago;enviada 29/09/2026
+1387;04/08/2025;Andreia;67 9286-1618;320;Pago;duplicata do 1389, nao enviar de novo
+1386;04/08/2025;Dra. Rosangela;67 8446-9839;390;Pago;PULADA - numero salvo como "Baixinho" no WhatsApp, sem conversa - confirmar com Toni antes de mandar, pode ser numero errado ou reatribuido
+1385;03/08/2025;Elizani;67 9642-5726;185;Pago;enviada 29/09/2026

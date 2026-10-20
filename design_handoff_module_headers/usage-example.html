@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ModuleHeader — Exemplos de Uso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="module-header.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0e0e10; font-family: 'Inter', sans-serif; color: #e8e8ea; }
+    .label { padding: 24px 20px 8px; font-size: 11px; font-weight: 600;
+             color: #333; letter-spacing: .06em; text-transform: uppercase; }
+    .fake-content { height: 80px; background: #0e0e10;
+                    border-bottom: 1px solid #18181b; }
+  </style>
+</head>
+<body>
+
+  <!-- Uso via atributo HTML (auto-init) -->
+  <p class="label">01 — Ordens de Serviço</p>
+  <div data-module-header="ordens"></div>
+  <div class="fake-content"></div>
+
+  <p class="label">02 — Logística</p>
+  <div data-module-header="logistica"></div>
+  <div class="fake-content"></div>
+
+  <p class="label">03 — Financeiro</p>
+  <div data-module-header="financeiro"></div>
+  <div class="fake-content"></div>
+
+  <p class="label">04 — Vendas</p>
+  <div data-module-header="vendas"></div>
+  <div class="fake-content"></div>
+
+  <p class="label">05 — Estoque</p>
+  <div data-module-header="estoque"></div>
+  <div class="fake-content"></div>
+
+  <p class="label">06 — Relatórios</p>
+  <div data-module-header="relatorios"></div>
+  <div class="fake-content"></div>
+
+  <p class="label">07 — Clientes</p>
+  <div data-module-header="clientes"></div>
+  <div class="fake-content"></div>
+
+  <p class="label">08 — Financeiro PF</p>
+  <div data-module-header="financeiroPF"></div>
+  <div class="fake-content"></div>
+
+  <script src="module-header.js"></script>
+  <script>
+    // Auto-inicializa todos os [data-module-header] na página
+    ModuleHeader.autoInit({
+      ordens: {
+        onTabChange: (idx, label) => console.log('OS tab:', label)
+      },
+      financeiro: {
+        onTabChange: (idx, label) => console.log('Fin tab:', label)
+      }
+    });
+
+    // ── Exemplo de uso programático ──────────────────────────
+    // const header = new ModuleHeader('#meu-container', MODULE_HEADER_CONFIGS.vendas, {
+    //   onTabChange: (idx, label) => carregarDados(label)
+    // });
+    //
+    // // Atualizar contagem de uma aba dinamicamente
+    // header.setTabCount(0, 47);
+    //
+    // // Atualizar métricas após busca de dados
+    // header.setStats([
+    //   { text: 'R$ 12.400', suffix: 'faturado', valueHighlight: true },
+    //   { text: '62 OS' },
+    //   { text: 'R$ 310 ticket médio' },
+    //   { text: 'R$ 1.800 a receber', alert: true }
+    // ]);
+  </script>
+</body>
+</html>

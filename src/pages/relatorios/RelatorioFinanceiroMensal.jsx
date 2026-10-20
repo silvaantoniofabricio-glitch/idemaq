@@ -3,6 +3,7 @@
 // useRelatorioFinanceiroMensal. Não depende de IA, não depende de edge function.
 
 import React from 'react'
+import { useIsMobile } from '../../theme'
 import { corEtapa, corHero } from '../../utils/colors'
 import { fmtBRL } from '../../utils/fmt'
 import { Card, Badge, EmptyState, DeltaPill } from '../../components/ui'
@@ -41,6 +42,7 @@ function SecHeader({ T, dark, icon, cor, children }) {
 }
 
 export default function RelatorioFinanceiroMensal({ T, dark, iniIso, fimIso }) {
+  const isMobile = useIsMobile()
   const azul     = corEtapa('blue', dark)
   const azulClaro = corEtapa('blueLight', dark)
   const amarelo  = corEtapa('yellow', dark)
@@ -106,7 +108,7 @@ export default function RelatorioFinanceiroMensal({ T, dark, iniIso, fimIso }) {
         <SecHeader T={T} dark={dark} icon="ti-list-numbers" cor={amarelo}>
           Top 10 maiores despesas individuais
         </SecHeader>
-        <ListaDespesas T={T} dark={dark} itens={data.maioresDespesas} />
+        <ListaDespesas T={T} dark={dark} itens={data.maioresDespesas} isMobile={isMobile} />
       </Card>
 
       {/* A receber + A pagar */}
@@ -119,7 +121,7 @@ export default function RelatorioFinanceiroMensal({ T, dark, iniIso, fimIso }) {
             <EmptyState T={T} compact icon="ti-check" title="Nada em aberto"
               description="Todas as receitas com vencimento no período foram baixadas." />
           ) : (
-            <ListaAbertos T={T} dark={dark} itens={data.aReceberLista} cor={azulClaro} />
+            <ListaAbertos T={T} dark={dark} itens={data.aReceberLista} cor={azulClaro} isMobile={isMobile} />
           )}
         </Card>
         <Card T={T} dark={dark}>
@@ -130,7 +132,7 @@ export default function RelatorioFinanceiroMensal({ T, dark, iniIso, fimIso }) {
             <EmptyState T={T} compact icon="ti-check" title="Nada em aberto"
               description="Todas as despesas com vencimento no período foram baixadas." />
           ) : (
-            <ListaAbertos T={T} dark={dark} itens={data.aPagarLista} cor={amarelo} />
+            <ListaAbertos T={T} dark={dark} itens={data.aPagarLista} cor={amarelo} isMobile={isMobile} />
           )}
         </Card>
       </div>
@@ -207,8 +209,34 @@ function TabelaCategorias({ T, dark, titulo, itens, total, cor }) {
 }
 
 // ─── ListaDespesas ────────────────────────────────────────────────────────────
-function ListaDespesas({ T, dark, itens }) {
+function ListaDespesas({ T, dark, itens, isMobile }) {
   if (itens.length === 0) return <EmptyState T={T} compact icon="ti-list" title="Sem despesas no período" description="" />
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {itens.map((d, i) => (
+          <div key={d.id} style={{
+            padding: '10px 4px',
+            borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
+            display: 'flex', flexDirection: 'column', gap: 4,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: corHero(dark), minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                #{i + 1} {d.descricao || d.categoria}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: corEtapa('yellow', dark), fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                {fmtBRL(d.valor)}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Badge variant="amarelo" dark={dark} sm>{d.conta}</Badge>
+              <span style={{ fontSize: 11, color: T.textMuted }}>{d.categoria} · {fmtDataDDMM(d.pago_em)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {itens.map((d, i) => (
@@ -240,7 +268,30 @@ function ListaDespesas({ T, dark, itens }) {
 }
 
 // ─── ListaAbertos ─────────────────────────────────────────────────────────────
-function ListaAbertos({ T, dark, itens, cor }) {
+function ListaAbertos({ T, dark, itens, cor, isMobile }) {
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {itens.map((it, i) => (
+          <div key={it.id} style={{
+            padding: '10px 4px',
+            borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: corHero(dark), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {it.descricao || it.categoria}
+              </div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{it.categoria} · {fmtDataDDMM(it.vencimento)}</div>
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: cor, textAlign: 'right', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+              {fmtBRL(it.valor)}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {itens.map((it, i) => (

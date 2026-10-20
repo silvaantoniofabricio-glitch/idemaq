@@ -1,0 +1,423 @@
+/* ============================================================
+   MODULE HEADER — Design Tokens + Component Styles
+   ERP System — Padronização de Headers
+   ============================================================ */
+
+/* ── Tokens ─────────────────────────────────────────────────── */
+:root {
+  /* Layout */
+  --mh-height-row1:       52px;
+  --mh-height-row2:       36px;
+  --mh-bg:                #141416;
+  --mh-border:            1px solid #222226;
+  --mh-row-divider:       1px solid #1e1e22;
+  --mh-padding-x:         20px;
+  --mh-gap:               8px;
+
+  /* Título */
+  --mh-title-font-size:   14px;
+  --mh-title-font-weight: 700;
+  --mh-title-color:       #ffffff;
+  --mh-title-tracking:    -0.01em;
+
+  /* Métricas */
+  --mh-stat-font-size:    12px;
+  --mh-stat-color:        #666666;
+  --mh-stat-value-color:  #aaaaaa;
+  --mh-stat-value-weight: 500;
+  --mh-stat-sep-color:    #333333;
+  --mh-stat-suffix-size:  10px;
+  --mh-stat-suffix-color: #444444;
+
+  /* Alertas */
+  --mh-alert-color:       #f97316;
+  --mh-alert-dot-size:    5px;
+
+  /* Separador título/métricas */
+  --mh-vsep-color:        #2a2a30;
+  --mh-vsep-width:        1px;
+  --mh-vsep-height:       14px;
+
+  /* Abas */
+  --tab-font-size:         12.5px;
+  --tab-font-weight:       500;
+  --tab-gap:               0px;
+  --tab-padding-right:     14px;
+  --tab-color:             #555555;
+  --tab-color-hover:       #aaaaaa;
+  --tab-color-active:      #ffffff;
+  --tab-indicator:         2px solid #2563eb;
+  --tab-count-font-size:   10px;
+  --tab-count-font-weight: 600;
+  --tab-count-bg:          #1e1e24;
+  --tab-count-color:       #444444;
+  --tab-count-bg-active:   rgba(59, 130, 246, 0.15);
+  --tab-count-color-active:#3b82f6;
+  --tab-count-radius:      8px;
+  --tab-count-padding:     1px 5px;
+
+  /* Divisória de filtros */
+  --filter-divider-color:  #222226;
+  --filter-divider-margin: 8px 10px;
+
+  /* Filtros */
+  --filter-height:         22px;
+  --filter-bg:             #1a1a1e;
+  --filter-border:         1px solid #26262c;
+  --filter-border-hover:   1px solid #38383f;
+  --filter-color:          #777777;
+  --filter-color-hover:    #aaaaaa;
+  --filter-font-size:      11px;
+  --filter-radius:         4px;
+  --filter-padding:        0 8px;
+  --filter-gap:            6px;
+
+  /* Filtro ativo */
+  --filter-active-bg:      #0f1e3a;
+  --filter-active-border:  1px solid #2563eb;
+  --filter-active-color:   #60a5fa;
+
+  /* Busca */
+  --search-min-width:      160px;
+  --search-icon-left:      7px;
+  --search-placeholder:    #444444;
+  --search-focus-border:   #2563eb;
+
+  /* Botões */
+  --btn-height:            28px;
+  --btn-radius:            5px;
+  --btn-font-size:         12px;
+  --btn-font-weight:       600;
+  --btn-gap:               6px;
+
+  --btn-primary-bg:        #1d4ed8;
+  --btn-primary-bg-hover:  #1e40af;
+  --btn-primary-color:     #ffffff;
+
+  --btn-secondary-bg:           transparent;
+  --btn-secondary-border:       1px solid #2e2e34;
+  --btn-secondary-border-hover: 1px solid #44444c;
+  --btn-secondary-color:        #999999;
+  --btn-secondary-color-hover:  #cccccc;
+  --btn-secondary-padding:      0 10px;
+}
+
+/* ── Root ───────────────────────────────────────────────────── */
+.module-header {
+  background: var(--mh-bg);
+  border-bottom: var(--mh-border);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+/* ── Linha 1 ────────────────────────────────────────────────── */
+.module-header__row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--mh-padding-x);
+  height: var(--mh-height-row1);
+  gap: 12px;
+}
+
+.module-header__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--mh-gap);
+  min-width: 0;
+}
+
+/* Ícone do módulo */
+.module-header__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Título */
+.module-header__title {
+  font-size: var(--mh-title-font-size);
+  font-weight: var(--mh-title-font-weight);
+  color: var(--mh-title-color);
+  letter-spacing: var(--mh-title-tracking);
+  white-space: nowrap;
+}
+
+/* Separador vertical entre título e métricas */
+.module-header__vsep {
+  width: var(--mh-vsep-width);
+  height: var(--mh-vsep-height);
+  background: var(--mh-vsep-color);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* Grupo de métricas */
+.module-header__stats {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+/* Separador "·" entre métricas */
+.module-header__stat-sep {
+  color: var(--mh-stat-sep-color);
+  font-size: var(--mh-stat-font-size);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* Métrica padrão */
+.module-header__stat {
+  font-size: var(--mh-stat-font-size);
+  color: var(--mh-stat-color);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Valor em destaque dentro da métrica (ex: "R$ 11.670") */
+.module-header__stat--value {
+  color: var(--mh-stat-value-color);
+  font-weight: var(--mh-stat-value-weight);
+}
+
+/* Sufixo descritivo (ex: "saldo", "faturado") */
+.module-header__stat-suffix {
+  font-size: var(--mh-stat-suffix-size);
+  color: var(--mh-stat-suffix-color);
+}
+
+/* Alerta — ponto laranja + texto */
+.module-header__stat--alert {
+  color: var(--mh-alert-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.module-header__stat--alert::before {
+  content: '';
+  width: var(--mh-alert-dot-size);
+  height: var(--mh-alert-dot-size);
+  border-radius: 50%;
+  background: var(--mh-alert-color);
+  flex-shrink: 0;
+}
+
+/* Métricas com cor personalizada */
+.module-header__stat--green  { color: #22c55e; }
+.module-header__stat--red    { color: #ef4444; }
+.module-header__stat--purple { color: #a855f7; }
+
+/* Ações direitas */
+.module-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--btn-gap);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Botão primário (CTA) */
+.mh-btn-primary {
+  height: var(--btn-height);
+  padding: 0 12px;
+  background: var(--btn-primary-bg);
+  border: none;
+  border-radius: var(--btn-radius);
+  color: var(--btn-primary-color);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+  line-height: 1;
+}
+.mh-btn-primary:hover {
+  background: var(--btn-primary-bg-hover);
+}
+
+/* Botão secundário */
+.mh-btn-secondary {
+  height: var(--btn-height);
+  padding: var(--btn-secondary-padding);
+  background: var(--btn-secondary-bg);
+  border: var(--btn-secondary-border);
+  border-radius: var(--btn-radius);
+  color: var(--btn-secondary-color);
+  font-size: var(--btn-font-size);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  line-height: 1;
+}
+.mh-btn-secondary:hover {
+  border: var(--btn-secondary-border-hover);
+  color: var(--btn-secondary-color-hover);
+}
+
+/* ── Linha 2 ────────────────────────────────────────────────── */
+.module-header__row2 {
+  display: flex;
+  align-items: stretch;
+  padding: 0 var(--mh-padding-x);
+  height: var(--mh-height-row2);
+  border-top: var(--mh-row-divider);
+  gap: 0;
+}
+
+/* Zona E — Abas de navegação */
+.module-header__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.mh-tab {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--tab-padding-right) 0 0;
+  font-size: var(--tab-font-size);
+  font-weight: var(--tab-font-weight);
+  color: var(--tab-color);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  gap: 5px;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+}
+.mh-tab:hover {
+  color: var(--tab-color-hover);
+}
+.mh-tab.is-active {
+  color: var(--tab-color-active);
+  border-bottom: var(--tab-indicator);
+}
+
+.mh-tab__count {
+  font-size: var(--tab-count-font-size);
+  font-weight: var(--tab-count-font-weight);
+  background: var(--tab-count-bg);
+  color: var(--tab-count-color);
+  padding: var(--tab-count-padding);
+  border-radius: var(--tab-count-radius);
+  line-height: 1.5;
+}
+.mh-tab.is-active .mh-tab__count {
+  background: var(--tab-count-bg-active);
+  color: var(--tab-count-color-active);
+}
+
+/* Divisória entre abas e filtros */
+.module-header__filter-divider {
+  width: 1px;
+  background: var(--filter-divider-color);
+  margin: var(--filter-divider-margin);
+  flex-shrink: 0;
+}
+
+/* Zona F — Filtros */
+.module-header__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--filter-gap);
+  flex: 1;
+  min-width: 0;
+}
+
+/* Dropdown de filtro */
+.mh-filter-dropdown {
+  height: var(--filter-height);
+  padding: var(--filter-padding);
+  background: var(--filter-bg);
+  border: var(--filter-border);
+  border-radius: var(--filter-radius);
+  color: var(--filter-color);
+  font-size: var(--filter-font-size);
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  line-height: 1;
+}
+.mh-filter-dropdown:hover {
+  border: var(--filter-border-hover);
+  color: var(--filter-color-hover);
+}
+.mh-filter-dropdown.is-active {
+  background: var(--filter-active-bg);
+  border: var(--filter-active-border);
+  color: var(--filter-active-color);
+}
+.mh-filter-dropdown__chevron {
+  opacity: 0.5;
+  font-size: 9px;
+  margin-left: 1px;
+}
+
+/* Campo de busca */
+.mh-filter-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mh-filter-search__icon {
+  position: absolute;
+  left: var(--search-icon-left);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  color: #444;
+}
+.mh-filter-search__input {
+  height: var(--filter-height);
+  padding: 0 8px 0 24px;
+  background: var(--filter-bg);
+  border: var(--filter-border);
+  border-radius: var(--filter-radius);
+  color: #aaa;
+  font-size: var(--filter-font-size);
+  font-family: inherit;
+  outline: none;
+  min-width: var(--search-min-width);
+  transition: border-color 0.15s ease;
+  line-height: 1;
+}
+.mh-filter-search__input::placeholder {
+  color: var(--search-placeholder);
+}
+.mh-filter-search__input:focus {
+  border-color: var(--search-focus-border);
+}
+
+/* Paginação (texto discreto no fim dos filtros) */
+.mh-filter-pagination {
+  font-size: 11px;
+  color: #333;
+  white-space: nowrap;
+  margin-left: auto;
+  padding-right: 4px;
+}
