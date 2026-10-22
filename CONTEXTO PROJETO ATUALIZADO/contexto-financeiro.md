@@ -905,3 +905,5 @@ Gerado `Arquivos Contador/IDEMAQ - Movimentacao Setembro-2026.xlsx` (pasta gitig
 ## 38. Empréstimos VOLTAM pra PJ (20/10/2026) — reverte seções 35/36
 
 Toni mandou voltar os dois empréstimos pra PJ (sql/205, aplicado): Carro BV (mai 1.198 · jun 1.198 · jul 1.182,12 · ago 1.183,10 · set 1.180,15; conta NULL, pago pelo BB da Rafa) e Empréstimo Cresol 372388 (R$1.421,71 mai→set). Restaurados os 8 lançamentos soft-deletados e inseridos os 2 de setembro (RAFA-SET:/CRESOL-SET:), categoria Emprestimo. Removidos de DESPESAS_PF_TONI_*/RAFA_* (mai→set). **Parcela Civic continua PF.** Relatórios do contador já entregues mai-ago voltam a estar corretos com os empréstimos nas saídas; o de setembro deve incluí-los.
+
+- **22/10/2026 (sql/206)**: prova real fatura x sistema — itens de EXTRATO bancário não podem ir na conta de CARTÃO. FleetNet R$119,99 (extrato Nubank) estava na conta Nubank PF (cartão) → conta_id NULL. **Ainda aberto**: itens PJ do Elo Grafite (3558) estão na conta Bradesco PJ (que é a do Elo Mais) desde maio; a conta Cresol mistura extrato + fatura Mastercard. Aguardando decisão do Toni de mover pra conta própria.
