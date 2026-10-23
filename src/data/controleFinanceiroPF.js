@@ -1108,7 +1108,7 @@ export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
   { data: '11/09/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 6/6', valor: 121.74, categoria: 'Servicos' },
   // --- Nubank conta (Toni) — extrato set/2026 ---
   { data: '11/09/2026', origem: 'Nubank', descricao: 'Garzon Informatica', valor: 5.00, categoria: 'Compras pessoais' },
-  { data: '11/09/2026', origem: 'Nubank', descricao: 'Luan Rogerio Gomes Fruto (pizza promocional da igreja)', valor: 35.00, categoria: 'Doacao/Igreja' },
+  { data: '11/09/2026', origem: 'Nubank', descricao: 'Luan Rogerio Gomes Fruto (pizza promocional da igreja)', valor: 35.00, categoria: 'Alimentacao' },
   { data: '12/09/2026', origem: 'Nubank', descricao: 'Debito em conta 12/09', valor: 25.00, categoria: 'Diverso' },
   { data: '13/09/2026', origem: 'Nubank', descricao: 'Maykon Antonio de Oliveira (oferta missionaria)', valor: 100.00, categoria: 'Doacao/Igreja' },
   { data: '19/09/2026', origem: 'Nubank', descricao: 'Rosilene da Silva Pereira (churrasco da igreja)', valor: 50.00, categoria: 'Doacao/Igreja' },
