@@ -39,6 +39,7 @@ export const CATEGORIA_MAE = {
   'Dizimo': 'Doações',
   'Multa transito': 'Multas',
   'Casa': 'Casa',
+  'Estacionamento': 'Veículos',
   'PIX terceiros': 'Outros',
   'Diverso': 'Outros',
   'Transferencia': 'Transferências (PF→PF)',
@@ -220,7 +221,7 @@ export const DESPESAS_PF_TONI_MAIO_2026 = [
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Amigao Navirai (30/03)',                               valor: 143.83,  categoria: 'Supermercado' },
   { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Boi Na Brasa A Arte de',                               valor: 78.60,   categoria: 'Cultura/Lazer' },
   // Estava como PJ (sql/67, rotulado "linha PJ") — Toni confirmou que e PF. Ver sql/174.
-  { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Plano NuCel 19/04',                                    valor: 10.00,   categoria: 'Diverso' },
+  { data: '26/05/2026', origem: 'Nubank PF',        descricao: 'Plano NuCel 19/04',                                    valor: 10.00,   categoria: 'Agua/Luz/Fone' },
 ]
 
 // Despesas PF junho/2026 — TONI
@@ -338,7 +339,7 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '25/06/2026', origem: 'Inter', descricao: 'Saborelli 05/06 (1)',                       valor: 69.57,  categoria: 'Alimentacao' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Milky Moo 05/06',                          valor: 30.00,  categoria: 'Alimentacao' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Natura Pay Shop 05/06 1/3',                 valor: 43.92,  categoria: 'Compras pessoais' },
-  { data: '25/06/2026', origem: 'Inter', descricao: 'Campo Grande Parking 05/06',                valor: 21.00,  categoria: 'Diverso' },
+  { data: '25/06/2026', origem: 'Inter', descricao: 'Campo Grande Parking 05/06',                valor: 21.00,  categoria: 'Estacionamento' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Burger King 05/06',                         valor: 76.80,  categoria: 'Alimentacao' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Vitorinos 05/06',                           valor: 30.00,  categoria: 'Alimentacao' },
   { data: '25/06/2026', origem: 'Inter', descricao: 'Rede Faleiros Postos 05/06',                valor: 217.23, categoria: 'Combustivel' },
@@ -392,7 +393,7 @@ export const DESPESAS_PF_TONI_JUNHO_2026 = [
   { data: '30/06/2026', origem: 'Nubank', descricao: 'MeliMais assinatura',            valor: 74.00,  categoria: 'Lazer' },
   // --- Nubank — venc. 02/06/2026 (PAGA) ---
   // PJ excluidos: Claude.Ai Subscription R$480,41 + IOF R$16,81 (sql/92)
-  { data: '02/06/2026', origem: 'Nubank', descricao: 'Plano NuCel 19/05',         valor: 10.00, categoria: 'Diverso' },
+  { data: '02/06/2026', origem: 'Nubank', descricao: 'Plano NuCel 19/05',         valor: 10.00, categoria: 'Agua/Luz/Fone' },
   { data: '02/06/2026', origem: 'Nubank', descricao: 'NuTag emissao 11/05',        valor: 10.00, categoria: 'Diverso' },
   { data: '02/06/2026', origem: 'Nubank', descricao: 'Nubank+ 02/05',              valor: 29.00, categoria: 'Software/Lazer' },
   // --- Nubank — venc. 23/06/2026 (PAGA) ---
@@ -464,7 +465,7 @@ export const DESPESAS_PF_RAFA_MAIO_2026 = [
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 500.00, categoria: 'Transferencia' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Aplicacao Poupanca',                           valor: 700.00, categoria: 'Transferencia' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Rafaela (Parcela da Casa)',                valor: 689.00, categoria: 'Financiamento' },
-  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX TELEFONICA BRAS',                          valor: 38.92,  categoria: 'Diverso' },
+  { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX TELEFONICA BRAS',                          valor: 38.92,  categoria: 'Agua/Luz/Fone' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'Boleto CONSELHO REGIONAL DE PSICOLOGI',        valor: 153.50, categoria: 'Educacao' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX UNINTER',                                  valor: 85.78,  categoria: 'Educacao' },
   { data: '07/05/2026', origem: 'Bradesco CC',  descricao: 'PIX Antonio Fabricio da Silva (marido)',       valor: 2000.00, categoria: 'Transferencia' },
@@ -546,7 +547,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
   { data: '18/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Tempero Di)',             valor:  19.90, categoria: 'Alimentacao' },
   // Plano NuCel: Toni confirmou que e PF nos tres meses. Estava como PJ em
   // maio e julho (sql/141 chamava de "linha PJ") — corrigido em sql/174.
-  { data: '19/06/2026', origem: 'Nubank PF',  descricao: 'Plano NuCel 19/06',               valor:  10.00, categoria: 'Diverso' },
+  { data: '19/06/2026', origem: 'Nubank PF',  descricao: 'Plano NuCel 19/06',               valor:  10.00, categoria: 'Agua/Luz/Fone' },
   { data: '20/06/2026', origem: 'Nubank PF',  descricao: 'Aiqfome (Parada das Acai)',        valor:  25.00, categoria: 'Alimentacao' },
   // --- Bradesco NEO VISA PLATINUM (cartao ****6669) — venc. 20/07/2026 ---
   { data: '20/07/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada (08/07)', valor:  33.00, categoria: 'Tarifa cartao' },
@@ -682,7 +683,7 @@ export const DESPESAS_PF_TONI_JULHO_2026 = [
 // Despesas PF julho/2026 — RAFA (esposa)
 // Fonte: planilha manual (Banco do Brasil, Nubank, Caixa) enviada por Toni.
 export const DESPESAS_PF_RAFA_JULHO_2026 = [
-  { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Telefone Vivo 05/07',       valor: 39.94,   categoria: 'Diverso' },
+  { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Telefone Vivo 05/07',       valor: 39.94,   categoria: 'Agua/Luz/Fone' },
   { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Pix para Pra. Sarah 05/07', valor: 48.00,   categoria: 'PIX terceiros' },
   { data: '05/07/2026', origem: 'Banco do Brasil', descricao: 'Pagamento Pos 05/07',       valor: 85.78,   categoria: 'Educacao' },
   { data: '10/07/2026', origem: 'Banco do Brasil', descricao: 'Fies 10/07',                valor: 106.41,  categoria: 'Educacao' },
@@ -718,11 +719,11 @@ export const DESPESAS_PF_RAFA_AGOSTO_2026 = [
   { data: '05/08/2026', origem: 'Banco do Brasil',  descricao: 'Tarifa Pacote de Servicos 05/08',                             valor: 8.49,     categoria: 'Tarifa banco' },
   { data: '06/08/2026', origem: 'Banco do Brasil',  descricao: 'Tarifa Pacote de Servicos 06/08',                             valor: 7.41,     categoria: 'Tarifa banco' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Poliani Lopes (So Frutas)',                                   valor: 13.90,    categoria: 'Alimentacao' },
-  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)',                       valor: 168.47,   categoria: 'Diverso' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)',                       valor: 168.47,   categoria: 'Servicos' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)',                                               valor: 85.78,    categoria: 'Educacao' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'CeA Pay',                                                     valor: 123.20,   categoria: 'Vestuario' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Casa)',                         valor: 790.00,   categoria: 'Financiamento' },
-  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)',                                           valor: 39.91,    categoria: 'Diverso' },
+  { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)',                                           valor: 39.91,    categoria: 'Agua/Luz/Fone' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Sarah Regina (Semi Joia)',                                    valor: 48.00,    categoria: 'Compras pessoais' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Elisangela Aparecida (Trabalho)',                             valor: 2.55,     categoria: 'Diverso' },
   { data: '07/08/2026', origem: 'Banco do Brasil',  descricao: 'Mikaela Carvalho Viana (Trabalho)',                           valor: 15.33,    categoria: 'Diverso' },
@@ -939,7 +940,7 @@ export const DESPESAS_PF_TONI_AGOSTO_2026 = [
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Tempero Di) 23/07',        valor: 19.90,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Tempero Di) 22/07',        valor: 19.90,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Tempero Di) 21/07',        valor: 19.90,   categoria: 'Alimentacao' },
-  { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Plano NuCel 19/07',                 valor: 10.00,   categoria: 'Diverso' },
+  { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Plano NuCel 19/07',                 valor: 10.00,   categoria: 'Agua/Luz/Fone' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Restaurante) 18/07',       valor: 16.00,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Restaurante) 17/07',       valor: 16.00,   categoria: 'Alimentacao' },
   { data: '02/08/2026', origem: 'Nubank PF',     descricao: 'Aiqfome (Tempero Di) 16/07',        valor: 19.90,   categoria: 'Alimentacao' },
@@ -969,12 +970,12 @@ export const DESPESAS_PF_RAFA_SETEMBRO_2026 = [
   // 20 saidas R$6.661,79 = entradas (4.822,14 + 550 ATM + 1.289,65); saldo final 0,00.
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Maelen Toral P', valor: 44.93, categoria: 'Diverso' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Casa)', valor: 693.00, categoria: 'Financiamento' },
-  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)', valor: 153.50, categoria: 'Diverso' },
+  { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Conselho Regional de Psicologia (CRP)', valor: 153.50, categoria: 'Servicos' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Uninter (Pos)', valor: 85.78, categoria: 'Educacao' },
   { data: '04/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Rafaela Garcia Centuriao (Nubank, transferencia propria)', valor: 1844.93, categoria: 'Transferencia' },
   { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Ezequiel Bezerra da Cruz', valor: 25.00, categoria: 'Diverso' },
   { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Natureza & Flores', valor: 65.00, categoria: 'Compras pessoais' },
-  { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)', valor: 39.91, categoria: 'Diverso' },
+  { data: '05/09/2026', origem: 'Banco do Brasil',  descricao: 'Telefonica (Vivo)', valor: 39.91, categoria: 'Agua/Luz/Fone' },
   { data: '08/09/2026', origem: 'Banco do Brasil',  descricao: 'Pix Antonio Fabricio da Silva (Toni)', valor: 550.00, categoria: 'Transferencia' },
   { data: '08/09/2026', origem: 'Banco do Brasil',  descricao: 'Tarifa Pacote de Servicos 08/09', valor: 15.90, categoria: 'Tarifa banco' },
   { data: '09/09/2026', origem: 'Banco do Brasil',  descricao: 'Mooz Solucoes Financeiras', valor: 38.90, categoria: 'Diverso' },
@@ -1016,8 +1017,8 @@ export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'CEA CGE 225 ECPC 17/08 1/2', valor: 64.99, categoria: 'Vestuario' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Youcom 17/08 1/5', valor: 43.94, categoria: 'Vestuario' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'JIM COM Ana Paula Maluf R 17/08', valor: 5.00, categoria: 'Servicos' },
-  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Campo Grande Parking 17/08 (a)', valor: 27.00, categoria: 'Diverso' },
-  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Campo Grande Parking 17/08 (b)', valor: 21.00, categoria: 'Diverso' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Campo Grande Parking 17/08 (a)', valor: 27.00, categoria: 'Estacionamento' },
+  { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Campo Grande Parking 17/08 (b)', valor: 21.00, categoria: 'Estacionamento' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Posto Seara 17/08', valor: 200.00, categoria: 'Combustivel' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Motiva Pantanal 17/08 (a)', valor: 14.10, categoria: 'Pedagio' },
   { data: '11/09/2026', origem: 'Elo Grafite', descricao: 'Saborelli 17/08', valor: 65.71, categoria: 'Alimentacao' },
@@ -1096,7 +1097,7 @@ export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
   // --- Bradesco NEO (Visa) — venc. 20/09/2026 (fatura R$33,00, anuidade) ---
   { data: '20/09/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada 09/09', valor: 33.00, categoria: 'Tarifa cartao' },
   // --- Nubank PF (cartao) — venc. 02/09/2026 (fatura R$199,78; Anthropic+IOF sao PJ, sql/203) ---
-  { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Plano NuCel 19/08', valor: 10.00, categoria: 'Diverso' },
+  { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Plano NuCel 19/08', valor: 10.00, categoria: 'Agua/Luz/Fone' },
   { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Ebn Epicgames 17/08', valor: 4.97, categoria: 'Lazer' },
   { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Mercado Kraus 11/08', valor: 11.49, categoria: 'Supermercado' },
   { data: '02/09/2026', origem: 'Nubank PF', descricao: 'Aiqfome (Aiqfome) 07/08', valor: 24.90, categoria: 'Alimentacao' },
@@ -1106,7 +1107,7 @@ export const DESPESAS_PF_TONI_SETEMBRO_2026 = [
   { data: '11/09/2026', origem: 'Cresol Mastercard', descricao: 'Mercado Kraus 03/08', valor: 16.98, categoria: 'Supermercado' },
   { data: '11/09/2026', origem: 'Cresol Mastercard', descricao: 'JIM.COM Thiago Dos 13/03 6/6', valor: 121.74, categoria: 'Servicos' },
   // --- Nubank conta (Toni) — extrato set/2026 ---
-  { data: '11/09/2026', origem: 'Nubank', descricao: 'Garzon Informatica', valor: 5.00, categoria: 'Diverso' },
+  { data: '11/09/2026', origem: 'Nubank', descricao: 'Garzon Informatica', valor: 5.00, categoria: 'Compras pessoais' },
   { data: '11/09/2026', origem: 'Nubank', descricao: 'Luan Rogerio Gomes Fruto (pizza promocional da igreja)', valor: 35.00, categoria: 'Doacao/Igreja' },
   { data: '12/09/2026', origem: 'Nubank', descricao: 'Debito em conta 12/09', valor: 25.00, categoria: 'Diverso' },
   { data: '13/09/2026', origem: 'Nubank', descricao: 'Maykon Antonio de Oliveira (oferta missionaria)', valor: 100.00, categoria: 'Doacao/Igreja' },
