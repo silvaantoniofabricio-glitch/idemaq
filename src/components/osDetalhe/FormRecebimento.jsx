@@ -52,6 +52,27 @@ const TAXAS_LINK_NUBANK = {
 }
 const MAX_PARCELAS_LINK_NUBANK = 12
 
+// Maquininha C6 Bank — taxa por bandeira, tudo cai em 1 dia útil. Conferido no
+// app C6 ("Taxas e recebimento", 29/10/2026). Crédito parcelado = taxa-base da
+// faixa + (nº de parcelas x 0,69% "adicional por parcela").
+// Mastercard e Visa têm a mesma tabela; Elo é mais cara. Amex/Hipercard não
+// constam no app — por isso o C6 some quando a bandeira é American Express.
+const C6_ADICIONAL_PARCELA = 0.69
+const C6_TAXAS = {
+  master: { debito: 0.82, avista: 2.95, faixas: [[6, 2.14], [12, 2.44], [18, 2.94]] },
+  elo:    { debito: 1.52, avista: 3.65, faixas: [[6, 2.84], [12, 3.14], [18, 3.64]] },
+}
+C6_TAXAS.visa = C6_TAXAS.master
+const MAX_PARCELAS_C6 = 18
+function taxaC6Credito(bandeira, parcelas) {
+  const t = C6_TAXAS[bandeira]
+  if (!t) return 0
+  if (parcelas <= 1) return t.avista
+  const faixa = t.faixas.find(([ate]) => parcelas <= ate)
+  if (!faixa) return 0
+  return Math.round((faixa[1] + parcelas * C6_ADICIONAL_PARCELA) * 100) / 100
+}
+
 const MAX_PARCELAS = 21
 
 const BANDEIRAS = [
@@ -75,11 +96,15 @@ function taxaSub(subId, bandeira, parcelas) {
   if (subId === 'credito')    return taxaCredito(bandeira, parcelas)
   if (subId === 'link')       return taxaCredito(bandeira, parcelas) + LINK_ACRESCIMO
   if (subId === 'linknubank') return TAXAS_LINK_NUBANK[parcelas] || 0
+  if (subId === 'c6debito')   return C6_TAXAS[bandeira]?.debito || 0
+  if (subId === 'c6credito')  return taxaC6Credito(bandeira, parcelas)
   return 0
 }
 // Nº máximo de parcelas por sub-opção — Nubank só vai até 12x, Ton/InfinitePay até 21x.
 function maxParcelasSub(subId) {
-  return subId === 'linknubank' ? MAX_PARCELAS_LINK_NUBANK : MAX_PARCELAS
+  if (subId === 'linknubank') return MAX_PARCELAS_LINK_NUBANK
+  if (subId === 'c6credito') return MAX_PARCELAS_C6
+  return MAX_PARCELAS
 }
 
 const SUB_CARTAO = [
@@ -87,6 +112,8 @@ const SUB_CARTAO = [
   { id: 'credito',    label: 'Crédito (Ton)',    parcelado: true, icon: 'ti-credit-card', desc: '1x a 21x' },
   { id: 'link',       label: 'Link InfinitePay', parcelado: true, icon: 'ti-link',        desc: '1x a 21x · cai em D+1' },
   { id: 'linknubank', label: 'Link Nubank',      parcelado: true, icon: 'ti-link',        desc: '1x a 12x · cai na hora' },
+  { id: 'c6debito',   label: 'Débito (C6)',      icon: 'ti-credit-card' },
+  { id: 'c6credito',  label: 'Crédito (C6)',     parcelado: true, icon: 'ti-credit-card', desc: '1x a 18x · cai em D+1' },
 ]
 
 // Converte o ID interno num label legível pro display em outras telas.
@@ -95,10 +122,13 @@ export function formaIdToLabel(id) {
   if (id === 'pix') return 'PIX'
   if (id === 'dinheiro') return 'Dinheiro'
   if (id === 'debito') return 'Débito'
+  if (id === 'c6debito') return 'Débito C6'
   if (id === 'aprazo') return 'A prazo'
   // Novos IDs: credito_Nx, link_Nx, linknubank_Nx
   let m = id.match?.(/^credito_(\d+)x$/)
   if (m) return `Crédito ${m[1]}x`
+  m = id.match?.(/^c6credito_(\d+)x$/)
+  if (m) return `Crédito C6 ${m[1]}x`
   m = id.match?.(/^linknubank_(\d+)x$/)
   if (m) return `Link Nubank ${m[1]}x`
   m = id.match?.(/^link_(\d+)x$/)
@@ -151,6 +181,11 @@ export default function FormRecebimento({
     const max = maxParcelasSub(subCartao)
     if (parcelas > max) setParcelas(max)
   }, [subCartao])
+
+  // C6 só tem taxa pra Mastercard/Visa/Elo — ao trocar pra outra bandeira, volta pro Débito (Ton).
+  useEffect(() => {
+    if (subCartao?.startsWith('c6') && !C6_TAXAS[bandeira]) setSubCartao('debito')
+  }, [bandeira, subCartao])
 
   // Quando troca pra "A prazo" pela primeira vez, cria 1 parcela default (+30d com o valor total)
   useEffect(() => {
@@ -408,7 +443,7 @@ export default function FormRecebimento({
             textTransform: 'uppercase', letterSpacing: '.4px',
             marginBottom: 4,
           }}>Tipo de cartão</div>
-          {SUB_CARTAO.map(s => (
+          {SUB_CARTAO.filter(s => !(s.id.startsWith('c6') && !C6_TAXAS[bandeira])).map(s => (
             <SubCartaoBtn
               key={s.id}
               T={T} dark={dark} sub={s}

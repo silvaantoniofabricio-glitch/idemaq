@@ -914,3 +914,13 @@ Toni mandou voltar os dois empréstimos pra PJ (sql/205, aplicado): Carro BV (ma
 - **23/10/2026 — Reclassificação de Diverso (PF)**: Vivo/Telefonica/Plano NuCel → Agua/Luz/Fone (grupo Utilidades); CRP (Conselho Regional de Psicologia) → Servicos; Campo Grande Parking → nova categoria Estacionamento (grupo Veículos, CATEGORIA_MAE); Garzon Informatica → Compras pessoais. 15 linhas (mai→set). Diverso de setembro caiu de R$585,14 pra R$328,73 e ficou só o que é genuinamente desconhecido (Márcia 91, Pay2All 53,90, Vanderleia 50, Maelen 44,93, Mooz 38,90, Ezequiel 25, Débito em conta 25). No gráfico da rosca: "Outros" = Diverso+PIX terceiros; "Outras" = categorias além das 6 maiores agrupadas (MAX_CATEGORIAS_GRAFICO).
 - **23/10/2026**: Luan Rogério R$35 (pizza promocional da igreja, Nubank 11/09) → Alimentacao (não Doacao/Igreja).
 - **23/10/2026**: Campo Grande Parking (estacionamento de shopping, jun e set) → Lazer (não Estacionamento/Veículos); categoria Estacionamento removida.
+
+## 24. Nova forma de pagamento no cartão: maquininha C6 Bank (29/10/2026)
+
+Em `FormRecebimento.jsx` (Cartão): **Débito (C6)** → id `c6debito`; **Crédito (C6)** → id `c6credito_Nx` (1x a 18x). Tabela `C6_TAXAS` conferida no app C6 ("Taxas e recebimento"): tudo **1 dia útil** (D+1, mesmo tratamento do Ton — não entra em `FORMAS_D0`).
+- **Mastercard = Visa:** débito 0,82% · crédito à vista 2,95% · 2–6x: 2,14% · 7–12x: 2,44% · 13–18x: 2,94%.
+- **Elo:** débito 1,52% · à vista 3,65% · 2–6x: 2,84% · 7–12x: 3,14% · 13–18x: 3,64%.
+- **Cálculo parcelado:** `taxa-base da faixa + (nº parcelas × 0,69%)` ("Taxa + (Parcela x AP)", AP = adicional por parcela). Ex.: Visa 2x = 2,14 + 2×0,69 = 3,52%; Visa 12x = 10,72%.
+- **Amex** não tem tabela no app do C6 → as opções C6 ficam ocultas se a bandeira for American Express (e voltam pro Débito Ton se estava selecionada).
+- `osToFinanceiro.js`: `c6debito`/`c6credito` → conta **"C6 Bank"** (tipo `maquininha`, criada em `sql/209-conta-c6-bank.sql`, **já aplicada** em 29/10/2026); despesa de taxa em D+1 útil como as demais.
+- Label em listas: `formaIdToLabel` → "Débito C6" / "Crédito C6 Nx".

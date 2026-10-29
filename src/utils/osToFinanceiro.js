@@ -24,6 +24,8 @@ const FORMA_TO_CONTA_NOME = {
   credito:    'Ton Black',
   link:       'InfinitePay', // só link de pagamento usa InfinitePay — maquininha física é Ton
   linknubank: 'Nubank',      // Link Nubank — cai na hora (D+0), diferente do InfinitePay (D+1)
+  c6debito:   'C6 Bank',     // Maquininha C6 — 1 dia útil (sql/209 cria a conta)
+  c6credito:  'C6 Bank',
   aprazo:     null, // a prazo não tem conta definida no recebimento
 }
 
@@ -35,6 +37,7 @@ const FORMAS_D0 = new Set(['linknubank'])
 function classificarForma(forma) {
   if (!forma) return 'pix'
   if (forma.startsWith('credito_'))    return 'credito'
+  if (forma.startsWith('c6credito_'))  return 'c6credito'
   if (forma.startsWith('linknubank_')) return 'linknubank'
   if (forma.startsWith('link_'))       return 'link'
   if (forma.startsWith('aprazo_'))     return 'aprazo'
