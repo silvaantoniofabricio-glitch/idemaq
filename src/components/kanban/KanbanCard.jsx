@@ -130,9 +130,14 @@ export default function KanbanCard({
     letterSpacing: '0.01em',
   })
 
+  // Prioridade marcada pelo ⋮ (os.pre_diagnostico.prioridade): contorno amarelo
+  // grosso + bandeira e rótulo (não depende só de cor — paleta Deutan).
+  const prioridade = os.pre_diagnostico?.prioridade === true
+  const corPrioridade = cor(P.yellow, P.yellowDark)
   const cardStyle = dark
-    ? { background: '#2a2a2d', borderLeft: `3px solid ${corLinha}` }
-    : { background: '#ffffff', borderLeft: `3px solid ${corLinha}`, boxShadow: '0 1px 4px rgba(0,0,0,.07), 0 0 0 .5px rgba(0,0,0,.04)' }
+    ? { background: prioridade ? '#33300f' : '#2a2a2d', borderLeft: `3px solid ${corLinha}` }
+    : { background: prioridade ? '#fffbe6' : '#ffffff', borderLeft: `3px solid ${corLinha}`, boxShadow: '0 1px 4px rgba(0,0,0,.07), 0 0 0 .5px rgba(0,0,0,.04)' }
+  if (prioridade) cardStyle.outline = `2px solid ${corPrioridade}`
 
   const temTags = os.garantia || pagoTotal || pagoParcial || os.aguardando_peca || (os.horasNaEtapa && os.horasNaEtapa > 24)
 
@@ -193,6 +198,17 @@ export default function KanbanCard({
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 8.5, fontWeight: 700, letterSpacing: '-0.03em',
             }}>{(funcRoteiro.nome || '?').slice(0, 2).toUpperCase()}</span>
+          )}
+          {prioridade && (
+            <span title="Prioridade" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0,
+              padding: '1px 6px', borderRadius: 100, fontSize: 9.5, fontWeight: 800,
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+              background: corPrioridade, color: '#1a1a1d',
+            }}>
+              <i className="ti ti-flag-3-filled" style={{ fontSize: 10 }} aria-hidden="true" />
+              Prioridade
+            </span>
           )}
           {os._prioridadeHoje && (
             <i className="ti ti-flag-3-filled" title="Prioridade hoje"

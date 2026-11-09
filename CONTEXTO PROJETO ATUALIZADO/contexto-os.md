@@ -726,3 +726,7 @@ Ideia de um funcionário, aprovada pelo Toni: os pontos **não zeram por mês**.
 ## Aviso de OS do Roteiro em aberto (15/10/2026)
 
 `components/roteiro/AvisoRoteiroPendente.jsx`: faixa amarela (ícone + texto, Deutan-safe) na tela de OS do **funcionário** (Kanban desktop e `OSMobile`) quando ele tem, no Roteiro de HOJE, itens com `os_id` e `feito = false`. Mostra "Você tem N OS em aberto no Roteiro de hoje", chips das OS (clicáveis, abrem a OS) e botão "Abrir roteiro". Some sozinha ao marcar tudo como feito; não aparece pro dono. Usa `useRoteiro({})` (RLS já limita ao próprio; o componente filtra por `responsavel_id === user.id` de qualquer forma). Só conta item do dia de hoje (não há roll-over de dias anteriores).
+
+## Prioridade no card do Kanban (09/11/2026)
+
+Menu ⋮ (`OSAcoesMenu.jsx`, também no header do OSDetalhe) ganhou **"Marcar como prioridade" / "Remover prioridade"**. Fica em `os.pre_diagnostico.prioridade` (jsonb já persistido pelo `normalizePatchOS` — **sem coluna nova**; ao gravar sempre faz spread do `pre_diagnostico` existente). `KanbanCard` destaca com contorno amarelo 2px + fundo levemente amarelo + pílula "Prioridade" com bandeira (não depende só de cor — Deutan). É independente da bandeira vermelha `_prioridadeHoje` (que vem do Roteiro do Dia). Não reordena a coluna. O card mobile (`OSCardMobile`) ainda não tem o destaque (dá pra marcar/ver pelo detalhe).

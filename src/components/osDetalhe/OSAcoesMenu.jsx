@@ -437,6 +437,25 @@ export default function OSAcoesMenu({
                     : (ehPagamento ? 'Agendar cobrança' : 'Agendar entrega')}
                 </MenuItem>
               )}
+              {onUpdateOS && (
+                <MenuItem T={T}
+                  icon={os.pre_diagnostico?.prioridade ? 'ti-flag-3-off' : 'ti-flag-3-filled'}
+                  onClick={async () => {
+                    const marcada = !!os.pre_diagnostico?.prioridade
+                    try {
+                      // Guardada em pre_diagnostico (jsonb já persistido) — sem coluna nova.
+                      await onUpdateOS(os.numero, {
+                        pre_diagnostico: { ...(os.pre_diagnostico || {}), prioridade: !marcada },
+                      })
+                      notify('ok', marcada
+                        ? `OS #${os.numero} sem prioridade`
+                        : `OS #${os.numero} marcada como prioridade`)
+                      fecharMenu()
+                    } catch (e) { notify('erro', `Erro: ${e?.message || 'desconhecido'}`) }
+                  }}>
+                  {os.pre_diagnostico?.prioridade ? 'Remover prioridade' : 'Marcar como prioridade'}
+                </MenuItem>
+              )}
               {onDuplicar && (
                 <MenuItem T={T} icon="ti-copy-plus" onClick={duplicarOSHandler} disabled={duplicando}>
                   {duplicando ? 'Duplicando…' : 'Duplicar OS'}
