@@ -59,6 +59,7 @@ export const CATEGORIAS_PECA = [
   { id: 'tirantes',          label: 'Tirantes',             grupo: 'estrutura' },
   { id: 'suporte_tampa',     label: 'Suporte da Tampa',     grupo: 'estrutura' },
   { id: 'suporte_cesto',    label: 'Suporte do Cesto',     grupo: 'estrutura' },
+  { id: 'cunha_cesto',      label: 'Cunha do Cesto',       grupo: 'estrutura' },
 
   // Acabamento
   { id: 'dobradicas',        label: 'Dobradiças',           grupo: 'acabamento' },
