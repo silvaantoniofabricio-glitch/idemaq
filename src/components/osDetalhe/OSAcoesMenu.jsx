@@ -45,7 +45,7 @@ export default function OSAcoesMenu({
   const [entregaHora, setEntregaHora] = useState('')
 
   const { usuarios, apelidoDe } = useUsuarios()
-  const funcionarios = usuarios.filter(u => u.papel !== 'dono')
+  const funcionarios = usuarios
   const [roteiroModo, setRoteiroModo] = useState(false)
   const [roteiroDia, setRoteiroDia]   = useState('hoje')
   const [roteiroPrioridade, setRoteiroPrioridade] = useState(false)

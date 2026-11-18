@@ -117,7 +117,7 @@ export default function Kanban({ T, dark, user }) {
     })),
     [maquinas]
   )
-  const funcionariosRoteiro = useMemo(() => usuarios.filter(u => u.papel !== 'dono'), [usuarios])
+  const funcionariosRoteiro = usuarios  // ativos, inclusive o dono (pode mandar OS pro roteiro dele)
   // Itens do Roteiro de HOJE (ao vivo) → mapa os_id → responsavel_id, pro avatar no card.
   const { itens: roteiroItens } = useRoteiro({})
   const roteiroPorOS = useMemo(() => {

@@ -248,8 +248,8 @@ function ColunaFuncionario({ pessoa, itens, osPorId, T, dark, osList, pessoas, R
 }
 
 function Organizador({ R, osPorId, osList, pessoas, T, dark, onAbrirOS, presencaPorId }) {
-  // Só funcionários (dono não tem "Meu Dia" pra organizar).
-  const funcionarios = pessoas.filter(p => p.papel !== 'dono')
+  // Todas as pessoas ativas, inclusive o dono (Toni também tem tarefas no roteiro).
+  const funcionarios = pessoas
   if (funcionarios.length === 0) {
     return <div style={{ padding: 24, textAlign: 'center', color: T.textDim, fontSize: 12.5 }}>Nenhum funcionário cadastrado.</div>
   }
