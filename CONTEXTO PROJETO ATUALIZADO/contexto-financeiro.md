@@ -924,3 +924,13 @@ Em `FormRecebimento.jsx` (Cartão): **Débito (C6)** → id `c6debito`; **Crédi
 - **Amex** não tem tabela no app do C6 → as opções C6 ficam ocultas se a bandeira for American Express (e voltam pro Débito Ton se estava selecionada).
 - `osToFinanceiro.js`: `c6debito`/`c6credito` → conta **"C6 Bank"** (tipo `maquininha`, criada em `sql/209-conta-c6-bank.sql`, **já aplicada** em 29/10/2026); despesa de taxa em D+1 útil como as demais.
 - Label em listas: `formaIdToLabel` → "Débito C6" / "Crédito C6 Nx".
+
+## 39. Fechamento OUTUBRO/2026 — parte 1 (lançado 18/11/2026)
+
+Fonte: `REVISAO FECHAMENTO 2026/OUTUBRO/`. Faturas que venceram em outubro + extratos de outubro.
+
+- **PJ** `sql/208` (aplicado): 66 itens, R$ 6.568,22 — Elo Grafite PJ R$380,98 (conta Elo Grafite, prefixo `FAT-ELO-GRAFITE-SET:` = ciclo) · MP R$3.022,57 (inclui R$118,07 de multa/juros/IOF de atraso, classificados PJ porque o cartão é quase todo PJ) · Nubank PF→PJ (Anthropic+IOF) R$118,40 · Nubank PJ R$322,96 · Cresol extrato R$2.603,32 (juros/IOF cheque, pacote, Zion, tarifa Mastercard 19,90, parcela empréstimo Cresol 1.421,71, Energisa via Márcia 781,29) · FleetNet 119,99 (conta NULL).
+- **PF** `DESPESAS_PF_TONI_OUTUBRO_2026` (141 itens, R$7.126,21) e `DESPESAS_PF_RAFA_OUTUBRO_2026` (só Civic 1.526,48). Totais das faturas batem: Elo 5.325,69 · MP 3.390,87 · Inter 1.873,12 · NEO 33,66 · Nubank PF 218,15 — descontados os pendentes abaixo.
+- **Quitações (NÃO são despesa nova)**: Elo Grafite paga em 2 vezes (1.500 em 13/10 pelo Bradesco + 3.826 em 22/10 do Nubank); MP 3.390,87 (26/10, Bradesco); NEO 33,66; Inter de setembro 1.872,98 (07/10, Nubank); Nubank PF 218,15; Nubank PJ 322,98; Mastercard 978,98. DAS 618,43 + eSocial 661,28 pagos 16/10 são de SETEMBRO (sql/204). Água 146,29 (14/10, Bradesco) é de SETEMBRO.
+- **Pix no crédito Nubank (DLOCAL 33,32 + 5,42 + 312,69 + 330,40)**: entram na fatura Nubank de NOVEMBRO, não em outubro.
+- **PENDENTES (aguardando Toni)**: Cresol Mastercard (falta print do topo, fatura 959,08; R Silva −359,88 e 2/12 não lançar); Bradesco Elo Mais (fatura não veio); salários de outubro (PIX Alessandro 500+650, Guilherme 500+650+15 — confirmar parte em dinheiro); Carro BV de outubro (extrato BB da Rafa); Ministério da Fazenda 29/10 (350,50 + 108,48); Priscila Bressa 200, Irene Pereira 100, Jane Valéria 100 (Cresol); crédito de R$7.500 no Nubank em 16/10 e R$5.700 da Rafa em 22/10; itens de cartão sem classificação (Sertão Comercial de Eq 33,90, Incopama 1/10 100, Carro e Cia 20, NunesBike 178,90, PrincesAutLD 1/8 27,63, Cappta Taira e Dutra 1/10 51,06); miúdos do Bradesco PF/Nubank (25, 25, 4×26,90, 2×53,90, 24, Wanderson 20, Alessandro Monteiro Felix 10).
