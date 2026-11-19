@@ -1229,6 +1229,8 @@ export const DESPESAS_PF_TONI_OUTUBRO_2026 = [
   { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Mercado Kraus 28/09', valor: 11.98, categoria: 'Supermercado' },
   { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Anuidade Diferenciada Elo Grafite 28/09 9/12', valor: 56.00, categoria: 'Tarifa cartao' },
   { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/08 (cartao 5900)', valor: 139.90, categoria: 'Saude/Academia' },
+  { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Sertao Comercial de Eq 12/09 (MDF manutencao cozinha)', valor: 33.90, categoria: 'Casa' },
+  { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Incopama 15/09 1/10 (MDF manutencao cozinha)', valor: 100.00, categoria: 'Casa' },
   // --- MP Cartao (Visa 5566) — venc. 20/10/2026 (fatura R$3.390,87; PJ R$3.022,57 no sql/208) ---
   { data: '20/10/2026', origem: 'MP Cartao', descricao: 'EBazarComBrl 01/09 14/18', valor: 50.07, categoria: 'Compras pessoais' },
   { data: '20/10/2026', origem: 'MP Cartao', descricao: 'JoyBasico 25/02 8/12', valor: 10.97, categoria: 'Compras pessoais' },
@@ -1263,6 +1265,7 @@ export const DESPESAS_PF_TONI_OUTUBRO_2026 = [
   { data: '25/10/2026', origem: 'Inter', descricao: 'Aiqfome Subway Navirai 29/09', valor: 38.00, categoria: 'Alimentacao' },
   { data: '25/10/2026', origem: 'Inter', descricao: 'Aiqfome Tempero Di 01/10', valor: 19.90, categoria: 'Alimentacao' },
   { data: '25/10/2026', origem: 'Inter', descricao: 'Aiqfome Aiqfome LT 13/10', valor: 24.90, categoria: 'Alimentacao' },
+  { data: '25/10/2026', origem: 'Inter', descricao: 'Cappta Taira e Dutra 1/10 (roupas)', valor: 51.06, categoria: 'Vestuario' },
   // --- Bradesco NEO (Visa) — venc. 20/10/2026 (fatura R$33,66) ---
   { data: '20/10/2026', origem: 'Bradesco NEO', descricao: 'Anuidade diferenciada 07/10', valor: 33.00, categoria: 'Tarifa cartao' },
   { data: '20/10/2026', origem: 'Bradesco NEO', descricao: 'Multa contratual 07/10', valor: 0.66, categoria: 'Multa/Juros cartao' },
