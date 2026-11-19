@@ -961,3 +961,10 @@ Toni mandou `OneDrive/Documentos/DOCUMENTOS EMPRESA/CONTABILIDADE/IDEMAQ - Movim
 - Salvar em `OneDrive/.../CONTABILIDADE/` (onde o Toni guarda) e cópia em `Arquivos Contador/`. Script temporário em `tmp/` (lib `tmp/xlsx-tool`), apagado depois.
 
 **Outubro/2026** gerado: 46 entradas R$ 10.304,99 · 123 saídas R$ 14.249,49 · resultado −R$ 3.944,50 · Mercadoria R$ 4.843,35 · Serviço R$ 5.461,64 (mão de obra 4.925,37 + deslocamento 536,27). Empréstimos R$ 2.619,71 (Carro BV 1.198 padrão + Cresol 1.421,71). Ressalvas: Carro BV ainda no valor padrão (falta extrato BB da Rafa); Cresol Mastercard lançado R$ 1.288,97 vs fatura R$ 959,08 (R Silva fora — Toni ainda decide se lança o estorno líquido R$ 329,89).
+
+## 41. Energia corrigida pelos valores reais mai→nov (19/11/2026, sql/215 aplicado)
+
+Toni passou os valores reais da Energisa por mês e autorizou corrigir meses fechados. Soft-delete dos 5 lançamentos antigos (pela data do PIX à Márcia, valores misturados: mai 525,78 · 07/07 403,93 · 31/08 361,64 · 25/09 454,95 · 23/10 781,29) e insert de 7 `ENERGISA-<MES>:` no dia 07 de cada mês, categoria `Energia eletrica`, conta Cresol (maio mantém a conta original): mai 525,75 · jun 403,36 · jul 361,64 · ago 454,95 · set 296,91 · out 484,38 · **nov 587,11 (já lançado — não duplicar no fechamento de novembro)**. O PIX de 23/10 (781,29) = set + out.
+- Regra nova: PIX pra Márcia de Fátima no extrato NÃO entra; energia vai no mês de referência com o valor real informado pelo Toni.
+- Outubro regerado: saídas R$ 13.952,58 · resultado −R$ 3.647,59 → `OneDrive/.../CONTABILIDADE/IDEMAQ - Movimentacao Outubro-2026 (atualizado).xlsx` (o original estava aberto no Excel).
+- Arquivos do contador já entregues de jun→set ficaram com energia diferente (jun +403,36 · jul −42,29 · ago +93,31 · set −158,04).
