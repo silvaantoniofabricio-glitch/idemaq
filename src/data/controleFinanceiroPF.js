@@ -1231,6 +1231,7 @@ export const DESPESAS_PF_TONI_OUTUBRO_2026 = [
   { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Panobianco Academia 29/08 (cartao 5900)', valor: 139.90, categoria: 'Saude/Academia' },
   { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Sertao Comercial de Eq 12/09 (MDF manutencao cozinha)', valor: 33.90, categoria: 'Casa' },
   { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Incopama 15/09 1/10 (MDF manutencao cozinha)', valor: 100.00, categoria: 'Casa' },
+  { data: '11/10/2026', origem: 'Elo Grafite', descricao: 'Carro e Cia Centro Automotivo 25/09 (Civic)', valor: 20.00, categoria: 'Veiculo PF' },
   // --- MP Cartao (Visa 5566) — venc. 20/10/2026 (fatura R$3.390,87; PJ R$3.022,57 no sql/208) ---
   { data: '20/10/2026', origem: 'MP Cartao', descricao: 'EBazarComBrl 01/09 14/18', valor: 50.07, categoria: 'Compras pessoais' },
   { data: '20/10/2026', origem: 'MP Cartao', descricao: 'JoyBasico 25/02 8/12', valor: 10.97, categoria: 'Compras pessoais' },
@@ -1279,6 +1280,10 @@ export const DESPESAS_PF_TONI_OUTUBRO_2026 = [
   // --- Bradesco PF (conta 358510-7, nao rastreada) — extrato out/2026 ---
   { data: '02/10/2026', origem: 'Bradesco PF', descricao: 'Encargos limite credito 02/10', valor: 165.78, categoria: 'Tarifa banco' },
   { data: '02/10/2026', origem: 'Bradesco PF', descricao: 'IOF utilizacao limite 02/10', valor: 32.38, categoria: 'IOF' },
+  { data: '06/10/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 06/10 (provavelmente comida)', valor: 25.00, categoria: 'Alimentacao' },
+  { data: '13/10/2026', origem: 'Bradesco PF', descricao: 'Steam (6 compras QR dinamico 07/10 a 13/10: 2x53,90 + 4x26,90)', valor: 215.40, categoria: 'Lazer' },
+  { data: '13/10/2026', origem: 'Bradesco PF', descricao: 'PIX QR estatico 13/10 (provavelmente comida)', valor: 25.00, categoria: 'Alimentacao' },
+  { data: '30/10/2026', origem: 'Bradesco PF', descricao: 'PIX enviado 30/10 (provavelmente comida)', valor: 24.00, categoria: 'Alimentacao' },
   // --- Nubank conta (Toni) — extrato out/2026 ---
   { data: '03/10/2026', origem: 'Nubank', descricao: 'Igreja Presbiteriana Independente Central 03/10', valor: 20.00, categoria: 'Doacao/Igreja' },
 ]
