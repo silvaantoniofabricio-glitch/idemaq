@@ -12,3 +12,8 @@ FROM (VALUES
   ('ESOCIAL-OUT:INSS competencia 09/2026 PAGO EM DUPLICIDADE (ja quitado no DARF 350,50 de 29/10) - pago 19/11, pedir compensacao', 377.49)
 ) AS v(descricao, valor)
 WHERE NOT EXISTS (SELECT 1 FROM lancamento_financeiro WHERE descricao = v.descricao AND deleted_at IS NULL);
+
+-- 19/11/2026 (aplicado, mesmo dia): Toni pediu pra lançar SÓ o valor correto. A linha do INSS em duplicidade (377,49)
+-- foi soft-deletada. Fica só o FGTS 288,30. Os 377,49 pagos a mais ficam como crédito a receber (compensação/restituição).
+UPDATE lancamento_financeiro SET deleted_at = now()
+WHERE deleted_at IS NULL AND descricao LIKE 'ESOCIAL-OUT:INSS competencia 09/2026 PAGO EM DUPLICIDADE%';
