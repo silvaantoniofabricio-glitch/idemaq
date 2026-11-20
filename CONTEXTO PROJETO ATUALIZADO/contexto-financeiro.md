@@ -968,3 +968,12 @@ Toni passou os valores reais da Energisa por mês e autorizou corrigir meses fec
 - Regra nova: PIX pra Márcia de Fátima no extrato NÃO entra; energia vai no mês de referência com o valor real informado pelo Toni.
 - Outubro regerado: saídas R$ 13.952,58 · resultado −R$ 3.647,59 → `OneDrive/.../CONTABILIDADE/IDEMAQ - Movimentacao Outubro-2026 (atualizado).xlsx` (o original estava aberto no Excel).
 - Arquivos do contador já entregues de jun→set ficaram com energia diferente (jun +403,36 · jul −42,29 · ago +93,31 · set −158,04).
+
+
+## 42. Arquivo do contador — ajustes de layout (19/11/2026)
+
+Toni: o arquivo é só informativo, o contador já sabe a parte fiscal.
+- Sai o título "BASE FISCAL — SIMPLES NACIONAL" e os rótulos de Anexo I/III → bloco **MERCADORIA E SERVIÇO**: Mercadoria (peças) · Serviço · Mão de obra · Deslocamento (mesmos valores, Mercadoria = 47%).
+- Forma de recebimento agrupada em só **PIX · Cartão · Dinheiro** (débito, crédito Nx, C6, link Nubank → Cartão).
+- Gerador agora fica salvo: `scripts/gerar-arquivo-contador.mjs` (sem dados de cliente; usa tmp/xlsx-tool). Saída: OneDrive/.../CONTABILIDADE/ + Arquivos Contador/.
+- Outubro regerado no layout novo (nome normal; o "(atualizado)" foi apagado): entradas 10.304,99 · saídas 13.952,58 · resultado −3.647,59 · PIX 5.177,50 · Cartão 4.514,99 · Dinheiro 612,50.
