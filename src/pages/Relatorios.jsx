@@ -1093,7 +1093,7 @@ function RelatorioFuncionarios({ T, dark, iniIso, fimIso }) {
 
       {/* Pontos por etapa — agregado da equipe toda, não por pessoa */}
       {pontosData?.porServico?.length > 0 && (
-        <PontosPorEtapa T={T} dark={dark} porServico={pontosData.porServico} totalPontos={totalPontos} />
+        <PontosPorEtapa T={T} dark={dark} porServico={pontosData.porServico} totalPontos={totalPontos} osLidas={pontosData.osLidas} maiorNumero={pontosData.maiorNumero} />
       )}
 
       {!loadingAlertas && alertasData?.alertas?.length > 0 && (
@@ -1124,14 +1124,14 @@ const CATEGORIAS_COL = [
   { id: 'fabricacao', label: 'Fabricação' },
 ]
 
-function PontosPorEtapa({ T, dark, porServico, totalPontos }) {
+function PontosPorEtapa({ T, dark, porServico, totalPontos, osLidas, maiorNumero }) {
   const amarelo = corEtapa('yellow', dark)
   const vermelho = corEtapa('red', dark)
   return (
     <AtlPanel T={T} dark={dark}
       title="Pontos por etapa"
       count={porServico.length}
-      footer={`${totalPontos} pts no total, em ${porServico.reduce((s, x) => s + x.n, 0)} etapas concluídas. Garantia/Venda/Fabricação são fatias do Geral, não somam à parte.`}>
+      footer={`${totalPontos} pts no total, em ${porServico.reduce((s, x) => s + x.n, 0)} etapas concluídas. Garantia/Venda/Fabricação são fatias do Geral, não somam à parte. Leitura: ${osLidas ?? '?'} OS, até a #${maiorNumero ?? '?'}.`}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: COLS_ETAPA,

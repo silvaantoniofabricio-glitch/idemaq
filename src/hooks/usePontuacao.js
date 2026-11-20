@@ -25,6 +25,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { calcularPontosOS, LABEL_SERVICO } from '../utils/pontuacao'
+import { fetchTodasOS } from '../utils/fetchTodasOS'
 
 // ── Ajuste manual ÚNICO — gap de lançamento (08/07/2026) ──────────────────
 // 14 OS tiveram trabalho real entre 01-05/07/2026, ANTES do sistema de
@@ -61,10 +62,9 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
     let cancel = false
     ;(async () => {
       setLoading(true); setError(null)
-      const { data: rows, error: err } = await supabase
-        .from('os')
-        .select('id, numero, tipo, tipo_equipamento, pre_diagnostico, garantia')
-        .is('deleted_at', null)
+      const { data: rows, error: err } = await fetchTodasOS(
+        'id, numero, tipo, tipo_equipamento, pre_diagnostico, garantia'
+      )
 
       if (cancel) return
       if (err) { setError(err.message); setLoading(false); return }
@@ -161,7 +161,7 @@ export function usePontuacao({ iniIso, fimIso } = {}) {
       const equipe = Object.values(porFunc).sort((a, b) => b.total - a.total)
       const totalPontos = equipe.reduce((s, f) => s + f.total, 0)
 
-      if (!cancel) { setData({ equipe, totalPontos, porServico }); setLoading(false) }
+      if (!cancel) { setData({ equipe, totalPontos, porServico, osLidas: (rows || []).length, maiorNumero: (rows || []).reduce((m, o) => Math.max(m, o.numero || 0), 0) }); setLoading(false) }
     })()
     return () => { cancel = true }
   }, [iniIso, fimIso])
