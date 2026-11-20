@@ -24,9 +24,7 @@ const rows=[['IDEMAQ ASSISTÊNCIA TÉCNICA LTDA'],[`Movimentação financeira �
 ['RESUMO DO MÊS'],['Total de entradas (receitas)',tRec,`${rec.length} lançamentos`],['Total de saídas (despesas)',tDesp,`${desp.length} lançamentos`],['Resultado do mês (entradas − saídas)',r2(tRec-tDesp)],[''],
 ['MERCADORIA E SERVIÇO'],['Mercadoria (peças)',merc],['Serviço',serv],['   Mão de obra',mao],['   Deslocamento',des],[''],
 ['ENTRADAS POR CATEGORIA'],...grp(rec,x=>x.categoria),[''],['SAÍDAS POR CATEGORIA'],...grp(desp,x=>x.categoria),[''],
-['ENTRADAS POR FORMA DE RECEBIMENTO'],...grp(rec,x=>forma(x.forma_pagamento)),[''],
-['OBSERVAÇÕES'],['Saídas incluem empréstimos/financiamentos (categoria Emprestimo)',soma(emp.map(x=>x.valor))],
-[`Recebimentos com vencimento em ${mesMin} ainda em aberto (não incluídos nas entradas)`,soma(ab.map(x=>x.valor))]]
+['ENTRADAS POR FORMA DE RECEBIMENTO'],...grp(rec,x=>forma(x.forma_pagamento))]
 const ws=XLSX.utils.aoa_to_sheet(rows)
 for(const k of Object.keys(ws))if(k[0]!=='!'&&typeof ws[k].v==='number')ws[k].z='\R\$\ #,##0.00'
 ws['!merges']=[0,1,2,3].map(r=>({s:{r,c:0},e:{r,c:2}}));ws['!cols']=[{wch:66.25},{wch:16.25},{wch:20.25}]

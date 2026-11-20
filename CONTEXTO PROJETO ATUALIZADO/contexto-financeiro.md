@@ -977,3 +977,4 @@ Toni: o arquivo é só informativo, o contador já sabe a parte fiscal.
 - Forma de recebimento agrupada em só **PIX · Cartão · Dinheiro** (débito, crédito Nx, C6, link Nubank → Cartão).
 - Gerador agora fica salvo: `scripts/gerar-arquivo-contador.mjs` (sem dados de cliente; usa tmp/xlsx-tool). Saída: OneDrive/.../CONTABILIDADE/ + Arquivos Contador/.
 - Outubro regerado no layout novo (nome normal; o "(atualizado)" foi apagado): entradas 10.304,99 · saídas 13.952,58 · resultado −3.647,59 · PIX 5.177,50 · Cartão 4.514,99 · Dinheiro 612,50.
+- Toni pediu pra tirar o bloco OBSERVAÇÕES (empréstimos/recebimentos em aberto) — arquivo termina em Entradas por forma de recebimento. Outubro regerado.
